@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="Machine learning engineering journal and technical profile for Ka-Ming Lui, Penn State M.S. student translating electrical engineering rigor into ML systems."
+    />
+    <title>Ka-Ming Lui · Machine Learning Engineer</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fira+Code:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="assets/css/style.css" />
+  </head>
+  <body class="theme-light">
+    <header class="site-header" id="top">
+      <div class="container">
+        <nav class="nav" aria-label="Primary">
+          <a class="logo" href="#hero">Ka-Ming Lui</a>
+          <button
+            class="nav-toggle"
+            type="button"
+            aria-expanded="false"
+            aria-controls="primary-navigation"
+          >
+            <span class="nav-toggle__bar"></span>
+            <span class="nav-toggle__bar"></span>
+            <span class="nav-toggle__bar"></span>
+            <span class="sr-only">Toggle navigation</span>
+          </button>
+          <ul class="nav-links" id="primary-navigation" data-visible="false">
+            <li><a href="#about">About</a></li>
+            <li><a href="#learning">Learning</a></li>
+            <li><a href="#posts">Posts</a></li>
+            <li><a href="#projects">Projects</a></li>
+            <li><a href="#experience">Experience</a></li>
+            <li><a href="#contact">Contact</a></li>
+          </ul>
+          <button class="theme-toggle" type="button" aria-label="Toggle color theme">
+            <span aria-hidden="true">🌙</span>
+          </button>
+        </nav>
+      </div>
+    </header>
+
+    <main>
+      <section class="hero" id="hero">
+        <div class="container hero__layout">
+          <div class="hero__content">
+            <p class="hero__eyebrow">Machine learning systems · Responsible AI · Intelligent instrumentation</p>
+            <h1 class="hero__title">I build trustworthy machine learning pipelines that bridge data, hardware, and people.</h1>
+            <p class="hero__lead">
+              I'm Ka-Ming, an electrical engineer turned machine learning specialist pursuing my M.S. at Penn State.
+              I translate research questions into production-ready models, tooling, and documentation that help teams
+              learn faster and deploy confidently.
+            </p>
+            <div class="hero__actions">
+              <a class="button button--primary" href="#posts">Explore the learning journal</a>
+              <a class="button button--ghost" href="https://www.linkedin.com/in/ka-ming-lui/">LinkedIn profile</a>
+            </div>
+          </div>
+          <aside class="hero__meta" aria-label="Quick facts">
+            <article class="meta-card">
+              <h2>Currently</h2>
+              <ul>
+                <li>M.S. Electrical Engineering @ Penn State</li>
+                <li>Researching human-centered ML for instrumentation</li>
+                <li>Temple University B.S. Electrical Engineering alum</li>
+              </ul>
+            </article>
+            <article class="meta-card">
+              <h2>Focus areas</h2>
+              <ul>
+                <li>Model evaluation &amp; responsible deployment</li>
+                <li>ML Ops for sensing and embedded data</li>
+                <li>Interpretable learning for physical systems</li>
+              </ul>
+            </article>
+          </aside>
+        </div>
+      </section>
+
+      <div class="container content-grid">
+        <div class="primary">
+          <section class="card card--section" id="about">
+            <p class="card__eyebrow">About</p>
+            <h2 class="card__title">Engineering rigor meets machine learning momentum.</h2>
+            <div class="card__body stack">
+              <p>
+                My background in electrical engineering keeps me grounded in measurement science, hardware constraints,
+                and safety-critical thinking. As a master's student at Penn State, I now focus that rigor on building
+                machine learning systems that can be audited, trusted, and iterated quickly.
+              </p>
+              <p>
+                I thrive when translating domain expertise into ML-ready datasets, shaping modeling experiments, and
+                productizing the insights—whether for research collaborations, student teams, or industry partners.
+              </p>
+            </div>
+          </section>
+
+          <section class="card card--section" id="learning">
+            <p class="card__eyebrow">Learning Tracks</p>
+            <h2 class="card__title">Current questions I'm unpacking</h2>
+            <ul class="bullet-list">
+              <li>How to align evaluation metrics with real-world risk in human-in-the-loop ML systems.</li>
+              <li>Designing lightweight deployment stacks for models that serve embedded instrumentation.</li>
+              <li>Techniques for demystifying transformer internals when teaching newcomers to deep learning.</li>
+              <li>Bridging simulation data with lab measurements to bootstrap reinforcement learning policies.</li>
+            </ul>
+          </section>
+
+          <section class="card card--section" id="posts">
+            <p class="card__eyebrow">Learning Journal</p>
+            <div class="card__header">
+              <h2 class="card__title">Working notes on machine learning concepts</h2>
+              <a class="text-link" href="mailto:hello@kaminglui.com?subject=Learning%20journal%20updates">Get updates</a>
+            </div>
+            <div class="post-list">
+              <article class="post-card">
+                <p class="post-card__eyebrow">Concept Walkthrough</p>
+                <h3 class="post-card__title">Building intuition for backpropagation using circuit analogies</h3>
+                <p>
+                  Relating gradients to current flow to explain why parameter updates behave the way they do across deep
+                  networks.
+                </p>
+                <time datetime="2024-04-18">April 18, 2024</time>
+              </article>
+              <article class="post-card">
+                <p class="post-card__eyebrow">Study Notes</p>
+                <h3 class="post-card__title">From Kalman filters to transformers: a state-estimation mindset</h3>
+                <p>
+                  Mapping classic control theory tools onto attention mechanisms to highlight shared mathematical
+                  structure.
+                </p>
+                <time datetime="2024-03-02">March 2, 2024</time>
+              </article>
+              <article class="post-card">
+                <p class="post-card__eyebrow">Experiment Log</p>
+                <h3 class="post-card__title">Evaluating robustness of tinyML models under sensor drift</h3>
+                <p>
+                  A repeatable protocol for stress-testing microcontroller deployments with synthetic noise and staged
+                  recalibration.
+                </p>
+                <time datetime="2024-01-21">January 21, 2024</time>
+              </article>
+            </div>
+          </section>
+
+          <section class="card card--section" id="projects">
+            <p class="card__eyebrow">Selected Projects</p>
+            <h2 class="card__title">Hands-on work that blends ML with hardware</h2>
+            <div class="project-list">
+              <article class="project-card">
+                <h3 class="project-card__title">Edge inference for structural sensing</h3>
+                <p>
+                  Designed a pipeline that streams vibration data from embedded sensors, learns anomaly signatures, and
+                  serves alerts through a lightweight API for facilities engineers.
+                </p>
+                <ul>
+                  <li>On-device preprocessing with Rust and TensorFlow Lite</li>
+                  <li>Model monitoring dashboard built in FastAPI</li>
+                  <li>Data versioning and experiment tracking with DVC</li>
+                </ul>
+              </article>
+              <article class="project-card">
+                <h3 class="project-card__title">Responsible ML toolkit for research labs</h3>
+                <p>
+                  Built templates that guide data collection, bias checks, and documentation for student-led ML studies
+                  spanning imaging to acoustics.
+                </p>
+                <ul>
+                  <li>Reusable datasheets and model cards via Jupyter + Quarto</li>
+                  <li>Continuous integration workflows on GitHub Actions</li>
+                  <li>Interactive visualizations with Observable notebooks</li>
+                </ul>
+              </article>
+              <article class="project-card">
+                <h3 class="project-card__title">Explainable AI study group</h3>
+                <p>
+                  Facilitated a cross-disciplinary seminar dissecting interpretability papers, with weekly labs applying
+                  techniques to real sensor datasets.
+                </p>
+                <ul>
+                  <li>Comparative demos using Captum, SHAP, and LIME</li>
+                  <li>Shared repo of reproducible notebooks and slide decks</li>
+                  <li>Peer-led office hours supporting 30+ students</li>
+                </ul>
+              </article>
+            </div>
+          </section>
+
+          <section class="card card--section" id="experience">
+            <p class="card__eyebrow">Experience</p>
+            <h2 class="card__title">Academic &amp; professional journey</h2>
+            <ol class="timeline">
+              <li class="timeline__item">
+                <div class="timeline__marker" aria-hidden="true"></div>
+                <div class="timeline__content">
+                  <h3 class="timeline__title">Penn State University</h3>
+                  <p class="timeline__role">Graduate Research Assistant · 2023 — Present</p>
+                  <p>
+                    Leading machine learning initiatives for instrumentation projects, from data acquisition strategy
+                    through interpretability reviews with research partners.
+                  </p>
+                </div>
+              </li>
+              <li class="timeline__item">
+                <div class="timeline__marker" aria-hidden="true"></div>
+                <div class="timeline__content">
+                  <h3 class="timeline__title">Temple University</h3>
+                  <p class="timeline__role">B.S. Electrical Engineering · 2019 — 2023</p>
+                  <p>
+                    Graduated with honors while co-leading robotics teams and organizing study sessions on signal
+                    processing foundations for ML.
+                  </p>
+                </div>
+              </li>
+              <li class="timeline__item">
+                <div class="timeline__marker" aria-hidden="true"></div>
+                <div class="timeline__content">
+                  <h3 class="timeline__title">Industry &amp; consulting</h3>
+                  <p class="timeline__role">Embedded, data, and ML engineering · 2018 — Present</p>
+                  <p>
+                    Partnering with startups and labs to operationalize data pipelines, validate algorithms on hardware,
+                    and document results for stakeholders.
+                  </p>
+                </div>
+              </li>
+            </ol>
+          </section>
+        </div>
+
+        <aside class="sidebar">
+          <section class="card card--sidebar">
+            <h2 class="card__title">Toolkit</h2>
+            <ul class="simple-list">
+              <li>Python · PyTorch · TensorFlow</li>
+              <li>NumPy · Pandas · scikit-learn</li>
+              <li>Weights &amp; Biases · MLflow · DVC</li>
+              <li>MATLAB · C/C++ · Rust</li>
+            </ul>
+          </section>
+          <section class="card card--sidebar">
+            <h2 class="card__title">Learning cadence</h2>
+            <p>
+              Weekly writing sprints keep concepts fresh, paired with reading groups and lab demos so theory meets
+              hands-on exploration.
+            </p>
+            <p class="card__note">Reach out if you'd like to co-host a session or share datasets.</p>
+          </section>
+          <section class="card card--sidebar" aria-label="LinkedIn profile">
+            <h2 class="card__title">Live profile</h2>
+            <p class="card__note">Information below syncs directly with LinkedIn—updates there appear here automatically.</p>
+            <div class="linkedin-badge">
+              <div
+                class="LI-profile-badge"
+                data-version="v1"
+                data-size="medium"
+                data-locale="en_US"
+                data-type="vertical"
+                data-theme="dark"
+                data-vanity="ka-ming-lui"
+              >
+                <a class="LI-simple-link" href="https://www.linkedin.com/in/ka-ming-lui/">Ka-Ming Lui on LinkedIn</a>
+              </div>
+            </div>
+          </section>
+        </aside>
+      </div>
+    </main>
+
+    <footer class="site-footer" id="contact">
+      <div class="container footer__layout">
+        <div>
+          <h2>Let's teach machines responsibly together.</h2>
+          <p>
+            I'm interested in research collaborations, technical writing, and ML product partnerships that value
+            transparency and inclusive design. Share a short overview of what you're exploring and how I can help.
+          </p>
+          <div class="footer__actions">
+            <a class="button button--primary" href="mailto:hello@kaminglui.com">hello@kaminglui.com</a>
+            <a class="button button--ghost" href="https://www.linkedin.com/in/ka-ming-lui/">Connect on LinkedIn</a>
+          </div>
+        </div>
+        <div class="footer__meta">
+          <p>Based in Pennsylvania · Working remotely and on-site as needed.</p>
+          <p>&copy; <span id="year"></span> Ka-Ming Lui. Built with accessibility and performance in mind.</p>
+        </div>
+      </div>
+      <a class="back-to-top" href="#top">Back to top</a>
+    </footer>
+
+    <script src="https://platform.linkedin.com/badges/js/profile.js" async defer></script>
+    <script src="assets/js/main.js" defer></script>
+  </body>
+</html>
