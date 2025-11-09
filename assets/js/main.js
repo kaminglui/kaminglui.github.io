@@ -90,6 +90,8 @@ const contactElements = {
   meta: document.querySelector('[data-content="contact.meta"]')
 };
 
+const contactActions = document.querySelector('.footer__actions');
+
 const experienceElements = {
   list: document.getElementById('experience-list'),
   empty: document.getElementById('experience-empty')
@@ -286,11 +288,39 @@ function renderSidebar() {
 function renderContact() {
   contactElements.title.textContent = content.contact.title;
   contactElements.body.textContent = content.contact.body;
-  contactElements.primary.textContent = content.contact.primary.label;
-  contactElements.primary.href = content.contact.primary.url;
-  contactElements.secondary.textContent = content.contact.secondary.label;
-  contactElements.secondary.href = content.contact.secondary.url;
+  if (contactElements.primary) {
+    const hasPrimary = Boolean(
+      content.contact.primary?.label && content.contact.primary?.url
+    );
+    contactElements.primary.hidden = !hasPrimary;
+    if (hasPrimary) {
+      contactElements.primary.textContent = content.contact.primary.label;
+      contactElements.primary.href = content.contact.primary.url;
+    } else {
+      contactElements.primary.textContent = '';
+      contactElements.primary.removeAttribute('href');
+    }
+  }
+  if (contactElements.secondary) {
+    const hasSecondary = Boolean(
+      content.contact.secondary?.label && content.contact.secondary?.url
+    );
+    contactElements.secondary.hidden = !hasSecondary;
+    if (hasSecondary) {
+      contactElements.secondary.textContent = content.contact.secondary.label;
+      contactElements.secondary.href = content.contact.secondary.url;
+    } else {
+      contactElements.secondary.textContent = '';
+      contactElements.secondary.removeAttribute('href');
+    }
+  }
   contactElements.meta.textContent = content.contact.meta;
+  if (contactActions) {
+    const hasVisibleAction = Array.from(contactActions.children).some(
+      (child) => !child.hidden
+    );
+    contactActions.hidden = !hasVisibleAction;
+  }
 }
 
 function renderExperienceFallback() {

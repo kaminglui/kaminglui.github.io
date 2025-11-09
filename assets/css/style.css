@@ -383,7 +383,10 @@ body.theme-dark .project-card {
   gap: 0.4rem;
 }
 
+
 .timeline {
+  --timeline-track-offset: 0.5rem;
+  --timeline-marker-size: 14px;
   margin: 0;
   padding: 0;
   list-style: none;
@@ -397,7 +400,7 @@ body.theme-dark .project-card {
   position: absolute;
   top: 0.35rem;
   bottom: 0.35rem;
-  left: 0.5rem;
+  left: var(--timeline-track-offset);
   width: 2px;
   background: linear-gradient(180deg, var(--color-accent-muted), transparent);
   border-radius: 999px;
@@ -405,21 +408,22 @@ body.theme-dark .project-card {
 
 .timeline__item {
   position: relative;
-  padding-left: 2.35rem;
+  padding-left: calc(var(--timeline-track-offset) + 1.85rem);
   display: grid;
   gap: 0.4rem;
 }
 
 .timeline__marker {
   position: absolute;
-  left: calc(0.5rem - 0.4375rem);
-  top: 0.35rem;
-  width: 14px;
-  height: 14px;
+  left: var(--timeline-track-offset);
+  top: calc(0.35rem + (var(--timeline-marker-size) / 2));
+  width: var(--timeline-marker-size);
+  height: var(--timeline-marker-size);
   border-radius: 999px;
   background: var(--color-surface);
   border: 2px solid var(--color-accent);
   box-shadow: 0 0 0 5px var(--color-accent-muted);
+  transform: translate(-50%, -50%);
 }
 
 .timeline__content {
@@ -940,6 +944,8 @@ body.theme-dark .project-card {
 }
 
 .timeline {
+  --timeline-track-offset: 0.5rem;
+  --timeline-marker-size: 14px;
   display: grid;
   gap: 1.75rem;
   position: relative;
@@ -953,7 +959,7 @@ body.theme-dark .project-card {
   position: absolute;
   top: 0.35rem;
   bottom: 0.35rem;
-  left: 0.5rem;
+  left: var(--timeline-track-offset);
   width: 2px;
   background: linear-gradient(180deg, var(--color-accent-muted), transparent);
   border-radius: 999px;
@@ -961,21 +967,22 @@ body.theme-dark .project-card {
 
 .timeline__item {
   position: relative;
-  padding-left: 2.35rem;
+  padding-left: calc(var(--timeline-track-offset) + 1.85rem);
   display: grid;
   gap: 0.45rem;
 }
 
 .timeline__marker {
   position: absolute;
-  left: calc(0.5rem - 0.4375rem);
-  top: 0.35rem;
-  width: 14px;
-  height: 14px;
+  left: var(--timeline-track-offset);
+  top: calc(0.35rem + (var(--timeline-marker-size) / 2));
+  width: var(--timeline-marker-size);
+  height: var(--timeline-marker-size);
   border-radius: 999px;
   background: var(--color-surface);
   border: 2px solid var(--color-accent);
   box-shadow: 0 0 0 5px var(--color-accent-muted);
+  transform: translate(-50%, -50%);
 }
 
 .timeline__content {
@@ -1023,12 +1030,12 @@ body.theme-dark .project-card {
     align-items: flex-start;
   }
 
-  .timeline::before {
-    left: 0.35rem;
+  .timeline {
+    --timeline-track-offset: 0.45rem;
   }
 
   .timeline__item {
-    padding-left: 2rem;
+    padding-left: calc(var(--timeline-track-offset) + 1.65rem);
   }
 }
 

@@ -61,18 +61,14 @@ export const defaultContent = {
     ]
   },
   contact: {
-    title: "Let's teach machines responsibly together.",
-    body:
-      "I'm interested in research collaborations, technical writing, and ML product partnerships that value transparency and inclusive design. Share a short overview of what you're exploring and how I can help.",
-    primary: {
-      label: 'hello@kaminglui.com',
-      url: 'mailto:hello@kaminglui.com'
-    },
+    title: "Let's connect.",
+    body: 'Connect with me on LinkedIn if you have opportunities or ideas to collaborate on.',
+    primary: null,
     secondary: {
       label: 'Connect on LinkedIn',
       url: 'https://www.linkedin.com/in/ka-ming-lui/'
     },
-    meta: 'Based in Pennsylvania · Working remotely and on-site as needed.'
+    meta: 'I am looking for the related job.'
   },
   experienceFallback: {
     positions: [
