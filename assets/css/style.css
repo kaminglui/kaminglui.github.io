@@ -1,3 +1,4 @@
+/* Restored site styles after asset cleanup. */
 :root {
   --font-base: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --font-mono: 'Fira Code', SFMono-Regular, Consolas, 'Liberation Mono', Menlo, monospace;
@@ -385,9 +386,13 @@ body.theme-dark .project-card {
 
 
 .timeline {
-  --timeline-track-offset: 0.5rem;
   --timeline-marker-size: 14px;
+  --timeline-marker-border: 2px;
   --timeline-track-width: 2px;
+  --timeline-track-offset: calc(
+    (var(--timeline-marker-size) + (var(--timeline-marker-border) * 2)) / 2
+  );
+  --timeline-content-gap: 1.85rem;
   margin: 0;
   padding: 0;
   list-style: none;
@@ -403,14 +408,14 @@ body.theme-dark .project-card {
   bottom: 0.35rem;
   left: var(--timeline-track-offset);
   width: var(--timeline-track-width);
+  transform: translateX(-50%);
   background: linear-gradient(180deg, var(--color-accent-muted), transparent);
   border-radius: 999px;
-  transform: translateX(-50%);
 }
 
 .timeline__item {
   position: relative;
-  padding-left: calc(var(--timeline-track-offset) + 1.85rem);
+  padding-left: calc(var(--timeline-track-offset) + var(--timeline-content-gap));
   display: grid;
   gap: 0.4rem;
 }
@@ -421,11 +426,12 @@ body.theme-dark .project-card {
   top: calc(0.35rem + (var(--timeline-marker-size) / 2));
   width: var(--timeline-marker-size);
   height: var(--timeline-marker-size);
+  transform: translate(-50%, -50%);
   border-radius: 999px;
   background: var(--color-surface);
-  border: 2px solid var(--color-accent);
+  border: var(--timeline-marker-border) solid var(--color-accent);
+  box-sizing: border-box;
   box-shadow: 0 0 0 5px var(--color-accent-muted);
-  transform: translate(-50%, -50%);
 }
 
 .timeline__content {
@@ -435,6 +441,7 @@ body.theme-dark .project-card {
 
 .timeline__title {
   margin: 0;
+  font-weight: 600;
 }
 
 .timeline__role {
@@ -958,65 +965,6 @@ body.theme-dark .project-card {
   line-height: 1.5;
 }
 
-.timeline {
-  --timeline-track-offset: 0.5rem;
-  --timeline-marker-size: 14px;
-  --timeline-track-width: 2px;
-  display: grid;
-  gap: 1.75rem;
-  position: relative;
-  list-style: none;
-  margin: 0;
-  padding: 0;
-}
-
-.timeline::before {
-  content: '';
-  position: absolute;
-  top: 0.35rem;
-  bottom: 0.35rem;
-  left: var(--timeline-track-offset);
-  width: var(--timeline-track-width);
-  background: linear-gradient(180deg, var(--color-accent-muted), transparent);
-  border-radius: 999px;
-  transform: translateX(-50%);
-}
-
-.timeline__item {
-  position: relative;
-  padding-left: calc(var(--timeline-track-offset) + 1.85rem);
-  display: grid;
-  gap: 0.45rem;
-}
-
-.timeline__marker {
-  position: absolute;
-  left: var(--timeline-track-offset);
-  top: calc(0.35rem + (var(--timeline-marker-size) / 2));
-  width: var(--timeline-marker-size);
-  height: var(--timeline-marker-size);
-  border-radius: 999px;
-  background: var(--color-surface);
-  border: 2px solid var(--color-accent);
-  box-shadow: 0 0 0 5px var(--color-accent-muted);
-  transform: translate(-50%, -50%);
-}
-
-.timeline__content {
-  display: grid;
-  gap: 0.45rem;
-}
-
-.timeline__title {
-  margin: 0;
-  font-weight: 600;
-}
-
-.timeline__role {
-  margin: 0;
-  color: var(--color-muted);
-  font-size: 0.95rem;
-}
 
 .sidebar-block {
   border: 1px solid var(--color-border);
@@ -1048,11 +996,11 @@ body.theme-dark .project-card {
   }
 
   .timeline {
-    --timeline-track-offset: 0.45rem;
+    --timeline-content-gap: 1.65rem;
   }
 
   .timeline__item {
-    padding-left: calc(var(--timeline-track-offset) + 1.65rem);
+    padding-left: calc(var(--timeline-track-offset) + var(--timeline-content-gap));
   }
 }
 
