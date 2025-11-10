@@ -17,6 +17,8 @@ const clone = (value) => {
   return JSON.parse(JSON.stringify(value));
 };
 
+const createDefaultContent = () => clone(defaultContent);
+
 const createId = () =>
   typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
     ? crypto.randomUUID()
@@ -107,15 +109,15 @@ if (typeof window !== 'undefined') {
 }
 
 function hydrateContent() {
-  if (typeof window === 'undefined') return clone(defaultContent);
+  if (typeof window === 'undefined') return createDefaultContent();
   const stored = window.localStorage.getItem(STORAGE_KEY);
-  if (!stored) return clone(defaultContent);
+  if (!stored) return createDefaultContent();
   try {
     const parsed = JSON.parse(stored);
-    return mergeContent(clone(defaultContent), parsed);
+    return mergeContent(createDefaultContent(), parsed);
   } catch (error) {
     console.warn('Unable to parse stored content, using defaults.', error);
-    return clone(defaultContent);
+    return createDefaultContent();
   }
 }
 
@@ -552,6 +554,12 @@ function renderAll() {
   renderContact();
 }
 
+function resetContent() {
+  content = createDefaultContent();
+  renderAll();
+  populateExperienceFromLinkedIn();
+}
+
 function setupNav() {
   if (!navToggle) return;
   navToggle.addEventListener('click', () => {
@@ -717,9 +725,7 @@ function setupEditors() {
     if (target.dataset.action === 'reset') {
       if (window.confirm('Reset to default content? This will clear your stored edits.')) {
         window.localStorage.removeItem(STORAGE_KEY);
-        content = clone(defaultContent);
-        renderAll();
-        populateExperienceFromLinkedIn();
+        resetContent();
       }
     }
   });
