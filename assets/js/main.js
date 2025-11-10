@@ -717,7 +717,7 @@ function setupEditors() {
     if (target.dataset.action === 'reset') {
       if (window.confirm('Reset to default content? This will clear your stored edits.')) {
         window.localStorage.removeItem(STORAGE_KEY);
-        content = structuredClone(defaultContent);
+        content = clone(defaultContent);
         renderAll();
         populateExperienceFromLinkedIn();
       }
