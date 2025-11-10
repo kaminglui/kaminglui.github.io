@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="Play a machine learning themed mini game on Ka Ming Lui's site." />
+    <title>Model Match Mini Game · Ka Ming Lui</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fira+Code:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="assets/css/style.css" />
+  </head>
+  <body class="theme-light">
+    <header class="site-header" id="top">
+      <div class="container">
+        <nav class="nav" aria-label="Primary">
+          <a class="logo" href="index.html#hero">Ka Ming Lui</a>
+          <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="primary-navigation">
+            <span class="nav-toggle__bar"></span>
+            <span class="nav-toggle__bar"></span>
+            <span class="nav-toggle__bar"></span>
+            <span class="sr-only">Toggle navigation</span>
+          </button>
+          <ul class="nav-links" id="primary-navigation" data-visible="false">
+            <li class="nav-item nav-item--dropdown">
+              <button class="nav-dropdown-toggle" type="button" aria-expanded="false" aria-controls="section-menu">
+                Sections
+                <svg class="nav-dropdown__icon" aria-hidden="true" focusable="false" viewBox="0 0 12 12">
+                  <path d="M2.47 4.47a.75.75 0 0 1 1.06 0L6 6.94l2.47-2.47a.75.75 0 0 1 1.06 1.06l-3 3a.75.75 0 0 1-1.06 0l-3-3a.75.75 0 0 1 0-1.06Z" />
+                </svg>
+              </button>
+              <ul class="nav-dropdown-menu" id="section-menu" hidden>
+                <li><a href="index.html#about">About</a></li>
+                <li><a href="index.html#learning">Learning</a></li>
+                <li><a href="index.html#posts">Posts</a></li>
+                <li><a href="index.html#projects">Projects</a></li>
+                <li><a href="index.html#experience">Experience</a></li>
+                <li><a href="index.html#education">Education</a></li>
+                <li><a href="index.html#contact">Contact</a></li>
+              </ul>
+            </li>
+            <li><a href="ml-game.html" aria-current="page">ML Mini Game</a></li>
+          </ul>
+          <div class="nav-actions">
+            <button class="theme-toggle" type="button" aria-label="Toggle color theme">
+              <span aria-hidden="true">🌙</span>
+            </button>
+          </div>
+        </nav>
+      </div>
+    </header>
+
+    <main class="game-main">
+      <section class="game-hero">
+        <div class="container">
+          <div class="game-hero__inner">
+            <p class="game-hero__eyebrow">Playground</p>
+            <h1 class="game-hero__title">Model Match Mini Game</h1>
+            <p class="game-hero__lead">
+              Put your machine learning intuition to the test. Choose the algorithm that best fits each scenario and see how
+              many matches you can get in a row.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section class="game-section" aria-labelledby="game-title">
+        <div class="container">
+          <article class="card game-card" data-game-card>
+            <header>
+              <h2 class="card__title" id="game-title">Match the model to the challenge</h2>
+              <p class="game-intro">
+                Read each challenge description and pick the approach you would try first. Every correct guess earns a point,
+                and you can replay to chase a perfect score.
+              </p>
+            </header>
+            <div class="game-status">
+              <span data-game-progress>Round 1 of 5</span>
+              <span data-game-score>Score: 0</span>
+            </div>
+            <h3 class="game-question" data-game-question></h3>
+            <div class="game-options" data-game-options role="group" aria-live="polite"></div>
+            <p class="game-feedback" data-game-feedback aria-live="polite"></p>
+            <p class="game-fact" data-game-fact hidden></p>
+            <div class="game-actions">
+              <button class="button button--primary game-next" type="button" data-game-next disabled>
+                Next challenge
+              </button>
+              <button class="button button--ghost game-restart" type="button" data-game-restart hidden>
+                Play again
+              </button>
+            </div>
+            <p class="game-summary" data-game-summary hidden></p>
+          </article>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="container footer__layout">
+        <div>
+          <h2>Ready for more machine learning stories?</h2>
+          <p>
+            Head back to the main site to explore projects, journal entries, and the learning roadmap behind this mini game.
+          </p>
+          <div class="footer__actions">
+            <a class="button button--primary" href="index.html#projects">View projects</a>
+            <a class="button button--ghost" href="index.html#contact">Get in touch</a>
+          </div>
+        </div>
+        <div class="footer__meta">
+          <p>Enjoyed the challenge? Share it with fellow ML explorers.</p>
+          <p>&copy; <span id="year"></span> Ka Ming Lui. Built with accessibility and performance in mind.</p>
+        </div>
+      </div>
+      <a class="back-to-top" href="#top">Back to top</a>
+    </footer>
+
+    <script type="module" src="assets/js/game.js"></script>
+  </body>
+</html>
