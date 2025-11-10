@@ -36,7 +36,7 @@ export const defaultContent = {
     topics: []
   },
   posts: {
-    title: 'Approach to concept breakdown',
+    title: 'Approach to Concepts',
     ctaLabel: '',
     ctaUrl: '',
     entries: []
