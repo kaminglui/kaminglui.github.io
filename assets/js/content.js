@@ -67,7 +67,7 @@ export const defaultContent = {
   contact: {
     title: "Let's Connect.",
     body: 'Connect with me on LinkedIn if you have opportunities or ideas to collaborate on.',
-    primary: null,
+    primary: 'https://www.linkedin.com/in/ka-ming-lui',
     secondary: null,
     meta: 'I am looking for a Machine Learning related job position.'
   },
