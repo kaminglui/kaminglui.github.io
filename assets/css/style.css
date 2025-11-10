@@ -387,7 +387,6 @@ body.theme-dark .project-card {
 .timeline {
   --timeline-track-offset: 0.5rem;
   --timeline-marker-size: 14px;
-  --timeline-track-width: 2px;
   margin: 0;
   padding: 0;
   list-style: none;
@@ -401,8 +400,8 @@ body.theme-dark .project-card {
   position: absolute;
   top: 0.35rem;
   bottom: 0.35rem;
-  left: calc(var(--timeline-track-offset) - (var(--timeline-track-width) / 2));
-  width: var(--timeline-track-width);
+  left: var(--timeline-track-offset);
+  width: 2px;
   background: linear-gradient(180deg, var(--color-accent-muted), transparent);
   border-radius: 999px;
 }
@@ -646,7 +645,7 @@ body.theme-dark .project-card {
   gap: 0.75rem;
 }
 
-.manage-trigger,
+.login-trigger,
 .edit-toggle {
   padding: 0.55rem 1rem;
   border-radius: var(--radius-sm);
@@ -664,8 +663,8 @@ body.theme-dark .project-card {
   border-color: transparent;
 }
 
-.manage-trigger:focus-visible,
-.manage-trigger:hover,
+.login-trigger:focus-visible,
+.login-trigger:hover,
 .edit-toggle:focus-visible,
 .edit-toggle:hover {
   outline: none;
@@ -679,28 +678,15 @@ body.theme-dark .project-card {
   font-size: 0.95rem;
 }
 
-.editor-steps {
-  margin: 0 0 1.25rem 1.1rem;
-  padding: 0;
-  display: grid;
-  gap: 0.85rem;
-  color: var(--color-muted);
-  list-style: decimal;
-}
-
-.editor-steps li {
-  line-height: 1.6;
-}
-
-.editor-steps a {
-  color: var(--color-accent);
+.form-error {
+  margin: 0.75rem 0 0;
+  color: #dc2626;
   font-weight: 500;
+  font-size: 0.95rem;
 }
 
-.editor-steps code,
-.editor-steps kbd {
-  font-family: var(--font-mono);
-  font-size: 0.9em;
+.recaptcha-container {
+  margin-top: 1rem;
 }
 
 .edit-toolbar {
@@ -960,7 +946,6 @@ body.theme-dark .project-card {
 .timeline {
   --timeline-track-offset: 0.5rem;
   --timeline-marker-size: 14px;
-  --timeline-track-width: 2px;
   display: grid;
   gap: 1.75rem;
   position: relative;
@@ -974,8 +959,8 @@ body.theme-dark .project-card {
   position: absolute;
   top: 0.35rem;
   bottom: 0.35rem;
-  left: calc(var(--timeline-track-offset) - (var(--timeline-track-width) / 2));
-  width: var(--timeline-track-width);
+  left: var(--timeline-track-offset);
+  width: 2px;
   background: linear-gradient(180deg, var(--color-accent-muted), transparent);
   border-radius: 999px;
 }

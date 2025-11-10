@@ -1,7 +1,7 @@
 import { defaultContent } from './content.js';
 
 const STORAGE_KEY = 'kaminglui-site-content-v1';
-const EDIT_VISIBILITY_KEY = 'kaminglui-site-edit-visible';
+const AUTH_STORAGE_KEY = 'kaminglui-site-authenticated';
 const LINKEDIN_VANITY = 'ka-ming-lui';
 const LINKEDIN_PROXY = `https://r.jina.ai/https://www.linkedin.com/in/${LINKEDIN_VANITY}/`;
 
@@ -28,8 +28,11 @@ const themeToggle = document.querySelector('.theme-toggle');
 const yearElement = document.querySelector('#year');
 const editToggle = document.querySelector('.edit-toggle');
 const editToolbar = document.querySelector('.edit-toolbar');
-const manageButton = document.querySelector('.manage-trigger');
-const manageDialog = document.getElementById('manage-dialog');
+const loginButton = document.querySelector('.login-trigger');
+const loginDialog = document.getElementById('login-dialog');
+const loginForm = loginDialog?.querySelector('form') ?? null;
+const loginError = loginDialog?.querySelector('[data-login-error]') ?? null;
+const recaptchaContainer = loginDialog?.querySelector('[data-recaptcha]') ?? null;
 
 const dialogs = {
   intro: document.getElementById('intro-editor'),
@@ -88,7 +91,6 @@ const contactElements = {
 };
 
 const contactActions = document.querySelector('.footer__actions');
-const backToTopLink = document.querySelector('.back-to-top');
 
 const experienceElements = {
   list: document.getElementById('experience-list'),
@@ -101,12 +103,10 @@ const educationElements = {
 };
 
 let editMode = false;
-let editToolsEnabled = false;
+let isAuthenticated = false;
+let recaptchaWidgetId = null;
+let recaptchaReady = false;
 let content = hydrateContent();
-
-if (typeof window !== 'undefined') {
-  editToolsEnabled = window.sessionStorage.getItem(EDIT_VISIBILITY_KEY) === 'true';
-}
 
 function hydrateContent() {
   if (typeof window === 'undefined') return clone(defaultContent);
@@ -618,71 +618,161 @@ function setupTheme() {
   });
 }
 
-function setupBackToTop() {
-  if (!backToTopLink) return;
-  backToTopLink.addEventListener('click', (event) => {
-    event.preventDefault();
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  });
+function clearLoginError() {
+  if (loginError) {
+    loginError.textContent = '';
+    loginError.hidden = true;
+  }
 }
 
-function applyEditToggleVisibility() {
+function showLoginError(message) {
+  if (!loginError) return;
+  loginError.textContent = message;
+  loginError.hidden = false;
+}
+
+function updateAuthUI() {
   if (editToggle) {
-    editToggle.hidden = !editToolsEnabled;
-    if (!editToolsEnabled) {
-      editMode = false;
-      editToggle.setAttribute('aria-pressed', 'false');
-    }
+    editToggle.hidden = !isAuthenticated;
+    editToggle.setAttribute('aria-pressed', 'false');
   }
   if (editToolbar) {
-    editToolbar.hidden = !editToolsEnabled || !editMode;
+    editToolbar.hidden = true;
+  }
+  editMode = false;
+  if (loginButton) {
+    loginButton.textContent = isAuthenticated ? 'Sign out' : 'Sign in';
   }
 }
 
-function setupManagementDialog() {
-  if (!manageButton || !manageDialog) {
-    applyEditToggleVisibility();
+function renderRecaptcha() {
+  if (!loginDialog || !recaptchaContainer || typeof grecaptcha === 'undefined') return;
+  const siteKey = loginDialog.dataset.recaptchaKey;
+  if (!siteKey || siteKey === 'YOUR_RECAPTCHA_SITE_KEY') {
+    if (loginDialog.open) {
+      showLoginError('Set your reCAPTCHA site key to enable sign in.');
+    }
+    return;
+  }
+  if (recaptchaWidgetId === null) {
+    recaptchaWidgetId = grecaptcha.render(recaptchaContainer, {
+      sitekey: siteKey
+    });
+  } else {
+    grecaptcha.reset(recaptchaWidgetId);
+  }
+}
+
+function ensureRecaptchaSolved() {
+  if (!recaptchaReady || typeof grecaptcha === 'undefined') {
+    showLoginError('reCAPTCHA is still loading. Please try again.');
+    return false;
+  }
+  if (recaptchaWidgetId === null) {
+    renderRecaptcha();
+  }
+  if (recaptchaWidgetId === null) {
+    showLoginError('Set your reCAPTCHA site key to enable sign in.');
+    return false;
+  }
+  const response = grecaptcha.getResponse(recaptchaWidgetId);
+  if (!response) {
+    showLoginError('Complete the reCAPTCHA challenge.');
+    return false;
+  }
+  return true;
+}
+
+function openLoginDialog() {
+  if (!loginDialog) return;
+  clearLoginError();
+  if (typeof loginDialog.showModal === 'function') {
+    loginDialog.showModal();
+  }
+  if (recaptchaReady) {
+    renderRecaptcha();
+  }
+}
+
+function signOut() {
+  isAuthenticated = false;
+  if (typeof window !== 'undefined') {
+    window.sessionStorage.removeItem(AUTH_STORAGE_KEY);
+  }
+  updateAuthUI();
+}
+
+function setupAuthentication() {
+  if (!loginDialog || !loginButton) {
+    if (editToggle) {
+      editToggle.hidden = true;
+    }
     return;
   }
 
-  manageButton.addEventListener('click', () => {
-    if (typeof manageDialog.showModal === 'function') {
-      manageDialog.showModal();
+  if (typeof window !== 'undefined') {
+    isAuthenticated = window.sessionStorage.getItem(AUTH_STORAGE_KEY) === 'true';
+  }
+
+  if (typeof grecaptcha !== 'undefined') {
+    recaptchaReady = true;
+  }
+
+  updateAuthUI();
+
+  loginButton.addEventListener('click', () => {
+    if (isAuthenticated) {
+      signOut();
+    } else {
+      openLoginDialog();
     }
   });
 
-  manageDialog.addEventListener('click', (event) => {
-    const target = event.target;
-    if (!(target instanceof HTMLButtonElement)) return;
+  loginDialog.addEventListener('close', () => {
+    loginForm?.reset();
+    clearLoginError();
+    if (recaptchaReady && typeof grecaptcha !== 'undefined' && recaptchaWidgetId !== null) {
+      grecaptcha.reset(recaptchaWidgetId);
+    }
+  });
 
-    if (target.dataset.action === 'enable-edit') {
-      editToolsEnabled = true;
-      if (typeof window !== 'undefined') {
-        window.sessionStorage.setItem(EDIT_VISIBILITY_KEY, 'true');
-      }
-      applyEditToggleVisibility();
-      manageDialog.close('enabled');
-      editToggle?.focus();
+  loginForm?.addEventListener('submit', (event) => {
+    event.preventDefault();
+    clearLoginError();
+
+    if (!ensureRecaptchaSolved()) {
       return;
     }
 
-    if (target.dataset.action === 'disable-edit') {
-      editToolsEnabled = false;
-      if (typeof window !== 'undefined') {
-        window.sessionStorage.removeItem(EDIT_VISIBILITY_KEY);
-      }
-      applyEditToggleVisibility();
+    const passcodeField = loginForm.elements.namedItem('passcode');
+    const passcode =
+      passcodeField instanceof HTMLInputElement ? passcodeField.value.trim() : '';
+    const expected = loginDialog.dataset.passcode || '';
+    if (!passcode || passcode !== expected) {
+      showLoginError('Incorrect access code.');
+      return;
     }
+
+    isAuthenticated = true;
+    if (typeof window !== 'undefined') {
+      window.sessionStorage.setItem(AUTH_STORAGE_KEY, 'true');
+    }
+    updateAuthUI();
+    loginDialog.close('authenticated');
   });
 
-  applyEditToggleVisibility();
+  document.addEventListener('recaptcha-loaded', () => {
+    recaptchaReady = true;
+    if (loginDialog.open) {
+      renderRecaptcha();
+    }
+  });
 }
 
 function setupEditors() {
   if (!editToggle || !editToolbar) return;
 
   editToggle.addEventListener('click', () => {
-    if (!editToolsEnabled) return;
     editMode = !editMode;
     editToggle.setAttribute('aria-pressed', String(editMode));
     editToolbar.hidden = !editMode;
@@ -726,8 +816,6 @@ function setupEditors() {
   setupPostsForm();
   setupProjectsForm();
   setupSidebarForm();
-
-  applyEditToggleVisibility();
 }
 
 function openEditor(type) {
@@ -1245,8 +1333,7 @@ if (yearElement) {
 renderAll();
 setupNav();
 setupTheme();
-setupBackToTop();
-setupManagementDialog();
+setupAuthentication();
 setupEditors();
 populateExperienceFromLinkedIn();
 

@@ -50,12 +50,7 @@ export const defaultContent = {
         id: createId(),
         title: 'Toolkit',
         type: 'list',
-        items: [
-          'Python',
-          'C/C++',
-          'MATLAB',
-          'Multilingual · Chinese (Cantonese, Mandarin), English, Japanese'
-        ]
+        items: ['Python · PyTorch · TensorFlow', 'NumPy · Pandas · scikit-learn', 'Weights & Biases · MLflow · DVC', 'MATLAB · C/C++ · Rust']
       },
       {
         id: createId(),
