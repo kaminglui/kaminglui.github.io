@@ -1,4 +1,3 @@
-// Restored main interaction script after asset cleanup.
 import { defaultContent } from './content.js';
 
 const STORAGE_KEY = 'kaminglui-site-content-v1';
@@ -17,8 +16,6 @@ const clone = (value) => {
   return JSON.parse(JSON.stringify(value));
 };
 
-const createDefaultContent = () => clone(defaultContent);
-
 const createId = () =>
   typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
     ? crypto.randomUUID()
@@ -31,6 +28,7 @@ const themeToggle = document.querySelector('.theme-toggle');
 const yearElement = document.querySelector('#year');
 const editToggle = document.querySelector('.edit-toggle');
 const editToolbar = document.querySelector('.edit-toolbar');
+const manageButton = document.querySelector('.manage-trigger');
 const manageDialog = document.getElementById('manage-dialog');
 
 const dialogs = {
@@ -84,10 +82,11 @@ const sidebarElements = {
 const contactElements = {
   title: document.querySelector('[data-content="contact.title"]'),
   body: document.querySelector('[data-content="contact.body"]'),
-  actions: document.querySelector('[data-contact-actions]'),
+  secondary: document.querySelector('[data-action="contactSecondary"]'),
   meta: document.querySelector('[data-content="contact.meta"]')
 };
 
+const contactActions = document.querySelector('.footer__actions');
 const backToTopLink = document.querySelector('.back-to-top');
 
 const experienceElements = {
@@ -109,15 +108,15 @@ if (typeof window !== 'undefined') {
 }
 
 function hydrateContent() {
-  if (typeof window === 'undefined') return createDefaultContent();
+  if (typeof window === 'undefined') return clone(defaultContent);
   const stored = window.localStorage.getItem(STORAGE_KEY);
-  if (!stored) return createDefaultContent();
+  if (!stored) return clone(defaultContent);
   try {
     const parsed = JSON.parse(stored);
-    return mergeContent(createDefaultContent(), parsed);
+    return mergeContent(clone(defaultContent), parsed);
   } catch (error) {
     console.warn('Unable to parse stored content, using defaults.', error);
-    return createDefaultContent();
+    return clone(defaultContent);
   }
 }
 
@@ -288,32 +287,26 @@ function renderSidebar() {
 function renderContact() {
   contactElements.title.textContent = content.contact.title;
   contactElements.body.textContent = content.contact.body;
-  if (contactElements.actions) {
-    contactElements.actions.innerHTML = '';
-    const actions = [];
-    if (content.contact.primary?.label && content.contact.primary?.url) {
-      actions.push({
-        ...content.contact.primary,
-        variant: 'button--primary'
-      });
+  if (contactElements.secondary) {
+    const hasSecondary = Boolean(
+      content.contact.secondary?.label && content.contact.secondary?.url
+    );
+    contactElements.secondary.hidden = !hasSecondary;
+    if (hasSecondary) {
+      contactElements.secondary.textContent = content.contact.secondary.label;
+      contactElements.secondary.href = content.contact.secondary.url;
+    } else {
+      contactElements.secondary.textContent = '';
+      contactElements.secondary.removeAttribute('href');
     }
-    if (content.contact.secondary?.label && content.contact.secondary?.url) {
-      actions.push({
-        ...content.contact.secondary,
-        variant: 'button--ghost'
-      });
-    }
-    actions.forEach((action, index) => {
-      const link = document.createElement('a');
-      const variant = action.variant || (index === 0 ? 'button--primary' : 'button--ghost');
-      link.className = `button ${variant}`;
-      link.href = action.url;
-      link.textContent = action.label;
-      contactElements.actions.appendChild(link);
-    });
-    contactElements.actions.hidden = actions.length === 0;
   }
   contactElements.meta.textContent = content.contact.meta;
+  if (contactActions) {
+    const hasVisibleAction = Array.from(contactActions.children).some(
+      (child) => !child.hidden
+    );
+    contactActions.hidden = !hasVisibleAction;
+  }
 }
 
 function renderExperienceFallback() {
@@ -554,12 +547,6 @@ function renderAll() {
   renderContact();
 }
 
-function resetContent() {
-  content = createDefaultContent();
-  renderAll();
-  populateExperienceFromLinkedIn();
-}
-
 function setupNav() {
   if (!navToggle) return;
   navToggle.addEventListener('click', () => {
@@ -620,14 +607,14 @@ function setupTheme() {
 function setupBackToTop() {
   if (!backToTopLink) return;
   backToTopLink.addEventListener('click', (event) => {
+    const target = document.getElementById('top');
+    if (!target) return;
     event.preventDefault();
-    const header = document.getElementById('top');
-    const topTarget = header ? header.offsetTop : 0;
     try {
-      window.scrollTo({ top: topTarget, behavior: 'smooth' });
+      target.scrollIntoView({ behavior: 'smooth', block: 'start' });
     } catch (error) {
-      console.warn('Smooth scroll failed, using instant fallback.', error);
-      window.scrollTo(0, topTarget);
+      console.warn('scrollIntoView failed, using scrollTo fallback.', error);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     }
     if (typeof window !== 'undefined') {
       if (typeof window.history?.replaceState === 'function') {
@@ -635,6 +622,13 @@ function setupBackToTop() {
       } else {
         window.location.hash = 'top';
       }
+    event.preventDefault();
+    const target = document.getElementById('top');
+    if (target && typeof target.scrollIntoView === 'function') {
+      target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } else {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      window.location.hash = 'top';
     }
   });
 }
@@ -653,22 +647,14 @@ function applyEditToggleVisibility() {
 }
 
 function setupManagementDialog() {
-  if (!manageDialog) {
+  if (!manageButton || !manageDialog) {
     applyEditToggleVisibility();
     return;
   }
 
-  const openManageDialog = () => {
+  manageButton.addEventListener('click', () => {
     if (typeof manageDialog.showModal === 'function') {
       manageDialog.showModal();
-    }
-  };
-
-  window.addEventListener('keydown', (event) => {
-    const key = event.key?.toLowerCase();
-    if ((event.metaKey || event.ctrlKey) && event.shiftKey && key === 'm') {
-      event.preventDefault();
-      openManageDialog();
     }
   });
 
@@ -725,7 +711,9 @@ function setupEditors() {
     if (target.dataset.action === 'reset') {
       if (window.confirm('Reset to default content? This will clear your stored edits.')) {
         window.localStorage.removeItem(STORAGE_KEY);
-        resetContent();
+        content = structuredClone(defaultContent);
+        renderAll();
+        populateExperienceFromLinkedIn();
       }
     }
   });

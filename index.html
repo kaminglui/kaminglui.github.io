@@ -42,6 +42,8 @@
             <li><a href="#contact">Contact</a></li>
           </ul>
           <div class="nav-actions">
+            <button class="manage-trigger" type="button">Manage site</button>
+            <button class="login-trigger" type="button">Sign in</button>
             <button class="edit-toggle" type="button" aria-pressed="false" hidden>Edit mode</button>
             <button class="theme-toggle" type="button" aria-label="Toggle color theme">
               <span aria-hidden="true">🌙</span>
@@ -168,7 +170,10 @@
         <div>
           <h2 data-content="contact.title"></h2>
           <p data-content="contact.body"></p>
-          <div class="footer__actions" data-contact-actions></div>
+          <div class="footer__actions">
+            <a class="button button--primary" data-action="contactPrimary"></a>
+            <a class="button button--ghost" data-action="contactSecondary"></a>
+          </div>
         </div>
         <div class="footer__meta">
           <p data-content="contact.meta"></p>
@@ -202,6 +207,26 @@
           <span class="spacer"></span>
           <button type="button" data-action="enable-edit">Enable edit toolbar</button>
           <button type="button" data-close>Done</button>
+    <dialog
+      class="editor-dialog"
+      id="login-dialog"
+      data-passcode="change-this-passcode"
+      data-recaptcha-key="YOUR_RECAPTCHA_SITE_KEY"
+    >
+      <form method="dialog" class="editor-form" data-form="login">
+        <h2>Admin sign in</h2>
+        <p class="editor-note">
+          Solve the reCAPTCHA challenge and enter your access code to unlock edit mode.
+        </p>
+        <label>
+          Access code
+          <input type="password" name="passcode" autocomplete="current-password" required />
+        </label>
+        <div class="recaptcha-container" data-recaptcha></div>
+        <p class="form-error" data-login-error hidden></p>
+        <menu class="editor-actions">
+          <button value="cancel" type="button" data-close>Cancel</button>
+          <button value="confirm" type="submit">Sign in</button>
         </menu>
       </form>
     </dialog>
@@ -409,6 +434,16 @@
     </dialog>
 
     <script src="https://platform.linkedin.com/badges/js/profile.js" async defer></script>
+    <script>
+      window.__onRecaptchaLoaded = function () {
+        document.dispatchEvent(new CustomEvent('recaptcha-loaded'));
+      };
+    </script>
+    <script
+      src="https://www.google.com/recaptcha/api.js?onload=__onRecaptchaLoaded&amp;render=explicit"
+      async
+      defer
+    ></script>
     <script type="module" src="assets/js/main.js"></script>
   </body>
 </html>
