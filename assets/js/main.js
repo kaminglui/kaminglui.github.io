@@ -1,4 +1,3 @@
-// Restored main interaction script after asset cleanup.
 import { defaultContent } from './content.js';
 
 const STORAGE_KEY = 'kaminglui-site-content-v1';
@@ -623,6 +622,13 @@ function setupBackToTop() {
       } else {
         window.location.hash = 'top';
       }
+    event.preventDefault();
+    const target = document.getElementById('top');
+    if (target && typeof target.scrollIntoView === 'function') {
+      target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } else {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      window.location.hash = 'top';
     }
   });
 }

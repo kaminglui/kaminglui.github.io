@@ -1,4 +1,3 @@
-/* Restored site styles after asset cleanup. */
 :root {
   --font-base: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --font-mono: 'Fira Code', SFMono-Regular, Consolas, 'Liberation Mono', Menlo, monospace;
@@ -386,10 +385,9 @@ body.theme-dark .project-card {
 
 
 .timeline {
+  --timeline-track-offset: 0.5rem;
   --timeline-marker-size: 14px;
   --timeline-track-width: 2px;
-  --timeline-track-offset: calc(var(--timeline-marker-size) / 2);
-  --timeline-content-gap: 1.85rem;
   margin: 0;
   padding: 0;
   list-style: none;
@@ -403,22 +401,23 @@ body.theme-dark .project-card {
   position: absolute;
   top: 0.35rem;
   bottom: 0.35rem;
-  left: calc(var(--timeline-track-offset) - (var(--timeline-track-width) / 2));
+  left: var(--timeline-track-offset);
   width: var(--timeline-track-width);
   background: linear-gradient(180deg, var(--color-accent-muted), transparent);
   border-radius: 999px;
+  transform: translateX(-50%);
 }
 
 .timeline__item {
   position: relative;
-  padding-left: calc(var(--timeline-track-offset) + var(--timeline-content-gap));
+  padding-left: calc(var(--timeline-track-offset) + 1.85rem);
   display: grid;
   gap: 0.4rem;
 }
 
 .timeline__marker {
   position: absolute;
-  left: calc(var(--timeline-track-offset) - (var(--timeline-marker-size) / 2));
+  left: var(--timeline-track-offset);
   top: calc(0.35rem + (var(--timeline-marker-size) / 2));
   width: var(--timeline-marker-size);
   height: var(--timeline-marker-size);
@@ -426,7 +425,7 @@ body.theme-dark .project-card {
   background: var(--color-surface);
   border: 2px solid var(--color-accent);
   box-shadow: 0 0 0 5px var(--color-accent-muted);
-  transform: translateY(-50%);
+  transform: translate(-50%, -50%);
 }
 
 .timeline__content {
@@ -1049,11 +1048,11 @@ body.theme-dark .project-card {
   }
 
   .timeline {
-    --timeline-content-gap: 1.65rem;
+    --timeline-track-offset: 0.45rem;
   }
 
   .timeline__item {
-    padding-left: calc(var(--timeline-track-offset) + var(--timeline-content-gap));
+    padding-left: calc(var(--timeline-track-offset) + 1.65rem);
   }
 }
 

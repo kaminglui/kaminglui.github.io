@@ -1,4 +1,3 @@
-// Restored default content configuration after asset cleanup.
 const createId = () =>
   typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
     ? crypto.randomUUID()
@@ -62,7 +61,7 @@ export const defaultContent = {
         id: createId(),
         title: 'Learning cadence',
         type: 'text',
-        body: ''
+        body: 'Weekly writing sprints keep concepts fresh, paired with reading groups and lab demos so theory meets hands-on exploration.'
       }
     ]
   },
@@ -70,7 +69,10 @@ export const defaultContent = {
     title: "Let's connect.",
     body: 'Connect with me on LinkedIn if you have opportunities or ideas to collaborate on.',
     primary: null,
-    secondary: null,
+    secondary: {
+      label: 'Connect on LinkedIn',
+      url: 'https://www.linkedin.com/in/ka-ming-lui/'
+    },
     meta: 'I am looking for the related job.'
   },
   experienceFallback: {

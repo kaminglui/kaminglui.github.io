@@ -40,27 +40,28 @@ These commands are quick syntax validations and do not execute the scripts.
 
 ## Highlights
 
-- Sticky navigation with theme toggle, mobile-friendly menu, and a "Manage site" dialog that surfaces maintainer actions.
+- Sticky navigation with theme toggle, mobile-friendly menu, and a login-gated edit toolbar.
 - Machine-learning-focused sections for learning topics, journal posts, projects, and LinkedIn-synced experience and education timelines.
 - Modular cards and sidebar blocks that share a single design system for consistent presentation in both themes.
 - Inline editors powered by local storage so copy, lists, and cards can be added or updated without touching the markup.
 - Automatic LinkedIn badge plus experience/education sync that rehydrates from your public profile whenever the page loads.
+- Admin sign-in backed by Google reCAPTCHA so edit mode is only available after you authenticate.
 
-## Content management
+## Customization & inline editing
 
-### Publish updates through GitHub
+### Admin sign-in
 
-1. Press <kbd>.</kbd> while viewing the repository to launch [github.dev](https://github.dev/kaminglui/kaminglui.github.io). This browser-based VS Code lets you edit `assets/js/content.js`, Markdown posts, or styles without cloning locally.
-2. Prefer a static site generator? GitHub Pages supports Jekyll out of the box and Quarto via GitHub Actions. Build with your chosen tool, then let the Pages workflow deploy—everything stays on GitHub infrastructure.
-3. Enjoy Editor.js? Draft posts in a local `editor.html`, export to Markdown, and commit the file through GitHub to keep tokens and secrets out of the public site.
-4. Commit your changes to the `main` branch (or open a pull request) and GitHub Pages will publish the updated static files automatically.
+1. Update the `data-passcode` attribute on `#login-dialog` in `index.html` with a private access code.
+2. Create a Google reCAPTCHA v2 site key and secret. Place the site key in the dialog's `data-recaptcha-key` attribute and keep the secret server-side for future verification.
+3. Deploy the site and click **Sign in** in the top navigation. Solve the reCAPTCHA challenge and submit your access code to unlock edit mode.
+4. When you're finished updating content, choose **Sign out** from the navigation or close the browser tab to end the session (the flag lives in `sessionStorage`).
 
-### Prototype with the local edit toolbar
+### Content editors
 
-1. Click **Manage site** in the top navigation and choose **Enable edit toolbar** to reveal the inline editors for this browser session.
-2. Use the toolbar buttons to open each modal editor (intro, about, learning, posts, projects, sidebar). Updates are saved to `localStorage` so you can iterate before committing real changes.
-3. The **Reset** action clears local overrides and reverts to the defaults defined in `assets/js/content.js`.
-4. Select **Hide edit toolbar** from the Manage dialog to tuck the controls away; the preference is stored in `sessionStorage` until you refresh.
+1. After signing in, click **Edit mode** in the top navigation to reveal the toolbar.
+2. Choose the area you want to adjust (intro, about, learning topics, posts, projects, or sidebar blocks).
+3. Update text fields, add new entries, or delete existing ones in the modal editor. Changes are saved to `localStorage` so they persist between visits on the same browser.
+4. Use the **Reset** button in the toolbar to clear saved edits and return to the defaults from `assets/js/content.js`.
 
 ### LinkedIn syncing
 
