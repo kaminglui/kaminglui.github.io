@@ -1,4 +1,3 @@
-// Restored main interaction script after asset cleanup.
 import { defaultContent } from './content.js';
 
 const STORAGE_KEY = 'kaminglui-site-content-v1';

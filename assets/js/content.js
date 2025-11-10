@@ -1,4 +1,3 @@
-// Restored default content configuration after asset cleanup.
 const createId = () =>
   typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
     ? crypto.randomUUID()
