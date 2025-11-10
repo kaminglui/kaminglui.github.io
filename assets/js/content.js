@@ -6,16 +6,16 @@ const createId = () =>
 
 export const defaultContent = {
   hero: {
-    eyebrow: 'Penn State M.S. Electrical Engineering · ML systems focus',
+    eyebrow: 'Penn State M.S. Electrical Engineering',
     title: 'Hello, I am Ka Ming',
     lead: "I'm an electrical engineering master's student at Penn State focusing on machine learning.",
     primary: {
-      label: 'Explore the learning journal',
+      label: 'Explore the Learning Journal',
       url: '#posts'
     },
     secondary: {
-      label: 'LinkedIn profile',
-      url: 'https://www.linkedin.com/in/ka-ming-lui/'
+      label: 'LinkedIn Profile',
+      url: 'https://www.linkedin.com/in/ka-ming-lui'
     },
     current: [
       'Teaching Assistant · Penn State University',
@@ -25,20 +25,20 @@ export const defaultContent = {
     focus: ['Machine Learning']
   },
   about: {
-    title: 'A little bit about myself',
+    title: 'A Little Bit About Myself',
     paragraphs: [
-      'My background in electrical engineering keeps me grounded in measurement science, hardware constraints, and safety-critical thinking. As a master\'s student at Penn State, I now focus that rigor on building machine learning systems that can be audited, trusted, and iterated quickly.',
-      'I thrive when translating domain expertise into ML-ready datasets, shaping modeling experiments, and productizing the insights—whether for research collaborations, student teams, or industry partners.'
+      'My background in electrical engineering keeps me grounded in measurement science, constraints, and critical thinking. As a master\'s student at Penn State.',
+      'I thrive when translating domain expertise into ML-ready datasets, shaping modeling experiments, and productizing the insights.'
     ]
   },
   learning: {
-    title: 'Exploring potentials',
+    title: 'Exploring Potentials',
     topics: []
   },
   posts: {
     title: 'Approach to concept breakdown',
-    ctaLabel: 'Get updates',
-    ctaUrl: 'mailto:hello@kaminglui.com?subject=Learning%20journal%20updates',
+    ctaLabel: '',
+    ctaUrl: '',
     entries: []
   },
   projects: {
@@ -52,26 +52,24 @@ export const defaultContent = {
         title: 'Toolkit',
         type: 'list',
         items: [
-          'Python',
-          'C/C++',
-          'MATLAB',
+          'Coding · Python, C/C++, MATLAB',
           'Multilingual · Chinese (Cantonese, Mandarin), English, Japanese'
         ]
       },
       {
         id: createId(),
-        title: 'Learning cadence',
+        title: 'Learning Cadence',
         type: 'text',
         body: ''
       }
     ]
   },
   contact: {
-    title: "Let's connect.",
+    title: "Let's Connect.",
     body: 'Connect with me on LinkedIn if you have opportunities or ideas to collaborate on.',
     primary: null,
     secondary: null,
-    meta: 'I am looking for the related job.'
+    meta: 'I am looking for a Machine Learning related job position.'
   },
   experienceFallback: {
     positions: [
@@ -79,13 +77,13 @@ export const defaultContent = {
         title: 'Penn State University',
         subtitle: 'Teaching Assistant · Part-time · Aug 2024 — Present · State College, Pennsylvania',
         description:
-          'Supporting electrical engineering courses on circuits and machine learning instrumentation while coaching students through responsible AI labs.'
+          'Supporting electrical engineering courses on circuits lab (EE 210).'
       },
       {
         title: 'Temple University College of Engineering',
         subtitle: 'Undergraduate Researcher · Part-time · Aug 2022 — May 2023 · Philadelphia, Pennsylvania',
         description:
-          'Collaborated on embedded sensing research, maintaining Ubuntu and secure shell workflows while documenting experiments for faculty partners.'
+          'Collaborated on embedded sensing research, maintaining systematic workflows on Github, while formulating solutions and experiments for faculty partners.'
       },
       {
         title: 'City of Philadelphia Commissioners',
@@ -98,12 +96,12 @@ export const defaultContent = {
       {
         title: 'Penn State University College of Engineering',
         subtitle: 'Master of Science, Electrical Engineering · Apr 2024 — Present',
-        description: 'Graduate focus on machine learning for instrumentation and human-centered evaluation.'
+        description: 'Graduate focus on machine learning, domain adaptation with Maximum Entropy and Improved Iterative Scaling (ME-IIS).'
       },
       {
         title: 'Temple University College of Engineering',
         subtitle: "Bachelor of Science, Electrical Engineering · Aug 2019 — May 2023",
-        description: 'Undergraduate coursework highlighted circuit design, signal processing, and machine learning foundations.'
+        description: 'Undergraduate coursework, circuit design, and signal processing.'
       }
     ]
   }
