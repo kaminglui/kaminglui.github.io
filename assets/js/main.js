@@ -22,6 +22,92 @@ const createId = () =>
     ? crypto.randomUUID()
     : `id-${Math.random().toString(36).slice(2, 10)}`;
 
+const SMALL_WORDS = new Set([
+  'a',
+  'an',
+  'and',
+  'as',
+  'at',
+  'but',
+  'by',
+  'for',
+  'in',
+  'nor',
+  'of',
+  'on',
+  'or',
+  'per',
+  'the',
+  'to',
+  'via',
+  'vs'
+]);
+
+function capitalizeWord(word) {
+  if (!word) return word;
+  const firstLetterIndex = word.search(/[A-Za-z0-9]/);
+  if (firstLetterIndex === -1) return word;
+  const leading = word.slice(0, firstLetterIndex);
+  const firstChar = word.charAt(firstLetterIndex).toUpperCase();
+  const remainder = word.slice(firstLetterIndex + 1);
+  const normalizedRemainder =
+    remainder === remainder.toLowerCase() ? remainder.toLowerCase() : remainder;
+  return leading + firstChar + normalizedRemainder;
+}
+
+function formatTitleCase(text) {
+  if (typeof text !== 'string') return text;
+  if (!text.trim()) return text;
+
+  const tokens = text.split(/(\s+)/);
+  let processedWords = 0;
+  const totalWords = tokens.reduce(
+    (count, token) => (token.trim() ? count + 1 : count),
+    0
+  );
+
+  return tokens
+    .map((token) => {
+      if (!token.trim()) {
+        return token;
+      }
+
+      processedWords += 1;
+
+      const prefixMatch = token.match(/^[^A-Za-z0-9']+/);
+      const suffixMatch = token.match(/[^A-Za-z0-9']+$/);
+      const prefix = prefixMatch ? prefixMatch[0] : '';
+      const suffix = suffixMatch ? suffixMatch[0] : '';
+      const core = token.slice(prefix.length, token.length - suffix.length);
+
+      if (!core) {
+        return token;
+      }
+
+      const normalizedCore = core.toLowerCase();
+      const shouldCapitalize =
+        processedWords === 1 ||
+        processedWords === totalWords ||
+        !SMALL_WORDS.has(normalizedCore);
+
+      let transformedCore = normalizedCore;
+
+      if (shouldCapitalize) {
+        if (core.includes('-')) {
+          transformedCore = core
+            .split(/(-)/)
+            .map((part) => (part === '-' ? part : capitalizeWord(part)))
+            .join('');
+        } else {
+          transformedCore = capitalizeWord(core);
+        }
+      }
+
+      return prefix + transformedCore + suffix;
+    })
+    .join('');
+}
+
 const body = document.body;
 const navToggle = document.querySelector('.nav-toggle');
 const navLinks = document.querySelector('.nav-links');
@@ -166,7 +252,7 @@ function renderList(container, items) {
 
 function renderHero() {
   heroElements.eyebrow.textContent = content.hero.eyebrow;
-  heroElements.title.textContent = content.hero.title;
+  heroElements.title.textContent = formatTitleCase(content.hero.title);
   heroElements.lead.textContent = content.hero.lead;
   heroElements.primary.textContent = content.hero.primary.label;
   heroElements.primary.href = content.hero.primary.url;
@@ -177,7 +263,7 @@ function renderHero() {
 }
 
 function renderAbout() {
-  aboutElements.title.textContent = content.about.title;
+  aboutElements.title.textContent = formatTitleCase(content.about.title);
   aboutElements.body.innerHTML = '';
   content.about.paragraphs.forEach((paragraph) => {
     const p = document.createElement('p');
@@ -187,13 +273,13 @@ function renderAbout() {
 }
 
 function renderLearning() {
-  learningElements.title.textContent = content.learning.title;
+  learningElements.title.textContent = formatTitleCase(content.learning.title);
   renderList(learningElements.list, content.learning.topics);
   learningElements.empty.hidden = content.learning.topics.length > 0;
 }
 
 function renderPosts() {
-  postElements.title.textContent = content.posts.title;
+  postElements.title.textContent = formatTitleCase(content.posts.title);
   postElements.cta.textContent = content.posts.ctaLabel;
   postElements.cta.href = content.posts.ctaUrl;
   postElements.list.innerHTML = '';
@@ -208,7 +294,7 @@ function renderPosts() {
 
     const title = document.createElement('h3');
     title.className = 'post-card__title';
-    title.textContent = entry.title;
+    title.textContent = formatTitleCase(entry.title);
 
     const summary = document.createElement('p');
     summary.textContent = entry.summary;
@@ -225,7 +311,7 @@ function renderPosts() {
 }
 
 function renderProjects() {
-  projectElements.title.textContent = content.projects.title;
+  projectElements.title.textContent = formatTitleCase(content.projects.title);
   projectElements.list.innerHTML = '';
 
   content.projects.items.forEach((project) => {
@@ -234,7 +320,7 @@ function renderProjects() {
 
     const title = document.createElement('h3');
     title.className = 'project-card__title';
-    title.textContent = project.title;
+    title.textContent = formatTitleCase(project.title);
 
     const summary = document.createElement('p');
     summary.textContent = project.summary;
@@ -264,7 +350,7 @@ function renderSidebar() {
     section.className = 'sidebar-block';
 
     const title = document.createElement('h3');
-    title.textContent = block.title;
+    title.textContent = formatTitleCase(block.title);
     section.appendChild(title);
 
     if (block.type === 'list' && block.items?.length) {
@@ -288,7 +374,7 @@ function renderSidebar() {
 }
 
 function renderContact() {
-  contactElements.title.textContent = content.contact.title;
+  contactElements.title.textContent = formatTitleCase(content.contact.title);
   contactElements.body.textContent = content.contact.body;
   if (contactElements.actions) {
     contactElements.actions.innerHTML = '';
@@ -354,7 +440,7 @@ function createTimelineItem(item) {
 
   const title = document.createElement('h3');
   title.className = 'timeline__title';
-  title.textContent = item.title;
+  title.textContent = formatTitleCase(item.title);
 
   const subtitle = document.createElement('p');
   subtitle.className = 'timeline__role';
