@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="Machine learning engineering journal and technical profile for Ka-Ming Lui, Penn State M.S. student translating electrical engineering rigor into ML systems."
+    />
+    <title>Ka-Ming Lui · Machine Learning Engineer</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fira+Code:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="assets/css/style.css" />
+  </head>
+  <body class="theme-light">
+    <header class="site-header" id="top">
+      <div class="container">
+        <nav class="nav" aria-label="Primary">
+          <a class="logo" href="#hero">Ka-Ming Lui</a>
+          <button
+            class="nav-toggle"
+            type="button"
+            aria-expanded="false"
+            aria-controls="primary-navigation"
+          >
+            <span class="nav-toggle__bar"></span>
+            <span class="nav-toggle__bar"></span>
+            <span class="nav-toggle__bar"></span>
+            <span class="sr-only">Toggle navigation</span>
+          </button>
+          <ul class="nav-links" id="primary-navigation" data-visible="false">
+            <li><a href="#about">About</a></li>
+            <li><a href="#learning">Learning</a></li>
+            <li><a href="#posts">Posts</a></li>
+            <li><a href="#projects">Projects</a></li>
+            <li><a href="#experience">Experience</a></li>
+            <li><a href="#education">Education</a></li>
+            <li><a href="#contact">Contact</a></li>
+          </ul>
+          <div class="nav-actions">
+            <button class="edit-toggle" type="button" aria-pressed="false" hidden>Edit mode</button>
+            <button class="theme-toggle" type="button" aria-label="Toggle color theme">
+              <span aria-hidden="true">🌙</span>
+            </button>
+          </div>
+        </nav>
+      </div>
+    </header>
+
+    <div class="edit-toolbar" hidden>
+      <div class="container edit-toolbar__inner" role="region" aria-live="polite">
+        <p class="edit-toolbar__status">Editing site content</p>
+        <div class="edit-toolbar__actions" role="toolbar" aria-label="Content editors">
+          <button type="button" data-editor="intro">Intro</button>
+          <button type="button" data-editor="about">About</button>
+          <button type="button" data-editor="learning">Learning topics</button>
+          <button type="button" data-editor="posts">Posts</button>
+          <button type="button" data-editor="projects">Projects</button>
+          <button type="button" data-editor="sidebar">Sidebar blocks</button>
+          <button type="button" data-action="reset">Reset</button>
+        </div>
+      </div>
+    </div>
+
+    <main>
+      <section class="hero" id="hero">
+        <div class="container hero__layout">
+          <div class="hero__content">
+            <p class="hero__eyebrow" data-content="hero.eyebrow"></p>
+            <h1 class="hero__title" data-content="hero.title"></h1>
+            <p class="hero__lead" data-content="hero.lead"></p>
+            <div class="hero__actions">
+              <a class="button button--primary" data-action="primary"></a>
+              <a class="button button--ghost" data-action="secondary"></a>
+            </div>
+          </div>
+          <aside class="hero__meta" aria-label="Quick facts">
+            <article class="meta-card">
+              <h2>Currently</h2>
+              <ul id="hero-current"></ul>
+            </article>
+            <article class="meta-card">
+              <h2>Focus areas</h2>
+              <ul id="hero-focus"></ul>
+            </article>
+          </aside>
+        </div>
+      </section>
+
+      <div class="container content-grid">
+        <div class="primary">
+          <section class="card card--section" id="about">
+            <p class="card__eyebrow">About</p>
+            <h2 class="card__title" data-content="about.title"></h2>
+            <div class="card__body stack" id="about-body"></div>
+          </section>
+
+          <section class="card card--section" id="learning">
+            <p class="card__eyebrow">Learning Tracks</p>
+            <h2 class="card__title" data-content="learning.title"></h2>
+            <ul class="bullet-list" id="learning-list"></ul>
+            <p class="card__note" id="learning-empty" hidden>No learning topics yet.</p>
+          </section>
+
+          <section class="card card--section" id="posts">
+            <p class="card__eyebrow">Posts</p>
+            <div class="card__header">
+              <h2 class="card__title" data-content="posts.title"></h2>
+              <a class="text-link" data-content="posts.ctaLabel" data-action="posts"></a>
+            </div>
+            <div class="post-list" id="post-list" aria-live="polite"></div>
+            <p class="card__note" id="posts-empty" hidden>No posts yet.</p>
+          </section>
+
+          <section class="card card--section" id="projects">
+            <p class="card__eyebrow">Projects</p>
+            <h2 class="card__title" data-content="projects.title"></h2>
+            <div class="project-list" id="project-list"></div>
+            <p class="card__note" id="projects-empty" hidden>No projects yet.</p>
+          </section>
+
+          <section class="card card--section" id="experience">
+            <p class="card__eyebrow">Experience</p>
+            <h2 class="card__title">Recent roles</h2>
+            <div class="timeline" id="experience-list" role="list"></div>
+            <p class="card__note" id="experience-empty" hidden>No roles yet.</p>
+          </section>
+
+          <section class="card card--section" id="education">
+            <p class="card__eyebrow">Education</p>
+            <h2 class="card__title">Academic path</h2>
+            <div class="timeline" id="education-list" role="list"></div>
+            <p class="card__note" id="education-empty" hidden>No education yet.</p>
+          </section>
+        </div>
+
+        <aside class="sidebar">
+          <section class="card card--sidebar" aria-label="Sidebar blocks">
+            <div id="sidebar-blocks" class="stack"></div>
+            <p class="card__note" id="sidebar-empty" hidden>No sidebar notes yet.</p>
+          </section>
+          <section class="card card--sidebar" aria-label="LinkedIn profile">
+            <h2 class="card__title">LinkedIn profile</h2>
+            <div class="linkedin-badge">
+              <div
+                class="LI-profile-badge"
+                data-version="v1"
+                data-size="medium"
+                data-locale="en_US"
+                data-type="vertical"
+                data-theme="dark"
+                data-vanity="ka-ming-lui"
+              >
+                <a class="LI-simple-link" href="https://www.linkedin.com/in/ka-ming-lui/">Ka-Ming Lui on LinkedIn</a>
+              </div>
+            </div>
+          </section>
+        </aside>
+      </div>
+    </main>
+
+    <footer class="site-footer" id="contact">
+      <div class="container footer__layout">
+        <div>
+          <h2 data-content="contact.title"></h2>
+          <p data-content="contact.body"></p>
+          <div class="footer__actions" data-contact-actions></div>
+        </div>
+        <div class="footer__meta">
+          <p data-content="contact.meta"></p>
+          <p>&copy; <span id="year"></span> Ka-Ming Lui. Built with accessibility and performance in mind.</p>
+        </div>
+      </div>
+      <a class="back-to-top" href="#top">Back to top</a>
+    </footer>
+
+    <dialog class="editor-dialog" id="manage-dialog">
+      <form method="dialog" class="editor-form" data-form="manage">
+        <h2>Update this site</h2>
+        <p class="editor-note">
+          GitHub Pages hosts this site, so publishing changes happens through GitHub instead of an on-site login.
+        </p>
+        <ol class="editor-steps">
+          <li>
+            Open the repository in <a href="https://github.dev/kaminglui/kaminglui.github.io" target="_blank" rel="noreferrer">github.dev</a>
+            (press <kbd>.</kbd> on the repo) for a full browser editor. Edit the copy inside <code>assets/js/content.js</code> or add Markdown posts, then commit.
+          </li>
+          <li>
+            Prefer static site generators? Use GitHub Pages with Jekyll or Quarto and a Pages GitHub Action to build and deploy, all within GitHub infrastructure.
+          </li>
+          <li>
+            Draft rich posts locally with Editor.js and export to Markdown, then commit via GitHub for a safe, token-free workflow.
+          </li>
+        </ol>
+        <p class="editor-note">Need to tweak copy quickly? Enable the local edit toolbar to prototype changes before committing.</p>
+        <menu class="editor-actions">
+          <button type="button" data-action="disable-edit">Hide edit toolbar</button>
+          <span class="spacer"></span>
+          <button type="button" data-action="enable-edit">Enable edit toolbar</button>
+          <button type="button" data-close>Done</button>
+        </menu>
+      </form>
+    </dialog>
+
+    <dialog class="editor-dialog" id="intro-editor">
+      <form method="dialog" class="editor-form" data-form="intro">
+        <h2>Edit intro</h2>
+        <label>
+          Eyebrow
+          <input type="text" name="eyebrow" required />
+        </label>
+        <label>
+          Title
+          <textarea name="title" rows="2" required></textarea>
+        </label>
+        <label>
+          Lead paragraph
+          <textarea name="lead" rows="4" required></textarea>
+        </label>
+        <label>
+          Primary action label
+          <input type="text" name="primaryLabel" required />
+        </label>
+        <label>
+          Primary action URL
+          <input type="url" name="primaryUrl" required />
+        </label>
+        <label>
+          Secondary action label
+          <input type="text" name="secondaryLabel" required />
+        </label>
+        <label>
+          Secondary action URL
+          <input type="url" name="secondaryUrl" required />
+        </label>
+        <label>
+          Current highlights (one per line)
+          <textarea name="current" rows="4"></textarea>
+        </label>
+        <label>
+          Focus areas (one per line)
+          <textarea name="focus" rows="4"></textarea>
+        </label>
+        <menu class="editor-actions">
+          <button value="cancel" type="button" data-close>Cancel</button>
+          <button value="confirm" type="submit">Save</button>
+        </menu>
+      </form>
+    </dialog>
+
+    <dialog class="editor-dialog" id="about-editor">
+      <form method="dialog" class="editor-form" data-form="about">
+        <h2>Edit about section</h2>
+        <label>
+          Title
+          <input type="text" name="title" required />
+        </label>
+        <label>
+          Paragraphs (one per line)
+          <textarea name="paragraphs" rows="6"></textarea>
+        </label>
+        <menu class="editor-actions">
+          <button value="cancel" type="button" data-close>Cancel</button>
+          <button value="confirm" type="submit">Save</button>
+        </menu>
+      </form>
+    </dialog>
+
+    <dialog class="editor-dialog" id="learning-editor">
+      <form method="dialog" class="editor-form" data-form="learning">
+        <h2>Manage learning topics</h2>
+        <label>
+          Section title
+          <input type="text" name="title" required />
+        </label>
+        <label>
+          Topics (one per line)
+          <textarea name="topics" rows="8"></textarea>
+        </label>
+        <menu class="editor-actions">
+          <button value="cancel" type="button" data-close>Cancel</button>
+          <button value="confirm" type="submit">Save</button>
+        </menu>
+      </form>
+    </dialog>
+
+    <dialog class="editor-dialog" id="posts-editor">
+      <div class="editor-form" data-form="posts">
+        <form class="posts-editor__form">
+          <h2>Manage posts</h2>
+          <label>
+            Section title
+            <input type="text" name="title" required />
+          </label>
+          <label>
+            Call-to-action label
+            <input type="text" name="ctaLabel" required />
+          </label>
+          <label>
+            Call-to-action URL
+            <input type="url" name="ctaUrl" required />
+          </label>
+          <div class="posts-editor__list" role="listbox" aria-label="Posts"></div>
+          <fieldset class="posts-editor__details">
+            <legend>Post details</legend>
+            <label>
+              Category
+              <input type="text" name="eyebrow" required />
+            </label>
+            <label>
+              Title
+              <input type="text" name="postTitle" required />
+            </label>
+            <label>
+              Summary
+              <textarea name="summary" rows="4" required></textarea>
+            </label>
+            <label>
+              Date
+              <input type="date" name="date" required />
+            </label>
+          </fieldset>
+          <menu class="editor-actions posts-editor__actions">
+            <button type="button" data-command="delete" class="danger">Delete</button>
+            <span class="spacer"></span>
+            <button type="button" data-command="cancel" data-close>Cancel</button>
+            <button type="button" data-command="new">New</button>
+            <button type="submit" data-command="save">Save</button>
+          </menu>
+        </form>
+      </div>
+    </dialog>
+
+    <dialog class="editor-dialog" id="projects-editor">
+      <div class="editor-form" data-form="projects">
+        <form class="projects-editor__form">
+          <h2>Manage projects</h2>
+          <label>
+            Section title
+            <input type="text" name="title" required />
+          </label>
+          <div class="projects-editor__list" role="listbox" aria-label="Projects"></div>
+          <fieldset class="projects-editor__details">
+            <legend>Project details</legend>
+            <label>
+              Title
+              <input type="text" name="projectTitle" required />
+            </label>
+            <label>
+              Summary
+              <textarea name="summary" rows="3" required></textarea>
+            </label>
+            <label>
+              Highlights (one per line)
+              <textarea name="highlights" rows="4"></textarea>
+            </label>
+          </fieldset>
+          <menu class="editor-actions projects-editor__actions">
+            <button type="button" data-command="delete" class="danger">Delete</button>
+            <span class="spacer"></span>
+            <button type="button" data-command="cancel" data-close>Cancel</button>
+            <button type="button" data-command="new">New</button>
+            <button type="submit" data-command="save">Save</button>
+          </menu>
+        </form>
+      </div>
+    </dialog>
+
+    <dialog class="editor-dialog" id="sidebar-editor">
+      <div class="editor-form" data-form="sidebar">
+        <form class="sidebar-editor__form">
+          <h2>Sidebar blocks</h2>
+          <div class="sidebar-editor__list" role="listbox" aria-label="Sidebar blocks"></div>
+          <fieldset class="sidebar-editor__details">
+            <legend>Block details</legend>
+            <label>
+              Title
+              <input type="text" name="blockTitle" required />
+            </label>
+            <label>
+              Type
+              <select name="blockType">
+                <option value="text">Text</option>
+                <option value="list">List</option>
+              </select>
+            </label>
+            <label data-field="text">
+              Body
+              <textarea name="blockBody" rows="4"></textarea>
+            </label>
+            <label data-field="list">
+              Items (one per line)
+              <textarea name="blockItems" rows="4"></textarea>
+            </label>
+          </fieldset>
+          <menu class="editor-actions sidebar-editor__actions">
+            <button type="button" data-command="delete" class="danger">Delete</button>
+            <span class="spacer"></span>
+            <button type="button" data-command="cancel" data-close>Cancel</button>
+            <button type="button" data-command="new">New</button>
+            <button type="submit" data-command="save">Save</button>
+          </menu>
+        </form>
+      </div>
+    </dialog>
+
+    <script src="https://platform.linkedin.com/badges/js/profile.js" async defer></script>
+    <script type="module" src="assets/js/main.js"></script>
+  </body>
+</html>
