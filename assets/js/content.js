@@ -20,7 +20,7 @@ export const defaultContent = {
     current: [
       'M.S. Electrical Engineering Candidate · Penn State',
       'Teaching Assistant · Penn State',
-      'B.S. Electrical Engineering · Temple University'
+      'B.S. Electrical Engineering · Temple University Alum'
     ],
     focus: ['Machine Learning']
   },
@@ -60,7 +60,7 @@ export const defaultContent = {
         id: createId(),
         title: 'Learning Cadence',
         type: 'text',
-        body: ''
+        body: 'Currently learning about Diffusion, Transformer models.'
       }
     ]
   },
@@ -69,7 +69,7 @@ export const defaultContent = {
     body: 'Connect with me on LinkedIn if you have opportunities or ideas to collaborate on.',
     primary: 'https://www.linkedin.com/in/ka-ming-lui',
     secondary: null,
-    meta: 'I am looking for a Machine Learning related job position.'
+    meta: 'I am looking for a Machine Learning (ML) related job position.'
   },
   experienceFallback: {
     positions: [
