@@ -18,9 +18,9 @@ export const defaultContent = {
       url: 'https://www.linkedin.com/in/ka-ming-lui'
     },
     current: [
-      'Teaching Assistant · Penn State University',
-      'M.S. Electrical Engineering candidate · Penn State',
-      'Temple University Electrical Engineering alum'
+      'M.S. Electrical Engineering Candidate · Penn State',
+      'Teaching Assistant · Penn State',
+      'B.S. Electrical Engineering · Temple University'
     ],
     focus: ['Machine Learning']
   },
