@@ -1,4 +1,3 @@
-// Restored main interaction script after asset cleanup.
 import { defaultContent } from './content.js';
 
 const STORAGE_KEY = 'kaminglui-site-content-v1';
@@ -29,6 +28,7 @@ const themeToggle = document.querySelector('.theme-toggle');
 const yearElement = document.querySelector('#year');
 const editToggle = document.querySelector('.edit-toggle');
 const editToolbar = document.querySelector('.edit-toolbar');
+const manageButton = document.querySelector('.manage-trigger');
 const manageDialog = document.getElementById('manage-dialog');
 
 const dialogs = {
@@ -82,15 +82,12 @@ const sidebarElements = {
 const contactElements = {
   title: document.querySelector('[data-content="contact.title"]'),
   body: document.querySelector('[data-content="contact.body"]'),
-  actions: document.querySelector('[data-contact-actions]'),
+  secondary: document.querySelector('[data-action="contactSecondary"]'),
   meta: document.querySelector('[data-content="contact.meta"]')
 };
 
+const contactActions = document.querySelector('.footer__actions');
 const backToTopLink = document.querySelector('.back-to-top');
-const prefersReducedMotion =
-  typeof window !== 'undefined' && typeof window.matchMedia === 'function'
-    ? window.matchMedia('(prefers-reduced-motion: reduce)')
-    : null;
 
 const experienceElements = {
   list: document.getElementById('experience-list'),
@@ -290,32 +287,26 @@ function renderSidebar() {
 function renderContact() {
   contactElements.title.textContent = content.contact.title;
   contactElements.body.textContent = content.contact.body;
-  if (contactElements.actions) {
-    contactElements.actions.innerHTML = '';
-    const actions = [];
-    if (content.contact.primary?.label && content.contact.primary?.url) {
-      actions.push({
-        ...content.contact.primary,
-        variant: 'button--primary'
-      });
+  if (contactElements.secondary) {
+    const hasSecondary = Boolean(
+      content.contact.secondary?.label && content.contact.secondary?.url
+    );
+    contactElements.secondary.hidden = !hasSecondary;
+    if (hasSecondary) {
+      contactElements.secondary.textContent = content.contact.secondary.label;
+      contactElements.secondary.href = content.contact.secondary.url;
+    } else {
+      contactElements.secondary.textContent = '';
+      contactElements.secondary.removeAttribute('href');
     }
-    if (content.contact.secondary?.label && content.contact.secondary?.url) {
-      actions.push({
-        ...content.contact.secondary,
-        variant: 'button--ghost'
-      });
-    }
-    actions.forEach((action, index) => {
-      const link = document.createElement('a');
-      const variant = action.variant || (index === 0 ? 'button--primary' : 'button--ghost');
-      link.className = `button ${variant}`;
-      link.href = action.url;
-      link.textContent = action.label;
-      contactElements.actions.appendChild(link);
-    });
-    contactElements.actions.hidden = actions.length === 0;
   }
   contactElements.meta.textContent = content.contact.meta;
+  if (contactActions) {
+    const hasVisibleAction = Array.from(contactActions.children).some(
+      (child) => !child.hidden
+    );
+    contactActions.hidden = !hasVisibleAction;
+  }
 }
 
 function renderExperienceFallback() {
@@ -616,19 +607,14 @@ function setupTheme() {
 function setupBackToTop() {
   if (!backToTopLink) return;
   backToTopLink.addEventListener('click', (event) => {
-    const header = document.getElementById('top');
-    if (!header) return;
+    const target = document.getElementById('top');
+    if (!target) return;
     event.preventDefault();
-    const behavior = prefersReducedMotion?.matches ? 'auto' : 'smooth';
     try {
-      if (typeof header.scrollIntoView === 'function') {
-        header.scrollIntoView({ behavior, block: 'start' });
-      } else {
-        window.scrollTo({ top: header.offsetTop ?? 0, behavior });
-      }
+      target.scrollIntoView({ behavior: 'smooth', block: 'start' });
     } catch (error) {
-      console.warn('Smooth scroll failed, using instant fallback.', error);
-      window.scrollTo(0, header.offsetTop ?? 0);
+      console.warn('scrollIntoView failed, using scrollTo fallback.', error);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     }
     if (typeof window !== 'undefined') {
       if (typeof window.history?.replaceState === 'function') {
@@ -636,6 +622,13 @@ function setupBackToTop() {
       } else {
         window.location.hash = 'top';
       }
+    event.preventDefault();
+    const target = document.getElementById('top');
+    if (target && typeof target.scrollIntoView === 'function') {
+      target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } else {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      window.location.hash = 'top';
     }
   });
 }
@@ -654,22 +647,14 @@ function applyEditToggleVisibility() {
 }
 
 function setupManagementDialog() {
-  if (!manageDialog) {
+  if (!manageButton || !manageDialog) {
     applyEditToggleVisibility();
     return;
   }
 
-  const openManageDialog = () => {
+  manageButton.addEventListener('click', () => {
     if (typeof manageDialog.showModal === 'function') {
       manageDialog.showModal();
-    }
-  };
-
-  window.addEventListener('keydown', (event) => {
-    const key = event.key?.toLowerCase();
-    if ((event.metaKey || event.ctrlKey) && event.shiftKey && key === 'm') {
-      event.preventDefault();
-      openManageDialog();
     }
   });
 

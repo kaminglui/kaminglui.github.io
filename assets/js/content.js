@@ -1,4 +1,3 @@
-// Restored default content configuration after asset cleanup.
 const createId = () =>
   typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
     ? crypto.randomUUID()
@@ -25,24 +24,24 @@ export const defaultContent = {
     focus: ['Machine Learning']
   },
   about: {
-    title: 'A little bit about myself',
+    title: 'Engineering rigor meets machine learning momentum.',
     paragraphs: [
       'My background in electrical engineering keeps me grounded in measurement science, hardware constraints, and safety-critical thinking. As a master\'s student at Penn State, I now focus that rigor on building machine learning systems that can be audited, trusted, and iterated quickly.',
       'I thrive when translating domain expertise into ML-ready datasets, shaping modeling experiments, and productizing the insights—whether for research collaborations, student teams, or industry partners.'
     ]
   },
   learning: {
-    title: 'Exploring potentials',
+    title: 'Current questions I\'m unpacking',
     topics: []
   },
   posts: {
-    title: 'Approach to concept breakdown',
+    title: 'Working notes on machine learning concepts',
     ctaLabel: 'Get updates',
     ctaUrl: 'mailto:hello@kaminglui.com?subject=Learning%20journal%20updates',
     entries: []
   },
   projects: {
-    title: 'Involvement',
+    title: 'Hands-on work that blends ML with hardware',
     items: []
   },
   sidebar: {
@@ -62,7 +61,7 @@ export const defaultContent = {
         id: createId(),
         title: 'Learning cadence',
         type: 'text',
-        body: ''
+        body: 'Weekly writing sprints keep concepts fresh, paired with reading groups and lab demos so theory meets hands-on exploration.'
       }
     ]
   },
@@ -70,7 +69,10 @@ export const defaultContent = {
     title: "Let's connect.",
     body: 'Connect with me on LinkedIn if you have opportunities or ideas to collaborate on.',
     primary: null,
-    secondary: null,
+    secondary: {
+      label: 'Connect on LinkedIn',
+      url: 'https://www.linkedin.com/in/ka-ming-lui/'
+    },
     meta: 'I am looking for the related job.'
   },
   experienceFallback: {
