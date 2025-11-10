@@ -607,6 +607,21 @@ function setupTheme() {
 function setupBackToTop() {
   if (!backToTopLink) return;
   backToTopLink.addEventListener('click', (event) => {
+    const target = document.getElementById('top');
+    if (!target) return;
+    event.preventDefault();
+    try {
+      target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } catch (error) {
+      console.warn('scrollIntoView failed, using scrollTo fallback.', error);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+    if (typeof window !== 'undefined') {
+      if (typeof window.history?.replaceState === 'function') {
+        window.history.replaceState(null, '', '#top');
+      } else {
+        window.location.hash = 'top';
+      }
     event.preventDefault();
     const target = document.getElementById('top');
     if (target && typeof target.scrollIntoView === 'function') {

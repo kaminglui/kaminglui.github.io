@@ -42,6 +42,7 @@
             <li><a href="#contact">Contact</a></li>
           </ul>
           <div class="nav-actions">
+            <button class="manage-trigger" type="button">Manage site</button>
             <button class="login-trigger" type="button">Sign in</button>
             <button class="edit-toggle" type="button" aria-pressed="false" hidden>Edit mode</button>
             <button class="theme-toggle" type="button" aria-label="Toggle color theme">
@@ -182,6 +183,30 @@
       <a class="back-to-top" href="#top">Back to top</a>
     </footer>
 
+    <dialog class="editor-dialog" id="manage-dialog">
+      <form method="dialog" class="editor-form" data-form="manage">
+        <h2>Update this site</h2>
+        <p class="editor-note">
+          GitHub Pages hosts this site, so publishing changes happens through GitHub instead of an on-site login.
+        </p>
+        <ol class="editor-steps">
+          <li>
+            Open the repository in <a href="https://github.dev/kaminglui/kaminglui.github.io" target="_blank" rel="noreferrer">github.dev</a>
+            (press <kbd>.</kbd> on the repo) for a full browser editor. Edit the copy inside <code>assets/js/content.js</code> or add Markdown posts, then commit.
+          </li>
+          <li>
+            Prefer static site generators? Use GitHub Pages with Jekyll or Quarto and a Pages GitHub Action to build and deploy, all within GitHub infrastructure.
+          </li>
+          <li>
+            Draft rich posts locally with Editor.js and export to Markdown, then commit via GitHub for a safe, token-free workflow.
+          </li>
+        </ol>
+        <p class="editor-note">Need to tweak copy quickly? Enable the local edit toolbar to prototype changes before committing.</p>
+        <menu class="editor-actions">
+          <button type="button" data-action="disable-edit">Hide edit toolbar</button>
+          <span class="spacer"></span>
+          <button type="button" data-action="enable-edit">Enable edit toolbar</button>
+          <button type="button" data-close>Done</button>
     <dialog
       class="editor-dialog"
       id="login-dialog"
