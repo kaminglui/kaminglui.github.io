@@ -615,25 +615,40 @@ function setupTheme() {
 
 function setupBackToTop() {
   if (!backToTopLink) return;
+
   backToTopLink.addEventListener('click', (event) => {
     event.preventDefault();
+
     const behavior = prefersReducedMotion?.matches ? 'auto' : 'smooth';
+    const scrollTarget =
+      typeof document !== 'undefined'
+        ? document.scrollingElement || document.documentElement || document.body
+        : null;
+    const scrollOptions = { top: 0, left: 0, behavior };
+
     try {
-      if (typeof window.scrollTo === 'function') {
-        window.scrollTo({ top: 0, behavior });
-      } else if (
-        typeof document !== 'undefined' &&
-        typeof document.documentElement?.scrollTo === 'function'
-      ) {
-        document.documentElement.scrollTo({ top: 0, behavior });
-      } else if (typeof document !== 'undefined') {
-        document.body.scrollTop = 0;
-        document.documentElement.scrollTop = 0;
+      if (scrollTarget && typeof scrollTarget.scrollTo === 'function') {
+        scrollTarget.scrollTo(scrollOptions);
+      } else if (typeof window.scrollTo === 'function') {
+        window.scrollTo(scrollOptions);
+      } else if (scrollTarget) {
+        scrollTarget.scrollTop = 0;
+        if ('scrollLeft' in scrollTarget) {
+          scrollTarget.scrollLeft = 0;
+        }
       }
     } catch (error) {
       console.warn('Smooth scroll failed, using instant fallback.', error);
-      window.scrollTo(0, 0);
+      if (scrollTarget) {
+        scrollTarget.scrollTop = 0;
+        if ('scrollLeft' in scrollTarget) {
+          scrollTarget.scrollLeft = 0;
+        }
+      } else if (typeof window !== 'undefined') {
+        window.scrollTo(0, 0);
+      }
     }
+
     if (typeof window !== 'undefined') {
       if (typeof window.history?.replaceState === 'function') {
         window.history.replaceState(null, '', '#top');
