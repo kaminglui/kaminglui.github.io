@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="Explore how transformers tokenize inputs, compute attention, and form predictions in an interactive lab."
+    />
+    <title>Transformer Lab · Ka Ming Lui</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fira+Code:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="assets/css/style.css" />
+  </head>
+  <body class="theme-light">
+    <header class="site-header" id="top">
+      <div class="container">
+        <nav class="nav" aria-label="Primary">
+          <a class="logo" href="index.html#hero">Ka Ming Lui</a>
+          <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="primary-navigation">
+            <span class="nav-toggle__bar"></span>
+            <span class="nav-toggle__bar"></span>
+            <span class="nav-toggle__bar"></span>
+            <span class="sr-only">Toggle navigation</span>
+          </button>
+          <ul class="nav-links" id="primary-navigation" data-visible="false">
+            <li class="nav-item nav-item--dropdown">
+              <button class="nav-dropdown-toggle" type="button" aria-expanded="false" aria-controls="section-menu">
+                Sections
+                <svg class="nav-dropdown__icon" aria-hidden="true" focusable="false" viewBox="0 0 12 12">
+                  <path d="M2.47 4.47a.75.75 0 0 1 1.06 0L6 6.94l2.47-2.47a.75.75 0 0 1 1.06 1.06l-3 3a.75.75 0 0 1-1.06 0l-3-3a.75.75 0 0 1 0-1.06Z" />
+                </svg>
+              </button>
+              <ul class="nav-dropdown-menu" id="section-menu" hidden>
+                <li><a href="index.html#about">About</a></li>
+                <li><a href="index.html#learning">Learning</a></li>
+                <li><a href="index.html#posts">Posts</a></li>
+                <li><a href="index.html#projects">Projects</a></li>
+                <li><a href="index.html#experience">Experience</a></li>
+                <li><a href="index.html#education">Education</a></li>
+                <li><a href="index.html#contact">Contact</a></li>
+              </ul>
+            </li>
+            <li><a href="ml-game.html" aria-current="page">Transformer Lab</a></li>
+          </ul>
+          <div class="nav-actions">
+            <button class="theme-toggle" type="button" aria-label="Toggle color theme">
+              <span aria-hidden="true">🌙</span>
+            </button>
+          </div>
+        </nav>
+      </div>
+    </header>
+
+    <main class="lab-main">
+      <section class="lab-hero">
+        <div class="container">
+          <div class="lab-hero__inner">
+            <p class="lab-hero__eyebrow">Interactive lab</p>
+            <h1 class="lab-hero__title">Transformer Fundamentals Explorer</h1>
+            <p class="lab-hero__lead">
+              Step through tokenization, self-attention, and prediction heads to see how transformers turn words and image
+              patches into understanding.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section class="lab-section" aria-labelledby="lab-title">
+        <div class="container">
+          <article class="card lab-card" data-transformer-lab>
+            <header class="lab-card__header">
+              <p class="lab-card__eyebrow">Stage by stage</p>
+              <h2 class="lab-card__title" id="lab-title">How transformers reason about your input</h2>
+              <p class="lab-card__lead">
+                Pick a stage to explore how the model handles a sample prompt. Each interaction highlights the mechanics—no
+                quiz required.
+              </p>
+            </header>
+            <div class="lab-stage">
+              <div class="lab-stage__nav" data-stage-nav>
+                <button class="lab-stage__tab is-active" type="button" data-stage="tokens">
+                  Tokens
+                  <span>Words, subwords &amp; vision patches</span>
+                </button>
+                <button class="lab-stage__tab" type="button" data-stage="vectors">
+                  Q · K · V
+                  <span>Embed tokens into attention space</span>
+                </button>
+                <button class="lab-stage__tab" type="button" data-stage="attention">
+                  Attention
+                  <span>See which tokens influence each other</span>
+                </button>
+                <button class="lab-stage__tab" type="button" data-stage="outputs">
+                  Outputs
+                  <span>Follow the path to the final prediction</span>
+                </button>
+              </div>
+              <div class="lab-stage__panels">
+                <section class="lab-panel is-active" data-stage-panel="tokens">
+                  <div class="lab-panel__grid">
+                    <div class="lab-panel__intro">
+                      <h3>Tokens are the transformer's vocabulary</h3>
+                      <p>We reuse the prompt below across every stage.</p>
+                      <p class="lab-panel__sample"><code>Transformers help models connect ideas.</code></p>
+                      <p class="lab-panel__note" data-token-mode-description>
+                        Word tokens keep whole words intact and map closely to how humans read the sentence.
+                      </p>
+                      <div class="token-mode-switch" data-token-mode-switch>
+                        <button class="is-active" type="button" data-token-mode="words">Word tokens</button>
+                        <button type="button" data-token-mode="subwords">Subword pieces</button>
+                        <button type="button" data-token-mode="vision">Vision patches</button>
+                      </div>
+                    </div>
+                    <div class="lab-panel__visual">
+                      <div class="token-stream" data-token-group="words">
+                        <button class="token" type="button" data-token="words-cls">[CLS]</button>
+                        <button class="token" type="button" data-token="words-transformers">Transformers</button>
+                        <button class="token" type="button" data-token="words-help">help</button>
+                        <button class="token" type="button" data-token="words-models">models</button>
+                        <button class="token" type="button" data-token="words-connect">connect</button>
+                        <button class="token" type="button" data-token="words-ideas">ideas</button>
+                        <button class="token" type="button" data-token="words-sep">[SEP]</button>
+                      </div>
+                      <div class="token-stream" data-token-group="subwords" hidden>
+                        <button class="token" type="button" data-token="subwords-cls">[CLS]</button>
+                        <button class="token" type="button" data-token="subwords-trans">trans</button>
+                        <button class="token" type="button" data-token="subwords-formers">##formers</button>
+                        <button class="token" type="button" data-token="subwords-help">help</button>
+                        <button class="token" type="button" data-token="subwords-model">model</button>
+                        <button class="token" type="button" data-token="subwords-s">##s</button>
+                        <button class="token" type="button" data-token="subwords-connect">connect</button>
+                        <button class="token" type="button" data-token="subwords-idea">idea</button>
+                        <button class="token" type="button" data-token="subwords-s2">##s</button>
+                        <button class="token" type="button" data-token="subwords-sep">[SEP]</button>
+                      </div>
+                      <div class="token-stream token-stream--vision" data-token-group="vision" hidden>
+                        <button class="token" type="button" data-token="vision-class">[CLS]</button>
+                        <button class="token" type="button" data-token="vision-patch1">Patch 1</button>
+                        <button class="token" type="button" data-token="vision-patch2">Patch 2</button>
+                        <button class="token" type="button" data-token="vision-patch3">Patch 3</button>
+                        <button class="token" type="button" data-token="vision-patch4">Patch 4</button>
+                        <button class="token" type="button" data-token="vision-patch5">Patch 5</button>
+                        <button class="token" type="button" data-token="vision-patch6">Patch 6</button>
+                        <button class="token" type="button" data-token="vision-sep">[SEP]</button>
+                      </div>
+                      <aside class="token-inspector" data-token-inspector>
+                        <h4 data-token-title>Choose a token to inspect</h4>
+                        <p data-token-summary>
+                          Toggle between token views and tap a token to see how transformers break down the input.
+                        </p>
+                        <dl class="token-inspector__facts" data-token-facts></dl>
+                      </aside>
+                    </div>
+                  </div>
+                </section>
+
+                <section class="lab-panel" data-stage-panel="vectors">
+                  <div class="lab-panel__grid">
+                    <div class="lab-panel__intro">
+                      <h3>Every token becomes three learned vectors</h3>
+                      <p class="lab-panel__note">
+                        Queries ask for context, keys advertise what a token offers, and values carry the content that gets
+                        blended by attention.
+                      </p>
+                      <div class="vector-picker" data-vector-picker role="group" aria-label="Vector views">
+                        <button class="vector-tab is-active" type="button" data-vector="query">Query</button>
+                        <button class="vector-tab" type="button" data-vector="key">Key</button>
+                        <button class="vector-tab" type="button" data-vector="value">Value</button>
+                      </div>
+                      <p class="vector-description" data-vector-description></p>
+                      <div class="vector-legend">
+                        <span><i></i>Positive influence</span>
+                        <span><i data-type="negative"></i>Negative pull</span>
+                      </div>
+                    </div>
+                    <div class="lab-panel__visual">
+                      <div class="vector-board-wrapper">
+                        <div class="vector-board" data-vector-board role="table" aria-label="Vector components"></div>
+                      </div>
+                    </div>
+                  </div>
+                </section>
+
+                <section class="lab-panel" data-stage-panel="attention">
+                  <div class="lab-panel__grid lab-panel__grid--balanced">
+                    <div class="lab-panel__intro">
+                      <h3>Self-attention decides who to listen to</h3>
+                      <p class="lab-panel__note">
+                        Switch heads to see how different learned patterns route information, then pick a query token to
+                        inspect its weights.
+                      </p>
+                      <div class="attention-heads" data-attention-heads>
+                        <button class="attention-head is-active" type="button" data-head="semantic">Head 1 · semantic</button>
+                        <button class="attention-head" type="button" data-head="position">Head 2 · ordering</button>
+                      </div>
+                      <div class="attention-queries" data-attention-queries>
+                        <span class="sr-only">Choose a query token</span>
+                        <div class="attention-queries__buttons">
+                          <button class="attention-query is-active" type="button" data-query="words-cls">[CLS]</button>
+                          <button class="attention-query" type="button" data-query="words-transformers">Transformers</button>
+                          <button class="attention-query" type="button" data-query="words-help">help</button>
+                          <button class="attention-query" type="button" data-query="words-models">models</button>
+                          <button class="attention-query" type="button" data-query="words-connect">connect</button>
+                          <button class="attention-query" type="button" data-query="words-ideas">ideas</button>
+                        </div>
+                      </div>
+                      <p class="attention-focus-note" data-attention-note></p>
+                    </div>
+                    <div class="lab-panel__visual">
+                      <div class="attention-board" data-attention-board aria-live="polite"></div>
+                    </div>
+                  </div>
+                </section>
+
+                <section class="lab-panel" data-stage-panel="outputs">
+                  <div class="pipeline-layout">
+                    <div class="pipeline-steps" data-pipeline-steps>
+                      <button class="pipeline-step is-active" type="button" data-step="mix">1 · Mix context</button>
+                      <button class="pipeline-step" type="button" data-step="ffn">2 · Feed-forward</button>
+                      <button class="pipeline-step" type="button" data-step="residual">3 · Residual + norm</button>
+                      <button class="pipeline-step" type="button" data-step="prediction">4 · Output head</button>
+                    </div>
+                    <div class="pipeline-detail">
+                      <h3 data-pipeline-title></h3>
+                      <p data-pipeline-description></p>
+                      <ul class="pipeline-highlights" data-pipeline-highlights></ul>
+                      <div class="pipeline-chips" data-pipeline-chips></div>
+                    </div>
+                  </div>
+                </section>
+              </div>
+            </div>
+          </article>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="container footer__layout">
+        <div>
+          <h2>Ready for more machine learning stories?</h2>
+          <p>
+            Head back to the main site to explore projects, journal entries, and the learning roadmap behind this transformer
+            lab.
+          </p>
+          <div class="footer__actions">
+            <a class="button button--primary" href="index.html#projects">View projects</a>
+            <a class="button button--ghost" href="index.html#contact">Get in touch</a>
+          </div>
+        </div>
+        <div class="footer__meta">
+          <p>Enjoyed the walkthrough? Share it with fellow ML explorers.</p>
+          <p>&copy; <span id="year"></span> Ka Ming Lui. Built with accessibility and performance in mind.</p>
+        </div>
+      </div>
+      <a class="back-to-top" href="#top">Back to top</a>
+    </footer>
+
+    <script type="module" src="assets/js/game.js"></script>
+  </body>
+</html>
