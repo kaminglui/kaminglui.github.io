@@ -45,7 +45,32 @@
                 <li><a href="index.html#contact">Contact</a></li>
               </ul>
             </li>
-            <li><a href="ml-game.html" aria-current="page">Transformer Lab</a></li>
+            <li class="nav-item nav-item--dropdown">
+              <button
+                class="nav-dropdown-toggle"
+                type="button"
+                aria-expanded="false"
+                aria-controls="transformer-menu"
+              >
+                Transformers
+                <svg class="nav-dropdown__icon" aria-hidden="true" focusable="false" viewBox="0 0 12 12">
+                  <path d="M2.47 4.47a.75.75 0 0 1 1.06 0L6 6.94l2.47-2.47a.75.75 0 0 1 1.06 1.06l-3 3a.75.75 0 0 1-1.06 0l-3-3a.75.75 0 0 1 0-1.06Z" />
+                </svg>
+              </button>
+              <ul class="nav-dropdown-menu" id="transformer-menu" hidden>
+                <li><a href="ml-game.html" aria-current="page">Transformer Lab</a></li>
+                <li>
+                  <span class="nav-dropdown__placeholder" role="text" aria-disabled="true"
+                    >Model cookbook (coming soon)</span
+                  >
+                </li>
+                <li>
+                  <span class="nav-dropdown__placeholder" role="text" aria-disabled="true"
+                    >Prompt gallery (coming soon)</span
+                  >
+                </li>
+              </ul>
+            </li>
           </ul>
           <div class="nav-actions">
             <button class="theme-toggle" type="button" aria-label="Toggle color theme">
