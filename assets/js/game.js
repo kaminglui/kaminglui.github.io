@@ -188,17 +188,18 @@ function setupBackToTop() {
 
 const TOKEN_MODES = {
   words: {
-    description: 'Word tokens keep whole words intact and make it easy to read the sentence like a human.',
+    description:
+      'Step 1 from the breakdown above keeps whole words intact so you can read the sentence like a human before diving deeper.',
     defaultToken: 'words-transformers'
   },
   subwords: {
     description:
-      'Subword pieces break rarer words into reusable fragments so the model never has to emit an unknown token.',
+      'Step 2 zooms in on reusable pieces—rarer words split into familiar chunks the model can recombine anywhere.',
     defaultToken: 'subwords-trans'
   },
   vision: {
     description:
-      'Vision transformers slice an image into equal patches and treat each patch like a token alongside the class token.',
+      'Step 3 mirrors the image figure below: vision transformers slice an image into equal patches and treat each as a token.',
     defaultToken: 'vision-patch1'
   }
 };
@@ -342,7 +343,7 @@ const TOKEN_DETAILS = {
   },
   'vision-class': {
     title: '[CLS] · vision summary token',
-    summary: 'Aggregates information from all image patches so classifiers have a single vector.',
+    summary: 'Aggregates information from all Step 3 patches in the figure so classifiers have a single vector.',
     facts: [
       { label: 'Role', value: 'Global image descriptor' },
       { label: 'Learns', value: 'To balance texture, color, and layout' }
@@ -350,7 +351,7 @@ const TOKEN_DETAILS = {
   },
   'vision-patch1': {
     title: 'Patch 1 · top-left',
-    summary: 'Represents the first 16×16 region of the image, capturing local edges and colors.',
+    summary: 'Represents the first 16×16 region from the Step 3 grid, capturing local edges and colors.',
     facts: [
       { label: 'Patch size', value: '16 × 16 pixels' },
       { label: 'Focus', value: 'Corner textures and background' }
@@ -358,7 +359,7 @@ const TOKEN_DETAILS = {
   },
   'vision-patch2': {
     title: 'Patch 2 · top-center',
-    summary: 'Next patch across the image, aligned horizontally with Patch 1.',
+    summary: 'Next patch across the Step 3 grid, aligned horizontally with Patch 1.',
     facts: [
       { label: 'Shares', value: 'Overlaps context with neighbors' },
       { label: 'Helps with', value: 'Capturing long horizontal structures' }
@@ -366,7 +367,7 @@ const TOKEN_DETAILS = {
   },
   'vision-patch3': {
     title: 'Patch 3 · top-right',
-    summary: 'Captures the upper-right corner details.',
+    summary: 'Captures the upper-right corner of the Step 3 grid.',
     facts: [
       { label: 'Complement', value: 'Balances the left patches' },
       { label: 'Attention', value: 'Links to distant patches for long-range cues' }
@@ -374,7 +375,7 @@ const TOKEN_DETAILS = {
   },
   'vision-patch4': {
     title: 'Patch 4 · bottom-left',
-    summary: 'Begins the second row of patches with new texture information.',
+    summary: 'Begins the second row of the Step 3 grid with new texture information.',
     facts: [
       { label: 'Spatial role', value: 'Connects top and bottom halves' },
       { label: 'Combines', value: 'Local features with global context' }
@@ -382,7 +383,7 @@ const TOKEN_DETAILS = {
   },
   'vision-patch5': {
     title: 'Patch 5 · bottom-center',
-    summary: 'Middle patch in the second row, bridging surrounding regions.',
+    summary: 'Middle patch in the second row of the Step 3 grid, bridging surrounding regions.',
     facts: [
       { label: 'Attention', value: 'Shares information with all neighbors' },
       { label: 'Helps with', value: 'Capturing shapes across rows' }
@@ -390,7 +391,7 @@ const TOKEN_DETAILS = {
   },
   'vision-patch6': {
     title: 'Patch 6 · bottom-right',
-    summary: 'Completes the grid and preserves boundary information.',
+    summary: 'Completes the Step 3 grid and preserves boundary information.',
     facts: [
       { label: 'Role', value: 'Edges and corners' },
       { label: 'Learns', value: 'How borders differ from the center' }
@@ -614,9 +615,9 @@ const ATTENTION_HEADS = {
 const PIPELINE_STEPS = [
   {
     id: 'mix',
-    title: 'Self-attention mixes contextual clues',
+    title: 'Step 1 · Mix context with self-attention',
     description:
-      'Each query weights the value vectors from every token and sums them into a context-rich representation.',
+      'Match the overview above: each query weights value vectors from every token and sums them into a context-rich representation.',
     highlights: [
       {
         title: 'Weighted values',
@@ -631,9 +632,9 @@ const PIPELINE_STEPS = [
   },
   {
     id: 'ffn',
-    title: 'Feed-forward layers reshape meaning',
+    title: 'Step 2 · Feed-forward layers reshape meaning',
     description:
-      'A tiny shared MLP refines every token independently, adding non-linear features after attention.',
+      'The shared MLP sharpens each token individually—exactly what Step 2 in the checklist promises.',
     highlights: [
       {
         title: 'Non-linearity',
@@ -648,9 +649,9 @@ const PIPELINE_STEPS = [
   },
   {
     id: 'residual',
-    title: 'Residual connections keep information flowing',
+    title: 'Step 3 · Residual connections keep information flowing',
     description:
-      'Skip connections and layer normalisation stabilise training and preserve the original signal.',
+      'Skip connections and layer normalisation deliver the stability called out in Step 3 of the overview.',
     highlights: [
       {
         title: 'Skip paths',
@@ -665,9 +666,9 @@ const PIPELINE_STEPS = [
   },
   {
     id: 'prediction',
-    title: 'Output heads turn features into predictions',
+    title: 'Step 4 · Output heads turn features into predictions',
     description:
-      'Depending on the task, the model reads the [CLS] token, the final token, or all tokens to produce answers.',
+      'Finish the loop from Step 4: the task head reads the refined tokens and turns them into answers.',
     highlights: [
       {
         title: 'CLS classifier',
@@ -684,41 +685,131 @@ const PIPELINE_STEPS = [
 
 function setupStageNavigation() {
   const nav = document.querySelector('[data-stage-nav]');
+  const panelsWrapper = document.querySelector('.lab-stage__panels');
   const panels = new Map();
   document.querySelectorAll('[data-stage-panel]').forEach((panel) => {
+    if (!panel.dataset.stagePanel) return;
     panels.set(panel.dataset.stagePanel, panel);
+    panel.classList.remove('is-active', 'is-visible', 'is-leaving');
+    panel.setAttribute('aria-hidden', 'true');
   });
   if (!nav || panels.size === 0) return;
 
   const buttons = Array.from(nav.querySelectorAll('[data-stage]'));
   if (buttons.length === 0) return;
 
-  const activateStage = (stageId) => {
+  let activeStageId = null;
+
+  const setButtonState = (stageId) => {
     buttons.forEach((button) => {
       const isActive = button.dataset.stage === stageId;
       button.classList.toggle('is-active', isActive);
-      const panel = panels.get(button.dataset.stage);
-      if (panel) {
-        panel.classList.toggle('is-active', isActive);
+    });
+  };
+
+  const finalizePanel = (panel) => {
+    if (!panel) return;
+    panel.classList.remove('is-active', 'is-leaving');
+    panel.setAttribute('aria-hidden', 'true');
+  };
+
+  const showPanel = (stageId, { immediate = false } = {}) => {
+    const nextPanel = panels.get(stageId);
+    if (!nextPanel) return;
+
+    const currentPanel = activeStageId ? panels.get(activeStageId) : null;
+    if (nextPanel === currentPanel && nextPanel.classList.contains('is-visible')) {
+      setButtonState(stageId);
+      return;
+    }
+
+    setButtonState(stageId);
+
+    const reduceMotion = immediate || prefersReducedMotion?.matches;
+
+    if (currentPanel && currentPanel !== nextPanel) {
+      currentPanel.classList.remove('is-visible');
+      currentPanel.classList.add('is-leaving');
+      currentPanel.setAttribute('aria-hidden', 'true');
+    }
+
+    nextPanel.classList.add('is-active');
+    nextPanel.classList.remove('is-leaving');
+    nextPanel.setAttribute('aria-hidden', 'false');
+
+    if (panelsWrapper) {
+      if (reduceMotion) {
+        panelsWrapper.classList.remove('is-animating');
+        panelsWrapper.style.height = '';
+      } else {
+        const fromHeight = currentPanel ? currentPanel.offsetHeight : nextPanel.offsetHeight;
+        const toHeight = nextPanel.offsetHeight;
+        panelsWrapper.style.height = `${fromHeight}px`;
+        panelsWrapper.classList.add('is-animating');
+
+        requestAnimationFrame(() => {
+          panelsWrapper.style.height = `${toHeight}px`;
+        });
+
+        if (Math.abs(fromHeight - toHeight) < 1) {
+          panelsWrapper.classList.remove('is-animating');
+          panelsWrapper.style.height = '';
+        } else {
+          const handleHeightTransitionEnd = (event) => {
+            if (event.target !== panelsWrapper || event.propertyName !== 'height') return;
+            panelsWrapper.removeEventListener('transitionend', handleHeightTransitionEnd);
+            panelsWrapper.classList.remove('is-animating');
+            panelsWrapper.style.height = '';
+          };
+          panelsWrapper.addEventListener('transitionend', handleHeightTransitionEnd);
+        }
       }
+    }
+
+    const enterPanel = () => {
+      nextPanel.classList.add('is-visible');
+    };
+
+    if (reduceMotion) {
+      enterPanel();
+      if (currentPanel && currentPanel !== nextPanel) {
+        finalizePanel(currentPanel);
+      }
+      activeStageId = stageId;
+      return;
+    }
+
+    requestAnimationFrame(() => {
+      requestAnimationFrame(enterPanel);
     });
 
-    if (!panels.has(stageId)) {
-      panels.forEach((panel, id) => {
-        panel.classList.toggle('is-active', id === stageId);
-      });
+    if (currentPanel && currentPanel !== nextPanel) {
+      const handleLeave = (event) => {
+        if (event.target !== currentPanel || event.propertyName !== 'opacity') return;
+        currentPanel.removeEventListener('transitionend', handleLeave);
+        finalizePanel(currentPanel);
+      };
+      currentPanel.addEventListener('transitionend', handleLeave);
     }
+
+    const handleEnter = (event) => {
+      if (event.target !== nextPanel || event.propertyName !== 'opacity') return;
+      nextPanel.removeEventListener('transitionend', handleEnter);
+    };
+    nextPanel.addEventListener('transitionend', handleEnter);
+
+    activeStageId = stageId;
   };
 
   buttons.forEach((button) => {
     button.addEventListener('click', () => {
-      activateStage(button.dataset.stage);
+      showPanel(button.dataset.stage);
     });
   });
 
   const initialStage =
     buttons.find((button) => button.classList.contains('is-active'))?.dataset.stage || buttons[0].dataset.stage;
-  activateStage(initialStage);
+  showPanel(initialStage, { immediate: true });
 }
 
 function setupTokenExplorer() {
@@ -742,7 +833,8 @@ function setupTokenExplorer() {
   const defaultInspector = {
     title: titleEl?.textContent || 'Choose a token to inspect',
     summary:
-      summaryEl?.textContent || 'Toggle between token views and tap a token to see how transformers break down the input.'
+      summaryEl?.textContent ||
+      'Toggle between the three steps above and tap a token to see how transformers break down the input.'
   };
 
   const renderFacts = (facts) => {

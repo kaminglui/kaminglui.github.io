@@ -110,6 +110,34 @@
                       <p class="lab-panel__note" data-token-mode-description>
                         Word tokens keep whole words intact and map closely to how humans read the sentence.
                       </p>
+                      <div class="lab-panel__walkthrough">
+                        <h4 class="lab-panel__walkthrough-title">Step-by-step breakdown</h4>
+                        <ol class="lab-steps">
+                          <li>
+                            <strong>Step 1 · Read the sentence</strong>
+                            — follow the intact words to see the story the model receives.
+                          </li>
+                          <li>
+                            <strong>Step 2 · Spot reusable pieces</strong>
+                            — switch to subwords to watch rarer terms split into familiar chunks.
+                          </li>
+                          <li>
+                            <strong>Step 3 · Map pixels to tokens</strong>
+                            — the vision view shows the same idea applied to an image grid.
+                          </li>
+                        </ol>
+                        <div class="lab-callout" role="note">
+                          <h5>Dissecting the sample sentence</h5>
+                          <ul class="lab-callout__list">
+                            <li><span class="lab-chip">Transformers</span> introduce the topic.</li>
+                            <li><span class="lab-chip">help models</span> tells us the action.</li>
+                            <li><span class="lab-chip">connect ideas</span> reveals the outcome.</li>
+                          </ul>
+                          <p>
+                            Tap any token to see how the inspector elaborates on these roles in plain language.
+                          </p>
+                        </div>
+                      </div>
                       <div class="token-mode-switch" data-token-mode-switch>
                         <button class="is-active" type="button" data-token-mode="words">Word tokens</button>
                         <button type="button" data-token-mode="subwords">Subword pieces</button>
@@ -155,6 +183,15 @@
                         </p>
                         <dl class="token-inspector__facts" data-token-facts></dl>
                       </aside>
+                      <figure class="lab-figure">
+                        <img
+                          src="assets/img/vision-token-grid.svg"
+                          width="480"
+                          height="320"
+                          alt="Diagram showing a six-patch grid that becomes six image tokens"
+                        />
+                        <figcaption>Image patches become tokens just like the words above—Step 3 brings text and vision together.</figcaption>
+                      </figure>
                     </div>
                   </div>
                 </section>
@@ -219,6 +256,20 @@
 
                 <section class="lab-panel" data-stage-panel="outputs">
                   <div class="pipeline-layout">
+                    <div class="pipeline-overview">
+                      <h3>How the model finishes the thought</h3>
+                      <p>
+                        The sentence above threads through four repeatable moves. Follow the numbered list, then use the
+                        inspector to dive deeper into each stage.
+                      </p>
+                      <ol class="lab-steps">
+                        <li><strong>Step 1 · Mix context</strong> — attention blends clues from every token.</li>
+                        <li><strong>Step 2 · Feed-forward</strong> — an MLP sharpens each token individually.</li>
+                        <li><strong>Step 3 · Residual &amp; norm</strong> — skip paths keep the story stable.</li>
+                        <li><strong>Step 4 · Output head</strong> — the task head turns features into predictions.</li>
+                      </ol>
+                      <p class="pipeline-overview__note">The active step below mirrors these headings for quick cross-reference.</p>
+                    </div>
                     <div class="pipeline-steps" data-pipeline-steps>
                       <button class="pipeline-step is-active" type="button" data-step="mix">1 · Mix context</button>
                       <button class="pipeline-step" type="button" data-step="ffn">2 · Feed-forward</button>
