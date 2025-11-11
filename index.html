@@ -33,13 +33,35 @@
             <span class="sr-only">Toggle navigation</span>
           </button>
           <ul class="nav-links" id="primary-navigation" data-visible="false">
-            <li><a href="#about">About</a></li>
-            <li><a href="#learning">Learning</a></li>
-            <li><a href="#posts">Posts</a></li>
-            <li><a href="#projects">Projects</a></li>
-            <li><a href="#experience">Experience</a></li>
-            <li><a href="#education">Education</a></li>
-            <li><a href="#contact">Contact</a></li>
+            <li class="nav-item nav-item--dropdown">
+              <button
+                class="nav-dropdown-toggle"
+                type="button"
+                aria-expanded="false"
+                aria-controls="section-menu"
+                aria-haspopup="true"
+              >
+                Sections
+                <svg
+                  class="nav-dropdown__icon"
+                  aria-hidden="true"
+                  focusable="false"
+                  viewBox="0 0 12 12"
+                >
+                  <path d="M2.47 4.47a.75.75 0 0 1 1.06 0L6 6.94l2.47-2.47a.75.75 0 0 1 1.06 1.06l-3 3a.75.75 0 0 1-1.06 0l-3-3a.75.75 0 0 1 0-1.06Z" />
+                </svg>
+              </button>
+              <ul class="nav-dropdown-menu" id="section-menu">
+                <li><a href="#about">About</a></li>
+                <li><a href="#learning">Learning</a></li>
+                <li><a href="#posts">Posts</a></li>
+                <li><a href="#projects">Projects</a></li>
+                <li><a href="#experience">Experience</a></li>
+                <li><a href="#education">Education</a></li>
+                <li><a href="#contact">Contact</a></li>
+              </ul>
+            </li>
+            <li><a href="ml-game.html">Transformer Lab</a></li>
           </ul>
           <div class="nav-actions">
             <button class="edit-toggle" type="button" aria-pressed="false" hidden>Edit mode</button>
