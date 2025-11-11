@@ -1012,17 +1012,42 @@ body.theme-dark .project-card {
 }
 
 .lab-stage__panels {
+  position: relative;
   display: grid;
   gap: 2rem;
+  transition: height 320ms ease;
+}
+
+.lab-stage__panels:not(.is-animating) {
+  transition-duration: 0ms;
 }
 
 .lab-panel {
-  display: none;
+  position: absolute;
+  inset: 0;
+  display: grid;
   gap: 1.75rem;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transform: translateY(28px);
+  transition: opacity 280ms ease, transform 280ms ease;
 }
 
 .lab-panel.is-active {
-  display: grid;
+  position: relative;
+  visibility: visible;
+}
+
+.lab-panel.is-visible {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0);
+}
+
+.lab-panel.is-leaving {
+  visibility: visible;
+  transform: translateY(-8px);
 }
 
 .lab-panel__grid {
@@ -1071,6 +1096,133 @@ body.theme-dark .lab-panel__sample code {
   margin: 0;
   color: var(--color-muted);
   font-size: 0.95rem;
+}
+
+.lab-panel__walkthrough {
+  display: grid;
+  gap: 1rem;
+  padding: 1.25rem;
+  border-radius: var(--radius-lg);
+  background: rgba(59, 130, 246, 0.08);
+  border: 1px solid rgba(59, 130, 246, 0.16);
+}
+
+body.theme-dark .lab-panel__walkthrough {
+  background: rgba(96, 165, 250, 0.14);
+  border-color: rgba(96, 165, 250, 0.24);
+}
+
+.lab-panel__walkthrough-title {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 600;
+}
+
+.lab-steps {
+  margin: 0;
+  padding-left: 1.35rem;
+  display: grid;
+  gap: 0.65rem;
+}
+
+.lab-steps li {
+  font-size: 0.95rem;
+  color: var(--color-text);
+}
+
+body.theme-dark .lab-steps li {
+  color: var(--color-muted);
+}
+
+.lab-steps strong {
+  color: var(--color-text);
+}
+
+body.theme-dark .lab-steps strong {
+  color: var(--color-text);
+}
+
+.lab-callout {
+  display: grid;
+  gap: 0.75rem;
+  padding: 1.1rem;
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-sm);
+}
+
+body.theme-dark .lab-callout {
+  box-shadow: none;
+  background: rgba(15, 23, 42, 0.78);
+}
+
+.lab-callout h5 {
+  margin: 0;
+  font-size: 0.95rem;
+  letter-spacing: 0.01em;
+  text-transform: uppercase;
+  color: var(--color-accent);
+}
+
+.lab-callout p {
+  margin: 0;
+  color: var(--color-muted);
+  font-size: 0.95rem;
+}
+
+.lab-callout__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.45rem;
+}
+
+.lab-callout__list li {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.95rem;
+  color: var(--color-muted);
+}
+
+.lab-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  background: var(--color-accent-muted);
+  color: var(--color-accent);
+  font-family: var(--font-mono);
+  letter-spacing: 0.02em;
+}
+
+.lab-figure {
+  display: grid;
+  gap: 0.75rem;
+  margin: 0;
+  padding: 1rem;
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-sm);
+}
+
+body.theme-dark .lab-figure {
+  box-shadow: none;
+  background: rgba(15, 23, 42, 0.82);
+}
+
+.lab-figure img {
+  border-radius: var(--radius-sm);
+}
+
+.lab-figure figcaption {
+  margin: 0;
+  color: var(--color-muted);
+  font-size: 0.9rem;
 }
 
 .token-mode-switch {
@@ -1456,6 +1608,34 @@ body.theme-dark .lab-panel__sample code {
   gap: 1.75rem;
   grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.2fr);
   align-items: start;
+}
+
+.pipeline-overview {
+  display: grid;
+  gap: 1rem;
+  margin-bottom: 1.75rem;
+}
+
+.pipeline-overview h3 {
+  margin: 0;
+  font-size: 1.2rem;
+}
+
+.pipeline-overview p {
+  margin: 0;
+  color: var(--color-muted);
+  font-size: 0.95rem;
+}
+
+.pipeline-overview__note {
+  padding: 0.75rem 1rem;
+  border-left: 4px solid var(--color-accent);
+  background: rgba(59, 130, 246, 0.08);
+  border-radius: 0 var(--radius-lg) var(--radius-lg) 0;
+}
+
+body.theme-dark .pipeline-overview__note {
+  background: rgba(96, 165, 250, 0.14);
 }
 
 .pipeline-steps {
@@ -1913,6 +2093,17 @@ body.theme-dark .lab-panel__sample code {
 
   .editor-dialog {
     width: 94vw;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lab-stage__panels {
+    transition-duration: 0ms !important;
+  }
+
+  .lab-panel {
+    transition: none;
+    transform: none !important;
   }
 }
 

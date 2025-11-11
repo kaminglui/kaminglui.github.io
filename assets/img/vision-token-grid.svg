@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="480" height="320" viewBox="0 0 480 320" role="img" aria-labelledby="title desc">
+  <title id="title">Six patch grid representing vision transformer tokens</title>
+  <desc id="desc">A two-row grid showing how an image is divided into equal square patches with varied colors.</desc>
+  <defs>
+    <linearGradient id="patchA" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#38bdf8" />
+      <stop offset="100%" stop-color="#0ea5e9" />
+    </linearGradient>
+    <linearGradient id="patchB" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#f97316" />
+      <stop offset="100%" stop-color="#ea580c" />
+    </linearGradient>
+    <linearGradient id="patchC" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#a855f7" />
+      <stop offset="100%" stop-color="#7c3aed" />
+    </linearGradient>
+    <linearGradient id="patchD" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#22c55e" />
+      <stop offset="100%" stop-color="#16a34a" />
+    </linearGradient>
+    <linearGradient id="patchE" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#facc15" />
+      <stop offset="100%" stop-color="#eab308" />
+    </linearGradient>
+    <linearGradient id="patchF" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#ef4444" />
+      <stop offset="100%" stop-color="#dc2626" />
+    </linearGradient>
+  </defs>
+  <rect x="0" y="0" width="480" height="320" rx="24" fill="#0f172a" />
+  <g stroke="#1e293b" stroke-width="6" stroke-linejoin="round">
+    <rect x="48" y="48" width="120" height="96" fill="url(#patchA)" />
+    <rect x="180" y="48" width="120" height="96" fill="url(#patchB)" />
+    <rect x="312" y="48" width="120" height="96" fill="url(#patchC)" />
+    <rect x="48" y="176" width="120" height="96" fill="url(#patchD)" />
+    <rect x="180" y="176" width="120" height="96" fill="url(#patchE)" />
+    <rect x="312" y="176" width="120" height="96" fill="url(#patchF)" />
+  </g>
+  <rect x="48" y="48" width="384" height="224" fill="none" stroke="#94a3b8" stroke-width="6" stroke-dasharray="16 16" rx="18" />
+  <text x="240" y="300" fill="#e2e8f0" font-family="'Inter', 'Segoe UI', sans-serif" font-size="22" text-anchor="middle">6 equal patches → 6 image tokens</text>
+</svg>
