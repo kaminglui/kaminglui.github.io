@@ -113,39 +113,19 @@
                 <section class="lab-panel is-active" data-stage-panel="tokens">
                   <div class="lab-panel__grid">
                     <div class="lab-panel__intro">
-                      <h3>Tokens are the transformer's vocabulary</h3>
-                      <p>We reuse the prompt below across every stage.</p>
+                      <h3 data-stage-heading>Choose a stage to explore</h3>
+                      <p class="lab-panel__summary" data-stage-summary>
+                        The copy below updates when you switch stages so every panel shares the same plain-language context.
+                      </p>
+                      <div class="sr-only" role="status" aria-live="polite" data-stage-announcer></div>
                       <p class="lab-panel__sample"><code>Transformers help models connect ideas.</code></p>
                       <p class="lab-panel__note" data-token-mode-description>
                         Word tokens keep whole words intact and map closely to how humans read the sentence.
                       </p>
-                      <div class="lab-panel__walkthrough">
-                        <h4 class="lab-panel__walkthrough-title">Step-by-step breakdown</h4>
-                        <ol class="lab-steps">
-                          <li>
-                            <strong>Step 1 · Read the sentence</strong>
-                            — follow the intact words to see the story the model receives.
-                          </li>
-                          <li>
-                            <strong>Step 2 · Spot reusable pieces</strong>
-                            — switch to subwords to watch rarer terms split into familiar chunks.
-                          </li>
-                          <li>
-                            <strong>Step 3 · Map pixels to tokens</strong>
-                            — the vision view shows the same idea applied to an image grid.
-                          </li>
-                        </ol>
-                        <div class="lab-callout" role="note">
-                          <h5>Dissecting the sample sentence</h5>
-                          <ul class="lab-callout__list">
-                            <li><span class="lab-chip">Transformers</span> introduce the topic.</li>
-                            <li><span class="lab-chip">help models</span> tells us the action.</li>
-                            <li><span class="lab-chip">connect ideas</span> reveals the outcome.</li>
-                          </ul>
-                          <p>
-                            Tap any token to see how the inspector elaborates on these roles in plain language.
-                          </p>
-                        </div>
+                      <div class="lab-panel__walkthrough" data-stage-walkthrough hidden>
+                        <h4 class="lab-panel__walkthrough-title" data-stage-example-title>Stage example</h4>
+                        <p data-stage-example-text></p>
+                        <ul class="lab-panel__bullet-list" data-stage-bullets></ul>
                       </div>
                       <div class="token-mode-switch" data-token-mode-switch>
                         <button class="is-active" type="button" data-token-mode="words">Word tokens</button>

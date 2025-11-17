@@ -1022,6 +1022,11 @@ body.theme-dark .project-card {
   color: var(--color-muted);
 }
 
+.lab-panel__summary {
+  margin: 0;
+  color: var(--color-muted);
+}
+
 .lab-panel__sample code {
   display: inline-block;
   padding: 0.35rem 0.55rem;
@@ -1052,6 +1057,10 @@ body.theme-dark .lab-panel__sample code {
   border: 1px solid rgba(59, 130, 246, 0.16);
 }
 
+.lab-panel__walkthrough[hidden] {
+  display: none;
+}
+
 body.theme-dark .lab-panel__walkthrough {
   background: rgba(96, 165, 250, 0.14);
   border-color: rgba(96, 165, 250, 0.24);
@@ -1061,6 +1070,23 @@ body.theme-dark .lab-panel__walkthrough {
   margin: 0;
   font-size: 1.05rem;
   font-weight: 600;
+}
+
+.lab-panel__bullet-list {
+  margin: 0;
+  padding-left: 1.2rem;
+  display: grid;
+  gap: 0.4rem;
+  color: var(--color-muted);
+  font-size: 0.95rem;
+}
+
+.lab-panel__bullet-list li {
+  margin: 0;
+}
+
+.lab-panel__bullet-list[hidden] {
+  display: none;
 }
 
 .lab-steps {
