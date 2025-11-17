@@ -66,6 +66,10 @@
               Step through tokenization, self-attention, and prediction heads to see how transformers turn words and image
               patches into understanding.
             </p>
+            <p class="lab-panel__note">
+              Session progress syncs through a tiny Express + Redis API mounted at <code>/api</code>. Update the config block
+              before <code>game.js</code> if your backend lives on another origin.
+            </p>
           </div>
         </div>
       </section>
@@ -312,6 +316,14 @@
       <a class="back-to-top" href="#top">Back to top</a>
     </footer>
 
+    <script>
+      window.TRANSFORMER_LAB_CONFIG = {
+        apiBaseUrl: '/api',
+        sessionKey: 'transformerLabSession',
+        localStateKey: 'transformerLabState',
+        ...(window.TRANSFORMER_LAB_CONFIG || {})
+      };
+    </script>
     <script type="module" src="assets/js/game.js"></script>
   </body>
 </html>

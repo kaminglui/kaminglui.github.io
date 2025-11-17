@@ -17,6 +17,17 @@ python -m http.server 8000
 
 Then visit [http://localhost:8000](http://localhost:8000) in your browser. Stop the server with <kbd>Ctrl</kbd> + <kbd>C</kbd> when you're done.
 
+### Lab state API
+
+The Transformer Lab remembers each visitor's theme, stage, and token selections through a lightweight Express + Redis service that lives alongside the static files.
+
+1. Install the backend dependencies: `npm install`.
+2. Provide a Redis connection via `REDIS_URL` (e.g., add `REDIS_URL=redis://localhost:6379` to a `.env` file).
+3. (Optional) Point `FRONTEND_ORIGIN` to your static server if it's not `http://localhost:8000`.
+4. Start the API with `npm run dev:server` and keep it running while you work on `ml-game.html`.
+
+The server exposes `GET /api/lab-state/:sessionId` and `POST /api/lab-state/:sessionId` routes that the front-end calls to hydrate and persist the lab state. Requests fall back to browser storage automatically if Redis is unreachable so the front-end still works offline.
+
 ### HTML validation
 
 The markup can be linted with [HTMLHint](https://htmlhint.com/):
