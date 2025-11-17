@@ -20,6 +20,9 @@
   --radius-sm: 12px;
   --radius-lg: 20px;
   --nav-height: 72px;
+  --nav-pill-text: var(--color-muted);
+  --nav-pill-hover-bg: var(--color-accent-muted);
+  --nav-pill-hover-color: var(--color-accent);
   color-scheme: light;
 }
 
@@ -121,127 +124,46 @@ img {
   align-items: center;
 }
 
-.nav-links > li > a {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-  font-size: 0.95rem;
-  font-weight: 500;
-  color: var(--color-muted);
-  padding: 0.45rem 0.85rem;
-  border-radius: 999px;
-  line-height: 1.1;
-  transition: color 150ms ease, background 150ms ease, box-shadow 150ms ease;
-}
-
-.nav-links > li > a:hover,
-.nav-links > li > a:focus-visible {
-  color: var(--color-accent);
-  text-decoration: none;
-  background: var(--color-accent-muted);
-  box-shadow: inset 0 0 0 1px rgba(59, 130, 246, 0.35);
-}
-
-.nav-dropdown-toggle {
+.nav-pill {
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
   font-size: 0.95rem;
   font-weight: 500;
   font-family: inherit;
-  color: var(--color-muted);
+  color: var(--nav-pill-text);
   background: transparent;
-  border: none;
-  cursor: pointer;
-  padding: 0.45rem 0.85rem;
+  border: 1px solid transparent;
   border-radius: 999px;
+  padding: 0.55rem 1rem;
   line-height: 1.1;
-  transition: color 150ms ease, background 150ms ease, box-shadow 150ms ease;
+  min-height: 44px;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  transition: color 150ms ease, background 150ms ease, border-color 150ms ease, box-shadow 150ms ease;
+  outline: none;
 }
 
-.nav-dropdown-toggle:hover,
-.nav-dropdown-toggle:focus-visible {
-  color: var(--color-accent);
-  background: var(--color-accent-muted);
-  box-shadow: inset 0 0 0 1px rgba(59, 130, 246, 0.35);
-}
-
-.nav-item--dropdown[data-open='true'] .nav-dropdown-toggle {
-  color: var(--color-accent);
-  background: var(--color-accent-muted);
-  box-shadow: inset 0 0 0 1px rgba(59, 130, 246, 0.35);
-}
-
-.nav-links > li > a[aria-current='page'] {
-  color: var(--color-accent);
-  background: var(--color-accent-muted);
-  box-shadow: inset 0 0 0 1px rgba(59, 130, 246, 0.35);
-}
-
-.nav-dropdown__icon {
-  width: 0.75rem;
-  height: 0.75rem;
-  fill: currentColor;
-  transition: transform 150ms ease;
-}
-
-.nav-item--dropdown[data-open='true'] .nav-dropdown__icon {
-  transform: rotate(180deg);
-}
-
-.nav-dropdown-menu {
-  position: absolute;
-  top: calc(100% + 0.65rem);
-  left: 0;
-  min-width: 200px;
-  display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
-  margin: 0;
-  padding: 0.75rem;
-  list-style: none;
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  box-shadow: var(--shadow-lg);
-  z-index: 1000;
-  opacity: 0;
-  pointer-events: none;
-  transform: translateY(0.35rem);
-}
-
-.nav-dropdown-menu a {
-  display: block;
-  padding: 0.35rem 0.25rem;
-  border-radius: 0.5rem;
-  color: var(--color-muted);
-}
-
-.nav-dropdown-menu a:hover,
-.nav-dropdown-menu a:focus-visible {
-  background: var(--color-accent-muted);
-  color: var(--color-accent);
+.nav-pill:hover,
+.nav-pill:focus-visible {
+  color: var(--nav-pill-hover-color);
+  background: var(--nav-pill-hover-bg);
+  border-color: var(--nav-pill-hover-bg);
   text-decoration: none;
 }
 
-.nav-dropdown-toggle {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-  font-size: 0.95rem;
-  font-weight: 500;
-  font-family: inherit;
-  color: var(--color-muted);
-  background: transparent;
-  border: none;
-  cursor: pointer;
-  padding: 0;
-  transition: color 150ms ease;
+.nav-pill:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
 }
 
-.nav-dropdown-toggle:hover,
-.nav-dropdown-toggle:focus-visible {
+.nav-pill[aria-current='page'],
+.nav-pill[aria-expanded='true'] {
   color: var(--color-accent);
+  background: var(--color-accent-muted);
+  border-color: var(--color-accent);
+  box-shadow: inset 0 0 0 1px var(--color-accent);
 }
 
 .nav-dropdown__icon {
@@ -816,11 +738,11 @@ body.theme-dark .project-card {
     gap: 0.5rem;
   }
 
-  .nav-links > li > a {
+  .nav-links > li > .nav-pill {
     width: 100%;
   }
 
-  .nav-dropdown-toggle {
+  .nav-dropdown-toggle.nav-pill {
     width: 100%;
     justify-content: space-between;
   }

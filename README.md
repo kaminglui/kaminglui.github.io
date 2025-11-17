@@ -71,5 +71,7 @@ These commands are quick syntax validations and do not execute the scripts.
 ### Styling and behavior
 
 - Component tokens, layout spacing, and editor styles all live in `assets/css/style.css`.
+- Additions to the primary navigation should wrap their interactive element with the shared `nav-pill` class so hover, focus,
+  and active states remain consistent across themes.
 - `assets/js/content.js` holds the default data structure for all editable sections. Update the defaults there if you want different starter content shipped with the site.
 - `assets/js/main.js` wires together navigation, theming, edit-mode dialogs, LinkedIn synchronization, and persistence.
