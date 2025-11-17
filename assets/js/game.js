@@ -261,20 +261,73 @@ function setupBackToTop() {
   });
 }
 
+// Update stage copy by editing STAGE_EXPLANATIONS; the markup reads directly from these entries.
+const STAGE_EXPLANATIONS = {
+  tokens: {
+    heading: 'Tokens are the model\'s reading units',
+    summary:
+      'The transformer breaks text or images into steady chunks so later layers can mix and compare them.',
+    exampleTitle: 'Tiny example',
+    example:
+      'In “Transformers help models connect ideas.” the word view keeps every word intact while subword mode splits “Transformers” into reusable pieces.',
+    bullets: [
+      'Word view mirrors how you read the sentence.',
+      'Subword view splits rare terms so the model can share pieces across prompts.',
+      'Vision mode tiles an image into equal patches plus a [CLS] summary token.'
+    ]
+  },
+  vectors: {
+    heading: 'Queries, keys, and values describe each token three ways',
+    summary:
+      'Every token projects into three vectors: one asks for context, one advertises what it offers, and one carries the content that gets mixed.',
+    exampleTitle: 'Tiny example',
+    example:
+      'The word “help” sends a query looking for subjects like “Transformers” while its key tells neighbors it is a verb worth responding to.',
+    bullets: [
+      'Queries point to the clues a token wants.',
+      'Keys answer with what the token can provide.',
+      'Values deliver the information that attention blends.'
+    ]
+  },
+  attention: {
+    heading: 'Attention scores act like highlight markers',
+    summary:
+      'Higher scores mean the model focuses harder on that word or patch, letting important clues glow brighter.',
+    exampleTitle: 'Tiny example',
+    example: 'When “help” is the query it highlights both “Transformers” and “models” to understand who is helping whom.',
+    bullets: [
+      'Different heads learn different highlight patterns.',
+      'Switch the active query to see which neighbors it leans on.',
+      'Weights sum to 1, so boosting one token lowers the rest.'
+    ]
+  },
+  outputs: {
+    heading: 'Prediction heads finish the thought',
+    summary:
+      'After attention and feed-forward mixing, light output layers map the refined tokens to tasks like classification or next-word prediction.',
+    exampleTitle: 'Pipeline snapshot',
+    example:
+      'The [CLS] token passes through a linear head that predicts the sample sentence is about helping models connect ideas.',
+    bullets: [
+      'Context mixing blends clues from every token.',
+      'Feed-forward layers sharpen each token on its own.',
+      'Residual paths and norms keep the signal steady until the output head fires.'
+    ]
+  }
+};
+
 const TOKEN_MODES = {
   words: {
     description:
-      'Step 1 from the breakdown above keeps whole words intact so you can read the sentence like a human before diving deeper.',
+      'Word tokens keep each word intact so you can follow the story like a human before diving deeper.',
     defaultToken: 'words-transformers'
   },
   subwords: {
-    description:
-      'Step 2 zooms in on reusable pieces—rarer words split into familiar chunks the model can recombine anywhere.',
+    description: 'Subword pieces split rarer terms into reusable chunks the model already understands.',
     defaultToken: 'subwords-trans'
   },
   vision: {
-    description:
-      'Step 3 mirrors the image figure below: vision transformers slice an image into equal patches and treat each as a token.',
+    description: 'Vision mode slices the sample image into even patches and treats each as a token.',
     defaultToken: 'vision-patch1'
   }
 };
@@ -761,6 +814,13 @@ const PIPELINE_STEPS = [
 function setupStageNavigation() {
   const nav = document.querySelector('[data-stage-nav]');
   const panelsWrapper = document.querySelector('.lab-stage__panels');
+  const stageHeading = document.querySelector('[data-stage-heading]');
+  const stageSummary = document.querySelector('[data-stage-summary]');
+  const stageExampleTitle = document.querySelector('[data-stage-example-title]');
+  const stageExampleText = document.querySelector('[data-stage-example-text]');
+  const stageBullets = document.querySelector('[data-stage-bullets]');
+  const stageWalkthrough = document.querySelector('[data-stage-walkthrough]');
+  const stageAnnouncer = document.querySelector('[data-stage-announcer]');
   const panels = new Map();
   document.querySelectorAll('[data-stage-panel]').forEach((panel) => {
     if (!panel.dataset.stagePanel) return;
@@ -774,6 +834,67 @@ function setupStageNavigation() {
   if (buttons.length === 0) return;
 
   let activeStageId = null;
+
+  const updateStageCopy = (stageId) => {
+    if (!stageHeading || !stageSummary) return;
+    const info = STAGE_EXPLANATIONS[stageId];
+    const defaultHeading = 'Choose a stage to explore';
+    const defaultSummary = 'Pick a tab above to load the walkthrough.';
+
+    if (!info) {
+      stageHeading.textContent = defaultHeading;
+      stageSummary.textContent = defaultSummary;
+      if (stageExampleTitle) stageExampleTitle.hidden = true;
+      if (stageExampleText) stageExampleText.hidden = true;
+      if (stageBullets) {
+        stageBullets.hidden = true;
+        stageBullets.innerHTML = '';
+      }
+      if (stageWalkthrough) stageWalkthrough.hidden = true;
+      if (stageAnnouncer) stageAnnouncer.textContent = defaultSummary;
+      return;
+    }
+
+    const hasExampleText = Boolean(info.example);
+    const hasBullets = Array.isArray(info.bullets) && info.bullets.length > 0;
+    const hasTitle = Boolean(info.exampleTitle);
+
+    stageHeading.textContent = info.heading;
+    stageSummary.textContent = info.summary;
+
+    if (stageExampleTitle) {
+      stageExampleTitle.textContent = info.exampleTitle || 'Stage details';
+      stageExampleTitle.hidden = !(hasTitle || hasExampleText || hasBullets);
+    }
+
+    if (stageExampleText) {
+      stageExampleText.textContent = info.example || '';
+      stageExampleText.hidden = !hasExampleText;
+    }
+
+    if (stageBullets) {
+      stageBullets.innerHTML = '';
+      if (hasBullets) {
+        info.bullets.forEach((bullet) => {
+          const li = document.createElement('li');
+          li.textContent = bullet;
+          stageBullets.appendChild(li);
+        });
+        stageBullets.hidden = false;
+      } else {
+        stageBullets.hidden = true;
+      }
+    }
+
+    if (stageWalkthrough) {
+      stageWalkthrough.hidden = !(hasTitle || hasExampleText || hasBullets);
+    }
+
+    if (stageAnnouncer) {
+      const announcement = [info.heading, info.summary, info.example].filter(Boolean).join(' ');
+      stageAnnouncer.textContent = announcement || info.heading;
+    }
+  };
 
   const setButtonState = (stageId) => {
     buttons.forEach((button) => {
@@ -791,6 +912,8 @@ function setupStageNavigation() {
   const showPanel = (stageId, { immediate = false } = {}) => {
     const nextPanel = panels.get(stageId);
     if (!nextPanel) return;
+
+    updateStageCopy(stageId);
 
     const currentPanel = activeStageId ? panels.get(activeStageId) : null;
     if (nextPanel === currentPanel && nextPanel.classList.contains('is-visible')) {

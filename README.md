@@ -73,3 +73,4 @@ These commands are quick syntax validations and do not execute the scripts.
 - Component tokens, layout spacing, and editor styles all live in `assets/css/style.css`.
 - `assets/js/content.js` holds the default data structure for all editable sections. Update the defaults there if you want different starter content shipped with the site.
 - `assets/js/main.js` wires together navigation, theming, edit-mode dialogs, LinkedIn synchronization, and persistence.
+- `assets/js/game.js` drives the interactive transformer lab—add or tweak a stage by editing the `STAGE_EXPLANATIONS` object so the shared placeholders in `ml-game.html` pick up the new copy automatically.
