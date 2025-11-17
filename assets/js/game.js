@@ -10,6 +10,187 @@ const prefersReducedMotion =
     ? window.matchMedia('(prefers-reduced-motion: reduce)')
     : null;
 
+const LAB_CONFIG = window.TRANSFORMER_LAB_CONFIG || {};
+const LAB_STATE_DEFAULTS = {
+  theme: 'light',
+  tokenMode: 'words',
+  selectedToken: null,
+  stage: 'tokens'
+};
+const LAB_SESSION_STORAGE_KEY = LAB_CONFIG.sessionKey || 'transformerLabSession';
+const LAB_LOCAL_STATE_KEY = LAB_CONFIG.localStateKey || 'transformerLabState';
+const LAB_API_BASE_URL = ((LAB_CONFIG.apiBaseUrl || '/api').replace(/\/$/, '')) || '/api';
+const LAB_STATE_DEBOUNCE_MS = Number(LAB_CONFIG.stateDebounceMs || 800);
+const LAB_STATE_TIMEOUT_MS = Number(LAB_CONFIG.stateTimeoutMs || 5000);
+
+const labStateStore = createLabStateStore();
+
+function ensureSessionId(storageKey) {
+  if (typeof window === 'undefined' || !window.localStorage) {
+    return `session-${Date.now()}`;
+  }
+  const existing = window.localStorage.getItem(storageKey);
+  if (existing) return existing;
+  const uuid =
+    typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+      ? crypto.randomUUID()
+      : `session-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  try {
+    window.localStorage.setItem(storageKey, uuid);
+  } catch (error) {
+    console.warn('Unable to persist lab session id to localStorage.', error);
+  }
+  return uuid;
+}
+
+function createLabStateStore() {
+  if (typeof window === 'undefined') {
+    return {
+      getState: () => ({ ...LAB_STATE_DEFAULTS }),
+      update: () => {},
+      subscribe: () => () => {},
+      ready: Promise.resolve({ ...LAB_STATE_DEFAULTS }),
+      sessionId: 'ssr',
+      hasPersistedState: () => false
+    };
+  }
+
+  const sessionId = ensureSessionId(LAB_SESSION_STORAGE_KEY);
+  const localKey = `${LAB_LOCAL_STATE_KEY}:${sessionId}`;
+  let state = { ...LAB_STATE_DEFAULTS };
+  let debounceTimer = null;
+  let readyResolve;
+  const listeners = new Set();
+  let hasRemoteState = false;
+
+  const ready = new Promise((resolve) => {
+    readyResolve = resolve;
+  });
+
+  const notify = () => {
+    const snapshot = { ...state };
+    listeners.forEach((listener) => {
+      try {
+        listener(snapshot);
+      } catch (error) {
+        console.warn('Lab state listener failed', error);
+      }
+    });
+  };
+
+  const readLocalState = () => {
+    try {
+      const payload = window.localStorage.getItem(localKey);
+      return payload ? JSON.parse(payload) : null;
+    } catch (error) {
+      console.warn('Unable to parse lab state from localStorage.', error);
+      return null;
+    }
+  };
+
+  const persistLocalState = () => {
+    try {
+      window.localStorage.setItem(localKey, JSON.stringify(state));
+    } catch (error) {
+      console.warn('Unable to persist lab state locally.', error);
+    }
+  };
+
+  const localState = readLocalState();
+  if (localState) {
+    state = { ...state, ...localState };
+  }
+
+  const hydrateRemoteState = async () => {
+    let timeoutId;
+    try {
+      const controller = new AbortController();
+      timeoutId = window.setTimeout(() => controller.abort(), LAB_STATE_TIMEOUT_MS);
+      const response = await fetch(`${LAB_API_BASE_URL}/lab-state/${sessionId}`, {
+        signal: controller.signal
+      });
+      if (!response.ok) {
+        return;
+      }
+      const data = await response.json();
+      if (typeof data.persisted !== 'undefined') {
+        hasRemoteState = Boolean(data.persisted);
+        delete data.persisted;
+      }
+      state = { ...state, ...data };
+      persistLocalState();
+      notify();
+    } catch (error) {
+      console.warn('Unable to fetch lab state from API, using local fallback.', error);
+    } finally {
+      if (timeoutId) {
+        window.clearTimeout(timeoutId);
+      }
+      readyResolve({ ...state });
+    }
+  };
+
+  hydrateRemoteState();
+
+  const sendRemoteState = async () => {
+    let timeoutId;
+    try {
+      const controller = new AbortController();
+      timeoutId = window.setTimeout(() => controller.abort(), LAB_STATE_TIMEOUT_MS);
+      const response = await fetch(`${LAB_API_BASE_URL}/lab-state/${sessionId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(state),
+        signal: controller.signal
+      });
+      if (response.ok) {
+        hasRemoteState = true;
+      }
+    } catch (error) {
+      console.warn('Unable to persist lab state to API. Falling back to local storage.', error);
+    } finally {
+      if (timeoutId) {
+        window.clearTimeout(timeoutId);
+      }
+    }
+  };
+
+  const scheduleRemoteSave = () => {
+    if (debounceTimer) {
+      window.clearTimeout(debounceTimer);
+    }
+    debounceTimer = window.setTimeout(() => {
+      debounceTimer = null;
+      sendRemoteState();
+    }, LAB_STATE_DEBOUNCE_MS);
+  };
+
+  const update = (partial = {}, { skipRemote = false } = {}) => {
+    const hasChanges = Object.keys(partial).some((key) => state[key] !== partial[key]);
+    state = { ...state, ...partial };
+    persistLocalState();
+    notify();
+    if (!skipRemote && hasChanges) {
+      scheduleRemoteSave();
+    }
+  };
+
+  const subscribe = (listener) => {
+    if (typeof listener !== 'function') return () => {};
+    listeners.add(listener);
+    return () => listeners.delete(listener);
+  };
+
+  return {
+    getState: () => ({ ...state }),
+    update,
+    subscribe,
+    ready,
+    sessionId,
+    hasPersistedState: () => hasRemoteState
+  };
+}
+
 function setTheme(isDark) {
   body.classList.toggle('theme-dark', isDark);
   body.classList.toggle('theme-light', !isDark);
@@ -18,27 +199,47 @@ function setTheme(isDark) {
   }
 }
 
-function setupTheme() {
+function setupTheme(stateStore) {
   if (!themeToggle) return;
 
   const prefersDarkScheme = window.matchMedia('(prefers-color-scheme: dark)');
-  const storedTheme = window.localStorage.getItem('theme');
 
-  if (storedTheme === 'dark' || (!storedTheme && prefersDarkScheme.matches)) {
-    setTheme(true);
-  } else {
-    setTheme(false);
-  }
+  const applyTheme = (theme, { persist = true } = {}) => {
+    const isDark = theme === 'dark';
+    setTheme(isDark);
+    if (persist) {
+      try {
+        window.localStorage.setItem('theme', theme);
+      } catch (error) {
+        console.warn('Unable to persist theme locally.', error);
+      }
+      stateStore?.update({ theme });
+    }
+  };
+
+  const getInitialTheme = () => {
+    const stateTheme = stateStore?.getState().theme;
+    const hasRemotePreference = stateStore?.hasPersistedState?.();
+    if (hasRemotePreference && stateTheme) {
+      return stateTheme;
+    }
+    const storedTheme = window.localStorage.getItem('theme');
+    if (storedTheme) {
+      return storedTheme;
+    }
+    return prefersDarkScheme.matches ? 'dark' : 'light';
+  };
+
+  applyTheme(getInitialTheme(), { persist: false });
 
   prefersDarkScheme.addEventListener('change', (event) => {
     if (window.localStorage.getItem('theme')) return;
-    setTheme(event.matches);
+    applyTheme(event.matches ? 'dark' : 'light', { persist: false });
   });
 
   themeToggle.addEventListener('click', () => {
     const isDark = !body.classList.contains('theme-dark');
-    setTheme(isDark);
-    window.localStorage.setItem('theme', isDark ? 'dark' : 'light');
+    applyTheme(isDark ? 'dark' : 'light');
   });
 }
 
@@ -758,7 +959,7 @@ const PIPELINE_STEPS = [
   }
 ];
 
-function setupStageNavigation() {
+function setupStageNavigation(stateStore) {
   const nav = document.querySelector('[data-stage-nav]');
   const panelsWrapper = document.querySelector('.lab-stage__panels');
   const panels = new Map();
@@ -788,7 +989,7 @@ function setupStageNavigation() {
     panel.setAttribute('aria-hidden', 'true');
   };
 
-  const showPanel = (stageId, { immediate = false } = {}) => {
+  const showPanel = (stageId, { immediate = false, persist = true } = {}) => {
     const nextPanel = panels.get(stageId);
     if (!nextPanel) return;
 
@@ -874,6 +1075,9 @@ function setupStageNavigation() {
     nextPanel.addEventListener('transitionend', handleEnter);
 
     activeStageId = stageId;
+    if (persist && stateStore) {
+      stateStore.update({ stage: stageId });
+    }
   };
 
   buttons.forEach((button) => {
@@ -882,12 +1086,14 @@ function setupStageNavigation() {
     });
   });
 
-  const initialStage =
+  const storedStage = stateStore?.getState().stage;
+  const defaultStage =
     buttons.find((button) => button.classList.contains('is-active'))?.dataset.stage || buttons[0].dataset.stage;
-  showPanel(initialStage, { immediate: true });
+  const initialStage = storedStage && panels.has(storedStage) ? storedStage : defaultStage;
+  showPanel(initialStage, { immediate: true, persist: false });
 }
 
-function setupTokenExplorer() {
+function setupTokenExplorer(stateStore) {
   const modeSwitch = document.querySelector('[data-token-mode-switch]');
   const modeButtons = modeSwitch ? Array.from(modeSwitch.querySelectorAll('[data-token-mode]')) : [];
   const tokenGroups = Array.from(document.querySelectorAll('[data-token-group]'));
@@ -934,7 +1140,7 @@ function setupTokenExplorer() {
     }
   };
 
-  const setInspector = (tokenId) => {
+  const setInspector = (tokenId, { persist = true } = {}) => {
     tokenButtons.forEach((button) => {
       button.classList.toggle('is-active', button.dataset.token === tokenId);
     });
@@ -954,9 +1160,13 @@ function setupTokenExplorer() {
       summaryEl.textContent = info.summary || defaultInspector.summary;
     }
     renderFacts(info.facts);
+
+    if (persist && tokenId && stateStore) {
+      stateStore.update({ selectedToken: tokenId });
+    }
   };
 
-  const setMode = (mode) => {
+  const setMode = (mode, { persist = true } = {}) => {
     modeButtons.forEach((button) => {
       button.classList.toggle('is-active', button.dataset.tokenMode === mode);
     });
@@ -971,15 +1181,21 @@ function setupTokenExplorer() {
       modeDescription.textContent = TOKEN_MODES[mode]?.description || modeDescription.textContent;
     }
 
+    const storedToken = stateStore?.getState().selectedToken;
     const fallbackToken =
+      (storedToken && storedToken.startsWith(`${mode}-`) && storedToken) ||
       TOKEN_MODES[mode]?.defaultToken ||
       tokenButtons.find((button) => button.dataset.token?.startsWith(`${mode}-`))?.dataset.token ||
       tokenButtons[0]?.dataset.token;
 
     if (fallbackToken) {
-      setInspector(fallbackToken);
+      setInspector(fallbackToken, { persist: false });
     } else {
       renderFacts([]);
+    }
+
+    if (persist && stateStore) {
+      stateStore.update({ tokenMode: mode });
     }
   };
 
@@ -995,11 +1211,14 @@ function setupTokenExplorer() {
     });
   });
 
-  const initialMode =
+  const storedMode = stateStore?.getState().tokenMode;
+  const defaultMode =
     modeButtons.find((button) => button.classList.contains('is-active'))?.dataset.tokenMode ||
     modeButtons[0]?.dataset.tokenMode;
+  const initialMode =
+    storedMode && TOKEN_MODES[storedMode] ? storedMode : defaultMode;
   if (initialMode) {
-    setMode(initialMode);
+    setMode(initialMode, { persist: false });
   }
 }
 
@@ -1199,20 +1418,21 @@ function setupPipeline() {
   setStep(initialStep);
 }
 
-function initTransformerLab() {
-  setupStageNavigation();
-  setupTokenExplorer();
+function initTransformerLab(stateStore) {
+  setupStageNavigation(stateStore);
+  setupTokenExplorer(stateStore);
   setupVectors();
   setupAttention();
   setupPipeline();
 }
 
-document.addEventListener('DOMContentLoaded', () => {
-  setupTheme();
+document.addEventListener('DOMContentLoaded', async () => {
   setupNav();
   setupBackToTop();
-  initTransformerLab();
   if (yearElement) {
     yearElement.textContent = String(new Date().getFullYear());
   }
+  await labStateStore.ready;
+  setupTheme(labStateStore);
+  initTransformerLab(labStateStore);
 });
