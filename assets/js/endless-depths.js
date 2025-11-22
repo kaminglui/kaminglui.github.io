@@ -1,9 +1,10 @@
-const TILE_SIZE = 48;
+let tileSize = 48;
 const VIEW_W = 16;
 const VIEW_H = 12;
 const MAP_W = 60;
 const MAP_H = 45;
 const STATE_KEY = 'endless-depths-state-v1';
+let resizeObserver = null;
 
 const COLORS = {
   floor: '#151515',
@@ -195,8 +196,8 @@ class Entity {
   }
   draw(ctx, cx, cy, visible) {
     if (!visible && gameState !== 'PURGATORY') return;
-    const sx = (this.x - cx) * TILE_SIZE;
-    const sy = (this.y - cy) * TILE_SIZE;
+    const sx = (this.x - cx) * tileSize;
+    const sy = (this.y - cy) * tileSize;
     drawSprite(ctx, this.sprite, sx, sy, this.color, this);
   }
 }
@@ -366,8 +367,9 @@ class LootItem extends Entity {
 function init() {
   canvas = document.getElementById('gameCanvas');
   ctx = canvas.getContext('2d');
-  canvas.width = VIEW_W * TILE_SIZE;
-  canvas.height = VIEW_H * TILE_SIZE;
+  const container = document.getElementById('canvas-container');
+  setupResizeHandling(container);
+  setupFullscreenToggle(container);
 
   const clearBtn = document.getElementById('clear-cache-btn');
   clearBtn?.addEventListener('click', () => {
@@ -400,6 +402,69 @@ function init() {
   window.onkeyup = (e) => (window.keys[e.key] = false);
   canvas.onmousemove = handleMouseMove;
   requestAnimationFrame(gameLoop);
+}
+
+function setupResizeHandling(container) {
+  const resizeCanvas = () => updateCanvasSize(container);
+  resizeCanvas();
+  if (window.ResizeObserver && container) {
+    resizeObserver?.disconnect();
+    resizeObserver = new ResizeObserver(resizeCanvas);
+    resizeObserver.observe(container);
+  } else {
+    window.addEventListener('resize', resizeCanvas);
+  }
+}
+
+function updateCanvasSize(container = document.getElementById('canvas-container')) {
+  if (!canvas || !container) return;
+  const availableWidth = container.clientWidth;
+  const availableHeight = container.clientHeight;
+  if (!availableWidth || !availableHeight) return;
+
+  const nextTileSize = Math.max(1, Math.floor(Math.min(availableWidth / VIEW_W, availableHeight / VIEW_H)));
+  tileSize = nextTileSize;
+  const canvasWidth = tileSize * VIEW_W;
+  const canvasHeight = tileSize * VIEW_H;
+
+  canvas.width = canvasWidth;
+  canvas.height = canvasHeight;
+  canvas.style.width = `${canvasWidth}px`;
+  canvas.style.height = `${canvasHeight}px`;
+  container.style.setProperty('--canvas-width', `${canvasWidth}px`);
+  container.style.setProperty('--canvas-height', `${canvasHeight}px`);
+
+  ['overlay', 'fx-layer', 'damage-flash'].forEach((id) => {
+    const el = document.getElementById(id);
+    if (el) {
+      el.style.width = `${canvasWidth}px`;
+      el.style.height = `${canvasHeight}px`;
+    }
+  });
+}
+
+function setupFullscreenToggle(container) {
+  const fullscreenBtn = document.getElementById('fullscreen-btn');
+  if (!fullscreenBtn || !container) return;
+
+  const updateButtonState = () => {
+    const active = document.fullscreenElement === container;
+    fullscreenBtn.setAttribute('aria-pressed', active ? 'true' : 'false');
+    fullscreenBtn.setAttribute('aria-label', active ? 'Exit fullscreen' : 'Enter fullscreen');
+    fullscreenBtn.textContent = active ? '⤡' : '⤢';
+  };
+
+  fullscreenBtn.addEventListener('click', () => {
+    if (document.fullscreenElement) document.exitFullscreen?.();
+    else container.requestFullscreen?.().catch(() => {});
+  });
+
+  document.addEventListener('fullscreenchange', () => {
+    updateButtonState();
+    updateCanvasSize(container);
+  });
+
+  updateButtonState();
 }
 
 function startGame(fromSaved) {
@@ -578,22 +643,22 @@ function render2D() {
     for (let x = cx; x < cx + VIEW_W; x++) {
       if (y >= MAP_H || x >= MAP_W) continue;
       const tile = map[y][x];
-      const sx = (x - cx) * TILE_SIZE;
-      const sy = (y - cy) * TILE_SIZE;
+      const sx = (x - cx) * tileSize;
+      const sy = (y - cy) * tileSize;
       if (tile.visible || gameState === 'PURGATORY') {
         ctx.fillStyle = tile.type === 'wall' ? currentBiome.wall : currentBiome.floor;
-        ctx.fillRect(sx, sy, TILE_SIZE, TILE_SIZE);
+        ctx.fillRect(sx, sy, tileSize, tileSize);
         ctx.strokeStyle = 'rgba(0,0,0,0.2)';
-        ctx.strokeRect(sx, sy, TILE_SIZE, TILE_SIZE);
+        ctx.strokeRect(sx, sy, tileSize, tileSize);
         if (tile.type === 'wall') {
           ctx.fillStyle = 'rgba(255,255,255,0.1)';
-          ctx.fillRect(sx, sy, TILE_SIZE, 4);
+          ctx.fillRect(sx, sy, tileSize, 4);
           ctx.fillStyle = 'rgba(0,0,0,0.3)';
-          ctx.fillRect(sx, sy + TILE_SIZE - 4, TILE_SIZE, 4);
+          ctx.fillRect(sx, sy + tileSize - 4, tileSize, 4);
         }
       } else if (tile.explored) {
         ctx.fillStyle = tile.type === 'wall' ? '#222' : '#080808';
-        ctx.fillRect(sx, sy, TILE_SIZE, TILE_SIZE);
+        ctx.fillRect(sx, sy, tileSize, tileSize);
       }
     }
   }
@@ -607,7 +672,7 @@ function drawSprite(ctx, type, x, y, color, ent) {
   ctx.translate(x, y);
   ctx.fillStyle = 'rgba(0,0,0,0.4)';
   ctx.beginPath();
-  ctx.ellipse(TILE_SIZE / 2, TILE_SIZE - 4, TILE_SIZE / 3, 4, 0, 0, Math.PI * 2);
+  ctx.ellipse(tileSize / 2, tileSize - 4, tileSize / 3, 4, 0, 0, Math.PI * 2);
   ctx.fill();
   ctx.fillStyle = color;
   if (type === 'hero') {
@@ -707,7 +772,7 @@ function drawSprite(ctx, type, x, y, color, ent) {
 }
 
 function drawPixelSprite(ctx, spriteData) {
-  const pixelSize = TILE_SIZE / 8;
+  const pixelSize = tileSize / 8;
   for (let y = 0; y < 8; y++) {
     for (let x = 0; x < 8; x++) {
       const colorIndex = spriteData[y * 8 + x];
@@ -1189,8 +1254,8 @@ function updateFOV() {
 
 function handleMouseMove(e) {
   const rect = canvas.getBoundingClientRect();
-  const tx = Math.floor((e.clientX - rect.left) / TILE_SIZE);
-  const ty = Math.floor((e.clientY - rect.top) / TILE_SIZE);
+  const tx = Math.floor((e.clientX - rect.left) / tileSize);
+  const ty = Math.floor((e.clientY - rect.top) / tileSize);
   if (!player) return;
   const cx = Math.max(0, Math.min(player.x - Math.floor(VIEW_W / 2), MAP_W - VIEW_W));
   const cy = Math.max(0, Math.min(player.y - Math.floor(VIEW_H / 2), MAP_H - VIEW_H));
@@ -1217,12 +1282,12 @@ function createProjectile(x1, y1, x2, y2, type) {
   el.style.cssText = `position:absolute; width:8px; height:8px; background:${type === 'magic' ? '#b15dff' : '#fff'}; border-radius:50%; z-index:5; transition:all 0.15s linear; pointer-events:none; box-shadow:0 0 5px ${type === 'magic' ? '#b15dff' : '#fff'};`;
   const cx = Math.max(0, Math.min(player.x - Math.floor(VIEW_W / 2), MAP_W - VIEW_W));
   const cy = Math.max(0, Math.min(player.y - Math.floor(VIEW_H / 2), MAP_H - VIEW_H));
-  el.style.left = (x1 - cx) * TILE_SIZE + TILE_SIZE / 2 + 'px';
-  el.style.top = (y1 - cy) * TILE_SIZE + TILE_SIZE / 2 + 'px';
+  el.style.left = (x1 - cx) * tileSize + tileSize / 2 + 'px';
+  el.style.top = (y1 - cy) * tileSize + tileSize / 2 + 'px';
   document.getElementById('fx-layer').appendChild(el);
   requestAnimationFrame(() => {
-    el.style.left = (x2 - cx) * TILE_SIZE + TILE_SIZE / 2 + 'px';
-    el.style.top = (y2 - cy) * TILE_SIZE + TILE_SIZE / 2 + 'px';
+    el.style.left = (x2 - cx) * tileSize + tileSize / 2 + 'px';
+    el.style.top = (y2 - cy) * tileSize + tileSize / 2 + 'px';
   });
   setTimeout(() => el.remove(), 150);
 }

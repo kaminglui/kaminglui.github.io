@@ -69,7 +69,11 @@
 }
 
 #canvas-container {
+  --canvas-width: 768px;
+  --canvas-height: 576px;
   position: relative;
+  display: grid;
+  place-items: center;
   background: #0b0b11;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
@@ -79,9 +83,11 @@
 }
 
 #gameCanvas {
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
+  width: var(--canvas-width);
+  height: var(--canvas-height);
+  display: block;
+  max-width: 100%;
+  max-height: 100%;
 }
 
 #overlay {
@@ -91,7 +97,6 @@
   justify-content: center;
   gap: 0.75rem;
   position: absolute;
-  inset: 0;
   background: radial-gradient(circle at 50% 30%, rgba(59, 130, 246, 0.08), rgba(0, 0, 0, 0.82));
   text-align: center;
   padding: 2rem;
@@ -266,16 +271,26 @@
   color: var(--color-accent);
 }
 
+#overlay,
+#fx-layer,
+#damage-flash {
+  width: var(--canvas-width);
+  height: var(--canvas-height);
+  max-width: 100%;
+  max-height: 100%;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
 #fx-layer {
   position: absolute;
-  inset: 0;
   pointer-events: none;
   overflow: hidden;
 }
 
 #damage-flash {
   position: absolute;
-  inset: 0;
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.12s ease;
@@ -284,6 +299,37 @@
 
 #tooltip {
   color: #e2e8f0;
+}
+
+.canvas-control {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 6;
+  border: 1px solid var(--color-border);
+  background: rgba(9, 12, 22, 0.8);
+  color: var(--color-text);
+  border-radius: 10px;
+  padding: 0.4rem 0.6rem;
+  cursor: pointer;
+  backdrop-filter: blur(6px);
+  transition: transform 0.15s ease, border-color 0.2s ease, color 0.2s ease;
+}
+
+.canvas-control:hover {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+  transform: scale(1.03);
+}
+
+.canvas-control:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+.canvas-control[aria-pressed='true'] {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
 }
 
 #crafting-list {
