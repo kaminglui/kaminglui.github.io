@@ -1,0 +1,331 @@
+.depths-main {
+  background: radial-gradient(circle at 20% 20%, rgba(96, 165, 250, 0.12), transparent 35%),
+    radial-gradient(circle at 80% 0%, rgba(147, 197, 253, 0.12), transparent 32%),
+    var(--color-bg);
+  min-height: 100vh;
+  padding-bottom: 3rem;
+}
+
+.depths-section {
+  padding: 0 0 3rem;
+}
+
+.depths-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  overflow: hidden;
+}
+
+.depths-card__header {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.75rem 1.5rem 0;
+}
+
+.depths-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.depths-layout {
+  display: grid;
+  grid-template-columns: 280px 1fr 320px;
+  gap: 1rem;
+  padding: 1.5rem;
+  background: var(--color-bg-alt);
+  border-top: 1px solid var(--color-border);
+}
+
+@media (max-width: 1100px) {
+  .depths-layout {
+    grid-template-columns: 1fr;
+  }
+
+  #canvas-container {
+    height: 520px;
+  }
+}
+
+.panel-column {
+  display: grid;
+  gap: 1rem;
+}
+
+.playfield {
+  display: grid;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+#game-wrapper {
+  margin: 0;
+  width: 100%;
+  max-width: none;
+}
+
+#canvas-container {
+  position: relative;
+  background: #0b0b11;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  min-height: 580px;
+  overflow: hidden;
+}
+
+#gameCanvas {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+#overlay {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 50% 30%, rgba(59, 130, 246, 0.08), rgba(0, 0, 0, 0.82));
+  text-align: center;
+  padding: 2rem;
+}
+
+#overlay-title {
+  margin: 0;
+  font-size: clamp(2.5rem, 4vw, 3.5rem);
+  letter-spacing: 4px;
+  color: var(--color-danger);
+  text-shadow: 0 10px 32px rgba(0, 0, 0, 0.35);
+}
+
+#overlay-msg {
+  color: var(--color-muted);
+  font-size: 1.1rem;
+}
+
+.overlay-actions {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+#controls-hint {
+  font-size: 0.9rem;
+  color: var(--color-muted);
+  text-align: center;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  padding: 0.65rem 1.25rem;
+  box-shadow: var(--shadow-sm);
+}
+
+.panel {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-sm);
+}
+
+.panel h2 {
+  margin: 0 0 0.5rem;
+}
+
+.panel-grow {
+  min-height: 0;
+}
+
+.bar-container {
+  background: var(--color-bg-alt);
+}
+
+.bar-fill {
+  background: linear-gradient(90deg, #3b82f6, #60a5fa);
+}
+
+.stat-row,
+.stat-grid {
+  color: var(--color-text);
+}
+
+.stat-subtext {
+  color: var(--color-muted);
+  font-size: 0.75rem;
+  text-align: center;
+}
+
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.35rem 0.5rem;
+  font-size: 0.9rem;
+}
+
+.gold {
+  color: #fbbf24;
+}
+
+.job {
+  color: var(--color-accent);
+}
+
+.tab-container {
+  background: var(--color-bg-alt);
+  padding: 0.35rem;
+  border-radius: var(--radius-sm);
+}
+
+.tab-btn.active {
+  color: var(--color-accent);
+}
+
+.item-slot,
+.equip-slot,
+.inv-list,
+#log,
+#journal-list {
+  background: var(--color-bg-alt);
+}
+
+.item-slot {
+  border-color: var(--color-border);
+}
+
+.item-actions {
+  background: var(--color-surface);
+}
+
+.action-btn:hover {
+  background: var(--color-accent);
+}
+
+.btn-drop:hover {
+  background: var(--color-danger);
+}
+
+.btn-scrap:hover,
+.btn-repair:hover {
+  background: var(--color-success);
+}
+
+.equip-slot {
+  border-color: var(--color-border);
+}
+
+#log {
+  color: var(--color-text);
+}
+
+#log p {
+  border-color: var(--color-border);
+}
+
+.log-panel {
+  height: 220px;
+}
+
+.skill-note {
+  font-size: 0.8rem;
+  color: var(--color-muted);
+  text-align: center;
+}
+
+.divider {
+  border: 0;
+  border-top: 1px solid var(--color-border);
+}
+
+#tooltip {
+  background: rgba(15, 23, 42, 0.88);
+  border-color: rgba(148, 163, 184, 0.5);
+}
+
+.audio-btn {
+  border-color: var(--color-border);
+}
+
+.ghost-btn {
+  background: transparent;
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+  padding: 0.75rem 1.2rem;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.ghost-btn:hover {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
+
+#fx-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+#damage-flash {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.12s ease;
+  background: radial-gradient(circle, rgba(248, 113, 113, 0.4) 0%, rgba(0, 0, 0, 0) 55%);
+}
+
+#tooltip {
+  color: #e2e8f0;
+}
+
+#crafting-list {
+  padding-bottom: 0.5rem;
+}
+
+.craft-entry {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.25rem;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.craft-entry__meta {
+  display: grid;
+  gap: 0.15rem;
+  font-size: 0.9rem;
+}
+
+.craft-entry__reqs {
+  color: var(--color-muted);
+  font-size: 0.8rem;
+}
+
+.craft-entry button {
+  border-radius: 8px;
+}
+
+#controls-hint,
+.panel,
+#canvas-container {
+  backdrop-filter: blur(4px);
+}
+
+@media (max-width: 720px) {
+  .depths-card__header {
+    padding: 1.5rem 1rem 0.5rem;
+  }
+
+  .depths-layout {
+    padding: 1rem;
+  }
+}
