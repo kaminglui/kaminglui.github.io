@@ -4,6 +4,7 @@ const VIEW_H = 12;
 const MAP_W = 60;
 const MAP_H = 45;
 const STATE_KEY = 'endless-depths-state-v1';
+const LAYOUT_PREF_KEY = 'endless-depths-layout';
 
 const COLORS = {
   floor: '#151515',
@@ -363,6 +364,32 @@ class LootItem extends Entity {
   }
 }
 
+function setLayoutMode(isWide) {
+  const wrapper = document.getElementById('game-wrapper');
+  const toggle = document.getElementById('layout-toggle');
+  if (wrapper) wrapper.classList.toggle('depths-layout--wide', isWide);
+  if (toggle) {
+    toggle.setAttribute('aria-pressed', String(isWide));
+    toggle.classList.toggle('is-active', isWide);
+    toggle.innerText = isWide ? 'Wide view: On' : 'Wide view';
+  }
+
+  try {
+    localStorage.setItem(LAYOUT_PREF_KEY, isWide ? 'wide' : 'default');
+  } catch (error) {
+    console.warn('Unable to save layout preference', error);
+  }
+}
+
+function loadLayoutPreference() {
+  try {
+    return localStorage.getItem(LAYOUT_PREF_KEY);
+  } catch (error) {
+    console.warn('Unable to read layout preference', error);
+    return null;
+  }
+}
+
 function init() {
   canvas = document.getElementById('gameCanvas');
   ctx = canvas.getContext('2d');
@@ -375,6 +402,15 @@ function init() {
     document.getElementById('overlay-msg').innerText = 'Cache cleared. Start a fresh run when ready!';
     document.getElementById('new-run-btn').classList.add('hidden');
     document.getElementById('start-btn').innerText = 'Enter Dungeon';
+  });
+
+  const layoutToggle = document.getElementById('layout-toggle');
+  const pref = loadLayoutPreference();
+  setLayoutMode(pref === 'wide');
+  layoutToggle?.addEventListener('click', () => {
+    const wrapper = document.getElementById('game-wrapper');
+    const nextWide = !wrapper?.classList.contains('depths-layout--wide');
+    setLayoutMode(nextWide);
   });
 
   document.getElementById('start-btn').onclick = () => startGame(!!loadSavedState());
