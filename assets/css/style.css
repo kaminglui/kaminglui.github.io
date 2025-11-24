@@ -681,6 +681,173 @@ body.theme-dark .project-card {
   border: 0;
 }
 
+
+.ml-playground-page {
+  padding: 2.5rem 0 3.5rem;
+  display: grid;
+  gap: 2rem;
+}
+
+.ml-playground__header h1 {
+  margin-bottom: 0.5rem;
+}
+
+.ml-playground__lead {
+  max-width: 70ch;
+  color: var(--color-muted);
+}
+
+.ml-toolbar {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: 1rem 1.25rem;
+  background: var(--color-surface);
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+}
+
+.ml-toolbar label {
+  font-weight: 600;
+  display: block;
+  margin-bottom: 0.35rem;
+}
+
+.ml-toolbar select {
+  min-height: 44px;
+  padding: 0.5rem 0.75rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+  background: var(--color-bg);
+}
+
+.ml-playground {
+  display: flex;
+  gap: 1.5rem;
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+
+.ml-playground-main {
+  flex: 2;
+  min-width: min(680px, 100%);
+  display: grid;
+  gap: 1rem;
+}
+
+#kmeans-canvas {
+  width: 100%;
+  height: auto;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: radial-gradient(circle at 20% 20%, rgba(59, 130, 246, 0.04), transparent),
+    radial-gradient(circle at 80% 40%, rgba(22, 163, 74, 0.04), transparent),
+    var(--color-surface);
+  box-shadow: var(--shadow-sm);
+}
+
+.ml-controls {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: 1rem 1.25rem;
+  background: var(--color-surface);
+  box-shadow: var(--shadow-sm);
+  display: grid;
+  gap: 0.75rem;
+}
+
+.ml-controls label {
+  font-weight: 600;
+}
+
+.ml-controls input[type='number'] {
+  max-width: 160px;
+  padding: 0.5rem 0.75rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+  background: var(--color-bg);
+}
+
+.ml-controls button {
+  padding: 0.7rem 0.85rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(59, 130, 246, 0.08));
+  cursor: pointer;
+  font-weight: 600;
+  transition: border-color 150ms ease, transform 150ms ease;
+}
+
+.ml-controls button:hover,
+.ml-controls button:focus-visible {
+  border-color: var(--color-accent);
+  transform: translateY(-1px);
+}
+
+.ml-controls button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.ml-hint {
+  color: var(--color-muted);
+  margin: 0;
+}
+
+.ml-sidebar {
+  flex: 1;
+  min-width: min(320px, 100%);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: 1rem 1.25rem;
+  background: var(--color-surface);
+  box-shadow: var(--shadow-sm);
+  display: grid;
+  gap: 0.85rem;
+}
+
+.ml-sidebar button {
+  padding: 0.65rem 0.85rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+  background: var(--color-bg);
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.ml-sidebar table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.95rem;
+}
+
+.ml-sidebar th,
+.ml-sidebar td {
+  border: 1px solid var(--color-border);
+  padding: 0.4rem 0.5rem;
+  text-align: left;
+}
+
+.ml-sidebar thead {
+  background: var(--color-bg);
+}
+
+.ml-table--nearest {
+  color: var(--color-success);
+  font-weight: 700;
+}
+
+.ml-sidebar p {
+  margin: 0;
+}
+
+.ml-playground .card__eyebrow {
+  margin: 0;
+}
+
+
 @media (max-width: 960px) {
   .hero__layout {
     grid-template-columns: 1fr;
@@ -696,6 +863,14 @@ body.theme-dark .project-card {
 
   .sidebar {
     grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  }
+
+  .ml-playground {
+    flex-direction: column;
+  }
+
+  .ml-playground-main {
+    min-width: 100%;
   }
 
   .lab-panel__grid,

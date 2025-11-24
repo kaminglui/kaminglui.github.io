@@ -1526,15 +1526,46 @@ function getFieldValue(form, name) {
   return '';
 }
 
+const hasContentScaffold = Boolean(
+  heroElements.eyebrow &&
+  heroElements.title &&
+  heroElements.lead &&
+  heroElements.primary &&
+  heroElements.secondary &&
+  heroElements.current &&
+  heroElements.focus &&
+  aboutElements.title &&
+  aboutElements.body &&
+  learningElements.title &&
+  learningElements.list &&
+  learningElements.empty &&
+  postElements.title &&
+  postElements.cta &&
+  postElements.list &&
+  postElements.empty &&
+  projectElements.title &&
+  projectElements.list &&
+  projectElements.empty &&
+  sidebarElements.container &&
+  sidebarElements.empty &&
+  contactElements.title &&
+  contactElements.body &&
+  contactElements.actions &&
+  contactElements.meta
+);
+
 if (yearElement) {
   yearElement.textContent = String(new Date().getFullYear());
 }
 
-renderAll();
 setupNav();
 setupTheme();
 setupBackToTop();
-setupManagementDialog();
-setupEditors();
-populateExperienceFromLinkedIn();
+
+if (hasContentScaffold) {
+  renderAll();
+  setupManagementDialog();
+  setupEditors();
+  populateExperienceFromLinkedIn();
+}
 
