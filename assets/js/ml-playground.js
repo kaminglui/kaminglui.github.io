@@ -28,6 +28,7 @@ const MLPlayground = (() => {
   let calculationSSE;
   let distanceTable;
   let selectedPointLabel;
+  let selectedClusterLabel;
 
   const state = {
     points: [],
@@ -62,6 +63,7 @@ const MLPlayground = (() => {
     calculationSSE = document.getElementById('calculation-sse');
     distanceTable = document.querySelector('#distance-table tbody');
     selectedPointLabel = document.getElementById('selected-point-label');
+    selectedClusterLabel = document.getElementById('selected-cluster-label');
 
     if (!canvas || !ctx) return;
 
@@ -194,7 +196,10 @@ const MLPlayground = (() => {
   }
 
   function addPoint(x, y) {
-    state.points.push({ id: createId(), x, y, clusterIndex: null });
+    const newPoint = { id: createId(), x, y, clusterIndex: null };
+    state.points.push(newPoint);
+    state.selectedPointId = newPoint.id;
+    updateCalculationPanel();
   }
 
   function removePoint(id) {
@@ -223,6 +228,7 @@ const MLPlayground = (() => {
     state.centroids = [];
     state.points = state.points.map((point) => ({ ...point, clusterIndex: null }));
     state.iteration = 0;
+    state.selectedPointId = state.points[0]?.id ?? null;
     updateSSE(null);
     updateStatus();
     updateCalculationPanel();
@@ -342,6 +348,7 @@ const MLPlayground = (() => {
       updateStatus();
     }
     updateSSE(computeSSE());
+    ensureSelectedPoint();
     updateCalculationPanel();
     if (shouldDraw) {
       draw();
@@ -354,6 +361,7 @@ const MLPlayground = (() => {
     state.iteration += 1;
     updateStatus();
     updateSSE(computeSSE());
+    ensureSelectedPoint();
     updateCalculationPanel();
     return changed;
   }
@@ -437,10 +445,21 @@ const MLPlayground = (() => {
 
   function updateCalculationPanel() {
     const hasCentroids = state.centroids.length > 0;
-    const selectedPoint = state.points.find((p) => p.id === state.selectedPointId);
+    const selectedPoint = ensureSelectedPoint();
 
-    if (!selectedPoint || !hasCentroids) {
+    if (!selectedPoint) {
       selectedPointLabel.textContent = 'none';
+      selectedClusterLabel.textContent = '—';
+      if (distanceTable) {
+        distanceTable.innerHTML = '';
+      }
+      calculationSSE.textContent = state.sse === null ? '—' : state.sse.toFixed(2);
+      return;
+    }
+
+    if (!hasCentroids) {
+      selectedPointLabel.textContent = `(${selectedPoint.x.toFixed(1)}, ${selectedPoint.y.toFixed(1)})`;
+      selectedClusterLabel.textContent = 'Not assigned yet – initialize centroids to begin.';
       if (distanceTable) {
         distanceTable.innerHTML = '';
       }
@@ -449,6 +468,7 @@ const MLPlayground = (() => {
     }
 
     selectedPointLabel.textContent = `(${selectedPoint.x.toFixed(1)}, ${selectedPoint.y.toFixed(1)})`;
+    selectedClusterLabel.textContent = `Assigned to cluster C${(selectedPoint.clusterIndex ?? 0) + 1}`;
 
     let nearestIndex = 0;
     let nearestDistance = Number.POSITIVE_INFINITY;
@@ -488,6 +508,20 @@ const MLPlayground = (() => {
     }
 
     calculationSSE.textContent = state.sse === null ? '—' : state.sse.toFixed(2);
+  }
+
+  function ensureSelectedPoint() {
+    if (!state.points.length) {
+      state.selectedPointId = null;
+      return null;
+    }
+
+    const existing = state.points.find((p) => p.id === state.selectedPointId);
+    if (existing) return existing;
+
+    const fallback = state.points.find((p) => p.clusterIndex !== null) ?? state.points[0];
+    state.selectedPointId = fallback?.id ?? null;
+    return fallback ?? null;
   }
 
   return { init };
