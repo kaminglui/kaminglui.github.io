@@ -1,5 +1,6 @@
 const MLPlayground = (() => {
   const POINT_RADIUS = 7;
+  const HIT_RADIUS = 14;
   const CENTROID_RADIUS = 10;
   const CLUSTER_COLORS = [
     '#3b82f6',
@@ -29,6 +30,9 @@ const MLPlayground = (() => {
   let distanceTable;
   let selectedPointLabel;
   let selectedClusterLabel;
+  let tabButtons;
+  let tabPanels;
+  let modeButtons;
 
   const state = {
     points: [],
@@ -37,9 +41,13 @@ const MLPlayground = (() => {
     iteration: 0,
     selectedPointId: null,
     dragPointId: null,
+    activePointerId: null,
+    interactionMode: 'create',
     isRunning: false,
     sse: null
   };
+
+  let pixelRatio = 1;
 
   const createId = () =>
     typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
@@ -64,12 +72,17 @@ const MLPlayground = (() => {
     distanceTable = document.querySelector('#distance-table tbody');
     selectedPointLabel = document.getElementById('selected-point-label');
     selectedClusterLabel = document.getElementById('selected-cluster-label');
+    tabButtons = document.querySelectorAll('.ml-tab');
+    tabPanels = document.querySelectorAll('.ml-tab-panel');
+    modeButtons = document.querySelectorAll('[data-mode]');
 
     if (!canvas || !ctx) return;
 
     state.currentK = clampK(Number(kInput?.value) || 3);
     updateStatus();
     attachEvents();
+    resizeCanvas();
+    setInteractionMode('create');
     draw();
   }
 
@@ -78,10 +91,24 @@ const MLPlayground = (() => {
   }
 
   function attachEvents() {
-    canvas.addEventListener('mousedown', handleCanvasMouseDown);
-    canvas.addEventListener('mousemove', handleCanvasMouseMove);
-    canvas.addEventListener('mouseup', handleCanvasMouseUp);
-    canvas.addEventListener('mouseleave', handleCanvasMouseUp);
+    window.addEventListener('resize', resizeCanvas);
+
+    canvas.addEventListener('pointerdown', handlePointerDown);
+    canvas.addEventListener('pointermove', handlePointerMove);
+    canvas.addEventListener('pointerup', handlePointerUp);
+    canvas.addEventListener('pointercancel', handlePointerUp);
+    canvas.addEventListener('pointerleave', handlePointerUp);
+
+    modeButtons?.forEach((button) => {
+      button.addEventListener('click', () => {
+        const mode = button.getAttribute('data-mode') ?? 'create';
+        setInteractionMode(mode);
+      });
+    });
+
+    tabButtons?.forEach((button) => {
+      button.addEventListener('click', () => activateTab(button));
+    });
 
     kInput?.addEventListener('change', () => {
       const newK = clampK(Number(kInput.value));
@@ -142,7 +169,7 @@ const MLPlayground = (() => {
     });
   }
 
-  function handleCanvasMouseDown(event) {
+  function handlePointerDown(event) {
     const position = getCanvasPosition(event);
     const existingPoint = findPointAt(position.x, position.y);
 
@@ -153,13 +180,17 @@ const MLPlayground = (() => {
 
     if (existingPoint) {
       state.selectedPointId = existingPoint.id;
-      state.dragPointId = existingPoint.id;
+      if (state.interactionMode === 'drag') {
+        state.dragPointId = existingPoint.id;
+        state.activePointerId = event.pointerId;
+        canvas.setPointerCapture(event.pointerId);
+      }
       draw();
       updateCalculationPanel();
       return;
     }
 
-    if (!event.shiftKey) {
+    if (!event.shiftKey && state.interactionMode === 'create') {
       addPoint(position.x, position.y);
       if (state.centroids.length) {
         assignPointsToNearestCentroid();
@@ -171,20 +202,25 @@ const MLPlayground = (() => {
     }
   }
 
-  function handleCanvasMouseMove(event) {
-    if (!state.dragPointId) return;
+  function handlePointerMove(event) {
+    if (!state.dragPointId || state.activePointerId !== event.pointerId) return;
     const position = getCanvasPosition(event);
     const point = state.points.find((p) => p.id === state.dragPointId);
     if (point) {
       point.x = position.x;
       point.y = position.y;
       draw();
+      updateCalculationPanel();
     }
   }
 
-  function handleCanvasMouseUp() {
-    if (!state.dragPointId) return;
+  function handlePointerUp(event) {
+    if (!state.dragPointId || state.activePointerId !== event.pointerId) return;
     state.dragPointId = null;
+    state.activePointerId = null;
+    if (canvas.hasPointerCapture(event.pointerId)) {
+      canvas.releasePointerCapture(event.pointerId);
+    }
     if (state.centroids.length) {
       assignPointsToNearestCentroid();
       recomputeCentroids();
@@ -220,7 +256,7 @@ const MLPlayground = (() => {
   function findPointAt(x, y) {
     return state.points.find((point) => {
       const distance = Math.hypot(point.x - x, point.y - y);
-      return distance <= POINT_RADIUS + 2;
+      return distance <= HIT_RADIUS;
     });
   }
 
@@ -247,10 +283,52 @@ const MLPlayground = (() => {
 
   function getCanvasPosition(event) {
     const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / pixelRatio / rect.width;
+    const scaleY = canvas.height / pixelRatio / rect.height;
     return {
-      x: event.clientX - rect.left,
-      y: event.clientY - rect.top
+      x: (event.clientX - rect.left) * (Number.isFinite(scaleX) ? scaleX : 1),
+      y: (event.clientY - rect.top) * (Number.isFinite(scaleY) ? scaleY : 1)
     };
+  }
+
+  function resizeCanvas() {
+    if (!canvas || !ctx) return;
+    const rect = canvas.getBoundingClientRect();
+    if (!rect.width || !rect.height) return;
+    pixelRatio = window.devicePixelRatio || 1;
+    canvas.width = rect.width * pixelRatio;
+    canvas.height = rect.height * pixelRatio;
+    ctx.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
+    draw();
+  }
+
+  function setInteractionMode(mode) {
+    state.interactionMode = mode === 'drag' ? 'drag' : 'create';
+    modeButtons?.forEach((button) => {
+      const isActive = button.getAttribute('data-mode') === state.interactionMode;
+      button.classList.toggle('is-active', isActive);
+      button.setAttribute('aria-pressed', String(isActive));
+    });
+  }
+
+  function activateTab(button) {
+    const targetId = button.getAttribute('aria-controls');
+    tabButtons?.forEach((tab) => {
+      const isActive = tab === button;
+      tab.classList.toggle('is-active', isActive);
+      tab.setAttribute('aria-selected', String(isActive));
+      tab.setAttribute('tabindex', isActive ? '0' : '-1');
+    });
+
+    tabPanels?.forEach((panel) => {
+      const isActive = panel.id === targetId;
+      panel.hidden = !isActive;
+      panel.classList.toggle('is-active', isActive);
+    });
+
+    if (targetId === 'panel-playground') {
+      window.requestAnimationFrame(resizeCanvas);
+    }
   }
 
   function initializeCentroids(k) {
@@ -398,11 +476,13 @@ const MLPlayground = (() => {
 
   function draw() {
     if (!ctx) return;
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    const width = canvas.width / pixelRatio;
+    const height = canvas.height / pixelRatio;
+    ctx.clearRect(0, 0, width, height);
 
     ctx.strokeStyle = 'rgba(148, 163, 184, 0.6)';
     ctx.lineWidth = 1;
-    ctx.strokeRect(0.5, 0.5, canvas.width - 1, canvas.height - 1);
+    ctx.strokeRect(0.5, 0.5, width - 1, height - 1);
 
     state.points.forEach((point) => {
       const color =
