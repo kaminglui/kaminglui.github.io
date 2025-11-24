@@ -1,6 +1,5 @@
 const MLPlayground = (() => {
-  const POINT_RADIUS = 9;
-  const HIT_RADIUS = 14;
+  const POINT_RADIUS = 7;
   const CENTROID_RADIUS = 10;
   const CLUSTER_COLORS = [
     '#3b82f6',
@@ -21,11 +20,11 @@ const MLPlayground = (() => {
   let btnRun;
   let btnReset;
   let btnClear;
-  let tabs;
-  let tabPanels;
+  let btnTogglePanel;
   let statusK;
   let statusIter;
   let statusSSE;
+  let calculationPanel;
   let calculationSSE;
   let distanceTable;
   let selectedPointLabel;
@@ -56,11 +55,11 @@ const MLPlayground = (() => {
     btnRun = document.getElementById('btn-run');
     btnReset = document.getElementById('btn-reset-clustering');
     btnClear = document.getElementById('btn-clear-points');
-    tabs = Array.from(document.querySelectorAll('.ml-tab'));
-    tabPanels = Array.from(document.querySelectorAll('.ml-tabpanel'));
+    btnTogglePanel = document.getElementById('btn-toggle-calculations');
     statusK = document.getElementById('status-k');
     statusIter = document.getElementById('status-iter');
     statusSSE = document.getElementById('status-sse');
+    calculationPanel = document.getElementById('calculation-panel');
     calculationSSE = document.getElementById('calculation-sse');
     distanceTable = document.querySelector('#distance-table tbody');
     selectedPointLabel = document.getElementById('selected-point-label');
@@ -70,7 +69,6 @@ const MLPlayground = (() => {
 
     state.currentK = clampK(Number(kInput?.value) || 3);
     updateStatus();
-    setupTabs();
     attachEvents();
     draw();
   }
@@ -79,47 +77,11 @@ const MLPlayground = (() => {
     return Math.min(8, Math.max(1, Math.round(value)));
   }
 
-  function setupTabs() {
-    if (!tabs?.length || !tabPanels?.length) return;
-
-    const activateTab = (tab) => {
-      const targetId = tab.getAttribute('aria-controls');
-      tabs.forEach((btn) => {
-        const isActive = btn === tab;
-        btn.classList.toggle('is-active', isActive);
-        btn.setAttribute('aria-selected', String(isActive));
-        btn.tabIndex = isActive ? 0 : -1;
-      });
-
-      tabPanels.forEach((panel) => {
-        const shouldShow = panel.id === targetId;
-        panel.hidden = !shouldShow;
-      });
-
-      if (targetId === 'panel-calculations') {
-        updateCalculationPanel();
-      }
-    };
-
-    tabs.forEach((tab) => {
-      tab.addEventListener('click', () => activateTab(tab));
-      tab.addEventListener('keydown', (event) => {
-        if (event.key === 'Enter' || event.key === ' ') {
-          event.preventDefault();
-          activateTab(tab);
-        }
-      });
-    });
-
-    const initialTab = tabs.find((tab) => tab.classList.contains('is-active')) ?? tabs[0];
-    if (initialTab) activateTab(initialTab);
-  }
-
   function attachEvents() {
     canvas.addEventListener('mousedown', handleCanvasMouseDown);
     canvas.addEventListener('mousemove', handleCanvasMouseMove);
     canvas.addEventListener('mouseup', handleCanvasMouseUp);
-    canvas.addEventListener('mouseleave', handleCanvasMouseLeave);
+    canvas.addEventListener('mouseleave', handleCanvasMouseUp);
 
     kInput?.addEventListener('change', () => {
       const newK = clampK(Number(kInput.value));
@@ -168,6 +130,16 @@ const MLPlayground = (() => {
     btnClear?.addEventListener('click', () => {
       clearAll();
     });
+
+    btnTogglePanel?.addEventListener('click', () => {
+      const isExpanded = btnTogglePanel.getAttribute('aria-expanded') === 'true';
+      btnTogglePanel.setAttribute('aria-expanded', String(!isExpanded));
+      btnTogglePanel.textContent = isExpanded ? 'Show calculation process' : 'Hide calculation process';
+      if (calculationPanel) {
+        calculationPanel.hidden = isExpanded;
+      }
+      updateCalculationPanel();
+    });
   }
 
   function handleCanvasMouseDown(event) {
@@ -182,7 +154,6 @@ const MLPlayground = (() => {
     if (existingPoint) {
       state.selectedPointId = existingPoint.id;
       state.dragPointId = existingPoint.id;
-      updateCanvasCursor(true);
       draw();
       updateCalculationPanel();
       return;
@@ -201,10 +172,8 @@ const MLPlayground = (() => {
   }
 
   function handleCanvasMouseMove(event) {
-    const position = getCanvasPosition(event);
-    const hoveredPoint = findPointAt(position.x, position.y);
-    updateCanvasCursor(Boolean(hoveredPoint) || Boolean(state.dragPointId));
     if (!state.dragPointId) return;
+    const position = getCanvasPosition(event);
     const point = state.points.find((p) => p.id === state.dragPointId);
     if (point) {
       point.x = position.x;
@@ -216,7 +185,6 @@ const MLPlayground = (() => {
   function handleCanvasMouseUp() {
     if (!state.dragPointId) return;
     state.dragPointId = null;
-    updateCanvasCursor(false);
     if (state.centroids.length) {
       assignPointsToNearestCentroid();
       recomputeCentroids();
@@ -225,13 +193,6 @@ const MLPlayground = (() => {
       updateCalculationPanel();
       draw();
     }
-  }
-
-  function handleCanvasMouseLeave() {
-    if (state.dragPointId) {
-      handleCanvasMouseUp();
-    }
-    updateCanvasCursor(false);
   }
 
   function addPoint(x, y) {
@@ -259,7 +220,7 @@ const MLPlayground = (() => {
   function findPointAt(x, y) {
     return state.points.find((point) => {
       const distance = Math.hypot(point.x - x, point.y - y);
-      return distance <= HIT_RADIUS;
+      return distance <= POINT_RADIUS + 2;
     });
   }
 
@@ -290,15 +251,6 @@ const MLPlayground = (() => {
       x: event.clientX - rect.left,
       y: event.clientY - rect.top
     };
-  }
-
-  function updateCanvasCursor(isHoveringPoint) {
-    if (!canvas) return;
-    if (state.dragPointId) {
-      canvas.style.cursor = 'grabbing';
-    } else {
-      canvas.style.cursor = isHoveringPoint ? 'grab' : 'crosshair';
-    }
   }
 
   function initializeCentroids(k) {
