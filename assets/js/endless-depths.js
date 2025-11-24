@@ -1354,7 +1354,7 @@ function createProjectile(x1, y1, x2, y2, type) {
 }
 
 function spawnStairs(x, y) {
-  entities.push(new Entity(x + 0.5, y + 0.5, 'stairs', '#fff', 'Stairs', false));
+  entities.push(new Entity(x, y, 'stairs', '#fff', 'Stairs', false));
   log('Way open!', 'log-loot');
 }
 
