@@ -891,6 +891,7 @@ function generateFloor() {
     spawnMob(currentBiome.mobs[currentBiome.mobs.length - 1], 30, 15, 31, 16, true);
   } else {
     const rooms = [];
+    let startRoom = null;
     for (let i = 0; i < 25; i++) {
       const w = Math.floor(Math.random() * 6) + 6;
       const h = Math.floor(Math.random() * 6) + 6;
@@ -898,6 +899,7 @@ function generateFloor() {
       const y = Math.floor(Math.random() * (MAP_H - h - 2)) + 1;
       if (!rooms.some((r) => x < r.x + r.w && x + w > r.x && y < r.y + r.h && y + h > r.y)) {
         createRoom(x, y, w, h);
+        if (!startRoom) startRoom = { x, y, w, h };
         if (rooms.length > 0) {
           const prev = rooms[rooms.length - 1];
           const pX = Math.floor(prev.x + prev.w / 2);
@@ -911,15 +913,24 @@ function generateFloor() {
             vTunnel(pY, nY, pX);
             hTunnel(pX, nX, nY);
           }
-        } else {
-          player.x = Math.floor(x + w / 2);
-          player.y = Math.floor(y + h / 2);
         }
         rooms.push({ x, y, w, h });
       }
     }
+    if (rooms.length === 0) {
+      startRoom = { x: Math.floor(MAP_W / 2) - 5, y: Math.floor(MAP_H / 2) - 5, w: 10, h: 10 };
+      createRoom(startRoom.x, startRoom.y, startRoom.w, startRoom.h);
+      rooms.push(startRoom);
+    }
+
+    const starting = startRoom || rooms[0];
+    const spawnPos = ensureFloorPosition(Math.floor(starting.x + starting.w / 2), Math.floor(starting.y + starting.h / 2));
+    player.x = spawnPos.x;
+    player.y = spawnPos.y;
+
     const last = rooms[rooms.length - 1];
-    entities.push(new Entity(Math.floor(last.x + last.w / 2), Math.floor(last.y + last.h / 2), 'stairs', '#fff', 'Stairs', false));
+    const stairPos = ensureFloorPosition(Math.floor(last.x + last.w / 2), Math.floor(last.y + last.h / 2));
+    entities.push(new Entity(stairPos.x, stairPos.y, 'stairs', '#fff', 'Stairs', false));
     rooms.forEach((r, i) => {
       if (i === 0) return;
       if (Math.random() < 0.6) spawnMob(currentBiome.mobs[Math.floor(Math.random() * currentBiome.mobs.length)], r.x + 1, r.y + 1, r.x + r.w - 1, r.y + r.h - 1);
@@ -932,6 +943,21 @@ function generateFloor() {
 function createRoom(x, y, w, h) {
   for (let iy = y; iy < y + h; iy++) for (let ix = x; ix < x + w; ix++) map[iy][ix].type = 'floor';
 }
+
+function findFirstFloorTile() {
+  for (let iy = 0; iy < map.length; iy++) {
+    for (let ix = 0; ix < map[iy].length; ix++) {
+      if (map[iy][ix].type === 'floor') return { x: ix, y: iy };
+    }
+  }
+  return { x: 0, y: 0 };
+}
+
+function ensureFloorPosition(x, y) {
+  if (getTile(x, y)?.type === 'floor') return { x, y };
+  return findFirstFloorTile();
+}
+
 function hTunnel(x1, x2, y) {
   for (let x = Math.min(x1, x2); x <= Math.max(x1, x2); x++) map[y][x].type = 'floor';
 }
