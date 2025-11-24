@@ -71,147 +71,225 @@
           <p class="card__eyebrow">Interactive clustering</p>
           <h1>ML Playground — K-Means Clustering Explorer</h1>
           <p class="ml-playground__lead">
-            Add, delete, and drag data points to see how K-means groups them. Adjust <em>k</em>, step through each iteration, or
-            let the algorithm run to convergence while you watch the objective change.
+            Add, drag, and regroup data points to see how K-means clusters them. Switch modes to create or move points, step
+            through each iteration, or let the algorithm run to convergence while you watch the objective change.
           </p>
         </header>
 
-        <section class="ml-toolbar" aria-label="Playground configuration">
-          <div class="field-group">
-            <label for="algorithm-select">Algorithm</label>
-            <select id="algorithm-select" title="Choose which clustering algorithm to explore">
-              <option value="kmeans" selected>K-means (Lloyd's algorithm)</option>
-            </select>
-          </div>
-          <div class="ml-toolbar__hint" role="note">
-            <strong>How to start:</strong> click on the canvas to drop points, then press <em>Initialize centroids</em> to let
-            K-means begin. Hover over any control for a reminder of what it does.
-          </div>
-        </section>
-
-        <section class="ml-guide-cards" aria-label="Tips for exploring">
-          <article class="ml-guide-card">
-            <p class="ml-guide-card__label">Step-by-step</p>
-            <h2 class="ml-guide-card__title">Watch the algorithm converge</h2>
-            <p class="ml-guide-card__body">
-              Use <strong>Step</strong> to perform one assign/update cycle and observe how centroids migrate. Switch to
-              <strong>Run to convergence</strong> when you are ready to let the loop finish automatically.
-            </p>
-          </article>
-          <article class="ml-guide-card">
-            <p class="ml-guide-card__label">Hands-on</p>
-            <h2 class="ml-guide-card__title">Drag and reshape clusters</h2>
-            <p class="ml-guide-card__body">
-              Drag any point to a new position or <strong>Shift+click</strong> to remove it. The assignments and SSE update as
-              soon as you release the mouse.
-            </p>
-          </article>
-        </section>
-
-        <section class="ml-playground">
-          <div class="ml-playground-main">
-            <canvas
-              id="kmeans-canvas"
-              width="720"
-              height="480"
-              aria-label="K-means playground canvas"
-              title="Click to add a point, drag to move it, or Shift+click to remove. Initialize centroids to start clustering."
-            ></canvas>
-
-            <div class="ml-controls">
-              <label for="k-input">Number of clusters (k)</label>
-              <input
-                id="k-input"
-                type="number"
-                min="1"
-                max="8"
-                value="3"
-                title="Choose how many clusters K-means should find (1 to 8)"
-              />
-
-              <button id="btn-init-centroids" type="button" title="Pick k random points as starting centroids and assign clusters">
-                Initialize centroids
-              </button>
-              <button id="btn-step" type="button" title="Run one iteration: assign points, then update centroids">
-                Step (assign &amp; update)
-              </button>
-              <button id="btn-run" type="button" title="Keep iterating until assignments stop changing or a safety cap is reached">
-                Run to convergence
-              </button>
-              <button id="btn-reset-clustering" type="button" title="Remove centroids and assignments but keep your points on the canvas">
-                Reset clustering
-              </button>
-              <button id="btn-clear-points" type="button" title="Remove all points and centroids to start fresh">
-                Clear all points
-              </button>
-
-              <p id="kmeans-status">
-                Clusters: <span id="status-k">3</span> ·
-                Iteration: <span id="status-iter">0</span> ·
-                SSE: <span id="status-sse">—</span>
-              </p>
-
-              <p class="ml-hint">
-                Hint: click empty canvas to add a point. Shift+click a point to delete it. Click and drag a point to move it.
-              </p>
-            </div>
-          </div>
-
-          <aside class="ml-sidebar">
-            <button
-              id="btn-toggle-calculations"
-              type="button"
-              aria-expanded="false"
-              title="Toggle a breakdown of per-point distances and the current SSE"
-            >
-              Show calculation process
+        <section class="ml-tabs" aria-label="ML playground sections">
+          <div class="ml-tablist" role="tablist" aria-label="Playground tabs">
+            <button class="ml-tab is-active" role="tab" id="tab-playground" aria-selected="true" aria-controls="panel-playground">
+              Playground
             </button>
+            <button class="ml-tab" role="tab" id="tab-explanation" aria-selected="false" aria-controls="panel-explanation" tabindex="-1">
+              Explanation
+            </button>
+            <button class="ml-tab" role="tab" id="tab-settings" aria-selected="false" aria-controls="panel-settings" tabindex="-1">
+              Settings
+            </button>
+          </div>
 
-            <div id="calculation-panel" hidden>
-              <h2>Calculation details</h2>
-              <p>
-                K-means alternates between assigning each point to the nearest centroid and recomputing each centroid as the mean
-                of its assigned points.
-              </p>
+          <section
+            class="ml-tab-panel is-active"
+            id="panel-playground"
+            role="tabpanel"
+            aria-labelledby="tab-playground"
+          >
+            <div class="ml-mode-bar">
+              <div class="mode-toggle" role="group" aria-label="Interaction mode">
+                <button class="mode-toggle__btn is-active" type="button" data-mode="create" aria-pressed="true">
+                  Create mode
+                </button>
+                <button class="mode-toggle__btn" type="button" data-mode="drag" aria-pressed="false">Drag mode</button>
+              </div>
+              <div class="ml-status-chips" aria-live="polite">
+                <span class="status-chip">k = <span id="status-k">3</span></span>
+                <span class="status-chip">Iteration <span id="status-iter">0</span></span>
+                <span class="status-chip">SSE <span id="status-sse">—</span></span>
+              </div>
+            </div>
 
-              <div class="calculation-hint">
-                <p><strong>What's shown here?</strong></p>
-                <ul>
-                  <li><strong>Centroid</strong> is the current group center the point is comparing against.</li>
-                  <li><strong>Distance</strong> is how far the point is from that centroid (smaller is closer).</li>
-                  <li><strong>Objective</strong> is the running total of squared distances for <em>all</em> points (lower is better).</li>
-                </ul>
-                <p class="calculation-hint__note">Tip: click any point on the canvas to focus it here. Dragging a point updates the table in real time.</p>
+            <div class="ml-playground">
+              <div class="ml-playground-main">
+                <div class="canvas-wrapper">
+                  <canvas
+                    id="kmeans-canvas"
+                    width="720"
+                    height="480"
+                    aria-label="K-means playground canvas"
+                    title="Click to add a point, drag to move it, or Shift+click to remove. Initialize centroids to start clustering."
+                  ></canvas>
+                </div>
+
+                <div class="ml-controls">
+                  <label for="k-input">Number of clusters (k)</label>
+                  <input
+                    id="k-input"
+                    type="number"
+                    min="1"
+                    max="8"
+                    value="3"
+                    title="Choose how many clusters K-means should find (1 to 8)"
+                  />
+
+                  <button
+                    id="btn-init-centroids"
+                    type="button"
+                    title="Pick k random points as starting centroids and assign clusters"
+                  >
+                    Initialize centroids
+                  </button>
+                  <button id="btn-step" type="button" title="Run one iteration: assign points, then update centroids">
+                    Step (assign &amp; update)
+                  </button>
+                  <button
+                    id="btn-run"
+                    type="button"
+                    title="Keep iterating until assignments stop changing or a safety cap is reached"
+                  >
+                    Run to convergence
+                  </button>
+                  <button
+                    id="btn-reset-clustering"
+                    type="button"
+                    title="Remove centroids and assignments but keep your points on the canvas"
+                  >
+                    Reset clustering
+                  </button>
+                  <button id="btn-clear-points" type="button" title="Remove all points and centroids to start fresh">
+                    Clear all points
+                  </button>
+
+                  <p class="ml-hint">
+                    Create mode drops a point exactly where you click or tap. Drag mode lets you move existing points with a larger
+                    hitbox. Hold <strong>Shift</strong> and click a point to remove it.
+                  </p>
+                </div>
               </div>
 
-              <p>
-                Selected point:
-                <span id="selected-point-label">none</span>
-              </p>
+              <aside class="ml-sidebar">
+                <button
+                  id="btn-toggle-calculations"
+                  type="button"
+                  aria-expanded="false"
+                  title="Toggle a breakdown of per-point distances and the current SSE"
+                >
+                  Show calculation process
+                </button>
 
-              <p>
-                Cluster assignment:
-                <span id="selected-cluster-label">—</span>
-              </p>
+                <div id="calculation-panel" hidden>
+                  <h2>Calculation details</h2>
+                  <p>
+                    K-means alternates between assigning each point to the nearest centroid and recomputing each centroid as the
+                    mean of its assigned points.
+                  </p>
 
-              <table id="distance-table">
-                <thead>
-                  <tr>
-                    <th>Centroid</th>
-                    <th>Coordinates</th>
-                    <th>Distance to point</th>
-                    <th>Is nearest?</th>
-                  </tr>
-                </thead>
-                <tbody></tbody>
-              </table>
+                  <div class="calculation-hint">
+                    <p><strong>What's shown here?</strong></p>
+                    <ul>
+                      <li><strong>Centroid</strong> is the current group center the point is comparing against.</li>
+                      <li><strong>Distance</strong> is how far the point is from that centroid (smaller is closer).</li>
+                      <li>
+                        <strong>Objective</strong> is the running total of squared distances for <em>all</em> points (lower is better).
+                      </li>
+                    </ul>
+                    <p class="calculation-hint__note">Tip: click any point on the canvas to focus it here. Dragging a point updates the table in real time.</p>
+                  </div>
 
-              <p>
-                Objective (sum of squared errors):
-                <strong id="calculation-sse">—</strong>
-              </p>
+                  <p>
+                    Selected point:
+                    <span id="selected-point-label">none</span>
+                  </p>
+
+                  <p>
+                    Cluster assignment:
+                    <span id="selected-cluster-label">—</span>
+                  </p>
+
+                  <table id="distance-table">
+                    <thead>
+                      <tr>
+                        <th>Centroid</th>
+                        <th>Coordinates</th>
+                        <th>Distance to point</th>
+                        <th>Is nearest?</th>
+                      </tr>
+                    </thead>
+                    <tbody></tbody>
+                  </table>
+
+                  <p>
+                    Objective (sum of squared errors):
+                    <strong id="calculation-sse">—</strong>
+                  </p>
+                </div>
+              </aside>
             </div>
-          </aside>
+          </section>
+
+          <section class="ml-tab-panel" id="panel-explanation" role="tabpanel" aria-labelledby="tab-explanation" hidden>
+            <div class="ml-guide-cards" aria-label="Tips for exploring">
+              <article class="ml-guide-card">
+                <p class="ml-guide-card__label">Step-by-step</p>
+                <h2 class="ml-guide-card__title">Watch the algorithm converge</h2>
+                <p class="ml-guide-card__body">
+                  Use <strong>Step</strong> to perform one assign/update cycle and observe how centroids migrate. Switch to
+                  <strong>Run to convergence</strong> when you are ready to let the loop finish automatically.
+                </p>
+              </article>
+              <article class="ml-guide-card">
+                <p class="ml-guide-card__label">Hands-on</p>
+                <h2 class="ml-guide-card__title">Drag and reshape clusters</h2>
+                <p class="ml-guide-card__body">
+                  Drag any point to a new position or <strong>Shift+click</strong> to remove it. The assignments and SSE update as
+                  soon as you release the mouse.
+                </p>
+              </article>
+              <article class="ml-guide-card">
+                <p class="ml-guide-card__label">What changes?</p>
+                <h2 class="ml-guide-card__title">Interpret the objective</h2>
+                <p class="ml-guide-card__body">
+                  SSE (sum of squared errors) drops as points cluster around centroids. Use the calculation panel to see per-point
+                  distances and confirm when assignments stop changing.
+                </p>
+              </article>
+            </div>
+          </section>
+
+          <section class="ml-tab-panel" id="panel-settings" role="tabpanel" aria-labelledby="tab-settings" hidden>
+            <div class="ml-toolbar" aria-label="Playground configuration">
+              <div class="field-group">
+                <label for="algorithm-select">Algorithm</label>
+                <select id="algorithm-select" title="Choose which clustering algorithm to explore">
+                  <option value="kmeans" selected>K-means (Lloyd's algorithm)</option>
+                </select>
+              </div>
+              <div class="ml-toolbar__hint" role="note">
+                <strong>How to start:</strong> click on the canvas to drop points in <em>Create</em> mode, then press
+                <em>Initialize centroids</em> to let K-means begin. Switch to <em>Drag</em> mode to reposition points without adding
+                more.
+              </div>
+            </div>
+
+            <div class="settings-grid">
+              <article class="ml-guide-card">
+                <p class="ml-guide-card__label">Accessibility</p>
+                <h2 class="ml-guide-card__title">Keyboard and touch ready</h2>
+                <p class="ml-guide-card__body">
+                  Tabs, toggles, and buttons are reachable via keyboard and have generous touch targets. Use the theme toggle in
+                  the header to switch between light and dark modes.
+                </p>
+              </article>
+              <article class="ml-guide-card">
+                <p class="ml-guide-card__label">Layout</p>
+                <h2 class="ml-guide-card__title">Single-screen experience</h2>
+                <p class="ml-guide-card__body">
+                  Tabs keep the playground, explanations, and settings contained within one viewport so you can focus on the canvas
+                  without scrolling through long sections.
+                </p>
+              </article>
+            </div>
+          </section>
         </section>
       </div>
     </main>

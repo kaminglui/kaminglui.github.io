@@ -682,15 +682,16 @@ body.theme-dark .project-card {
 }
 
 
+
 .ml-playground-page {
-  padding: 2.5rem 0 3.5rem;
+  padding: clamp(1.5rem, 4vw, 2.5rem) 0 clamp(2.5rem, 5vw, 3.5rem);
   display: grid;
-  gap: 2rem;
+  gap: 1.75rem;
   justify-items: center;
 }
 
 .ml-playground-shell {
-  width: min(1120px, 100%);
+  width: min(1160px, 100%);
   display: grid;
   gap: 1.5rem;
 }
@@ -709,6 +710,51 @@ body.theme-dark .project-card {
   max-width: 70ch;
   color: var(--color-muted);
   margin: 0 auto;
+}
+
+.ml-tabs {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-sm);
+  padding: 1rem 1.25rem 1.25rem;
+  display: grid;
+  gap: 1rem;
+}
+
+.ml-tablist {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.ml-tab {
+  border: 1px solid var(--color-border);
+  background: var(--color-bg);
+  border-radius: 999px;
+  padding: 0.55rem 1rem;
+  font-weight: 700;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: border-color 150ms ease, background 150ms ease, color 150ms ease;
+}
+
+.ml-tab.is-active,
+.ml-tab:focus-visible,
+.ml-tab:hover {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+  background: var(--color-accent-muted);
+  outline: none;
+}
+
+.ml-tab-panel {
+  display: none;
+}
+
+.ml-tab-panel.is-active {
+  display: grid;
+  gap: 1rem;
 }
 
 .ml-toolbar {
@@ -789,6 +835,60 @@ body.theme-dark .project-card {
   flex-wrap: wrap;
 }
 
+.ml-mode-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.mode-toggle {
+  display: inline-flex;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  overflow: hidden;
+  background: var(--color-bg);
+  box-shadow: var(--shadow-sm);
+}
+
+.mode-toggle__btn {
+  border: none;
+  background: transparent;
+  padding: 0.55rem 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+  color: var(--color-muted);
+  transition: background 150ms ease, color 150ms ease;
+}
+
+.mode-toggle__btn + .mode-toggle__btn {
+  border-left: 1px solid var(--color-border);
+}
+
+.mode-toggle__btn.is-active {
+  background: var(--color-accent-muted);
+  color: var(--color-accent);
+}
+
+.ml-status-chips {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.status-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.45rem 0.7rem;
+  border-radius: 999px;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  font-weight: 700;
+  color: var(--color-muted);
+}
+
 .ml-playground-main {
   flex: 2;
   min-width: min(680px, 100%);
@@ -796,15 +896,25 @@ body.theme-dark .project-card {
   gap: 1rem;
 }
 
+.canvas-wrapper {
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.04), rgba(14, 165, 233, 0.04));
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-border);
+  padding: 0.35rem;
+  box-shadow: var(--shadow-sm);
+}
+
 #kmeans-canvas {
   width: 100%;
   height: auto;
+  aspect-ratio: 3 / 2;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
   background: radial-gradient(circle at 20% 20%, rgba(59, 130, 246, 0.04), transparent),
     radial-gradient(circle at 80% 40%, rgba(22, 163, 74, 0.04), transparent),
     var(--color-surface);
   box-shadow: var(--shadow-sm);
+  touch-action: none;
 }
 
 .ml-controls {
@@ -921,6 +1031,12 @@ body.theme-dark .project-card {
   margin: 0;
 }
 
+.settings-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+}
+
 
 @media (max-width: 960px) {
   .hero__layout {
@@ -945,6 +1061,10 @@ body.theme-dark .project-card {
 
   .ml-playground-main {
     min-width: 100%;
+  }
+
+  .ml-mode-bar {
+    align-items: flex-start;
   }
 
   .ml-toolbar {
@@ -1034,6 +1154,29 @@ body.theme-dark .project-card {
 }
 
 @media (max-width: 640px) {
+  .ml-tablist {
+    width: 100%;
+  }
+
+  .ml-tab {
+    flex: 1;
+    text-align: center;
+  }
+
+  .ml-tabs {
+    padding: 0.85rem 0.95rem 1.05rem;
+  }
+
+  .mode-toggle,
+  .ml-status-chips {
+    width: 100%;
+  }
+
+  .mode-toggle__btn {
+    flex: 1;
+    text-align: center;
+  }
+
   .hero {
     padding-top: 3.5rem;
   }
