@@ -19,7 +19,10 @@ const LAB_STATE_DEFAULTS = {
 };
 const LAB_SESSION_STORAGE_KEY = LAB_CONFIG.sessionKey || 'transformerLabSession';
 const LAB_LOCAL_STATE_KEY = LAB_CONFIG.localStateKey || 'transformerLabState';
-const LAB_API_BASE_URL = ((LAB_CONFIG.apiBaseUrl || '/api').replace(/\/$/, '')) || '/api';
+// Allow deployments without a backing API; if apiBaseUrl is not provided, stay fully local.
+const configuredApi = typeof LAB_CONFIG.apiBaseUrl === 'string' ? LAB_CONFIG.apiBaseUrl : null;
+const LAB_API_BASE_URL = configuredApi ? configuredApi.replace(/\/$/, '') : null;
+const REMOTE_SYNC_ENABLED = Boolean(LAB_API_BASE_URL);
 const LAB_STATE_DEBOUNCE_MS = Number(LAB_CONFIG.stateDebounceMs || 800);
 const LAB_STATE_TIMEOUT_MS = Number(LAB_CONFIG.stateTimeoutMs || 5000);
 
@@ -102,6 +105,10 @@ function createLabStateStore() {
   }
 
   const hydrateRemoteState = async () => {
+    if (!REMOTE_SYNC_ENABLED) {
+      readyResolve({ ...state });
+      return;
+    }
     let timeoutId;
     try {
       const controller = new AbortController();
@@ -133,6 +140,7 @@ function createLabStateStore() {
   hydrateRemoteState();
 
   const sendRemoteState = async () => {
+    if (!REMOTE_SYNC_ENABLED) return;
     let timeoutId;
     try {
       const controller = new AbortController();
@@ -156,6 +164,7 @@ function createLabStateStore() {
   };
 
   const scheduleRemoteSave = () => {
+    if (!REMOTE_SYNC_ENABLED) return;
     if (debounceTimer) {
       window.clearTimeout(debounceTimer);
     }

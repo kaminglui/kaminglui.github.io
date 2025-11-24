@@ -305,7 +305,8 @@
 
     <script>
       window.TRANSFORMER_LAB_CONFIG = {
-        apiBaseUrl: '/api',
+        // No backend is required for the static deployment; provide an API base to enable remote sync.
+        apiBaseUrl: null,
         sessionKey: 'transformerLabSession',
         localStateKey: 'transformerLabState',
         ...(window.TRANSFORMER_LAB_CONFIG || {})
