@@ -174,9 +174,24 @@
                 of its assigned points.
               </p>
 
+              <div class="calculation-hint">
+                <p><strong>What's shown here?</strong></p>
+                <ul>
+                  <li><strong>Centroid</strong> is the current group center the point is comparing against.</li>
+                  <li><strong>Distance</strong> is how far the point is from that centroid (smaller is closer).</li>
+                  <li><strong>Objective</strong> is the running total of squared distances for <em>all</em> points (lower is better).</li>
+                </ul>
+                <p class="calculation-hint__note">Tip: click any point on the canvas to focus it here. Dragging a point updates the table in real time.</p>
+              </div>
+
               <p>
                 Selected point:
                 <span id="selected-point-label">none</span>
+              </p>
+
+              <p>
+                Cluster assignment:
+                <span id="selected-cluster-label">—</span>
               </p>
 
               <table id="distance-table">
