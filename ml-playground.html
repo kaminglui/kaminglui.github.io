@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="Experiment with K-means clustering by adding, dragging, and grouping points on an interactive canvas."
+    />
+    <title>ML Playground · Ka Ming Lui</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fira+Code:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="assets/css/style.css" />
+  </head>
+  <body class="theme-light">
+    <header class="site-header" id="top">
+      <div class="container">
+        <nav class="nav" aria-label="Primary">
+          <a class="logo" href="index.html#hero">Ka Ming Lui</a>
+          <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="primary-navigation">
+            <span class="nav-toggle__bar"></span>
+            <span class="nav-toggle__bar"></span>
+            <span class="nav-toggle__bar"></span>
+            <span class="sr-only">Toggle navigation</span>
+          </button>
+          <ul class="nav-links" id="primary-navigation" data-visible="false">
+            <li class="nav-item nav-item--dropdown">
+              <button
+                class="nav-dropdown-toggle nav-pill"
+                type="button"
+                aria-expanded="false"
+                aria-controls="section-menu"
+              >
+                Sections
+                <svg class="nav-dropdown__icon" aria-hidden="true" focusable="false" viewBox="0 0 12 12">
+                  <path
+                    d="M2.47 4.47a.75.75 0 0 1 1.06 0L6 6.94l2.47-2.47a.75.75 0 0 1 1.06 1.06l-3 3a.75.75 0 0 1-1.06 0l-3-3a.75.75 0 0 1 0-1.06Z"
+                  />
+                </svg>
+              </button>
+              <ul class="nav-dropdown-menu" id="section-menu" hidden>
+                <li><a href="index.html#about">About</a></li>
+                <li><a href="index.html#learning">Learning</a></li>
+                <li><a href="index.html#posts">Posts</a></li>
+                <li><a href="index.html#projects">Projects</a></li>
+                <li><a href="index.html#experience">Experience</a></li>
+                <li><a href="index.html#education">Education</a></li>
+                <li><a href="index.html#contact">Contact</a></li>
+              </ul>
+            </li>
+            <li><a class="nav-pill" href="ml-game.html">Transformer Lab</a></li>
+            <li><a class="nav-pill" href="ml-playground.html" aria-current="page">ML Playground</a></li>
+            <li><a class="nav-pill" href="endless-depths.html">Endless Depths</a></li>
+          </ul>
+          <div class="nav-actions">
+            <button class="theme-toggle" type="button" aria-label="Toggle color theme">
+              <span aria-hidden="true">🌙</span>
+            </button>
+          </div>
+        </nav>
+      </div>
+    </header>
+
+    <main class="container ml-playground-page">
+      <div class="ml-playground-shell">
+        <header class="ml-playground__header">
+          <p class="card__eyebrow">Interactive clustering</p>
+          <h1>ML Playground — K-Means Clustering Explorer</h1>
+          <p class="ml-playground__lead">
+            Add, delete, and drag data points to see how K-means groups them. Adjust <em>k</em>, step through each iteration, or
+            let the algorithm run to convergence while you watch the objective change.
+          </p>
+        </header>
+
+        <section class="ml-toolbar" aria-label="Playground configuration">
+          <div class="field-group">
+            <label for="algorithm-select">Algorithm</label>
+            <select id="algorithm-select" title="Choose which clustering algorithm to explore">
+              <option value="kmeans" selected>K-means (Lloyd's algorithm)</option>
+            </select>
+          </div>
+          <div class="ml-toolbar__hint" role="note">
+            <strong>How to start:</strong> click on the canvas to drop points, then press <em>Initialize centroids</em> to let
+            K-means begin. Hover over any control for a reminder of what it does.
+          </div>
+        </section>
+
+        <section class="ml-guide-cards" aria-label="Tips for exploring">
+          <article class="ml-guide-card">
+            <p class="ml-guide-card__label">Step-by-step</p>
+            <h2 class="ml-guide-card__title">Watch the algorithm converge</h2>
+            <p class="ml-guide-card__body">
+              Use <strong>Step</strong> to perform one assign/update cycle and observe how centroids migrate. Switch to
+              <strong>Run to convergence</strong> when you are ready to let the loop finish automatically.
+            </p>
+          </article>
+          <article class="ml-guide-card">
+            <p class="ml-guide-card__label">Hands-on</p>
+            <h2 class="ml-guide-card__title">Drag and reshape clusters</h2>
+            <p class="ml-guide-card__body">
+              Drag any point to a new position or <strong>Shift+click</strong> to remove it. The assignments and SSE update as
+              soon as you release the mouse.
+            </p>
+          </article>
+        </section>
+
+        <section class="ml-playground">
+          <div class="ml-playground-main">
+            <canvas
+              id="kmeans-canvas"
+              width="720"
+              height="480"
+              aria-label="K-means playground canvas"
+              title="Click to add a point, drag to move it, or Shift+click to remove. Initialize centroids to start clustering."
+            ></canvas>
+
+            <div class="ml-controls">
+              <label for="k-input">Number of clusters (k)</label>
+              <input
+                id="k-input"
+                type="number"
+                min="1"
+                max="8"
+                value="3"
+                title="Choose how many clusters K-means should find (1 to 8)"
+              />
+
+              <button id="btn-init-centroids" type="button" title="Pick k random points as starting centroids and assign clusters">
+                Initialize centroids
+              </button>
+              <button id="btn-step" type="button" title="Run one iteration: assign points, then update centroids">
+                Step (assign &amp; update)
+              </button>
+              <button id="btn-run" type="button" title="Keep iterating until assignments stop changing or a safety cap is reached">
+                Run to convergence
+              </button>
+              <button id="btn-reset-clustering" type="button" title="Remove centroids and assignments but keep your points on the canvas">
+                Reset clustering
+              </button>
+              <button id="btn-clear-points" type="button" title="Remove all points and centroids to start fresh">
+                Clear all points
+              </button>
+
+              <p id="kmeans-status">
+                Clusters: <span id="status-k">3</span> ·
+                Iteration: <span id="status-iter">0</span> ·
+                SSE: <span id="status-sse">—</span>
+              </p>
+
+              <p class="ml-hint">
+                Hint: click empty canvas to add a point. Shift+click a point to delete it. Click and drag a point to move it.
+              </p>
+            </div>
+          </div>
+
+          <aside class="ml-sidebar">
+            <button
+              id="btn-toggle-calculations"
+              type="button"
+              aria-expanded="false"
+              title="Toggle a breakdown of per-point distances and the current SSE"
+            >
+              Show calculation process
+            </button>
+
+            <div id="calculation-panel" hidden>
+              <h2>Calculation details</h2>
+              <p>
+                K-means alternates between assigning each point to the nearest centroid and recomputing each centroid as the mean
+                of its assigned points.
+              </p>
+
+              <p>
+                Selected point:
+                <span id="selected-point-label">none</span>
+              </p>
+
+              <table id="distance-table">
+                <thead>
+                  <tr>
+                    <th>Centroid</th>
+                    <th>Coordinates</th>
+                    <th>Distance to point</th>
+                    <th>Is nearest?</th>
+                  </tr>
+                </thead>
+                <tbody></tbody>
+              </table>
+
+              <p>
+                Objective (sum of squared errors):
+                <strong id="calculation-sse">—</strong>
+              </p>
+            </div>
+          </aside>
+        </section>
+      </div>
+    </main>
+
+    <footer class="site-footer">
+      <div class="container footer__layout">
+        <div>
+          <h2>Want to explore more ML demos?</h2>
+          <p>Try the transformer lab or reach out to share your favorite visualization ideas.</p>
+          <div class="footer__actions">
+            <a class="button button--primary" href="ml-game.html">Visit Transformer Lab</a>
+            <a class="button button--ghost" href="mailto:contact@kaminglui.com">Email Ka-Ming</a>
+          </div>
+        </div>
+        <div class="footer__meta">
+          <p>Curious how this playground works? Inspect the source on GitHub to tweak the algorithm.</p>
+          <p>&copy; <span id="year"></span> Ka Ming Lui. Built with accessibility and performance in mind.</p>
+        </div>
+      </div>
+      <a class="back-to-top" href="#top">Back to top</a>
+    </footer>
+
+    <script type="module" src="assets/js/main.js"></script>
+    <script type="module" src="assets/js/ml-playground.js"></script>
+  </body>
+</html>
