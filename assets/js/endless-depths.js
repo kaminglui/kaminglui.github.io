@@ -1,9 +1,11 @@
+// === Game loop & global state ===
 let tileSize = 48;
 const VIEW_W = 16;
 const VIEW_H = 12;
 const MAP_W = 60;
 const MAP_H = 45;
 const STATE_KEY = 'endless-depths-state-v1';
+const LAYOUT_PREF_KEY = 'endless-depths-layout';
 let resizeObserver = null;
 
 const COLORS = {
@@ -45,6 +47,7 @@ const BIOMES = {
 const MAX_INV_SLOTS = 20;
 const ITEM_TYPES = { WEAPON: 'weapon', ARMOR: 'armor', POTION: 'potion', MATERIAL: 'material', AMMO: 'ammo', KEY: 'key', BOOK: 'book' };
 
+// === Audio engine ===
 const AudioEngine = {
   ctx: null,
   isEnabled: false,
@@ -107,7 +110,7 @@ const AudioEngine = {
     if (t === 'scrap') this.playTone(320, 'triangle', 0.08, 0.08);
   },
   scheduleMusic() {
-    if (!this.isEnabled) return;
+    if (!this.isEnabled || !this.ctx) return;
     const lookAhead = 0.1;
     const pattern = this.tracks[this.currentTrack];
     while (this.nextNoteTime < this.ctx.currentTime + lookAhead) {
@@ -149,6 +152,11 @@ let storyProgress = { started: false, foundArtifactClue: false, defeatedFirstBos
 let journalEntries = [];
 let saveTimeout = null;
 
+function getTile(x, y) {
+  if (y < 0 || x < 0 || y >= map.length || x >= (map[y]?.length || 0)) return null;
+  return map[y][x];
+}
+
 const PALETTE = ['#00000000', '#fcc', '#c88', '#844', '#ddd', '#aaa', '#888', '#555', '#ffd700', '#b8860b', '#4a9eff', '#ff4a4a', '#b15dff'];
 const SPRITES = {
   hero_base: [0, 0, 9, 9, 9, 9, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 2, 2, 2, 2, 0, 0, 0, 2, 2, 2, 2, 2, 2, 0, 0, 0, 3, 3, 3, 3, 0, 0, 0, 0, 3, 0, 0, 3, 0, 0],
@@ -178,12 +186,14 @@ class Item {
   }
 }
 
+// === Items & crafting ===
 const RECIPES = [
   { name: 'Void Blade', type: ITEM_TYPES.WEAPON, rarity: 'epic', stats: { atk: 14, crit: 0.3, speed: 250 }, weight: 4, req: { 'Scrap Metal': 5, 'Shadow Essence': 2 }, spriteName: 'weapon_sword' },
   { name: 'Elixir', type: ITEM_TYPES.POTION, rarity: 'rare', stats: { hp: 100 }, weight: 0.5, req: { 'Magic Dust': 3 } },
   { name: 'Iron Arrow', type: ITEM_TYPES.AMMO, rarity: 'common', stats: {}, weight: 0.1, req: { 'Scrap Metal': 1, 'Wood Plank': 1 } }
 ];
 
+// === Entities & combat ===
 class Entity {
   constructor(x, y, sprite, color, name, blocks) {
     this.x = x;
@@ -390,6 +400,7 @@ function loadLayoutPreference() {
   }
 }
 
+// === Input handling & bootstrap ===
 function init() {
   canvas = document.getElementById('gameCanvas');
   ctx = canvas.getContext('2d');
@@ -480,10 +491,12 @@ function updateCanvasSize(container = document.getElementById('canvas-container'
 
 function setupFullscreenToggle(container) {
   const fullscreenBtn = document.getElementById('fullscreen-btn');
-  if (!fullscreenBtn || !container) return;
+  const wrapper = document.getElementById('game-wrapper');
+  if (!fullscreenBtn || !container || !wrapper) return;
 
   const updateButtonState = () => {
-    const active = document.fullscreenElement === container;
+    const active = document.fullscreenElement === wrapper;
+    wrapper.classList.toggle('is-fullscreen', active);
     fullscreenBtn.setAttribute('aria-pressed', active ? 'true' : 'false');
     fullscreenBtn.setAttribute('aria-label', active ? 'Exit fullscreen' : 'Enter fullscreen');
     fullscreenBtn.textContent = active ? '⤡' : '⤢';
@@ -491,7 +504,7 @@ function setupFullscreenToggle(container) {
 
   fullscreenBtn.addEventListener('click', () => {
     if (document.fullscreenElement) document.exitFullscreen?.();
-    else container.requestFullscreen?.().catch(() => {});
+    else wrapper.requestFullscreen?.().catch(() => {});
   });
 
   document.addEventListener('fullscreenchange', () => {
@@ -579,7 +592,8 @@ function update(dt) {
     if (dx !== 0 || dy !== 0) {
       const tx = player.x + dx;
       const ty = player.y + dy;
-      if (tx >= 0 && tx < MAP_W && ty >= 0 && ty < MAP_H && map[ty][tx].type !== 'wall') {
+      const tile = getTile(tx, ty);
+      if (tile && tile.type !== 'wall') {
         player.lastActionTime = now;
         const target = entities.find((e) => e.x === tx && e.y === ty && e.blocks && !e.dead);
         if (target) {
@@ -651,7 +665,8 @@ function update(dt) {
 
 function isBlocked(x, y) {
   if (x < 0 || x >= MAP_W || y < 0 || y >= MAP_H) return true;
-  return map[y][x].type === 'wall' || entities.some((e) => e.x === x && e.y === y && e.blocks && !e.dead);
+  const tile = getTile(x, y);
+  return !tile || tile.type === 'wall' || entities.some((e) => e.x === x && e.y === y && e.blocks && !e.dead);
 }
 
 function attemptAttack() {
@@ -676,8 +691,8 @@ function render2D() {
   const cy = getCamY();
   for (let y = cy; y < cy + VIEW_H; y++) {
     for (let x = cx; x < cx + VIEW_W; x++) {
-      if (y >= MAP_H || x >= MAP_W) continue;
-      const tile = map[y][x];
+      const tile = getTile(x, y);
+      if (!tile) continue;
       const sx = (x - cx) * tileSize;
       const sy = (y - cy) * tileSize;
       if (tile.visible || gameState === 'PURGATORY') {
@@ -698,7 +713,10 @@ function render2D() {
     }
   }
   entities.sort((a, b) => a.y - b.y);
-  entities.forEach((e) => e.draw(ctx, cx, cy, map[e.y][e.x].visible));
+  entities.forEach((e) => {
+    const tile = getTile(e.x, e.y);
+    e.draw(ctx, cx, cy, tile ? tile.visible : false);
+  });
   player.draw(ctx, cx, cy, true);
 }
 
@@ -843,6 +861,7 @@ function dropLoot(target) {
   entities.push(new LootItem(target.x, target.y, item));
 }
 
+// === Map generation & FOV ===
 function generateFloor() {
   map = [];
   entities = [];
@@ -980,7 +999,8 @@ function fireRanged() {
   let target = null;
   let minD = 999;
   entities.forEach((e) => {
-    if (e instanceof Fighter && e !== player && !e.dead && map[e.y][e.x].visible) {
+    const tile = getTile(e.x, e.y);
+    if (e instanceof Fighter && e !== player && !e.dead && tile?.visible) {
       const d = Math.abs(e.x - player.x) + Math.abs(e.y - player.y);
       if (d < 8 && d < minD) {
         minD = d;
@@ -1000,6 +1020,7 @@ function fireRanged() {
 function useSkill(skillName) {
   if (gameState === 'DEAD' || !skillName) return;
   const skill = SKILLS_DB[skillName];
+  if (!skill) return;
   if (player.mp < skill.cost) {
     log('Need MP', 'log-danger');
     return;
@@ -1010,7 +1031,8 @@ function useSkill(skillName) {
     let target = null;
     let minD = 999;
     entities.forEach((e) => {
-      if (e instanceof Fighter && e !== player && !e.dead && map[e.y][e.x].visible) {
+      const tile = getTile(e.x, e.y);
+      if (e instanceof Fighter && e !== player && !e.dead && tile?.visible) {
         const d = Math.abs(e.x - player.x) + Math.abs(e.y - player.y);
         if (d < 8 && d < minD) {
           minD = d;
@@ -1266,6 +1288,7 @@ function disassembleItem(i) {
 }
 
 function updateFOV() {
+  if (!player || !map.length) return;
   for (let y = 0; y < MAP_H; y++) for (let x = 0; x < MAP_W; x++) map[y][x].visible = false;
   const r = 8;
   for (let i = 0; i < 360; i += 2) {
@@ -1277,10 +1300,11 @@ function updateFOV() {
     for (let j = 0; j < r; j++) {
       const mx = Math.floor(ox);
       const my = Math.floor(oy);
-      if (mx < 0 || mx >= MAP_W || my < 0 || my >= MAP_H) break;
-      map[my][mx].visible = true;
-      map[my][mx].explored = true;
-      if (map[my][mx].type === 'wall') break;
+      const tile = getTile(mx, my);
+      if (!tile) break;
+      tile.visible = true;
+      tile.explored = true;
+      if (tile.type === 'wall') break;
       ox += dx;
       oy += dy;
     }
@@ -1299,7 +1323,9 @@ function handleMouseMove(e) {
   const t = document.getElementById('tooltip');
   t.style.display = 'none';
   if (mx >= 0 && mx < MAP_W && my >= 0 && my < MAP_H) {
-    if (gameState !== 'PURGATORY' && !map[my][mx].visible) return;
+    const tile = getTile(mx, my);
+    if (!tile) return;
+    if (gameState !== 'PURGATORY' && !tile.visible) return;
     const ent = entities.find((e) => e.x === mx && e.y === my && !e.dead);
     if (ent) {
       t.style.display = 'block';
@@ -1333,14 +1359,37 @@ function spawnStairs(x, y) {
 }
 
 function handleDeath() {
+  if (player && !savedPlayerState) {
+    savedPlayerState = {
+      d: depth,
+      inv: player.inventory.map(serializeItem),
+      eq: { weapon: serializeItem(player.equipment.weapon), armor: serializeItem(player.equipment.armor) },
+      xp: player.xp,
+      lvl: player.level,
+      stats: { hp: player.maxHp, mp: player.maxMp, str: player.baseStr, def: player.baseDef, maxWeight: player.maxWeight }
+    };
+  }
   document.getElementById('overlay').classList.remove('hidden');
+  document.getElementById('overlay-title').innerText = 'DEATH';
   document.getElementById('overlay-msg').innerText = 'YOU DIED';
+  document.getElementById('start-btn').innerText = 'Start New Run';
+  document.getElementById('start-btn').onclick = () => startGame(false);
+  document.getElementById('new-run-btn').classList.add('hidden');
+  const purgBtn = document.getElementById('purgatory-btn');
+  if (purgBtn) purgBtn.classList.toggle('hidden', !savedPlayerState);
   gameState = 'DEAD';
   scheduleSave();
 }
 
 function enterPurgatory() {
-  savedPlayerState = { d: depth, inv: [...player.inventory], eq: { ...player.equipment }, xp: player.xp, lvl: player.level, st: { hp: player.maxHp, mp: player.maxMp } };
+  savedPlayerState = {
+    d: depth,
+    inv: player.inventory.map(serializeItem),
+    eq: { weapon: serializeItem(player.equipment.weapon), armor: serializeItem(player.equipment.armor) },
+    xp: player.xp,
+    lvl: player.level,
+    stats: { hp: player.maxHp, mp: player.maxMp, str: player.baseStr, def: player.baseDef, maxWeight: player.maxWeight }
+  };
   gameState = 'PURGATORY';
   player.hp = player.maxHp;
   document.getElementById('overlay').classList.add('hidden');
@@ -1351,6 +1400,24 @@ function enterPurgatory() {
 function winPurgatory() {
   gameState = 'PLAYING';
   depth = savedPlayerState.d;
+  const stats = savedPlayerState.stats;
+  player = new Fighter(2, 2, 'hero', COLORS.accent, 'Hero', {
+    hp: stats.hp,
+    mp: stats.mp,
+    str: stats.str,
+    def: stats.def,
+    maxWeight: stats.maxWeight
+  });
+  player.level = savedPlayerState.lvl;
+  player.xp = savedPlayerState.xp;
+  player.inventory = (savedPlayerState.inv || []).map(deserializeItem);
+  player.equipment = {
+    weapon: deserializeItem(savedPlayerState.eq?.weapon),
+    armor: deserializeItem(savedPlayerState.eq?.armor)
+  };
+  player.hp = player.maxHp;
+  player.mp = player.maxMp;
+  savedPlayerState = null;
   document.getElementById('overlay').classList.add('hidden');
   generateFloor();
   updateUI();
@@ -1386,7 +1453,10 @@ function craftItem(idx) {
   const r = RECIPES[idx];
   for (const [n, q] of Object.entries(r.req)) {
     const h = player.inventory.find((x) => x.name === n)?.stack || 0;
-    if (h < q) return;
+    if (h < q) {
+      log('Missing materials for ' + r.name, 'log-danger');
+      return;
+    }
   }
   for (const [n, q] of Object.entries(r.req)) {
     const i = player.inventory.find((x) => x.name === n);
@@ -1465,7 +1535,8 @@ function persistState() {
 function loadSavedState() {
   try {
     const raw = localStorage.getItem(STATE_KEY);
-    return raw ? JSON.parse(raw) : null;
+    if (!raw) return null;
+    return JSON.parse(raw);
   } catch (error) {
     console.warn('Unable to read saved game', error);
     return null;
