@@ -1493,8 +1493,12 @@ function serializeItem(item) {
 function deserializeItem(raw) {
   if (!raw) return null;
   const item = new Item(raw.name, raw.type, raw.rarity, raw.stats, raw.weight, raw.stack, raw.spriteName);
-  if (raw.maxDurability) item.maxDurability = raw.maxDurability;
-  if (raw.durability) item.durability = raw.durability;
+  if (raw.maxDurability !== undefined && raw.maxDurability !== null) item.maxDurability = raw.maxDurability;
+  if (raw.durability !== undefined && raw.durability !== null) {
+    item.durability = raw.durability;
+  } else {
+    console.warn('deserializeItem: missing durability for item', raw.name);
+  }
   return item;
 }
 
