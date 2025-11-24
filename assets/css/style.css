@@ -686,6 +686,19 @@ body.theme-dark .project-card {
   padding: 2.5rem 0 3.5rem;
   display: grid;
   gap: 2rem;
+  justify-items: center;
+}
+
+.ml-playground-shell {
+  width: min(1120px, 100%);
+  display: grid;
+  gap: 1.5rem;
+}
+
+.ml-playground__header {
+  text-align: center;
+  display: grid;
+  gap: 0.5rem;
 }
 
 .ml-playground__header h1 {
@@ -695,6 +708,7 @@ body.theme-dark .project-card {
 .ml-playground__lead {
   max-width: 70ch;
   color: var(--color-muted);
+  margin: 0 auto;
 }
 
 .ml-toolbar {
@@ -706,6 +720,8 @@ body.theme-dark .project-card {
   display: flex;
   gap: 1rem;
   align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
 }
 
 .ml-toolbar label {
@@ -720,6 +736,50 @@ body.theme-dark .project-card {
   border-radius: var(--radius-sm);
   border: 1px solid var(--color-border);
   background: var(--color-bg);
+}
+
+.ml-toolbar__hint {
+  padding: 0.75rem 0.9rem;
+  border-radius: var(--radius-sm);
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.12), rgba(34, 197, 94, 0.08));
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+  max-width: 520px;
+  font-weight: 600;
+}
+
+.ml-guide-cards {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+}
+
+.ml-guide-card {
+  padding: 1.1rem 1.2rem;
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  box-shadow: var(--shadow-sm);
+  display: grid;
+  gap: 0.4rem;
+}
+
+.ml-guide-card__label {
+  margin: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  font-size: 0.78rem;
+  color: var(--color-muted);
+}
+
+.ml-guide-card__title {
+  margin: 0;
+  font-size: 1.15rem;
+}
+
+.ml-guide-card__body {
+  margin: 0;
+  color: var(--color-muted);
 }
 
 .ml-playground {
@@ -871,6 +931,11 @@ body.theme-dark .project-card {
 
   .ml-playground-main {
     min-width: 100%;
+  }
+
+  .ml-toolbar {
+    flex-direction: column;
+    align-items: flex-start;
   }
 
   .lab-panel__grid,
