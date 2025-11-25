@@ -13,51 +13,53 @@
     <link rel="stylesheet" href="style.css" />
   </head>
   <body>
-    <header>
-      <h1>Analog Circuit Lab</h1>
-      <nav class="nav-links">
-        <a href="../index.html">Home</a>
-        <a href="https://github.com/kaminglui" target="_blank" rel="noreferrer">GitHub</a>
-      </nav>
-    </header>
-    <main>
-      <div class="canvas-wrapper">
-        <div class="toolbar" id="toolbar"></div>
-        <canvas id="schematic" width="900" height="500" aria-label="Schematic canvas"></canvas>
-      </div>
-      <div class="sidebar">
-        <section class="panel" id="sim-panel">
-          <h3>Simulation</h3>
-          <div class="toolbar" id="sim-controls"></div>
-          <div class="property-grid">
-            <label>Time/Div</label>
-            <input type="number" id="time-div" value="1e-3" step="1e-3" />
-            <label>dt</label>
-            <input type="number" id="dt" value="1e-4" step="1e-4" />
-          </div>
-        </section>
-        <section class="panel">
-          <h3>Oscilloscope</h3>
-          <canvas id="scope" width="420" height="220"></canvas>
-          <div class="property-grid">
-            <label>CH1 Node</label>
-            <select id="ch1-node"></select>
-            <label>CH2 Node</label>
-            <select id="ch2-node"></select>
-            <label>Volts/Div</label>
-            <input type="number" id="v-div" value="1" step="0.5" />
-          </div>
-        </section>
-        <section class="panel" id="properties">
-          <h3>Properties</h3>
-          <div id="prop-content">Select a component.</div>
-        </section>
-        <section class="panel">
-          <h3>Log</h3>
-          <div class="log" id="log"></div>
-        </section>
-      </div>
-    </main>
+    <div class="circuit-lab" id="circuit-lab">
+      <header>
+        <h1>Analog Circuit Lab</h1>
+        <nav class="nav-links">
+          <a href="../index.html">Home</a>
+          <a href="https://github.com/kaminglui" target="_blank" rel="noreferrer">GitHub</a>
+        </nav>
+      </header>
+      <main>
+        <div class="canvas-wrapper">
+          <div class="toolbar" id="toolbar"></div>
+          <canvas id="schematic" width="900" height="500" aria-label="Schematic canvas"></canvas>
+        </div>
+        <div class="sidebar">
+          <section class="panel" id="sim-panel">
+            <h3>Simulation</h3>
+            <div class="toolbar" id="sim-controls"></div>
+            <div class="property-grid">
+              <label>Time/Div</label>
+              <input type="number" id="time-div" value="1e-3" step="1e-3" />
+              <label>dt</label>
+              <input type="number" id="dt" value="1e-4" step="1e-4" />
+            </div>
+          </section>
+          <section class="panel">
+            <h3>Oscilloscope</h3>
+            <canvas id="scope" width="420" height="220"></canvas>
+            <div class="property-grid">
+              <label>CH1 Node</label>
+              <select id="ch1-node"></select>
+              <label>CH2 Node</label>
+              <select id="ch2-node"></select>
+              <label>Volts/Div</label>
+              <input type="number" id="v-div" value="1" step="0.5" />
+            </div>
+          </section>
+          <section class="panel" id="properties">
+            <h3>Properties</h3>
+            <div id="prop-content">Select a component.</div>
+          </section>
+          <section class="panel">
+            <h3>Log</h3>
+            <div class="log" id="log"></div>
+          </section>
+        </div>
+      </main>
+    </div>
     <script type="module" src="./src/main.js"></script>
   </body>
 </html>

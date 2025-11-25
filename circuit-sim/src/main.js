@@ -8,27 +8,33 @@ import { buildSolverFromNetlist } from './sim/netlist.js';
 
 let initialized = false;
 
+const requiredIds = [
+  'log',
+  'schematic',
+  'scope',
+  'toolbar',
+  'sim-controls',
+  'prop-content',
+  'ch1-node',
+  'ch2-node',
+  'dt',
+  'time-div',
+  'v-div'
+];
+let warnedMissing = false;
+
 function init() {
-  if (initialized) return;
-  const requiredIds = [
-    'log',
-    'schematic',
-    'scope',
-    'toolbar',
-    'sim-controls',
-    'prop-content',
-    'ch1-node',
-    'ch2-node',
-    'dt',
-    'time-div',
-    'v-div'
-  ];
+  if (initialized) return true;
 
   const missing = requiredIds.filter((id) => !document.getElementById(id));
   if (missing.length) {
-    console.warn('Circuit Lab init skipped; missing elements:', missing.join(', '));
-    return;
+    if (!warnedMissing) {
+      console.warn('Circuit Lab init deferred; missing elements:', missing.join(', '));
+      warnedMissing = true;
+    }
+    return false;
   }
+  warnedMissing = false;
 
   const logEl = document.getElementById('log');
   const log = (msg) => {
@@ -141,10 +147,22 @@ function init() {
   runDC();
   scope.draw();
   initialized = true;
+  return true;
+}
+function startWhenReady() {
+  if (init()) return;
+  const observer = new MutationObserver(() => {
+    if (init()) observer.disconnect();
+  });
+  observer.observe(document.body, { childList: true, subtree: true });
 }
 
 if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', init);
+  document.addEventListener('DOMContentLoaded', startWhenReady);
 } else {
-  init();
+  startWhenReady();
 }
+
+// Expose a manual hook so hosts embedding the lab in a tab can trigger setup
+// after injecting the markup.
+window.initCircuitLab = init;
