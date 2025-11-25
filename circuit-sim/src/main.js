@@ -26,6 +26,12 @@ let warnedMissing = false;
 function init() {
   if (initialized) return true;
 
+  const host = document.getElementById('circuit-lab');
+  if (!host) {
+    // When embedded inside another page, the tab markup might not be on the DOM yet.
+    return false;
+  }
+
   const missing = requiredIds.filter((id) => !document.getElementById(id));
   if (missing.length) {
     if (!warnedMissing) {
@@ -151,10 +157,31 @@ function init() {
 }
 function startWhenReady() {
   if (init()) return;
+
+  // Mutation observer catches tab content that is injected later.
   const observer = new MutationObserver(() => {
     if (init()) observer.disconnect();
   });
   observer.observe(document.body, { childList: true, subtree: true });
+
+  // Fallback interval for hosts that flip visibility without DOM mutations
+  // (e.g., switching display states on a pre-rendered tab).
+  const tick = setInterval(() => {
+    if (init()) {
+      clearInterval(tick);
+      observer.disconnect();
+    }
+  }, 250);
+
+  // Clean up once the page unloads in case the lab never initializes.
+  window.addEventListener(
+    'pagehide',
+    () => {
+      clearInterval(tick);
+      observer.disconnect();
+    },
+    { once: true }
+  );
 }
 
 if (document.readyState === 'loading') {
