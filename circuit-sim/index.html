@@ -1,65 +1,367 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Analog Circuit Lab</title>
+    <title>Circuit Forge · Ka Ming Lui</title>
+    <meta
+      name="description"
+      content="Interactive circuit lab for sketching components, organizing nets, and annotating design ideas."
+    />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=Fira+Code:wght@400;600&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fira+Code:wght@400;500&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="style.css" />
+    <link rel="stylesheet" href="../assets/css/style.css" />
+    <style>
+      :root {
+        --forge-surface: #0d1529;
+        --forge-panel: #0f172a;
+        --forge-border: #1f2937;
+        --forge-accent: #22d3ee;
+        --forge-text: #e2e8f0;
+        --forge-subtle: #94a3b8;
+      }
+
+      body {
+        background: radial-gradient(circle at 10% 10%, rgba(34, 211, 238, 0.06), transparent 28%),
+          radial-gradient(circle at 85% 10%, rgba(34, 211, 238, 0.05), transparent 26%),
+          #050914;
+        color: var(--forge-text);
+      }
+
+      header.site-header {
+        position: sticky;
+        top: 0;
+        z-index: 40;
+      }
+
+      .lab-hero {
+        padding: 32px 0 12px;
+      }
+
+      .lab-hero__title {
+        margin: 0 0 8px;
+      }
+
+      .lab-hero__lead {
+        color: var(--forge-subtle);
+        max-width: 720px;
+      }
+
+      .circuit-forge {
+        margin-top: 8px;
+        background: var(--forge-surface);
+        border: 1px solid var(--forge-border);
+        border-radius: 16px;
+        padding: 12px;
+        box-shadow: 0 20px 45px rgba(0, 0, 0, 0.3);
+      }
+
+      .forge-grid {
+        display: grid;
+        grid-template-columns: 1.6fr 1fr;
+        gap: 12px;
+      }
+
+      .forge-stage {
+        background: var(--forge-panel);
+        border: 1px solid var(--forge-border);
+        border-radius: 12px;
+        padding: 12px;
+        position: relative;
+        overflow: hidden;
+      }
+
+      .forge-toolbar {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-bottom: 12px;
+      }
+
+      .forge-toolbar button {
+        background: #111827;
+        color: var(--forge-text);
+        border: 1px solid var(--forge-border);
+        border-radius: 10px;
+        padding: 8px 12px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background 0.2s, border-color 0.2s, transform 0.1s;
+      }
+
+      .forge-toolbar button.active {
+        background: var(--forge-accent);
+        color: #0b1222;
+        border-color: var(--forge-accent);
+        transform: translateY(-1px);
+      }
+
+      .forge-canvas {
+        background: radial-gradient(circle at 24px 24px, rgba(255, 255, 255, 0.05) 1px, transparent 1px),
+          #0a0f1c;
+        background-size: 48px 48px;
+        border: 1px solid var(--forge-border);
+        border-radius: 12px;
+        height: 520px;
+        position: relative;
+        overflow: hidden;
+        box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.02);
+      }
+
+      .forge-chip {
+        position: absolute;
+        min-width: 140px;
+        padding: 12px;
+        border-radius: 10px;
+        border: 1px solid rgba(255, 255, 255, 0.06);
+        background: linear-gradient(135deg, rgba(34, 211, 238, 0.08), rgba(34, 211, 238, 0.02));
+        color: var(--forge-text);
+        box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
+      }
+
+      .forge-chip.selected {
+        border-color: var(--forge-accent);
+        box-shadow: 0 0 0 1px rgba(34, 211, 238, 0.35), 0 10px 24px rgba(0, 0, 0, 0.4);
+      }
+
+      .forge-chip h4 {
+        margin: 0 0 4px;
+        font-size: 14px;
+      }
+
+      .forge-chip p {
+        margin: 0;
+        color: var(--forge-subtle);
+        font-size: 12px;
+      }
+
+      .forge-chip .pin {
+        position: absolute;
+        width: 10px;
+        height: 10px;
+        background: var(--forge-accent);
+        border-radius: 50%;
+        box-shadow: 0 0 0 2px rgba(34, 211, 238, 0.2);
+      }
+
+      .forge-chip .pin[data-pos='left'] {
+        left: -6px;
+        top: 50%;
+        transform: translateY(-50%);
+      }
+
+      .forge-chip .pin[data-pos='right'] {
+        right: -6px;
+        top: 50%;
+        transform: translateY(-50%);
+      }
+
+      .forge-inspector {
+        background: var(--forge-panel);
+        border: 1px solid var(--forge-border);
+        border-radius: 12px;
+        padding: 12px;
+        display: grid;
+        grid-template-rows: auto auto 1fr;
+        gap: 12px;
+      }
+
+      .forge-meta {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+        gap: 10px;
+        background: rgba(255, 255, 255, 0.02);
+        border-radius: 10px;
+        padding: 10px;
+        border: 1px solid rgba(255, 255, 255, 0.06);
+      }
+
+      .forge-meta strong {
+        display: block;
+        color: var(--forge-subtle);
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+      }
+
+      .forge-meta span {
+        font-weight: 600;
+      }
+
+      .forge-list {
+        max-height: 240px;
+        overflow: auto;
+        padding: 0;
+        margin: 0;
+        list-style: none;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+
+      .forge-list li {
+        background: #0c1425;
+        border: 1px solid var(--forge-border);
+        border-radius: 10px;
+        padding: 10px;
+        cursor: pointer;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        transition: border-color 0.2s, transform 0.1s;
+      }
+
+      .forge-list li.active {
+        border-color: var(--forge-accent);
+        transform: translateY(-1px);
+      }
+
+      .forge-empty {
+        color: var(--forge-subtle);
+        font-size: 14px;
+      }
+
+      .forge-notes {
+        background: #0c1425;
+        border: 1px solid var(--forge-border);
+        border-radius: 10px;
+        padding: 10px;
+        min-height: 120px;
+        color: var(--forge-text);
+      }
+
+      .forge-notes textarea {
+        width: 100%;
+        background: transparent;
+        border: none;
+        color: inherit;
+        font: inherit;
+        resize: vertical;
+        min-height: 100px;
+        outline: none;
+      }
+
+      @media (max-width: 960px) {
+        .forge-grid {
+          grid-template-columns: 1fr;
+        }
+
+        .forge-canvas {
+          height: 420px;
+        }
+      }
+    </style>
   </head>
-  <body>
-    <div class="circuit-lab" id="circuit-lab">
-      <header>
-        <h1>Analog Circuit Lab</h1>
-        <nav class="nav-links">
-          <a href="../index.html">Home</a>
-          <a href="https://github.com/kaminglui" target="_blank" rel="noreferrer">GitHub</a>
+  <body class="theme-light">
+    <header class="site-header" id="top">
+      <div class="container">
+        <nav class="nav" aria-label="Primary">
+          <a class="logo" href="../index.html#hero">Ka Ming Lui</a>
+          <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="primary-navigation">
+            <span class="nav-toggle__bar"></span>
+            <span class="nav-toggle__bar"></span>
+            <span class="nav-toggle__bar"></span>
+            <span class="sr-only">Toggle navigation</span>
+          </button>
+          <ul class="nav-links" id="primary-navigation" data-visible="false">
+            <li class="nav-item nav-item--dropdown">
+              <button class="nav-dropdown-toggle nav-pill" type="button" aria-expanded="false" aria-controls="section-menu">
+                Sections
+                <svg class="nav-dropdown__icon" aria-hidden="true" focusable="false" viewBox="0 0 12 12">
+                  <path d="M2.47 4.47a.75.75 0 0 1 1.06 0L6 6.94l2.47-2.47a.75.75 0 0 1 1.06 1.06l-3 3a.75.75 0 0 1-1.06 0l-3-3a.75.75 0 0 1 0-1.06Z" />
+                </svg>
+              </button>
+              <ul class="nav-dropdown-menu" id="section-menu" hidden>
+                <li><a href="../index.html#about">About</a></li>
+                <li><a href="../index.html#learning">Learning</a></li>
+                <li><a href="../index.html#posts">Posts</a></li>
+                <li><a href="../index.html#projects">Projects</a></li>
+                <li><a href="../index.html#experience">Experience</a></li>
+                <li><a href="../index.html#education">Education</a></li>
+                <li><a href="../index.html#contact">Contact</a></li>
+              </ul>
+            </li>
+            <li><a class="nav-pill" href="index.html" aria-current="page">Circuit Lab</a></li>
+            <li><a class="nav-pill" href="../ml-game.html">Transformer Lab</a></li>
+            <li><a class="nav-pill" href="../ml-playground.html">ML Playground</a></li>
+            <li><a class="nav-pill" href="../endless-depths.html">Endless Depths</a></li>
+          </ul>
+          <div class="nav-actions">
+            <button class="theme-toggle" type="button" aria-label="Toggle color theme">
+              <span aria-hidden="true">🌙</span>
+            </button>
+          </div>
         </nav>
-      </header>
-      <main>
-        <div class="canvas-wrapper">
-          <div class="toolbar" id="toolbar"></div>
-          <canvas id="schematic" width="900" height="500" aria-label="Schematic canvas"></canvas>
+      </div>
+    </header>
+
+    <main class="lab-main">
+      <section class="lab-hero">
+        <div class="container">
+          <p class="lab-hero__eyebrow">Circuit lab</p>
+          <h1 class="lab-hero__title">Circuit Forge</h1>
+          <p class="lab-hero__lead">
+            Drop components, sketch nets, and keep quick notes while you think through analog or mixed-signal topologies.
+            Components stay tucked beneath the top navigation so you can swap tabs without losing your place.
+          </p>
         </div>
-        <div class="sidebar">
-          <section class="panel" id="sim-panel">
-            <h3>Simulation</h3>
-            <div class="toolbar" id="sim-controls"></div>
-            <div class="property-grid">
-              <label>Time/Div</label>
-              <input type="number" id="time-div" value="1e-3" step="1e-3" />
-              <label>dt</label>
-              <input type="number" id="dt" value="1e-4" step="1e-4" />
+      </section>
+
+      <section class="container">
+        <div class="circuit-forge" aria-label="Interactive circuit lab">
+          <div class="forge-grid">
+            <div class="forge-stage">
+              <div class="forge-toolbar" aria-label="Component palette">
+                <button data-part="Vsource" class="active">Source</button>
+                <button data-part="Resistor">Resistor</button>
+                <button data-part="Capacitor">Capacitor</button>
+                <button data-part="Inductor">Inductor</button>
+                <button data-part="Op-Amp">Op-Amp</button>
+                <button data-part="Note">Note</button>
+              </div>
+              <div class="forge-canvas" id="forge-canvas" role="application" aria-label="Circuit canvas"></div>
             </div>
-          </section>
-          <section class="panel">
-            <h3>Oscilloscope</h3>
-            <canvas id="scope" width="420" height="220"></canvas>
-            <div class="property-grid">
-              <label>CH1 Node</label>
-              <select id="ch1-node"></select>
-              <label>CH2 Node</label>
-              <select id="ch2-node"></select>
-              <label>Volts/Div</label>
-              <input type="number" id="v-div" value="1" step="0.5" />
-            </div>
-          </section>
-          <section class="panel" id="properties">
-            <h3>Properties</h3>
-            <div id="prop-content">Select a component.</div>
-          </section>
-          <section class="panel">
-            <h3>Log</h3>
-            <div class="log" id="log"></div>
-          </section>
+
+            <aside class="forge-inspector" aria-label="Circuit data">
+              <div class="forge-meta">
+                <div>
+                  <strong>Active part</strong>
+                  <span id="active-part">Vsource</span>
+                </div>
+                <div>
+                  <strong>Total parts</strong>
+                  <span id="part-count">0</span>
+                </div>
+                <div>
+                  <strong>Notes</strong>
+                  <span id="note-count">0 saved</span>
+                </div>
+              </div>
+
+              <div>
+                <h3 class="card__title">Placed components</h3>
+                <ul class="forge-list" id="part-list" aria-live="polite">
+                  <li class="forge-empty" id="empty-state">No parts yet. Choose a component and click on the canvas.</li>
+                </ul>
+              </div>
+
+              <div>
+                <h3 class="card__title">Bench notes</h3>
+                <div class="forge-notes">
+                  <textarea id="note-pad" placeholder="Quickly jot down assumptions, pin names, or requirements..."></textarea>
+                </div>
+              </div>
+            </aside>
+          </div>
         </div>
-      </main>
-    </div>
-    <script type="module" src="./src/main.js"></script>
+      </section>
+    </main>
+
+    <script type="module" src="../assets/js/main.js"></script>
+    <script type="module" src="./circuitforge.js"></script>
   </body>
 </html>
