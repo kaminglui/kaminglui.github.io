@@ -37,6 +37,10 @@ const PIN_LABEL_OFFSET      = 24;
 const PIN_LABEL_DISTANCE    = 16;
 const CENTER_LABEL_DISTANCE = 12;
 
+let boardBgColor = '#020617';
+let gridHoleColor = '#1f2937';
+let canvasBgColor = '#1a1a1a';
+
 // View / zoom
 let zoom     = 1.0;
 const MIN_ZOOM = 0.5;
@@ -2176,14 +2180,30 @@ function simulate(t) {
 }
 
 /* ---------- DRAWING ---------- */
+function updateBoardThemeColors() {
+    const style = getComputedStyle(document.body);
+    const boardBg = style.getPropertyValue('--board-bg').trim();
+    const boardHole = style.getPropertyValue('--board-hole').trim();
+    const canvasBg = style.getPropertyValue('--canvas-bg').trim();
+
+    if (boardBg) boardBgColor = boardBg;
+    if (boardHole) gridHoleColor = boardHole;
+    if (canvasBg) {
+        canvasBgColor = canvasBg;
+        if (canvas) {
+            canvas.style.backgroundColor = canvasBgColor;
+        }
+    }
+}
+
 function drawGrid() {
     const w = BOARD_W + BOARD_MARGIN * 2;
     const h = BOARD_H + BOARD_MARGIN * 2;
 
-    ctx.fillStyle = '#020617';
+    ctx.fillStyle = boardBgColor;
     ctx.fillRect(-BOARD_MARGIN, -BOARD_MARGIN, w, h);
 
-    ctx.fillStyle = '#1f2937';
+    ctx.fillStyle = gridHoleColor;
     for (let x = -BOARD_MARGIN + GRID / 2; x < BOARD_W + BOARD_MARGIN; x += GRID) {
         for (let y = -BOARD_MARGIN + GRID / 2; y < BOARD_H + BOARD_MARGIN; y += GRID) {
             ctx.beginPath();
@@ -3868,6 +3888,8 @@ function init() {
     ctx = canvas.getContext('2d');
     scopeCanvas = document.getElementById('scopeCanvas');
     scopeCtx = scopeCanvas ? scopeCanvas.getContext('2d') : null;
+
+    updateBoardThemeColors();
 
     window.addEventListener('resize', resize);
     resize();
