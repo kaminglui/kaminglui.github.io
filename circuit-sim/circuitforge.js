@@ -21,6 +21,10 @@ const ACTIVE_WIRE_WIDTH     = 1.5;
 const MARQUEE_DASH_PATTERN  = [5, 3];
 const SELECTION_DASH_PATTERN= [4, 4];
 const SELECTION_PADDING     = 4;
+const SAVE_SCHEMA_ID        = 'circuitforge-state';
+const SAVE_SCHEMA_VERSION   = 1;
+const LOCAL_STORAGE_KEY     = 'circuitforge-save';
+const AUTOSAVE_DELAY_MS     = 450;
 const ZOOM_IN_STEP          = 1.1;
 const ZOOM_OUT_STEP         = 0.9;
 const DEFAULT_SCOPE_WINDOW_POS = { x: 24, y: 24 };
@@ -80,6 +84,8 @@ let scopeDisplayMode = null; // 'window' | 'fullscreen'
 let scopeWindowPos = { ...DEFAULT_SCOPE_WINDOW_POS };
 let scopeDragOffset = { x: 0, y: 0 };
 let isDraggingScope = false;
+let autosaveTimer = null;
+let isRestoringState = false;
 
 // Canvas handles (set after DOM exists)
 let canvas = null;
@@ -2801,6 +2807,7 @@ function rotateSelected() {
         rerouteWiresForComponent(c);
     });
     cleanupJunctions();
+    markStateDirty();
 }
 
 function mirrorSelected() {
@@ -2811,6 +2818,7 @@ function mirrorSelected() {
         rerouteWiresForComponent(c);
     });
     cleanupJunctions();
+    markStateDirty();
 }
 
 function rerouteWiresForComponent(c) {
@@ -2892,6 +2900,7 @@ function deleteSelected() {
     wireDragMoved     = false;
     wireDragStart     = null;
     hoverWire         = null;
+    markStateDirty();
     updateProps();
 }
 
@@ -2957,6 +2966,7 @@ function updateProps() {
                 p.Phi    = '0.9';
                 p.Lambda = '0.1';
             }
+            markStateDirty();
             updateProps();
         };
         row.appendChild(btn);
@@ -3006,7 +3016,7 @@ function updateProps() {
                 if (comp.props[key] === opt) o.selected = true;
                 sel.appendChild(o);
             });
-            sel.onchange = e => { comp.props[key] = e.target.value; };
+            sel.onchange = e => { comp.props[key] = e.target.value; markStateDirty(); };
             row.appendChild(sel);
         } else if (key === 'VDiv1' || key === 'VDiv2') {
             label.innerText = key + ' (V/div)';
@@ -3019,7 +3029,7 @@ function updateProps() {
                 if (comp.props[key] === opt) o.selected = true;
                 sel.appendChild(o);
             });
-            sel.onchange = e => { comp.props[key] = e.target.value; };
+            sel.onchange = e => { comp.props[key] = e.target.value; markStateDirty(); };
             row.appendChild(sel);
         } else if (comp instanceof LED && key === 'Color') {
             const sel = document.createElement('select');
@@ -3031,7 +3041,7 @@ function updateProps() {
                 if ((comp.props[key] || '').toLowerCase() === opt) o.selected = true;
                 sel.appendChild(o);
             });
-            sel.onchange = e => { comp.props[key] = e.target.value; };
+            sel.onchange = e => { comp.props[key] = e.target.value; markStateDirty(); };
             row.appendChild(sel);
         } else if (comp instanceof FunctionGenerator && key === 'Wave') {
             const sel = document.createElement('select');
@@ -3043,7 +3053,7 @@ function updateProps() {
                 if ((comp.props[key] || '').toLowerCase() === opt) o.selected = true;
                 sel.appendChild(o);
             });
-            sel.onchange = e => { comp.props[key] = e.target.value; };
+            sel.onchange = e => { comp.props[key] = e.target.value; markStateDirty(); };
             row.appendChild(sel);
         } else if (comp instanceof Potentiometer && key === 'Turn') {
             row.className = 'bg-gray-700/50 p-2 rounded';
@@ -3073,7 +3083,7 @@ function updateProps() {
             split.className = 'text-[10px] text-gray-300 text-right font-mono mt-1';
             row.appendChild(split);
 
-            const updateReadout = () => {
+            const updateReadout = (dirty = true) => {
                 const pctVal = Math.round(parseFloat(slider.value || '0'));
                 pct.innerText = pctVal + '%';
                 comp.props[key] = String(pctVal);
@@ -3088,10 +3098,11 @@ function updateProps() {
                 } else {
                     split.innerText = 'R1/R2 open (set R > 0)';
                 }
+                if (dirty) markStateDirty();
             };
-            slider.oninput = updateReadout;
-            slider.onchange = updateReadout;
-            updateReadout();
+            slider.oninput = () => updateReadout(true);
+            slider.onchange = () => updateReadout(true);
+            updateReadout(false);
         } else {
             const inp = document.createElement('input');
             inp.className = 'w-24 bg-gray-900 border border-gray-600 rounded px-1 text-right text-xs';
@@ -3099,6 +3110,7 @@ function updateProps() {
             inp.onchange = e => {
                 comp.props[key] = e.target.value;
                 if (comp instanceof Potentiometer) updateProps();
+                markStateDirty();
             };
             row.appendChild(inp);
         }
@@ -3121,6 +3133,178 @@ const TOOL_COMPONENTS = {
     oscilloscope: Oscilloscope,
     led: LED
 };
+
+function getComponentTypeId(comp) {
+    for (const [key, ctor] of Object.entries(TOOL_COMPONENTS)) {
+        if (comp instanceof ctor) return key;
+    }
+    return null;
+}
+
+function serializeState() {
+    const payload = {
+        schema: SAVE_SCHEMA_ID,
+        version: SAVE_SCHEMA_VERSION,
+        metadata: {
+            savedAt: new Date().toISOString(),
+            viewMode,
+            zoom,
+            viewOffset: { x: viewOffsetX, y: viewOffsetY }
+        },
+        components: components.map(c => ({
+            id: c.id,
+            type: getComponentTypeId(c),
+            x: c.x,
+            y: c.y,
+            rotation: c.rotation,
+            mirrorX: !!c.mirrorX,
+            props: { ...c.props }
+        })).filter(entry => entry.type),
+        wires: wires.map(w => ({
+            from: { id: w.from?.c?.id, p: w.from?.p },
+            to:   { id: w.to?.c?.id,   p: w.to?.p },
+            vertices: (w.vertices || []).map(v => ({ x: v.x, y: v.y }))
+        })).filter(w => w.from.id && w.to.id)
+    };
+    return payload;
+}
+
+function applySerializedState(data) {
+    if (!data || typeof data !== 'object') throw new Error('Invalid save data');
+    if (data.schema !== SAVE_SCHEMA_ID) throw new Error('File is not a Circuit Forge save.');
+    if (typeof data.version !== 'number') throw new Error('Missing save version.');
+    if (data.version > SAVE_SCHEMA_VERSION) {
+        throw new Error('Save file requires a newer version of Circuit Forge.');
+    }
+
+    isRestoringState = true;
+    try {
+        const created = [];
+        (data.components || []).forEach(entry => {
+            const Ctor = TOOL_COMPONENTS[entry.type];
+            if (!Ctor) return;
+            const c = new Ctor(entry.x ?? 0, entry.y ?? 0);
+            c.id = entry.id || c.id;
+            c.rotation = entry.rotation ?? 0;
+            c.mirrorX = !!entry.mirrorX;
+            if (entry.props && typeof entry.props === 'object') {
+                c.props = { ...c.props, ...entry.props };
+            }
+            created.push(c);
+        });
+
+        const idMap = new Map(created.map(c => [c.id, c]));
+        const restoredWires = [];
+        (data.wires || []).forEach(w => {
+            const fromComp = idMap.get(w.from?.id);
+            const toComp   = idMap.get(w.to?.id);
+            if (!fromComp || !toComp) return;
+            restoredWires.push({
+                from: { c: fromComp, p: w.from.p ?? 0 },
+                to:   { c: toComp,   p: w.to.p   ?? 0 },
+                vertices: Array.isArray(w.vertices)
+                    ? w.vertices.map(v => snapToBoardPoint(v.x ?? 0, v.y ?? 0))
+                    : [],
+                v: 0
+            });
+        });
+
+        components = created;
+        wires = restoredWires;
+        time = 0;
+        simError = null;
+        isPaused = true;
+        setSelectedComponent(null);
+        selectedWire = null;
+        selectionGroup = [];
+        activeWire = null;
+
+        if (data.metadata) {
+            if (data.metadata.viewMode) viewMode = data.metadata.viewMode;
+            if (typeof data.metadata.zoom === 'number') {
+                zoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, data.metadata.zoom));
+            }
+            if (data.metadata.viewOffset) {
+                viewOffsetX = data.metadata.viewOffset.x || 0;
+                viewOffsetY = data.metadata.viewOffset.y || 0;
+                clampView();
+            }
+        }
+
+        const viewLabel = document.getElementById('view-label');
+        if (viewLabel) {
+            viewLabel.innerText = (viewMode === 'physical') ? 'Breadboard View'
+                                                          : 'Schematic View';
+        }
+
+        cleanupJunctions();
+        updateProps();
+        updatePlayPauseButton();
+    } finally {
+        isRestoringState = false;
+    }
+}
+
+function saveStateToLocalStorage() {
+    if (typeof localStorage === 'undefined') return;
+    const payload = serializeState();
+    try {
+        localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(payload));
+    } catch (err) {
+        console.warn('Failed to persist circuit state', err);
+    }
+}
+
+function markStateDirty() {
+    if (isRestoringState) return;
+    if (autosaveTimer) clearTimeout(autosaveTimer);
+    autosaveTimer = setTimeout(saveStateToLocalStorage, AUTOSAVE_DELAY_MS);
+}
+
+function loadStateFromLocalStorage() {
+    if (typeof localStorage === 'undefined') return;
+    const raw = localStorage.getItem(LOCAL_STORAGE_KEY);
+    if (!raw) return;
+    try {
+        const data = JSON.parse(raw);
+        applySerializedState(data);
+    } catch (err) {
+        console.warn('Unable to restore saved circuit', err);
+    }
+}
+
+function downloadCircuitJSON() {
+    const payload = serializeState();
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'circuitforge-save.json';
+    a.click();
+    URL.revokeObjectURL(url);
+}
+
+function handleImportJSON(file) {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = e => {
+        try {
+            const data = JSON.parse(e.target.result);
+            applySerializedState(data);
+            saveStateToLocalStorage();
+        } catch (err) {
+            alert('Could not import file: ' + err.message);
+        }
+    };
+    reader.readAsText(file);
+}
+
+function triggerImportDialog() {
+    const input = document.getElementById('import-json-input');
+    if (!input) return;
+    input.value = '';
+    input.click();
+}
 
 function createComponentFromTool(tool, snapPoint) {
     const ComponentCtor = TOOL_COMPONENTS[tool];
@@ -3184,6 +3368,7 @@ function onWheel(e) {
 
     zoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, zoom * factor));
     clampView();
+    markStateDirty();
 }
 
 function autoConnectPins(component) {
@@ -3209,6 +3394,7 @@ function autoConnectPins(component) {
                             vertices: [],
                             v:    0
                         });
+                        markStateDirty();
                     }
                 }
             });
@@ -3281,6 +3467,7 @@ function onDown(e) {
                         vertices,
                         v: 0
                     });
+                    markStateDirty();
                 }
             }
             activeWire = null;
@@ -3312,6 +3499,7 @@ function onDown(e) {
             const vertices = buildWireVertices(from, activeWire.vertices, to);
             if (vertices.length || from.c !== to.c || from.p !== to.p) {
                 wires.push({ from, to, vertices, v: 0 });
+                markStateDirty();
             }
             activeWire = null;
             selectedWire = null;
@@ -3381,6 +3569,7 @@ function onDown(e) {
             selectedWire      = null;
             activeWire        = null;
             // keep tool active for repeated placement
+            markStateDirty();
             updateProps();
         }
         return;
@@ -3404,6 +3593,7 @@ function onMove(e) {
         viewOffsetY += dy;
         // clamp to board with margin
         clampView();
+        markStateDirty();
         return;
     }
 
@@ -3490,6 +3680,7 @@ function onUp(e) {
         });
         draggingComponent = null;
         cleanupJunctions();
+        markStateDirty();
         handled = true;
     }
 
@@ -3520,6 +3711,7 @@ function onUp(e) {
         wireDragMoved = false;
         pruneFloatingJunctions();
         cleanupJunctions();
+        markStateDirty();
         handled = true;
     }
 
@@ -3791,18 +3983,21 @@ function attachScopeControlHandlers() {
         s.sampleAccum = 0;
         drawScope();
         updateCursors();
+        markStateDirty();
     });
     hook(v1Sel, e => {
         const s = currentScope();
         if (!s) return;
         s.props.VDiv1 = e.target.value;
         drawScope();
+        markStateDirty();
     });
     hook(v2Sel, e => {
         const s = currentScope();
         if (!s) return;
         s.props.VDiv2 = e.target.value;
         drawScope();
+        markStateDirty();
     });
 }
 
@@ -3823,6 +4018,7 @@ function toggleView() {
         label.innerText = (viewMode === 'physical') ? 'Breadboard View'
                                                     : 'Schematic View';
     }
+    markStateDirty();
     if (!scopeDisplayMode) scopeDisplayMode = getDefaultScopeMode();
     setScopeOverlayLayout(scopeDisplayMode);
     if (scopeMode) {
@@ -3851,6 +4047,7 @@ function clearCanvas() {
     wireDragMoved     = false;
     wireDragStart     = null;
     activeScopeComponent = null;
+    markStateDirty();
     updateProps();
 }
 
@@ -3906,6 +4103,7 @@ function init() {
     canvas.addEventListener('wheel', onWheel, { passive: false });
     window.addEventListener('keydown',   onKey);
 
+    loadStateFromLocalStorage();
     updateProps();
     loop();
 }
