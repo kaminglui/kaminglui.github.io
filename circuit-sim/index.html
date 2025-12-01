@@ -18,13 +18,78 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet" />
 
     <style>
+        :root {
+            --body-bg: #0f0f0f;
+            --body-text: #e0e0e0;
+            --scrollbar-track: #111827;
+            --scrollbar-thumb: #4b5563;
+            --scrollbar-thumb-hover: #6b7280;
+            --sidebar-bg: #1f1f1f;
+            --sidebar-border: #333;
+            --controls-bg: #2a2a2a;
+            --controls-border: #3a3a3a;
+            --controls-hover-bg: #3a3a3a;
+            --controls-hover-border: #555;
+            --canvas-bg: #1a1a1a;
+            --board-bg: #020617;
+            --board-hole: #1f2937;
+            --simbar-bg: #0b0d12;
+            --simbar-border: #1f2937;
+            --input-bg: #111;
+            --input-border: #444;
+            --input-text: #0f0;
+        }
+        .theme-dark {
+            color-scheme: dark;
+            --body-bg: #0f0f0f;
+            --body-text: #e0e0e0;
+            --scrollbar-track: #111827;
+            --scrollbar-thumb: #4b5563;
+            --scrollbar-thumb-hover: #6b7280;
+            --sidebar-bg: #1f1f1f;
+            --sidebar-border: #333;
+            --controls-bg: #2a2a2a;
+            --controls-border: #3a3a3a;
+            --controls-hover-bg: #3a3a3a;
+            --controls-hover-border: #555;
+            --canvas-bg: #1a1a1a;
+            --board-bg: #020617;
+            --board-hole: #1f2937;
+            --simbar-bg: #0b0d12;
+            --simbar-border: #1f2937;
+            --input-bg: #111;
+            --input-border: #444;
+            --input-text: #0f0;
+        }
+        .theme-light {
+            color-scheme: light;
+            --body-bg: #f3f4f6;
+            --body-text: #0f172a;
+            --scrollbar-track: #e5e7eb;
+            --scrollbar-thumb: #cbd5e1;
+            --scrollbar-thumb-hover: #9ca3af;
+            --sidebar-bg: #f8fafc;
+            --sidebar-border: #cbd5e1;
+            --controls-bg: #e5e7eb;
+            --controls-border: #cbd5e1;
+            --controls-hover-bg: #d1d5db;
+            --controls-hover-border: #9ca3af;
+            --canvas-bg: #ffffff;
+            --board-bg: #e0e7ff;
+            --board-hole: #cbd5e1;
+            --simbar-bg: #e0e7ff;
+            --simbar-border: #cbd5e1;
+            --input-bg: #ffffff;
+            --input-border: #cbd5e1;
+            --input-text: #0f172a;
+        }
         body {
             overflow: hidden;
-            background-color: #0f0f0f;
-            color: #e0e0e0;
+            background-color: var(--body-bg);
+            color: var(--body-text);
             user-select: none;
             font-family: 'Inter', system-ui, sans-serif;
-            scrollbar-color: #4b5563 #111827;
+            scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
             scrollbar-width: thin;
         }
         body::-webkit-scrollbar,
@@ -33,24 +98,24 @@
         }
         body::-webkit-scrollbar-track,
         .sidebar::-webkit-scrollbar-track {
-            background: #111827;
+            background: var(--scrollbar-track);
         }
         body::-webkit-scrollbar-thumb,
         .sidebar::-webkit-scrollbar-thumb {
-            background: #4b5563;
+            background: var(--scrollbar-thumb);
             border-radius: 8px;
-            border: 2px solid #111827;
+            border: 2px solid var(--scrollbar-track);
         }
         body::-webkit-scrollbar-thumb:hover,
         .sidebar::-webkit-scrollbar-thumb:hover {
-            background: #6b7280;
+            background: var(--scrollbar-thumb-hover);
         }
-        canvas { background-color: #1a1a1a; cursor: crosshair; }
-        .sidebar { background-color: #1f1f1f; border-right: 1px solid #333; }
+        canvas { background-color: var(--canvas-bg); cursor: crosshair; }
+        .sidebar { background-color: var(--sidebar-bg); border-right: 1px solid var(--sidebar-border); }
         .tool-btn {
             transition: all 0.1s;
-            background: #2a2a2a;
-            border: 1px solid #3a3a3a;
+            background: var(--controls-bg);
+            border: 1px solid var(--controls-border);
             position: relative;
             display: flex;
             align-items: center;
@@ -59,8 +124,8 @@
             min-height: 68px;
         }
         .tool-btn:hover {
-            background-color: #3a3a3a;
-            border-color: #555;
+            background-color: var(--controls-hover-bg);
+            border-color: var(--controls-hover-border);
             transform: translateY(-1px);
         }
         .tool-btn.active {
@@ -76,8 +141,8 @@
             margin: 0 auto 6px;
         }
         #sim-bar {
-            background: #0b0d12;
-            border-top: 1px solid #1f2937;
+            background: var(--simbar-bg);
+            border-top: 1px solid var(--simbar-border);
             box-shadow: inset 0 1px 0 rgba(255,255,255,0.03);
         }
         .has-tooltip {
@@ -109,9 +174,9 @@
             transform: translate(-50%, -12px);
         }
         input, select {
-            background: #111;
-            border: 1px solid #444;
-            color: #0f0;
+            background: var(--input-bg);
+            border: 1px solid var(--input-border);
+            color: var(--input-text);
             font-family: 'Fira Code', monospace;
         }
         input:focus, select:focus {
@@ -511,23 +576,34 @@
     </main>
 
     <script type="module" src="../assets/js/nav.js"></script>
+
+    <!-- Main simulation / editor logic -->
+    <script src="circuitforge.js"></script>
     <script>
         const themeToggle = document.querySelector('.theme-toggle');
         const THEME_KEY = 'circuitforge-theme';
 
-        const savedTheme = localStorage.getItem(THEME_KEY);
-        if (savedTheme === 'light') {
-            document.body.classList.remove('theme-dark');
+        function applyTheme(theme) {
+            document.body.classList.toggle('theme-dark', theme === 'dark');
+            document.body.classList.toggle('theme-light', theme === 'light');
+            localStorage.setItem(THEME_KEY, theme);
+
+            if (typeof updateBoardThemeColors === 'function') {
+                updateBoardThemeColors();
+            }
+            if (typeof draw === 'function') {
+                draw();
+            }
         }
 
+        const savedTheme = localStorage.getItem(THEME_KEY);
+        applyTheme(savedTheme === 'light' ? 'light' : 'dark');
+
         themeToggle?.addEventListener('click', () => {
-            const isDark = !document.body.classList.contains('theme-dark');
-            document.body.classList.toggle('theme-dark', isDark);
-            localStorage.setItem(THEME_KEY, isDark ? 'dark' : 'light');
+            const currentTheme = document.body.classList.contains('theme-dark') ? 'dark' : 'light';
+            const nextTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            applyTheme(nextTheme);
         });
     </script>
-
-    <!-- Main simulation / editor logic -->
-    <script src="circuitforge.js"></script>
 </body>
 </html>
