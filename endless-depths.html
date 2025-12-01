@@ -46,10 +46,20 @@
                 <li><a href="index.html#contact">Contact</a></li>
               </ul>
             </li>
-            <li><a class="nav-pill" href="circuit-sim/index.html">Circuit Lab</a></li>
-            <li><a class="nav-pill" href="ml-game.html">Transformer Lab</a></li>
-            <li><a class="nav-pill" href="ml-playground.html">ML Playground</a></li>
-            <li><a class="nav-pill" href="endless-depths.html" aria-current="page">Endless Depths</a></li>
+            <li class="nav-item nav-item--dropdown">
+              <button class="nav-dropdown-toggle nav-pill" type="button" aria-expanded="false" aria-controls="labs-menu">
+                Labs
+                <svg class="nav-dropdown__icon" aria-hidden="true" focusable="false" viewBox="0 0 12 12">
+                  <path d="M2.47 4.47a.75.75 0 0 1 1.06 0L6 6.94l2.47-2.47a.75.75 0 0 1 1.06 1.06l-3 3a.75.75 0 0 1-1.06 0l-3-3a.75.75 0 0 1 0-1.06Z" />
+                </svg>
+              </button>
+              <ul class="nav-dropdown-menu" id="labs-menu" hidden>
+                <li><a href="circuit-sim/index.html">Circuit Lab</a></li>
+                <li><a href="ml-game.html">Transformer Lab</a></li>
+                <li><a href="ml-playground.html">ML Playground</a></li>
+                <li><a href="endless-depths.html" aria-current="page">Endless Depths</a></li>
+              </ul>
+            </li>
           </ul>
           <div class="nav-actions">
             <button class="theme-toggle" type="button" aria-label="Toggle color theme">
@@ -203,12 +213,9 @@
 
     <!-- Patch notes: Fixed layout fullscreen for entire wrapper, hardened game loop/input safety, and stabilized purgatory restore and crafting messaging. -->
 
+    <script type="module" src="assets/js/nav.js"></script>
     <script>
       const body = document.body;
-      const navToggle = document.querySelector('.nav-toggle');
-      const navLinks = document.querySelector('.nav-links');
-      const navDropdownToggle = document.querySelector('.nav-dropdown-toggle');
-      const navDropdownMenu = document.querySelector('.nav-dropdown-menu');
       const themeToggle = document.querySelector('.theme-toggle');
       const yearElement = document.getElementById('year');
       const THEME_KEY = 'kaminglui-theme';
@@ -224,22 +231,6 @@
         body.classList.toggle('theme-dark');
         const next = body.classList.contains('theme-dark') ? 'dark' : 'light';
         localStorage.setItem(THEME_KEY, next);
-      });
-
-      navToggle?.addEventListener('click', () => {
-        const isVisible = navLinks?.getAttribute('data-visible') === 'true';
-        navLinks?.setAttribute('data-visible', !isVisible);
-        navToggle.setAttribute('aria-expanded', String(!isVisible));
-      });
-
-      navDropdownToggle?.addEventListener('click', () => {
-        const isExpanded = navDropdownToggle.getAttribute('aria-expanded') === 'true';
-        navDropdownToggle.setAttribute('aria-expanded', String(!isExpanded));
-        if (!isExpanded) {
-          navDropdownMenu?.removeAttribute('hidden');
-        } else {
-          navDropdownMenu?.setAttribute('hidden', '');
-        }
       });
     </script>
 
