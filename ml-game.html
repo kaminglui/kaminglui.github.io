@@ -50,10 +50,20 @@
                 <li><a href="index.html#contact">Contact</a></li>
               </ul>
             </li>
-            <li><a class="nav-pill" href="circuit-sim/index.html">Circuit Lab</a></li>
-            <li><a class="nav-pill" href="ml-game.html" aria-current="page">Transformer Lab</a></li>
-            <li><a class="nav-pill" href="ml-playground.html">ML Playground</a></li>
-            <li><a class="nav-pill" href="endless-depths.html">Endless Depths</a></li>
+            <li class="nav-item nav-item--dropdown">
+              <button class="nav-dropdown-toggle nav-pill" type="button" aria-expanded="false" aria-controls="labs-menu">
+                Labs
+                <svg class="nav-dropdown__icon" aria-hidden="true" focusable="false" viewBox="0 0 12 12">
+                  <path d="M2.47 4.47a.75.75 0 0 1 1.06 0L6 6.94l2.47-2.47a.75.75 0 0 1 1.06 1.06l-3 3a.75.75 0 0 1-1.06 0l-3-3a.75.75 0 0 1 0-1.06Z" />
+                </svg>
+              </button>
+              <ul class="nav-dropdown-menu" id="labs-menu" hidden>
+                <li><a href="circuit-sim/index.html">Circuit Lab</a></li>
+                <li><a href="ml-game.html" aria-current="page">Transformer Lab</a></li>
+                <li><a href="ml-playground.html">ML Playground</a></li>
+                <li><a href="endless-depths.html">Endless Depths</a></li>
+              </ul>
+            </li>
           </ul>
           <div class="nav-actions">
             <button class="theme-toggle" type="button" aria-label="Toggle color theme">

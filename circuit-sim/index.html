@@ -5,6 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Circuit Forge</title>
 
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+            href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fira+Code:wght@400;500&display=swap"
+            rel="stylesheet"
+    />
+    <link rel="stylesheet" href="../assets/css/style.css" />
+
     <!-- Tailwind + Icons -->
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet" />
@@ -157,8 +165,61 @@
         }
     </style>
 </head>
-<body class="flex h-screen text-sm">
+<body class="theme-dark flex flex-col min-h-screen text-sm">
 
+    <header class="site-header sticky top-0 z-30" id="top">
+        <div class="container">
+            <nav class="nav" aria-label="Primary">
+                <a class="logo" href="../index.html#hero">Ka Ming Lui</a>
+                <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="primary-navigation">
+                    <span class="nav-toggle__bar"></span>
+                    <span class="nav-toggle__bar"></span>
+                    <span class="nav-toggle__bar"></span>
+                    <span class="sr-only">Toggle navigation</span>
+                </button>
+                <ul class="nav-links" id="primary-navigation" data-visible="false">
+                    <li class="nav-item nav-item--dropdown">
+                        <button class="nav-dropdown-toggle nav-pill" type="button" aria-expanded="false" aria-controls="section-menu">
+                            Sections
+                            <svg class="nav-dropdown__icon" aria-hidden="true" focusable="false" viewBox="0 0 12 12">
+                                <path d="M2.47 4.47a.75.75 0 0 1 1.06 0L6 6.94l2.47-2.47a.75.75 0 0 1 1.06 1.06l-3 3a.75.75 0 0 1-1.06 0l-3-3a.75.75 0 0 1 0-1.06Z" />
+                            </svg>
+                        </button>
+                        <ul class="nav-dropdown-menu" id="section-menu" hidden>
+                            <li><a href="../index.html#about">About</a></li>
+                            <li><a href="../index.html#learning">Learning</a></li>
+                            <li><a href="../index.html#posts">Posts</a></li>
+                            <li><a href="../index.html#projects">Projects</a></li>
+                            <li><a href="../index.html#experience">Experience</a></li>
+                            <li><a href="../index.html#education">Education</a></li>
+                            <li><a href="../index.html#contact">Contact</a></li>
+                        </ul>
+                    </li>
+                    <li class="nav-item nav-item--dropdown">
+                        <button class="nav-dropdown-toggle nav-pill" type="button" aria-expanded="false" aria-controls="labs-menu">
+                            Labs
+                            <svg class="nav-dropdown__icon" aria-hidden="true" focusable="false" viewBox="0 0 12 12">
+                                <path d="M2.47 4.47a.75.75 0 0 1 1.06 0L6 6.94l2.47-2.47a.75.75 0 0 1 1.06 1.06l-3 3a.75.75 0 0 1-1.06 0l-3-3a.75.75 0 0 1 0-1.06Z" />
+                            </svg>
+                        </button>
+                        <ul class="nav-dropdown-menu" id="labs-menu" hidden>
+                            <li><a href="index.html" aria-current="page">Circuit Lab</a></li>
+                            <li><a href="../ml-game.html">Transformer Lab</a></li>
+                            <li><a href="../ml-playground.html">ML Playground</a></li>
+                            <li><a href="../endless-depths.html">Endless Depths</a></li>
+                        </ul>
+                    </li>
+                </ul>
+                <div class="nav-actions">
+                    <button class="theme-toggle" type="button" aria-label="Toggle color theme">
+                        <span aria-hidden="true">🌙</span>
+                    </button>
+                </div>
+            </nav>
+        </div>
+    </header>
+
+    <main class="flex-1 flex overflow-hidden">
     <!-- Sidebar -->
     <div class="sidebar w-80 flex flex-col flex-shrink-0 shadow-2xl z-20 relative">
         <div class="p-4 border-b border-gray-700 bg-gray-800/50 backdrop-blur">
@@ -435,6 +496,25 @@
             </button>
         </div>
     </div>
+
+    </main>
+
+    <script type="module" src="../assets/js/nav.js"></script>
+    <script>
+        const themeToggle = document.querySelector('.theme-toggle');
+        const THEME_KEY = 'circuitforge-theme';
+
+        const savedTheme = localStorage.getItem(THEME_KEY);
+        if (savedTheme === 'light') {
+            document.body.classList.remove('theme-dark');
+        }
+
+        themeToggle?.addEventListener('click', () => {
+            const isDark = !document.body.classList.contains('theme-dark');
+            document.body.classList.toggle('theme-dark', isDark);
+            localStorage.setItem(THEME_KEY, isDark ? 'dark' : 'light');
+        });
+    </script>
 
     <!-- Main simulation / editor logic -->
     <script src="circuitforge.js"></script>
