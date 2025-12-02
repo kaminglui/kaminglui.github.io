@@ -43,6 +43,29 @@ const CENTER_LABEL_DISTANCE = 12;
 const DRAG_DEADZONE         = 3;
 const SWITCH_TYPES          = ['SPST', 'SPDT', 'DPDT'];
 const DEFAULT_SWITCH_TYPE   = 'SPST';
+const PROP_UNITS = {
+    R: 'Ω',
+    Tol: '%',
+    C: 'F',
+    Vf: 'V',
+    If: 'A',
+    W: 'm',
+    L: 'm',
+    Kp: 'A/V^2',
+    Vth: 'V',
+    Lambda: '1/V',
+    Gamma: 'V^0.5',
+    Phi: 'V',
+    Vdc: 'V',
+    Vpp: 'V',
+    Freq: 'Hz',
+    Offset: 'V',
+    Phase: 'deg',
+    Turn: '%',
+    TimeDiv: 's/div',
+    VDiv1: 'V/div',
+    VDiv2: 'V/div'
+};
 
 let boardBgColor = '#020617';
 let gridHoleColor = '#1f2937';
@@ -3021,10 +3044,13 @@ function selectTool(type, btn) {
 }
 
 function syncSwitchTypeSelector(type = currentSwitchType) {
+    const effective = type || DEFAULT_SWITCH_TYPE;
     const select = document.getElementById('switch-type-select');
-    if (select && type && select.value !== type) {
-        select.value = type;
+    if (select && select.value !== effective) {
+        select.value = effective;
     }
+    const chip = document.getElementById('switch-type-label');
+    if (chip) chip.innerText = effective;
 }
 
 function setSwitchToolType(type) {
@@ -3152,6 +3178,11 @@ function deleteSelected() {
 
 /* ---------- PROPERTIES PANEL ---------- */
 
+function getPropLabel(key) {
+    const unit = PROP_UNITS[key];
+    return unit ? `${key} (${unit})` : key;
+}
+
 function updateProps() {
     const panel = document.getElementById('properties-panel');
     const dyn   = document.getElementById('dynamic-props');
@@ -3182,6 +3213,15 @@ function updateProps() {
 
     panel.classList.remove('hidden');
     title.innerText = selectedComponent.constructor.name;
+
+    const appendUnitBadge = (wrap, key) => {
+        const unit = PROP_UNITS[key];
+        if (!unit) return;
+        const badge = document.createElement('span');
+        badge.className = 'text-[10px] text-gray-400 font-mono';
+        badge.innerText = unit;
+        wrap.appendChild(badge);
+    };
 
     if (selectedComponent instanceof Oscilloscope) {
         const btn = document.createElement('button');
@@ -3297,7 +3337,7 @@ function updateProps() {
 
         const label = document.createElement('span');
         label.className = 'text-[10px] text-gray-300 font-mono';
-        label.innerText = key;
+        label.innerText = getPropLabel(key);
         row.appendChild(label);
 
         if (key === 'TimeDiv') {
@@ -3311,9 +3351,12 @@ function updateProps() {
                 sel.appendChild(o);
             });
             sel.onchange = e => { comp.props[key] = e.target.value; markStateDirty(); };
-            row.appendChild(sel);
+            const wrap = document.createElement('div');
+            wrap.className = 'flex items-center gap-2';
+            wrap.appendChild(sel);
+            appendUnitBadge(wrap, key);
+            row.appendChild(wrap);
         } else if (key === 'VDiv1' || key === 'VDiv2') {
-            label.innerText = key + ' (V/div)';
             const sel = document.createElement('select');
             sel.className = 'w-24 bg-gray-900 border border-gray-600 rounded px-1 text-right text-xs';
             ['50m', '100m', '200m', '500m', '1', '2', '5', '10'].forEach(opt => {
@@ -3324,7 +3367,11 @@ function updateProps() {
                 sel.appendChild(o);
             });
             sel.onchange = e => { comp.props[key] = e.target.value; markStateDirty(); };
-            row.appendChild(sel);
+            const wrap = document.createElement('div');
+            wrap.className = 'flex items-center gap-2';
+            wrap.appendChild(sel);
+            appendUnitBadge(wrap, key);
+            row.appendChild(wrap);
         } else if (comp instanceof LED && key === 'Color') {
             const sel = document.createElement('select');
             sel.className = 'w-24 bg-gray-900 border border-gray-600 rounded px-1 text-xs';
@@ -3336,7 +3383,11 @@ function updateProps() {
                 sel.appendChild(o);
             });
             sel.onchange = e => { comp.props[key] = e.target.value; markStateDirty(); };
-            row.appendChild(sel);
+            const wrap = document.createElement('div');
+            wrap.className = 'flex items-center gap-2';
+            wrap.appendChild(sel);
+            appendUnitBadge(wrap, key);
+            row.appendChild(wrap);
         } else if (comp instanceof FunctionGenerator && key === 'Wave') {
             const sel = document.createElement('select');
             sel.className = 'w-24 bg-gray-900 border border-gray-600 rounded px-1 text-xs';
@@ -3348,7 +3399,11 @@ function updateProps() {
                 sel.appendChild(o);
             });
             sel.onchange = e => { comp.props[key] = e.target.value; markStateDirty(); };
-            row.appendChild(sel);
+            const wrap = document.createElement('div');
+            wrap.className = 'flex items-center gap-2';
+            wrap.appendChild(sel);
+            appendUnitBadge(wrap, key);
+            row.appendChild(wrap);
         } else if (comp instanceof Potentiometer && key === 'Turn') {
             row.className = 'bg-gray-700/50 p-2 rounded';
             row.innerHTML = '';
@@ -3357,7 +3412,7 @@ function updateProps() {
             header.className = 'flex justify-between items-center mb-1';
             const name = document.createElement('span');
             name.className = 'text-[10px] text-gray-300 font-mono';
-            name.innerText = 'Turn';
+            name.innerText = getPropLabel('Turn');
             const pct = document.createElement('span');
             pct.className = 'text-xs text-gray-100 font-mono';
             header.appendChild(name);
@@ -3406,7 +3461,11 @@ function updateProps() {
                 if (comp instanceof Potentiometer) updateProps();
                 markStateDirty();
             };
-            row.appendChild(inp);
+            const wrap = document.createElement('div');
+            wrap.className = 'flex items-center gap-2';
+            wrap.appendChild(inp);
+            appendUnitBadge(wrap, key);
+            row.appendChild(wrap);
         }
 
         dyn.appendChild(row);
