@@ -40,10 +40,10 @@
             --input-text: #0f0;
             --header-h: var(--nav-height, 64px);
             --sidebar-width: 21rem;
-            --sidebar-width-collapsed: 21rem;
+            --sidebar-width-collapsed: 0px;
         }
         body { --sidebar-width-current: var(--sidebar-width); }
-        body.sidebar-collapsed { --sidebar-width-current: var(--sidebar-width); }
+        body.sidebar-collapsed { --sidebar-width-current: var(--sidebar-width-collapsed); }
         .theme-dark {
             color-scheme: dark;
             --body-bg: #0f0f0f;
@@ -188,15 +188,16 @@
             place-items: center;
             position: absolute;
             left: calc(var(--sidebar-width) + 8px);
-            top: calc(var(--header-h) - 16px);
+            top: calc(var(--header-h) + 12px);
             transform: translate(-50%, 0);
             box-shadow: 0 12px 28px rgba(0,0,0,0.35);
             z-index: 50;
             transition: left 0.2s ease, transform 0.2s ease;
+            pointer-events: auto;
         }
         .sidebar.collapsed .sidebar-header { padding-right: 12px; padding-left: 12px; }
         .sidebar-shell.collapsed + .sidebar-toggle {
-            left: 14px;
+            left: 12px;
             transform: translate(0, 0);
         }
         .cursor-table th, .cursor-table td {
@@ -218,6 +219,8 @@
             overflow: hidden;
             min-width: 0;
             align-items: stretch;
+            padding-left: var(--sidebar-width);
+            box-sizing: border-box;
         }
         .lab-layout > .canvas-shell {
             min-height: calc(100vh - var(--header-h));
