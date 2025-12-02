@@ -122,7 +122,7 @@
         }
         canvas { background-color: var(--canvas-bg); cursor: crosshair; touch-action: none; }
         .sidebar-header { position: relative; }
-        .sidebar { background-color: var(--sidebar-bg); border-right: 1px solid var(--sidebar-border); transition: width 0.15s ease; height: 100%; z-index: 30; width: var(--sidebar-width-current); min-width: var(--sidebar-width-current); max-width: var(--sidebar-width-current); flex: 0 0 var(--sidebar-width-current); min-height: 0; overflow: visible; }
+        .sidebar { background-color: var(--sidebar-bg); border-right: 1px solid var(--sidebar-border); transition: width 0.15s ease; height: 100%; z-index: 30; width: var(--sidebar-width-current); min-width: var(--sidebar-width-current); max-width: var(--sidebar-width-current); flex: 0 0 var(--sidebar-width-current); min-height: 0; overflow: hidden; }
         .sidebar.collapsed { width: var(--sidebar-width-collapsed); min-width: var(--sidebar-width-collapsed); max-width: var(--sidebar-width-collapsed); flex-basis: var(--sidebar-width-collapsed); }
         .sidebar.collapsed .sidebar-content,
         .sidebar.collapsed #sim-bar { display: none; }
@@ -171,12 +171,14 @@
             display: grid;
             place-items: center;
             position: absolute;
-            right: -14px;
+            right: 10px;
             top: 50%;
             transform: translateY(-50%);
             box-shadow: 0 12px 28px rgba(0,0,0,0.35);
             z-index: 40;
+            transition: right 0.15s ease;
         }
+        .sidebar.collapsed .sidebar-header { padding-right: 12px; padding-left: 12px; }
         .cursor-table th, .cursor-table td {
             padding: 4px 6px;
             text-align: right;
