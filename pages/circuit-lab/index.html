@@ -38,6 +38,7 @@
             --input-bg: #111;
             --input-border: #444;
             --input-text: #0f0;
+            --header-h: 64px;
         }
         .theme-dark {
             color-scheme: dark;
@@ -83,6 +84,7 @@
             --input-border: #cbd5e1;
             --input-text: #0f172a;
         }
+        html, body { height: 100%; }
         body {
             overflow: hidden;
             background-color: var(--body-bg);
@@ -115,15 +117,17 @@
             background: var(--scrollbar-thumb-hover);
         }
         canvas { background-color: var(--canvas-bg); cursor: crosshair; touch-action: none; }
-        .sidebar { background-color: var(--sidebar-bg); border-right: 1px solid var(--sidebar-border); }
-        .sidebar.collapsed { width: 72px; }
-        .sidebar.collapsed .sidebar-label,
-        .sidebar.collapsed .switch-type-wrap,
+        .app-layout { height: calc(100vh - var(--header-h)); min-height: calc(100vh - var(--header-h)); }
+        .sidebar { background-color: var(--sidebar-bg); border-right: 1px solid var(--sidebar-border); transition: width 0.15s ease; }
+        .sidebar.collapsed { width: 52px; }
+        .sidebar.collapsed .sidebar-content,
+        .sidebar.collapsed #sim-bar { display: none; }
+        .sidebar.collapsed .sidebar-label { display: none; }
+        .sidebar.collapsed .switch-type-wrap { display: none; }
         .sidebar.collapsed .component-title,
-        .sidebar.collapsed .templates-title,
-        .sidebar.collapsed #properties-panel { display: none; }
-        .sidebar.collapsed .tool-btn { min-height: 56px; padding: 10px 4px; }
-        .sidebar.collapsed .tool-btn span { display: none; }
+        .sidebar.collapsed .templates-title { display: none; }
+        .sidebar.collapsed .tool-btn { min-height: 48px; padding: 10px 6px; }
+        .sidebar.collapsed .tool-btn span { font-size: 10px; }
         .sidebar.collapsed .collapse-text { display: none; }
         .tool-btn {
             transition: all 0.1s;
@@ -170,6 +174,8 @@
         .cursor-table th:first-child, .cursor-table td:first-child {
             text-align: left;
         }
+        .canvas-shell { flex: 1 1 auto; display: flex; min-height: calc(100vh - var(--header-h)); }
+        .canvas-shell canvas { width: 100%; height: 100%; }
         .tool-icon {
             display: block;
             width: 56px;
@@ -271,7 +277,7 @@
             #sidebar { width: 100%; max-height: 48vh; }
             #tool-scroll { max-height: 36vh; }
             .canvas-shell { min-height: 52vh; }
-            .sidebar.collapsed { width: 100%; }
+            .sidebar.collapsed { width: 56px; max-height: none; }
         }
     </style>
 </head>
@@ -329,7 +335,7 @@
         </div>
     </header>
 
-    <main class="flex-1 flex overflow-hidden">
+    <main class="flex-1 flex overflow-hidden app-layout">
     <!-- Sidebar -->
     <div id="sidebar" class="sidebar w-80 flex flex-col flex-shrink-0 shadow-2xl z-20 relative overflow-hidden">
         <div class="p-4 border-b border-gray-700 bg-gray-800/50 backdrop-blur flex items-center justify-between gap-2">
@@ -348,7 +354,7 @@
             </button>
         </div>
 
-        <div class="flex-1 flex flex-col overflow-hidden">
+        <div class="flex-1 flex flex-col overflow-hidden sidebar-content">
             <div id="tool-scroll" class="flex-1 p-4 space-y-6 overflow-y-auto">
 
             <!-- Power Sources -->
