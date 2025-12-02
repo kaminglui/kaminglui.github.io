@@ -21,7 +21,6 @@ const ACTIVE_WIRE_WIDTH     = 1.5;
 const MARQUEE_DASH_PATTERN  = [5, 3];
 const SELECTION_DASH_PATTERN= [4, 4];
 const SELECTION_PADDING     = 4;
-const DRAG_THRESHOLD        = 4;
 const SAVE_SCHEMA_ID        = 'circuitforge-state';
 const SAVE_SCHEMA_VERSION   = 1;
 const LOCAL_STORAGE_KEY     = 'circuitforge-save';
@@ -74,8 +73,6 @@ let wireDragStart     = null;
 let viewOffsetX       = 0;
 let viewOffsetY       = 0;
 let isPanning         = false;
-let clickCandidate    = null;
-let clickStart        = null;
 
 // NEW: wiring state
 let activeWire = null;   // { fromPin: {c,p}, vertices: [{x,y},...], toPin?:{c,p} }
@@ -961,103 +958,6 @@ class LED extends Component {
     }
 }
 
-class SPSTSwitch extends Component {
-    setup() {
-        this.pins = [{ x: -30, y: 0 }, { x: 30, y: 0 }];
-        this.w = 80;
-        this.h = 30;
-        this.props = { Closed: false };
-    }
-
-    toggle() { this.props.Closed = !this.props.Closed; markStateDirty(); }
-
-    drawSym(ctx) {
-        ctx.strokeStyle = '#e5e7eb';
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.moveTo(-30, 0);
-        ctx.lineTo(-10, 0);
-        const lift = this.props.Closed ? 0 : -10;
-        ctx.moveTo(10, lift);
-        ctx.lineTo(30, lift);
-        ctx.moveTo(-10, 0);
-        ctx.lineTo(10, lift);
-        ctx.stroke();
-    }
-}
-
-class SPDTSwitch extends Component {
-    setup() {
-        this.pins = [
-            { x: -30, y: 0 }, // COM
-            { x: 30, y: -15 }, // A
-            { x: 30, y: 15 }   // B
-        ];
-        this.w = 80;
-        this.h = 50;
-        this.props = { Position: 'A' };
-    }
-
-    toggle() {
-        this.props.Position = (this.props.Position === 'A') ? 'B' : 'A';
-        markStateDirty();
-    }
-
-    drawSym(ctx) {
-        ctx.strokeStyle = '#e5e7eb';
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.moveTo(-30, 0);
-        ctx.lineTo(-10, 0);
-        const toY = (this.props.Position === 'A') ? -15 : 15;
-        ctx.lineTo(10, toY);
-        ctx.lineTo(30, toY);
-        ctx.moveTo(30, -15); ctx.lineTo(40, -15);
-        ctx.moveTo(30,  15); ctx.lineTo(40,  15);
-        ctx.stroke();
-    }
-}
-
-class DPDT extends Component {
-    setup() {
-        this.pins = [
-            { x: -30, y: -20 }, // COM1
-            { x: 30,  y: -35 }, // A1
-            { x: 30,  y: -5  }, // B1
-            { x: -30, y: 20 },  // COM2
-            { x: 30,  y: 5 },   // A2
-            { x: 30,  y: 35 }   // B2
-        ];
-        this.w = 80;
-        this.h = 80;
-        this.props = { Position: 'A' };
-    }
-
-    toggle() {
-        this.props.Position = (this.props.Position === 'A') ? 'B' : 'A';
-        markStateDirty();
-    }
-
-    drawSym(ctx) {
-        ctx.strokeStyle = '#e5e7eb';
-        ctx.lineWidth = 2;
-        const posA = this.props.Position === 'A';
-        const drawPole = (yBase, toA, toB) => {
-            ctx.beginPath();
-            ctx.moveTo(-30, yBase);
-            ctx.lineTo(-10, yBase);
-            const targetY = posA ? toA : toB;
-            ctx.lineTo(10, targetY);
-            ctx.lineTo(30, targetY);
-            ctx.moveTo(30, toA); ctx.lineTo(40, toA);
-            ctx.moveTo(30, toB); ctx.lineTo(40, toB);
-            ctx.stroke();
-        };
-        drawPole(-20, -35, -5);
-        drawPole(20, 5, 35);
-    }
-}
-
 function getLEDColor(name, lastI = 0, IfStr = '10m') {
     const palette = {
         red:   [255, 95, 70],
@@ -1284,17 +1184,15 @@ class MOSFET extends Component {
 
 class LF412 extends Component {
     setup() {
-        // Pin order follows LM358-style dual op-amp DIP numbering:
-        // 1=1OUT, 2=1IN-, 3=1IN+, 4=VCC-, 5=2IN+, 6=2IN-, 7=2OUT, 8=VCC+
         this.pins = [
-            { x:-40, y:-40 }, // 0: 1OUT (pin 1)
-            { x:-40, y:-20 }, // 1: 1IN- (pin 2)
-            { x:-40, y: 20 }, // 2: 1IN+ (pin 3)
-            { x:-40, y: 40 }, // 3: VCC- (pin 4)
-            { x: 40, y: 40 }, // 4: 2IN+ (pin 5)
-            { x: 40, y: 20 }, // 5: 2IN- (pin 6)
-            { x: 40, y:-20 }, // 6: 2OUT (pin 7)
-            { x: 40, y:-40 }  // 7: VCC+ (pin 8)
+            { x:-40, y:-40 }, // 0 OutA
+            { x:-40, y:-20 }, // 1 -InA
+            { x:-40, y: 20 }, // 2 +InA
+            { x:-40, y: 40 }, // 3 V-
+            { x: 40, y: 40 }, // 4 V+
+            { x: 40, y: 20 }, // 5 OutB
+            { x: 40, y:-20 }, // 6 -InB
+            { x: 40, y:-40 }  // 7 +InB
         ];
         this.w = 80;
         this.h = 100;
@@ -1336,16 +1234,16 @@ class LF412 extends Component {
         ctx.stroke();
 
         const leftPins = [
-            { y: -40, label: '1OUT' },
-            { y: -20, label: '1IN-' },
-            { y:  20, label: '1IN+' },
-            { y:  40, label: 'VCC-' }
+            { y: -40, label: 'OutA' },
+            { y: -20, label: '-InA' },
+            { y:  20, label: '+InA' },
+            { y:  40, label: 'V-' }
         ];
         const rightPins = [
-            { y: -40, label: 'VCC+' },
-            { y: -20, label: '2OUT' },
-            { y:  20, label: '2IN-' },
-            { y:  40, label: '2IN+' }
+            { y: -40, label: 'V+' },
+            { y: -20, label: 'OutB' },
+            { y:  20, label: '-InB' },
+            { y:  40, label: '+InB' }
         ];
 
         ctx.font      = '9px monospace';
@@ -1409,14 +1307,14 @@ class LF412 extends Component {
             ctx.fillText('LF412', titlePos.x, titlePos.y);
 
             const labels = [
-                { idx: 0, text: '1OUT' },
-                { idx: 1, text: '1IN-' },
-                { idx: 2, text: '1IN+' },
-                { idx: 3, text: 'VCC-' },
-                { idx: 4, text: '2IN+' },
-                { idx: 5, text: '2IN-' },
-                { idx: 6, text: '2OUT' },
-                { idx: 7, text: 'VCC+' }
+                { idx: 0, text: 'OutA' },
+                { idx: 1, text: '-InA' },
+                { idx: 2, text: '+InA' },
+                { idx: 3, text: 'V-'  },
+                { idx: 4, text: 'V+'  },
+                { idx: 5, text: 'OutB'},
+                { idx: 6, text: '-InB'},
+                { idx: 7, text: '+InB'}
             ];
 
             ctx.font = LABEL_FONT_SMALL;
@@ -2098,31 +1996,6 @@ function simulate(t) {
             const g = 1 / R;
             stampG(nA, nK, g);
         }
-        else if (c instanceof SPSTSwitch) {
-            const n1 = getNodeIdx(c, 0);
-            const n2 = getNodeIdx(c, 1);
-            if (c.props.Closed) {
-                stampG(n1, n2, 1 / 1e-3);
-            }
-        }
-        else if (c instanceof SPDTSwitch) {
-            const nCom = getNodeIdx(c, 0);
-            const nA = getNodeIdx(c, 1);
-            const nB = getNodeIdx(c, 2);
-            if (c.props.Position === 'A') stampG(nCom, nA, 1 / 1e-3);
-            else stampG(nCom, nB, 1 / 1e-3);
-        }
-        else if (c instanceof DPDT) {
-            const posA = c.props.Position === 'A';
-            const nC1 = getNodeIdx(c, 0);
-            const nA1 = getNodeIdx(c, 1);
-            const nB1 = getNodeIdx(c, 2);
-            const nC2 = getNodeIdx(c, 3);
-            const nA2 = getNodeIdx(c, 4);
-            const nB2 = getNodeIdx(c, 5);
-            stampG(nC1, posA ? nA1 : nB1, 1 / 1e-3);
-            stampG(nC2, posA ? nA2 : nB2, 1 / 1e-3);
-        }
         else if (c instanceof MOSFET) {
             const nG = getNodeIdx(c, 0);
             const nD = getNodeIdx(c, 1);
@@ -2182,7 +2055,7 @@ function simulate(t) {
                 G.add(nOut, nOut, 1.0);
             }
             stampOpAmpHalf(2, 1, 0);
-            stampOpAmpHalf(4, 5, 6);
+            stampOpAmpHalf(7, 6, 5);
         }
     });
 
@@ -2861,9 +2734,6 @@ function renderToolIcons() {
     createToolIcon("button[onclick=\"selectTool('mosfet', this)\"]", MOSFET, m => {
         m.props.Type = 'NMOS';
     });
-    createToolIcon("button[onclick=\"selectTool('spst', this)\"]", SPSTSwitch);
-    createToolIcon("button[onclick=\"selectTool('spdt', this)\"]", SPDTSwitch);
-    createToolIcon("button[onclick=\"selectTool('dpdt', this)\"]", DPDT);
     createToolIcon("button[onclick=\"selectTool('lf412', this)\"]", LF412);
     createToolIcon("button[onclick=\"selectTool('voltageSource', this)\"]", VoltageSource);
     createToolIcon("button[onclick=\"selectTool('funcGen', this)\"]", FunctionGenerator, undefined, -6);
@@ -3257,77 +3127,11 @@ const TOOL_COMPONENTS = {
     potentiometer: Potentiometer,
     mosfet: MOSFET,
     lf412: LF412,
-    spst: SPSTSwitch,
-    spdt: SPDTSwitch,
-    dpdt: DPDT,
     voltageSource: VoltageSource,
     funcGen: FunctionGenerator,
     ground: Ground,
     oscilloscope: Oscilloscope,
     led: LED
-};
-
-const TEMPLATES = {
-    'rc-lowpass': {
-        placements: [
-            { key: 'fg', type: 'funcGen', x: 200, y: 200, props: { Vpp: '2', Offset: '0', Freq: '1k' } },
-            { key: 'r', type: 'resistor', x: 320, y: 200, props: { R: '10k' } },
-            { key: 'c', type: 'capacitor', x: 440, y: 200, props: { C: '10n' } },
-            { key: 'g', type: 'ground', x: 440, y: 260 }
-        ],
-        wires: [
-            ['fg', 0, 'r', 0],
-            ['r', 1, 'c', 0],
-            ['c', 1, 'g', 0]
-        ]
-    },
-    'rc-highpass': {
-        placements: [
-            { key: 'fg', type: 'funcGen', x: 200, y: 320, props: { Vpp: '2', Offset: '0', Freq: '1k' } },
-            { key: 'c', type: 'capacitor', x: 320, y: 320, props: { C: '10n' } },
-            { key: 'r', type: 'resistor', x: 440, y: 320, props: { R: '10k' } },
-            { key: 'g', type: 'ground', x: 440, y: 380 }
-        ],
-        wires: [
-            ['fg', 0, 'c', 0],
-            ['c', 1, 'r', 0],
-            ['r', 1, 'g', 0]
-        ]
-    },
-    'opamp-inverting': {
-        placements: [
-            { key: 'fg', type: 'funcGen', x: 200, y: 480, props: { Vpp: '2', Offset: '0', Freq: '1k' } },
-            { key: 'rIn', type: 'resistor', x: 320, y: 480, props: { R: '10k' } },
-            { key: 'rFb', type: 'resistor', x: 480, y: 420, props: { R: '20k' } },
-            { key: 'op', type: 'lf412', x: 520, y: 480 },
-            { key: 'g', type: 'ground', x: 360, y: 540 }
-        ],
-        wires: [
-            ['fg', 0, 'rIn', 0],
-            ['rIn', 1, 'op', 1],
-            ['op', 0, 'rFb', 0],
-            ['rFb', 1, 'op', 1],
-            ['op', 2, 'g', 0],
-            ['op', 3, 'g', 0]
-        ]
-    },
-    'opamp-noninverting': {
-        placements: [
-            { key: 'fg', type: 'funcGen', x: 200, y: 640, props: { Vpp: '2', Offset: '0', Freq: '1k' } },
-            { key: 'r1', type: 'resistor', x: 360, y: 660, props: { R: '10k' } },
-            { key: 'r2', type: 'resistor', x: 360, y: 620, props: { R: '10k' } },
-            { key: 'op', type: 'lf412', x: 520, y: 640 },
-            { key: 'g', type: 'ground', x: 360, y: 700 }
-        ],
-        wires: [
-            ['fg', 0, 'op', 2],
-            ['op', 0, 'r1', 0],
-            ['r1', 1, 'op', 1],
-            ['r2', 0, 'op', 1],
-            ['r2', 1, 'g', 0],
-            ['op', 3, 'g', 0]
-        ]
-    }
 };
 
 function getComponentTypeId(comp) {
@@ -3508,30 +3312,6 @@ function createComponentFromTool(tool, snapPoint) {
     return new ComponentCtor(snapPoint.x, snapPoint.y);
 }
 
-function insertTemplate(key) {
-    const tpl = TEMPLATES[key];
-    if (!tpl) return;
-    const created = new Map();
-    tpl.placements.forEach(entry => {
-        const ctor = TOOL_COMPONENTS[entry.type];
-        if (!ctor) return;
-        const c = new ctor(entry.x, entry.y);
-        if (entry.props) Object.assign(c.props || {}, entry.props);
-        components.push(c);
-        created.set(entry.key, c);
-    });
-    tpl.wires.forEach(w => {
-        const [aKey, aPin, bKey, bPin] = w;
-        const a = created.get(aKey);
-        const b = created.get(bKey);
-        if (a && b) {
-            wires.push({ from: { c: a, p: aPin }, to: { c: b, p: bPin }, vertices: [], v: 0 });
-        }
-    });
-    markStateDirty();
-    updateProps();
-}
-
 function attachDragListeners() {
     if (dragListenersAttached) return;
     window.addEventListener('mousemove', onMove);
@@ -3652,9 +3432,6 @@ function onDown(e) {
         return;
     }
 
-    clickStart = m;
-    clickCandidate = null;
-
     const pinHit  = findPinAt(m);
     const wireHit = pickWireAt(m, WIRE_HIT_DISTANCE);
     let compHit = false;
@@ -3754,20 +3531,16 @@ function onDown(e) {
         const c = components[i];
         if (c.isInside(m.x, m.y)) {
             currentTool = null;
-            if (e.shiftKey) {
-                const idx = selectionGroup.indexOf(c);
-                if (idx >= 0) selectionGroup.splice(idx, 1);
-                else selectionGroup.push(c);
-                selectedComponent = selectionGroup[0] || null;
-            } else {
-                if (!selectionGroup.includes(c)) selectionGroup = [c];
-                selectedComponent = c;
-            }
+            setSelectedComponent(c);
             selectedWire      = null;
             activeWire        = null;
             const targets = selectionGroup.length ? selectionGroup : [c];
-            clickCandidate = {
-                objs: targets.map(obj => ({ obj, offsetX: m.x - obj.x, offsetY: m.y - obj.y }))
+            draggingComponent = {
+                objs: targets.map(obj => ({
+                    obj,
+                    offsetX: m.x - obj.x,
+                    offsetY: m.y - obj.y
+                }))
             };
             attachDragListeners();
             updateProps();
@@ -3822,14 +3595,6 @@ function onMove(e) {
         clampView();
         markStateDirty();
         return;
-    }
-
-    if (!draggingComponent && clickCandidate) {
-        const d = Math.hypot(m.x - clickStart.x, m.y - clickStart.y);
-        if (d > DRAG_THRESHOLD) {
-            draggingComponent = clickCandidate;
-            clickCandidate = null;
-        }
     }
 
     if (draggingComponent) {
@@ -3897,21 +3662,14 @@ function onUp(e) {
         selectionGroup = [];
         components.forEach(c => {
             const b = c.getBoundingBox();
-            const overlaps = !(b.x2 < rect.x1 || b.x1 > rect.x2 || b.y2 < rect.y1 || b.y1 > rect.y2);
-            if (overlaps) selectionGroup.push(c);
+            if (b.x1 >= rect.x1 && b.x2 <= rect.x2 &&
+                b.y1 >= rect.y1 && b.y2 <= rect.y2) {
+                selectionGroup.push(c);
+            }
         });
         selectedComponent = selectionGroup[0] || null;
         selectionBox = null;
         updateProps();
-        handled = true;
-    }
-
-    if (!handled && clickCandidate) {
-        const primary = clickCandidate.objs[0]?.obj;
-        if (primary && (primary instanceof SPSTSwitch || primary instanceof SPDTSwitch || primary instanceof DPDT)) {
-            primary.toggle();
-        }
-        clickCandidate = null;
         handled = true;
     }
 
@@ -4005,12 +3763,6 @@ function onKey(e) {
 
 let activeCursor = 0;
 
-function getClientXFromEvent(e) {
-    if (e.touches && e.touches.length) return e.touches[0].clientX;
-    if (e.changedTouches && e.changedTouches.length) return e.changedTouches[0].clientX;
-    return e.clientX;
-}
-
 function getDefaultScopeMode() {
     return (viewMode === 'schematic') ? 'window' : 'fullscreen';
 }
@@ -4099,8 +3851,6 @@ function startDragCursor(id, e) {
     activeCursor = id;
     window.addEventListener('mousemove', dragCursor);
     window.addEventListener('mouseup', stopDragCursor);
-    window.addEventListener('touchmove', dragCursor, { passive: false });
-    window.addEventListener('touchend', stopDragCursor);
     e.stopPropagation();
     e.preventDefault();
 }
@@ -4109,7 +3859,7 @@ function dragCursor(e) {
     const container = document.getElementById('scope-container');
     if (!container) return;
     const rect = container.getBoundingClientRect();
-    let x = getClientXFromEvent(e) - rect.left;
+    let x = e.clientX - rect.left;
     x = Math.max(0, Math.min(rect.width, x));
     const pct = (x / rect.width) * 100;
     const el = document.getElementById(`cursor-${activeCursor}`);
@@ -4117,14 +3867,11 @@ function dragCursor(e) {
         el.style.left = pct + '%';
         updateCursors();
     }
-    if (e.cancelable) e.preventDefault();
 }
 
 function stopDragCursor() {
     window.removeEventListener('mousemove', dragCursor);
     window.removeEventListener('mouseup', stopDragCursor);
-    window.removeEventListener('touchmove', dragCursor);
-    window.removeEventListener('touchend', stopDragCursor);
 }
 
 function updateCursors() {
@@ -4143,48 +3890,24 @@ function updateCursors() {
 
     const tDiv        = parseUnit(scope.props.TimeDiv || '1m');
     const totalWindow = tDiv * 10;
-    const tA          = (c1Pct / 100) * totalWindow;
-    const tB          = (c2Pct / 100) * totalWindow;
-    const dt          = tB - tA;
+    const dt          = Math.abs(c1Pct - c2Pct) / 100 * totalWindow;
+
+    const dtEl  = document.getElementById('scope-dt');
+    const dv1El = document.getElementById('scope-dv1');
+    const dv2El = document.getElementById('scope-dv2'); // optional second readout
+    if (dtEl) dtEl.innerText = formatUnit(dt, 's');
 
     const startIdx = (scope.head + 1) % HISTORY_SIZE;
-    const sampleAt = (pct, data) => {
-        const fIdx = (startIdx + (pct / 100) * HISTORY_SIZE) % HISTORY_SIZE;
-        const i0 = Math.floor(fIdx) % HISTORY_SIZE;
-        const i1 = (i0 + 1) % HISTORY_SIZE;
-        const frac = fIdx - Math.floor(fIdx);
-        return data[i0] * (1 - frac) + data[i1] * frac;
-    };
+    const idx1 = (startIdx + Math.floor((c1Pct / 100) * HISTORY_SIZE)) % HISTORY_SIZE;
+    const idx2 = (startIdx + Math.floor((c2Pct / 100) * HISTORY_SIZE)) % HISTORY_SIZE;
 
-    const readings = [
-        { name: 'CH1', color: '#fbbf24', a: sampleAt(c1Pct, scope.data.ch1), b: sampleAt(c2Pct, scope.data.ch1) },
-        { name: 'CH2', color: '#22d3ee', a: sampleAt(c1Pct, scope.data.ch2), b: sampleAt(c2Pct, scope.data.ch2) }
-    ];
+    const v1ch1 = scope.data.ch1[idx1];
+    const v2ch1 = scope.data.ch1[idx2];
+    const v1ch2 = scope.data.ch2[idx1];
+    const v2ch2 = scope.data.ch2[idx2];
 
-    const dtEl   = document.getElementById('scope-dt');
-    const freqEl = document.getElementById('scope-freq');
-    const tAEl   = document.getElementById('cursor-a');
-    const tBEl   = document.getElementById('cursor-b');
-
-    if (tAEl) tAEl.innerText = formatUnit(tA, 's');
-    if (tBEl) tBEl.innerText = formatUnit(tB, 's');
-    if (dtEl) dtEl.innerText = formatUnit(Math.abs(dt), 's');
-    if (freqEl) freqEl.innerText = (dt === 0) ? '∞' : formatUnit(1 / Math.abs(dt), 'Hz');
-
-    const tableBody = document.getElementById('scope-cursor-rows');
-    if (tableBody) {
-        tableBody.innerHTML = '';
-        readings.forEach(r => {
-            const tr = document.createElement('tr');
-            tr.innerHTML = `
-                <td class="px-2 py-1 font-mono" style="color:${r.color}">${r.name}</td>
-                <td class="px-2 py-1 text-right">${formatUnit(r.a, 'V')}</td>
-                <td class="px-2 py-1 text-right">${formatUnit(r.b, 'V')}</td>
-                <td class="px-2 py-1 text-right">${formatUnit(r.b - r.a, 'V')}</td>
-            `;
-            tableBody.appendChild(tr);
-        });
-    }
+    if (dv1El) dv1El.innerText = formatUnit(Math.abs(v1ch1 - v2ch1), 'V');
+    if (dv2El) dv2El.innerText = formatUnit(Math.abs(v1ch2 - v2ch2), 'V');
 }
 
 function startScopeWindowDrag(e) {
