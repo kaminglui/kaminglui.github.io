@@ -42,7 +42,7 @@ const PIN_LABEL_DISTANCE    = 16;
 const CENTER_LABEL_DISTANCE = 12;
 const DRAG_DEADZONE         = 3;
 const SWITCH_TYPES          = ['SPST', 'SPDT', 'DPDT'];
-const DEFAULT_SWITCH_TYPE   = 'SPST';
+const DEFAULT_SWITCH_TYPE   = 'SPDT';
 const PROP_UNITS = {
     R: 'Ω',
     Tol: '%',
