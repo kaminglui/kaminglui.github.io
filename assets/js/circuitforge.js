@@ -2953,6 +2953,18 @@ function setMode(mode) {
     updateProps();
 }
 
+function ensureSidebarExpanded() {
+    const sidebar = document.getElementById('sidebar');
+    if (!sidebar) return;
+    if (sidebar.classList.contains('collapsed')) {
+        sidebar.classList.remove('collapsed');
+        document.body.classList.remove('sidebar-collapsed');
+        const icon = document.getElementById('sidebar-toggle-icon');
+        if (icon) icon.className = 'fas fa-chevron-left';
+        sidebar.setAttribute('aria-expanded', 'true');
+    }
+}
+
 // Tool selection (resistor, capacitor, funcGen, etc.)
 function clearToolSelection() {
     currentTool = null;
@@ -4547,6 +4559,7 @@ function toggleSidebar() {
     document.body.classList.toggle('sidebar-collapsed', collapsed);
     const icon = document.getElementById('sidebar-toggle-icon');
     if (icon) icon.className = collapsed ? 'fas fa-chevron-right' : 'fas fa-chevron-left';
+    if (sidebar) sidebar.setAttribute('aria-expanded', (!collapsed).toString());
     resize();
 }
 
@@ -4623,6 +4636,8 @@ function init() {
     attachScopeControlHandlers();
     syncScopeControls();
     updatePlayPauseButton();
+    ensureSidebarExpanded();
+    resize();
 
     canvas.addEventListener('mousedown', onDown);
     canvas.addEventListener('mousemove', onCanvasMove);
