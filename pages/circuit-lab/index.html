@@ -38,7 +38,7 @@
             --input-bg: #111;
             --input-border: #444;
             --input-text: #0f0;
-            --header-h: 64px;
+            --header-h: var(--nav-height, 64px);
             --sidebar-width: 21rem;
             --sidebar-width-collapsed: 56px;
         }
@@ -121,8 +121,9 @@
             background: var(--scrollbar-thumb-hover);
         }
         canvas { background-color: var(--canvas-bg); cursor: crosshair; touch-action: none; }
-        .sidebar { background-color: var(--sidebar-bg); border-right: 1px solid var(--sidebar-border); transition: width 0.15s ease; height: 100%; z-index: 30; width: var(--sidebar-width-current); min-width: var(--sidebar-width-current); max-width: 100%; }
-        .sidebar.collapsed { width: var(--sidebar-width-collapsed); min-width: var(--sidebar-width-collapsed); max-width: var(--sidebar-width-collapsed); }
+        .sidebar-header { position: relative; }
+        .sidebar { background-color: var(--sidebar-bg); border-right: 1px solid var(--sidebar-border); transition: width 0.15s ease; height: 100%; z-index: 30; width: var(--sidebar-width-current); min-width: var(--sidebar-width-current); max-width: var(--sidebar-width-current); flex: 0 0 var(--sidebar-width-current); min-height: 0; overflow: visible; }
+        .sidebar.collapsed { width: var(--sidebar-width-collapsed); min-width: var(--sidebar-width-collapsed); max-width: var(--sidebar-width-collapsed); flex-basis: var(--sidebar-width-collapsed); }
         .sidebar.collapsed .sidebar-content,
         .sidebar.collapsed #sim-bar { display: none; }
         .sidebar.collapsed .sidebar-label { display: none; }
@@ -153,10 +154,12 @@
             border-color: #60a5fa;
             box-shadow: 0 0 12px rgba(37, 99, 235, 0.4);
         }
-        .sidebar .sidebar-content { display: flex; flex-direction: column; }
+        .sidebar .sidebar-content { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; }
         #tool-scroll {
             overflow-y: auto;
-            max-height: calc(100vh - var(--header-h) - 120px);
+            flex: 1 1 auto;
+            min-height: 0;
+            max-height: none;
         }
         .sidebar:not(.collapsed) #sim-bar { display: block; }
         .sidebar-toggle {
@@ -167,9 +170,12 @@
             border-radius: 8px;
             display: grid;
             place-items: center;
-        }
-        .sidebar.collapsed .sidebar-toggle {
-            margin-left: auto;
+            position: absolute;
+            right: -14px;
+            top: 50%;
+            transform: translateY(-50%);
+            box-shadow: 0 12px 28px rgba(0,0,0,0.35);
+            z-index: 40;
         }
         .cursor-table th, .cursor-table td {
             padding: 4px 6px;
@@ -187,15 +193,19 @@
             min-height: calc(100vh - var(--header-h));
             max-height: calc(100vh - var(--header-h));
             overflow: hidden;
+            min-width: 0;
+            align-items: stretch;
         }
         .lab-layout > .sidebar {
             height: 100%;
             max-height: 100%;
             min-height: 0;
+            flex: 0 0 var(--sidebar-width-current);
         }
         .lab-layout > .canvas-shell {
             min-height: calc(100vh - var(--header-h));
             height: 100%;
+            min-width: 0;
         }
         .canvas-shell {
             align-items: stretch;
@@ -211,6 +221,8 @@
             background: var(--simbar-bg);
             border-top: 1px solid var(--simbar-border);
             box-shadow: inset 0 1px 0 rgba(255,255,255,0.03);
+            margin-top: auto;
+            flex: 0 0 auto;
         }
         .has-tooltip {
             position: relative;
@@ -301,7 +313,7 @@
                 --sidebar-width: min(20rem, 82vw);
             }
             body { overflow: hidden; }
-            #tool-scroll { max-height: calc(100vh - var(--header-h) - 200px); }
+            #tool-scroll { max-height: none; }
             .sidebar { max-width: 82vw; }
             .sidebar.collapsed { width: var(--sidebar-width-collapsed); max-height: 100%; }
         }
@@ -363,8 +375,8 @@
 
     <main class="flex-1 flex overflow-hidden lab-layout">
     <!-- Sidebar -->
-    <div id="sidebar" class="sidebar flex flex-col flex-shrink-0 shadow-2xl z-20 relative overflow-hidden">
-        <div class="p-4 border-b border-gray-700 bg-gray-800/50 backdrop-blur flex items-center justify-between gap-2">
+    <div id="sidebar" class="sidebar flex flex-col flex-shrink-0 shadow-2xl z-20 relative">
+        <div class="sidebar-header p-4 pr-10 border-b border-gray-700 bg-gray-800/50 backdrop-blur flex items-center gap-2">
             <div class="flex items-center gap-2 sidebar-label">
                 <i class="fas fa-microchip text-blue-400"></i>
                 <div class="flex items-center gap-2">
@@ -380,7 +392,7 @@
             </button>
         </div>
 
-        <div class="flex-1 flex flex-col overflow-hidden sidebar-content">
+        <div class="flex-1 flex flex-col overflow-hidden min-h-0 sidebar-content">
             <div id="tool-scroll" class="flex-1 p-4 space-y-6 overflow-y-auto">
 
             <!-- Power Sources -->
@@ -536,7 +548,7 @@
         </div>
 
         <!-- Simulation Bar -->
-        <div id="sim-bar" class="p-2 text-[11px] text-gray-300">
+        <div id="sim-bar" class="p-2 text-[11px] text-gray-300 mt-auto">
             <div class="flex items-center justify-between gap-3">
                 <div class="flex items-center gap-3 font-mono">
                     <span>SIM TIME: <span id="sim-time" class="text-green-400">0.00µs</span></span>
