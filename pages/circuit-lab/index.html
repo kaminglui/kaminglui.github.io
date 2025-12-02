@@ -228,18 +228,6 @@
             box-shadow: 0 4px 6px rgba(0,0,0,0.5);
             border: 2px solid white;
         }
-        .sidebar.collapsed { width: 64px; }
-        .sidebar.collapsed .tool-btn span { display: none; }
-        .sidebar.collapsed .tool-btn { padding: 10px; }
-        .sidebar.collapsed h3, .sidebar.collapsed #properties-panel { display: none; }
-        .sidebar.collapsed .logo-small { display: block; }
-        .logo-small { display: none; }
-        @media (max-width: 900px) {
-            body { overflow: auto; }
-            main.flex-1 { flex-direction: column; }
-            .sidebar { width: 100%; max-height: 40vh; }
-            .main-canvas { height: 60vh; }
-        }
     </style>
 </head>
 <body class="theme-dark flex flex-col min-h-screen text-sm">
@@ -298,18 +286,14 @@
 
     <main class="flex-1 flex overflow-hidden">
     <!-- Sidebar -->
-    <div class="sidebar w-80 flex flex-col flex-shrink-0 shadow-2xl z-20 relative" id="component-sidebar">
-        <div class="p-4 border-b border-gray-700 bg-gray-800/50 backdrop-blur flex items-center justify-between">
-            <div class="flex items-center gap-2">
-                <i class="fas fa-microchip"></i>
-                <span class="text-xl font-bold text-blue-400 tracking-tight">Circuit Forge</span>
-                <span class="text-[10px] bg-blue-900/50 text-blue-200 px-1.5 py-0.5 rounded border border-blue-800 ml-auto logo-small">
+    <div class="sidebar w-80 flex flex-col flex-shrink-0 shadow-2xl z-20 relative">
+        <div class="p-4 border-b border-gray-700 bg-gray-800/50 backdrop-blur">
+            <h1 class="text-xl font-bold text-blue-400 tracking-tight flex items-center gap-2">
+                <i class="fas fa-microchip"></i> Circuit Forge
+                <span class="text-[10px] bg-blue-900/50 text-blue-200 px-1.5 py-0.5 rounded border border-blue-800 ml-auto">
                     BETA
                 </span>
-            </div>
-            <button id="sidebar-toggle" class="text-gray-300 hover:text-white text-sm px-2 py-1 rounded border border-gray-600" aria-expanded="true">
-                <i class="fas fa-angles-left"></i>
-            </button>
+            </h1>
         </div>
 
         <div class="flex-1 overflow-y-auto p-4 space-y-6">
@@ -389,35 +373,6 @@
                             onclick="selectTool('lf412', this)">
                         <span class="text-[11px] font-medium">Ideal Op-Amp (LF412)</span>
                     </button>
-
-                    <button class="tool-btn p-3 rounded flex flex-col items-center justify-center gap-2 text-center"
-                            data-tooltip="SPST"
-                            aria-label="SPST switch"
-                            onclick="selectTool('spst', this)">
-                        <span class="text-[11px] font-medium">SPST Switch</span>
-                    </button>
-                    <button class="tool-btn p-3 rounded flex flex-col items-center justify-center gap-2 text-center"
-                            data-tooltip="SPDT"
-                            aria-label="SPDT switch"
-                            onclick="selectTool('spdt', this)">
-                        <span class="text-[11px] font-medium">SPDT Switch</span>
-                    </button>
-                    <button class="tool-btn p-3 rounded flex flex-col items-center justify-center gap-2 text-center"
-                            data-tooltip="DPDT"
-                            aria-label="DPDT switch"
-                            onclick="selectTool('dpdt', this)">
-                        <span class="text-[11px] font-medium">DPDT Switch</span>
-                    </button>
-                </div>
-            </div>
-
-            <div class="mt-4">
-                <h3 class="text-[10px] font-bold text-gray-500 uppercase mb-3 tracking-widest">Templates</h3>
-                <div class="grid grid-cols-2 gap-2">
-                    <button class="tool-btn p-3 rounded text-center" onclick="insertTemplate('rc-lowpass')">RC Low-Pass</button>
-                    <button class="tool-btn p-3 rounded text-center" onclick="insertTemplate('rc-highpass')">RC High-Pass</button>
-                    <button class="tool-btn p-3 rounded text-center" onclick="insertTemplate('opamp-inverting')">Inverting Op-Amp</button>
-                    <button class="tool-btn p-3 rounded text-center" onclick="insertTemplate('opamp-noninverting')">Non-Inverting Op-Amp</button>
                 </div>
             </div>
 
@@ -499,7 +454,7 @@
     </div>
 
     <!-- Main Canvas Area -->
-    <div class="flex-1 flex flex-col relative bg-[#111] main-canvas">
+    <div class="flex-1 flex flex-col relative bg-[#111]">
         <div class="absolute top-4 right-4 z-10 flex gap-2">
             <button onclick="toggleView()" id="view-btn"
                     class="bg-gray-800/90 hover:bg-gray-700 text-gray-200 px-4 py-2 rounded shadow-lg
@@ -528,11 +483,13 @@
                 <div class="text-cyan-400 border-l-2 border-cyan-400 pl-2">
                     CH2: <span id="scope-ch2-val">0.00V</span>
                 </div>
-                <div class="bg-gray-800 px-3 py-1 rounded border border-gray-600 grid grid-cols-2 gap-x-3 text-xs">
-                    <div class="text-gray-300">tA: <span id="cursor-a" class="text-white font-bold">0s</span></div>
-                    <div class="text-gray-300">tB: <span id="cursor-b" class="text-white font-bold">0s</span></div>
-                    <div class="text-gray-300">Δt: <span id="scope-dt" class="text-white font-bold">0s</span></div>
-                    <div class="text-gray-300">f: <span id="scope-freq" class="text-white font-bold">∞</span></div>
+                <div class="bg-gray-800 px-3 py-1 rounded border border-gray-600 flex gap-4">
+                    <div class="text-gray-300">
+                        ΔT: <span id="scope-dt" class="text-white font-bold">0.00µs</span>
+                    </div>
+                    <div class="text-gray-300">
+                        ΔV (CH1): <span id="scope-dv1" class="text-yellow-200 font-bold">0.00V</span>
+                    </div>
                 </div>
                 <button id="scope-mode-btn" onclick="toggleScopeDisplayMode()"
                         class="text-white bg-gray-800 px-3 py-2 rounded border border-gray-700 hover:bg-gray-700 flex items-center gap-2">
@@ -596,26 +553,12 @@
             <canvas id="scopeCanvas" class="w-full h-full block"></canvas>
             <div id="cursor-1" class="cursor-line border-yellow-500/80 left-[30%]">
                 <div class="cursor-handle bg-yellow-500 text-black font-bold text-[10px]"
-                     onmousedown="startDragCursor(1, event)" ontouchstart="startDragCursor(1, event)">A</div>
+                     onmousedown="startDragCursor(1, event)">1</div>
             </div>
             <div id="cursor-2" class="cursor-line border-cyan-500/80 left-[70%]">
                 <div class="cursor-handle bg-cyan-500 text-black font-bold text-[10px]"
-                     onmousedown="startDragCursor(2, event)" ontouchstart="startDragCursor(2, event)">B</div>
+                     onmousedown="startDragCursor(2, event)">2</div>
             </div>
-        </div>
-
-        <div class="mt-3 bg-gray-900 border border-gray-700 rounded p-3">
-            <table class="w-full text-xs">
-                <thead class="text-gray-400">
-                    <tr>
-                        <th class="text-left px-2">Channel</th>
-                        <th class="text-right px-2">V(A)</th>
-                        <th class="text-right px-2">V(B)</th>
-                        <th class="text-right px-2">ΔV</th>
-                    </tr>
-                </thead>
-                <tbody id="scope-cursor-rows" class="text-gray-200"></tbody>
-            </table>
         </div>
 
         <div class="mt-4 flex gap-4 justify-center">
@@ -660,25 +603,6 @@
             const currentTheme = document.body.classList.contains('theme-dark') ? 'dark' : 'light';
             const nextTheme = currentTheme === 'dark' ? 'light' : 'dark';
             applyTheme(nextTheme);
-        });
-
-        const sidebar = document.getElementById('component-sidebar');
-        const sidebarToggle = document.getElementById('sidebar-toggle');
-        const SIDEBAR_KEY = 'circuitforge-sidebar-collapsed';
-        function applySidebar(collapsed) {
-            if (!sidebar) return;
-            sidebar.classList.toggle('collapsed', collapsed);
-            if (sidebarToggle) {
-                sidebarToggle.setAttribute('aria-expanded', (!collapsed).toString());
-                sidebarToggle.innerHTML = collapsed ? '<i class="fas fa-angles-right"></i>' : '<i class="fas fa-angles-left"></i>';
-            }
-        }
-        const savedSidebar = localStorage.getItem(SIDEBAR_KEY) === '1';
-        applySidebar(savedSidebar);
-        sidebarToggle?.addEventListener('click', () => {
-            const next = !sidebar.classList.contains('collapsed');
-            applySidebar(next);
-            localStorage.setItem(SIDEBAR_KEY, next ? '1' : '0');
         });
     </script>
 </body>
