@@ -3018,6 +3018,8 @@ function ensureSidebarExpanded() {
     if (!sidebar) return;
     if (sidebar.classList.contains('collapsed')) {
         sidebar.classList.remove('collapsed');
+        const shell = sidebar.closest('.sidebar-shell');
+        if (shell) shell.classList.remove('collapsed');
         document.body.classList.remove('sidebar-collapsed');
         const icon = document.getElementById('sidebar-toggle-icon');
         if (icon) icon.className = 'fas fa-chevron-left';
@@ -4652,6 +4654,8 @@ function toggleSidebar() {
     const sidebar = document.getElementById('sidebar');
     if (!sidebar) return;
     const collapsed = sidebar.classList.toggle('collapsed');
+    const shell = sidebar.closest('.sidebar-shell');
+    if (shell) shell.classList.toggle('collapsed', collapsed);
     document.body.classList.toggle('sidebar-collapsed', collapsed);
     const icon = document.getElementById('sidebar-toggle-icon');
     if (icon) icon.className = collapsed ? 'fas fa-chevron-right' : 'fas fa-chevron-left';

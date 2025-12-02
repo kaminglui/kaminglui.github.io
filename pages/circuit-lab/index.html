@@ -40,10 +40,10 @@
             --input-text: #0f0;
             --header-h: var(--nav-height, 64px);
             --sidebar-width: 21rem;
-            --sidebar-width-collapsed: 56px;
+            --sidebar-width-collapsed: 21rem;
         }
         body { --sidebar-width-current: var(--sidebar-width); }
-        body.sidebar-collapsed { --sidebar-width-current: var(--sidebar-width-collapsed); }
+        body.sidebar-collapsed { --sidebar-width-current: var(--sidebar-width); }
         .theme-dark {
             color-scheme: dark;
             --body-bg: #0f0f0f;
@@ -121,9 +121,25 @@
             background: var(--scrollbar-thumb-hover);
         }
         canvas { background-color: var(--canvas-bg); cursor: crosshair; touch-action: none; }
+        .sidebar-shell {
+            position: absolute;
+            inset: 0 auto 0 0;
+            display: flex;
+            flex-direction: column;
+            width: var(--sidebar-width);
+            max-width: var(--sidebar-width);
+            pointer-events: auto;
+            transform: translateX(0);
+            transition: transform 0.2s ease;
+            z-index: 30;
+        }
+        .sidebar-shell.collapsed {
+            transform: translateX(calc(-1 * var(--sidebar-width)));
+            pointer-events: none;
+        }
         .sidebar-header { position: relative; }
-        .sidebar { background-color: var(--sidebar-bg); border-right: 1px solid var(--sidebar-border); transition: width 0.15s ease; height: 100%; z-index: 30; width: var(--sidebar-width-current); min-width: var(--sidebar-width-current); max-width: var(--sidebar-width-current); flex: 0 0 var(--sidebar-width-current); min-height: 0; overflow: hidden; }
-        .sidebar.collapsed { width: var(--sidebar-width-collapsed); min-width: var(--sidebar-width-collapsed); max-width: var(--sidebar-width-collapsed); flex-basis: var(--sidebar-width-collapsed); }
+        .sidebar { background-color: var(--sidebar-bg); border-right: 1px solid var(--sidebar-border); height: 100%; width: 100%; flex: 1 1 auto; min-height: 0; overflow: hidden; pointer-events: auto; }
+        .sidebar.collapsed { border-right: 0; }
         .sidebar.collapsed .sidebar-content,
         .sidebar.collapsed #sim-bar { display: none; }
         .sidebar.collapsed .sidebar-label { display: none; }
@@ -171,14 +187,18 @@
             display: grid;
             place-items: center;
             position: absolute;
-            right: 10px;
-            top: 50%;
-            transform: translateY(-50%);
+            left: calc(var(--sidebar-width) + 8px);
+            top: calc(var(--header-h) - 16px);
+            transform: translate(-50%, 0);
             box-shadow: 0 12px 28px rgba(0,0,0,0.35);
-            z-index: 40;
-            transition: right 0.15s ease;
+            z-index: 50;
+            transition: left 0.2s ease, transform 0.2s ease;
         }
         .sidebar.collapsed .sidebar-header { padding-right: 12px; padding-left: 12px; }
+        .sidebar-shell.collapsed + .sidebar-toggle {
+            left: 14px;
+            transform: translate(0, 0);
+        }
         .cursor-table th, .cursor-table td {
             padding: 4px 6px;
             text-align: right;
@@ -189,6 +209,7 @@
         .canvas-shell { position: relative; flex: 1 1 auto; display: flex; min-width: 0; overflow: hidden; z-index: 1; }
         .canvas-shell canvas { display: block; width: 100%; height: 100%; }
         .lab-layout {
+            position: relative;
             display: flex;
             flex: 1 1 auto;
             height: calc(100vh - var(--header-h));
@@ -197,12 +218,6 @@
             overflow: hidden;
             min-width: 0;
             align-items: stretch;
-        }
-        .lab-layout > .sidebar {
-            height: 100%;
-            max-height: 100%;
-            min-height: 0;
-            flex: 0 0 var(--sidebar-width-current);
         }
         .lab-layout > .canvas-shell {
             min-height: calc(100vh - var(--header-h));
@@ -377,25 +392,22 @@
 
     <main class="flex-1 flex overflow-hidden lab-layout">
     <!-- Sidebar -->
-    <div id="sidebar" class="sidebar flex flex-col flex-shrink-0 shadow-2xl z-20 relative">
-        <div class="sidebar-header p-4 pr-10 border-b border-gray-700 bg-gray-800/50 backdrop-blur flex items-center gap-2">
-            <div class="flex items-center gap-2 sidebar-label">
-                <i class="fas fa-microchip text-blue-400"></i>
-                <div class="flex items-center gap-2">
-                    <span class="text-xl font-bold text-blue-400 tracking-tight">Circuit Forge</span>
-                    <span class="text-[10px] bg-blue-900/50 text-blue-200 px-1.5 py-0.5 rounded border border-blue-800">
-                        BETA
-                    </span>
+    <div class="sidebar-shell">
+        <div id="sidebar" class="sidebar flex flex-col flex-shrink-0 shadow-2xl z-20 relative">
+            <div class="sidebar-header p-4 pr-10 border-b border-gray-700 bg-gray-800/50 backdrop-blur flex items-center gap-2">
+                <div class="flex items-center gap-2 sidebar-label">
+                    <i class="fas fa-microchip text-blue-400"></i>
+                    <div class="flex items-center gap-2">
+                        <span class="text-xl font-bold text-blue-400 tracking-tight">Circuit Forge</span>
+                        <span class="text-[10px] bg-blue-900/50 text-blue-200 px-1.5 py-0.5 rounded border border-blue-800">
+                            BETA
+                        </span>
+                    </div>
                 </div>
             </div>
-            <button class="sidebar-toggle text-gray-400 hover:text-white" onclick="toggleSidebar()" aria-label="Toggle sidebar">
-                <i id="sidebar-toggle-icon" class="fas fa-chevron-left"></i>
-                <span class="sr-only">Toggle sidebar</span>
-            </button>
-        </div>
 
-        <div class="flex-1 flex flex-col overflow-hidden min-h-0 sidebar-content">
-            <div id="tool-scroll" class="flex-1 p-4 space-y-6 overflow-y-auto">
+            <div class="flex-1 flex flex-col overflow-hidden min-h-0 sidebar-content">
+                <div id="tool-scroll" class="flex-1 p-4 space-y-6 overflow-y-auto">
 
             <!-- Power Sources -->
             <div>
@@ -549,42 +561,47 @@
             </div>
         </div>
 
-        <!-- Simulation Bar -->
-        <div id="sim-bar" class="p-2 text-[11px] text-gray-300 mt-auto">
-            <div class="flex items-center justify-between gap-3">
-                <div class="flex items-center gap-3 font-mono">
-                    <span>SIM TIME: <span id="sim-time" class="text-green-400">0.00µs</span></span>
-                    <span class="text-gray-600">|</span>
-                    <span>STATUS: <span id="sim-status">RUNNING</span></span>
-                </div>
-                <div class="flex items-center gap-2">
-                    <button onclick="toggleSim()" id="play-pause-btn"
-                            class="bg-gray-800 hover:bg-gray-700 text-xs px-4 h-9 rounded border border-gray-600 flex items-center justify-center gap-2 has-tooltip"
-                            data-tooltip="Play/Pause" aria-label="Play or Pause">
-                        <i class="fas fa-play"></i>
-                        <span class="font-semibold">Play</span>
-                    </button>
-                    <button onclick="downloadCircuitJSON()"
-                            class="bg-green-900/70 hover:bg-green-800 text-xs px-3 h-9 rounded border border-green-700 flex items-center justify-center has-tooltip"
-                            data-tooltip="Export JSON" aria-label="Export JSON">
-                        <i class="fas fa-file-export"></i>
-                    </button>
-                    <button onclick="triggerImportDialog()"
-                            class="bg-blue-900/70 hover:bg-blue-800 text-xs px-3 h-9 rounded border border-blue-700 flex items-center justify-center has-tooltip"
-                            data-tooltip="Import JSON" aria-label="Import JSON">
-                        <i class="fas fa-file-import"></i>
-                    </button>
-                    <button onclick="clearCanvas()"
-                            class="bg-red-900/70 hover:bg-red-800 text-xs px-3 h-9 rounded border border-red-700 flex items-center justify-center has-tooltip"
-                            data-tooltip="Clear All" aria-label="Clear All">
-                        <i class="fas fa-bomb"></i>
-                    </button>
-                    <input id="import-json-input" type="file" accept="application/json" class="hidden" onchange="handleImportJSON(this.files[0])" />
+            <!-- Simulation Bar -->
+            <div id="sim-bar" class="p-2 text-[11px] text-gray-300 mt-auto">
+                <div class="flex items-center justify-between gap-3">
+                    <div class="flex items-center gap-3 font-mono">
+                        <span>SIM TIME: <span id="sim-time" class="text-green-400">0.00µs</span></span>
+                        <span class="text-gray-600">|</span>
+                        <span>STATUS: <span id="sim-status">RUNNING</span></span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button onclick="toggleSim()" id="play-pause-btn"
+                                class="bg-gray-800 hover:bg-gray-700 text-xs px-4 h-9 rounded border border-gray-600 flex items-center justify-center gap-2 has-tooltip"
+                                data-tooltip="Play/Pause" aria-label="Play or Pause">
+                            <i class="fas fa-play"></i>
+                            <span class="font-semibold">Play</span>
+                        </button>
+                        <button onclick="downloadCircuitJSON()"
+                                class="bg-green-900/70 hover:bg-green-800 text-xs px-3 h-9 rounded border border-green-700 flex items-center justify-center has-tooltip"
+                                data-tooltip="Export JSON" aria-label="Export JSON">
+                            <i class="fas fa-file-export"></i>
+                        </button>
+                        <button onclick="triggerImportDialog()"
+                                class="bg-blue-900/70 hover:bg-blue-800 text-xs px-3 h-9 rounded border border-blue-700 flex items-center justify-center has-tooltip"
+                                data-tooltip="Import JSON" aria-label="Import JSON">
+                            <i class="fas fa-file-import"></i>
+                        </button>
+                        <button onclick="clearCanvas()"
+                                class="bg-red-900/70 hover:bg-red-800 text-xs px-3 h-9 rounded border border-red-700 flex items-center justify-center has-tooltip"
+                                data-tooltip="Clear All" aria-label="Clear All">
+                            <i class="fas fa-bomb"></i>
+                        </button>
+                        <input id="import-json-input" type="file" accept="application/json" class="hidden" onchange="handleImportJSON(this.files[0])" />
+                    </div>
                 </div>
             </div>
-        </div>
 
+        </div>
     </div>
+    <button class="sidebar-toggle text-gray-400 hover:text-white" onclick="toggleSidebar()" aria-label="Toggle sidebar">
+        <i id="sidebar-toggle-icon" class="fas fa-chevron-left"></i>
+        <span class="sr-only">Toggle sidebar</span>
+    </button>
 
     <!-- Main Canvas Area -->
     <div class="canvas-shell flex-1 flex flex-col relative bg-[#111]">
