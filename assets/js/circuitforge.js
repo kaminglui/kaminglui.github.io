@@ -2832,12 +2832,14 @@ function resize() {
     const dpr = Math.max(1, Math.floor(window.devicePixelRatio || 1));
     const cssW = Math.max(1, rect.width);
     const cssH = Math.max(1, rect.height);
-    canvasDisplayWidth  = cssW;
-    canvasDisplayHeight = cssH;
+    const pixelW = Math.round(cssW * dpr);
+    const pixelH = Math.round(cssH * dpr);
+    canvasDisplayWidth  = pixelW;
+    canvasDisplayHeight = pixelH;
     canvas.style.width  = `${cssW}px`;
     canvas.style.height = `${cssH}px`;
-    canvas.width  = Math.round(cssW * dpr);
-    canvas.height = Math.round(cssH * dpr);
+    canvas.width  = pixelW;
+    canvas.height = pixelH;
     // keep initial view centered
     const viewW = canvasDisplayWidth || canvas.width;
     const viewH = canvasDisplayHeight || canvas.height;
