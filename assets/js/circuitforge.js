@@ -4667,6 +4667,7 @@ function init() {
 
     updateBoardThemeColors();
 
+    window.addEventListener('load', resizeCanvas);
     window.addEventListener('resize', resizeCanvas);
     resizeCanvas();
     renderToolIcons();
