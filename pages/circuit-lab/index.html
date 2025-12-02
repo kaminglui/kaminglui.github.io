@@ -39,6 +39,9 @@
             --input-border: #444;
             --input-text: #0f0;
             --header-h: 64px;
+            --sidebar-width: 20rem;
+            --sidebar-width-collapsed: 56px;
+            --sidebar-width-current: var(--sidebar-width);
         }
         .theme-dark {
             color-scheme: dark;
@@ -117,9 +120,9 @@
             background: var(--scrollbar-thumb-hover);
         }
         canvas { background-color: var(--canvas-bg); cursor: crosshair; touch-action: none; }
-        .app-layout { display: flex; flex-direction: row; align-items: stretch; height: calc(100vh - var(--header-h)); min-height: calc(100vh - var(--header-h)); width: 100%; overflow: hidden; }
-        .sidebar { background-color: var(--sidebar-bg); border-right: 1px solid var(--sidebar-border); transition: width 0.15s ease; height: 100%; z-index: 30; }
-        .sidebar.collapsed { width: 52px; }
+        .app-layout { display: grid; grid-template-columns: var(--sidebar-width-current) 1fr; align-items: stretch; height: calc(100vh - var(--header-h)); min-height: calc(100vh - var(--header-h)); width: 100vw; overflow: hidden; }
+        .sidebar { background-color: var(--sidebar-bg); border-right: 1px solid var(--sidebar-border); transition: width 0.15s ease; height: 100%; z-index: 30; width: var(--sidebar-width-current); min-width: var(--sidebar-width-current); }
+        .sidebar.collapsed { width: var(--sidebar-width-collapsed); min-width: var(--sidebar-width-collapsed); }
         .sidebar.collapsed .sidebar-content,
         .sidebar.collapsed #sim-bar { display: none; }
         .sidebar.collapsed .sidebar-label { display: none; }
@@ -278,6 +281,7 @@
             #tool-scroll { max-height: 36vh; }
             .canvas-shell { min-height: 52vh; }
             .sidebar.collapsed { width: 56px; max-height: none; }
+            .app-layout { grid-template-columns: var(--sidebar-width-current) 1fr; width: 100%; }
         }
     </style>
 </head>
@@ -335,9 +339,9 @@
         </div>
     </header>
 
-    <main class="flex-1 flex overflow-hidden app-layout relative">
+    <main class="flex-1 overflow-hidden app-layout relative">
     <!-- Sidebar -->
-    <div id="sidebar" class="sidebar w-80 flex flex-col flex-shrink-0 shadow-2xl z-20 relative overflow-hidden" style="flex-basis:20rem;">
+    <div id="sidebar" class="sidebar flex flex-col flex-shrink-0 shadow-2xl z-20 relative overflow-hidden">
         <div class="p-4 border-b border-gray-700 bg-gray-800/50 backdrop-blur flex items-center justify-between gap-2">
             <div class="flex items-center gap-2 sidebar-label">
                 <i class="fas fa-microchip text-blue-400"></i>

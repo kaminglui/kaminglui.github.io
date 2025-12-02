@@ -2823,8 +2823,12 @@ function drawScope() {
 
 function resize() {
     if (!canvas) return;
-    canvas.width  = canvas.parentElement.clientWidth;
-    canvas.height = canvas.parentElement.clientHeight;
+    const parent = canvas.parentElement || canvas;
+    const rect = parent.getBoundingClientRect();
+    const w = Math.max(1, rect.width);
+    const h = Math.max(1, rect.height);
+    canvas.width  = w;
+    canvas.height = h;
     // keep initial view centered
     if (viewOffsetX === 0 && viewOffsetY === 0) {
         viewOffsetX = (canvas.width  / (2 * zoom) - BOARD_W / 2);
@@ -2962,6 +2966,10 @@ function ensureSidebarExpanded() {
         const icon = document.getElementById('sidebar-toggle-icon');
         if (icon) icon.className = 'fas fa-chevron-left';
         sidebar.setAttribute('aria-expanded', 'true');
+    }
+    const root = document.documentElement;
+    if (root && root.style) {
+        root.style.setProperty('--sidebar-width-current', 'var(--sidebar-width)');
     }
 }
 
@@ -4560,6 +4568,11 @@ function toggleSidebar() {
     const icon = document.getElementById('sidebar-toggle-icon');
     if (icon) icon.className = collapsed ? 'fas fa-chevron-right' : 'fas fa-chevron-left';
     if (sidebar) sidebar.setAttribute('aria-expanded', (!collapsed).toString());
+    const root = document.documentElement;
+    if (root && root.style) {
+        root.style.setProperty('--sidebar-width-current',
+            collapsed ? 'var(--sidebar-width-collapsed)' : 'var(--sidebar-width)');
+    }
     resize();
 }
 
@@ -4638,6 +4651,10 @@ function init() {
     updatePlayPauseButton();
     ensureSidebarExpanded();
     resize();
+    if (canvas && canvas.parentElement && typeof ResizeObserver !== 'undefined') {
+        const ro = new ResizeObserver(() => resize());
+        ro.observe(canvas.parentElement);
+    }
 
     canvas.addEventListener('mousedown', onDown);
     canvas.addEventListener('mousemove', onCanvasMove);
