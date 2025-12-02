@@ -40,6 +40,9 @@ const LABEL_OUTSIDE_OFFSET  = 14;
 const PIN_LABEL_OFFSET      = 24;
 const PIN_LABEL_DISTANCE    = 16;
 const CENTER_LABEL_DISTANCE = 12;
+const DRAG_DEADZONE         = 3;
+const SWITCH_TYPES          = ['SPST', 'SPDT', 'DPDT'];
+const DEFAULT_SWITCH_TYPE   = 'SPST';
 
 let boardBgColor = '#020617';
 let gridHoleColor = '#1f2937';
@@ -67,6 +70,7 @@ let currentTool       = null;
 let viewMode          = 'physical';
 let scopeMode         = false;
 let draggingComponent = null;
+let pendingComponentDrag = null;
 let draggingWire      = null; // { wire, start: {x,y}, verts: [...] }
 let wireDragMoved     = false;
 let wireDragStart     = null;
@@ -86,6 +90,8 @@ let scopeDragOffset = { x: 0, y: 0 };
 let isDraggingScope = false;
 let autosaveTimer = null;
 let isRestoringState = false;
+let currentSwitchType = DEFAULT_SWITCH_TYPE;
+let templatePlacementCount = 0;
 
 // Canvas handles (set after DOM exists)
 let canvas = null;
@@ -96,10 +102,13 @@ let initRan = false;
 
 /* === UTILITIES === */
 function screenToWorld(clientX, clientY) {
+    if (!canvas) return { x: 0, y: 0 };
     const rect = canvas.getBoundingClientRect();
+    const scaleX = rect.width ? (canvas.width / rect.width) : 1;
+    const scaleY = rect.height ? (canvas.height / rect.height) : 1;
     return {
-        x: (clientX - rect.left) / zoom - viewOffsetX,
-        y: (clientY - rect.top)  / zoom - viewOffsetY
+        x: ((clientX - rect.left) * scaleX) / zoom - viewOffsetX,
+        y: ((clientY - rect.top)  * scaleY) / zoom - viewOffsetY
     };
 }
 
@@ -207,6 +216,12 @@ function formatUnit(num, unit = '') {
     if (a >= 1e6)        return (num / 1e6).toFixed(2) + 'M' + unit;
     if (a >= 1e3)        return (num / 1e3).toFixed(2) + 'k' + unit;
     return num.toFixed(2) + unit;
+}
+
+function formatSignedUnit(num, unit = '') {
+    if (!isFinite(num)) return '0' + unit;
+    const sign = num < 0 ? '-' : '';
+    return sign + formatUnit(Math.abs(num), unit);
 }
 
 // Resistor color code bands: returns array of 4 CSS colors
@@ -981,6 +996,195 @@ function getLEDColor(name, lastI = 0, IfStr = '10m') {
     return { body, glow, sym, norm };
 }
 
+/* === SWITCH (SPST / SPDT / DPDT) === */
+class Switch extends Component {
+    setup() {
+        const initial = (SWITCH_TYPES.includes(currentSwitchType)) ? currentSwitchType : DEFAULT_SWITCH_TYPE;
+        this.props = { Type: initial, Position: 'A' };
+        this.pinNames = [];
+        this.applyType(initial, true);
+    }
+
+    getTypeConfig(type) {
+        switch (type) {
+            case 'SPDT':
+                return {
+                    names: ['COM', 'A', 'B'],
+                    pins: [
+                        { x: -30, y: 0 },   // COM
+                        { x:  30, y:-16 },  // A (upper)
+                        { x:  30, y: 16 }   // B (lower)
+                    ],
+                    w: 80,
+                    h: 60
+                };
+            case 'DPDT':
+                return {
+                    names: ['COM1', 'A1', 'B1', 'COM2', 'A2', 'B2'],
+                    pins: [
+                        { x: -32, y: -22 }, // COM1
+                        { x:  32, y: -32 }, // A1
+                        { x:  32, y: -12 }, // B1
+                        { x: -32, y:  22 }, // COM2
+                        { x:  32, y:  12 }, // A2
+                        { x:  32, y:  32 }  // B2
+                    ],
+                    w: 90,
+                    h: 90
+                };
+            default:
+                return {
+                    names: ['A', 'B'],
+                    pins: [
+                        { x: -30, y: 0 }, // A
+                        { x:  30, y: 0 }  // B
+                    ],
+                    w: 80,
+                    h: 40
+                };
+        }
+    }
+
+    applyType(type, skipWireCleanup = false) {
+        const clamped = SWITCH_TYPES.includes(type) ? type : DEFAULT_SWITCH_TYPE;
+        const cfg = this.getTypeConfig(clamped);
+        const prevNames = this.pinNames ? [...this.pinNames] : [];
+        const nameFromIdx = new Map(prevNames.map((n, i) => [i, n]));
+
+        this.props.Type = clamped;
+        if (this.props.Position !== 'A' && this.props.Position !== 'B') {
+            this.props.Position = 'A';
+        }
+        this.pinNames = [...cfg.names];
+        this.pins = cfg.pins.map(p => ({ ...p }));
+        this.w = cfg.w;
+        this.h = cfg.h;
+
+        if (!skipWireCleanup) {
+            const nextIdxByName = new Map(this.pinNames.map((n, i) => [n, i]));
+            wires = wires.filter(w => {
+                let keep = true;
+                if (w.from.c === this) {
+                    const name = nameFromIdx.get(w.from.p);
+                    const mapped = nextIdxByName.get(name);
+                    if (mapped == null) keep = false;
+                    else w.from.p = mapped;
+                }
+                if (w.to.c === this) {
+                    const name = nameFromIdx.get(w.to.p);
+                    const mapped = nextIdxByName.get(name);
+                    if (mapped == null) keep = false;
+                    else w.to.p = mapped;
+                }
+                return keep;
+            });
+        }
+    }
+
+    toggle() {
+        this.props.Position = (this.props.Position === 'A') ? 'B' : 'A';
+    }
+
+    getActiveConnections() {
+        const pos = this.props.Position === 'B' ? 'B' : 'A';
+        if (this.props.Type === 'SPST') {
+            return (pos === 'A') ? [[0, 1]] : [];
+        }
+        if (this.props.Type === 'SPDT') {
+            const idx = (pos === 'A') ? 1 : 2;
+            return [[0, idx]];
+        }
+        if (this.props.Type === 'DPDT') {
+            const upper = (pos === 'A') ? 1 : 2;
+            const lower = (pos === 'A') ? 4 : 5;
+            return [
+                [0, upper],
+                [3, lower]
+            ];
+        }
+        return [];
+    }
+
+    drawSwitch(ctx, filled = false) {
+        ctx.save();
+        ctx.lineWidth = 2;
+        ctx.strokeStyle = '#e5e7eb';
+        if (filled) {
+            ctx.fillStyle = '#0f172a';
+            ctx.fillRect(-this.w / 2, -this.h / 2, this.w, this.h);
+            ctx.strokeRect(-this.w / 2, -this.h / 2, this.w, this.h);
+        }
+
+        const drawPole = (comIdx, aIdx, bIdx) => {
+            const com = this.pins[comIdx];
+            const a = this.pins[aIdx];
+            const b = this.pins[bIdx];
+            if (!com || !a || !b) return;
+            const lead = (com.x < a.x || com.x < b.x) ? 10 : -10;
+
+            // fixed contacts
+            ctx.beginPath();
+            ctx.moveTo(a.x, a.y); ctx.lineTo(a.x - lead * 0.5, a.y); ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(b.x, b.y); ctx.lineTo(b.x - lead * 0.5, b.y); ctx.stroke();
+
+            // pads
+            ctx.beginPath(); ctx.arc(a.x, a.y, 3, 0, Math.PI * 2); ctx.stroke();
+            ctx.beginPath(); ctx.arc(b.x, b.y, 3, 0, Math.PI * 2); ctx.stroke();
+
+            // common stub
+            ctx.beginPath();
+            ctx.moveTo(com.x, com.y);
+            ctx.lineTo(com.x + lead, com.y);
+            ctx.stroke();
+
+            const pos = (this.props.Position === 'B') ? 'B' : 'A';
+            const target = (this.props.Type === 'SPST' && pos === 'B')
+                ? { x: com.x + lead + 8, y: com.y - 14 }
+                : (pos === 'A' ? a : b);
+
+            ctx.beginPath();
+            ctx.moveTo(com.x + lead, com.y);
+            ctx.lineTo(target.x - (lead * 0.3), target.y + (pos === 'B' && this.props.Type === 'SPST' ? 0 : 0));
+            ctx.stroke();
+        };
+
+        if (this.props.Type === 'DPDT') {
+            drawPole(0, 1, 2);
+            drawPole(3, 4, 5);
+        } else if (this.props.Type === 'SPDT') {
+            drawPole(0, 1, 2);
+        } else {
+            drawPole(0, 1, 1);
+        }
+
+        ctx.restore();
+    }
+
+    drawSym(ctx) { this.drawSwitch(ctx, false); }
+    drawPhys(ctx) { this.drawSwitch(ctx, true); }
+
+    drawLabels(ctx) {
+        ctx.save();
+        ctx.font = LABEL_FONT_SMALL;
+        ctx.fillStyle = '#d1d5db';
+        this.pinNames.forEach((name, idx) => {
+            const dir = getPinDirection(this, idx) || { x: 0, y: 1 };
+            const pos = offsetLabelFromPin(this, idx, LABEL_OUTSIDE_OFFSET, dir);
+            ctx.textAlign = dir.x < 0 ? 'right' : dir.x > 0 ? 'left' : 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(name, pos.x, pos.y);
+        });
+        const center = getPinCenter(this);
+        ctx.font = LABEL_FONT_BOLD;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillStyle = '#94a3b8';
+        ctx.fillText(this.props.Type, center.x, center.y);
+        ctx.restore();
+    }
+}
+
 /* === MOSFET / JUNCTION === */
 class Junction extends Component {
     setup() {
@@ -1180,44 +1384,38 @@ class MOSFET extends Component {
     }
 }
 
-/* === IDEAL DUAL OP-AMP (LF412-style) === */
-
+/* === IDEAL DUAL OP-AMP (LM358 / LF412 style) === */
 class LF412 extends Component {
     setup() {
+        this.pinNames = ['1OUT', '1IN-', '1IN+', 'VCC-', '2IN+', '2IN-', '2OUT', 'VCC+'];
         this.pins = [
-            { x:-40, y:-40 }, // 0 OutA
-            { x:-40, y:-20 }, // 1 -InA
-            { x:-40, y: 20 }, // 2 +InA
-            { x:-40, y: 40 }, // 3 V-
-            { x: 40, y: 40 }, // 4 V+
-            { x: 40, y: 20 }, // 5 OutB
-            { x: 40, y:-20 }, // 6 -InB
-            { x: 40, y:-40 }  // 7 +InB
+            { x: -40, y: -40 }, // 1OUT (pin 1)
+            { x: -40, y: -20 }, // 1IN-
+            { x: -40, y:  20 }, // 1IN+
+            { x: -40, y:  40 }, // VCC-
+            { x:  40, y:  40 }, // 2IN+
+            { x:  40, y:  20 }, // 2IN-
+            { x:  40, y: -20 }, // 2OUT
+            { x:  40, y: -40 }  // VCC+
         ];
         this.w = 80;
         this.h = 100;
-        this.props = {}; // ideal, no editable params for now
+        this.props = {};
     }
 
-    drawSym(ctx) {
-        ctx.save();
+    drawPackage(ctx, filled = false, bodyFill = null) {
         const body = { x: -40, y: -50, w: 80, h: 100 };
-
-        // body
-        ctx.fillStyle   = '#0b0f19';
+        ctx.save();
+        ctx.lineWidth = 2;
+        ctx.fillStyle   = bodyFill || (filled ? '#111827' : '#0b0f19');
         ctx.strokeStyle = '#ffffff';
-        ctx.lineWidth   = 2;
         ctx.fillRect(body.x, body.y, body.w, body.h);
         ctx.strokeRect(body.x, body.y, body.w, body.h);
 
-        // U-shaped notch (∪) cut into the top edge
-        const notchW     = 28;
+        const notchW = 28;
         const notchDepth = 8;
-        const topY       = body.y;
-        const bgColor    = '#020617';
-
-        // punch the notch out with board background
-        ctx.fillStyle = bgColor;
+        const topY = body.y;
+        ctx.fillStyle = filled ? '#0f172a' : '#020617';
         ctx.beginPath();
         ctx.moveTo(-notchW / 2, topY);
         ctx.quadraticCurveTo(0, topY + notchDepth, notchW / 2, topY);
@@ -1226,118 +1424,62 @@ class LF412 extends Component {
         ctx.closePath();
         ctx.fill();
 
-        // white outline of the U
         ctx.strokeStyle = '#ffffff';
         ctx.beginPath();
         ctx.moveTo(-notchW / 2, topY);
         ctx.quadraticCurveTo(0, topY + notchDepth, notchW / 2, topY);
         ctx.stroke();
 
-        const leftPins = [
-            { y: -40, label: 'OutA' },
-            { y: -20, label: '-InA' },
-            { y:  20, label: '+InA' },
-            { y:  40, label: 'V-' }
-        ];
-        const rightPins = [
-            { y: -40, label: 'V+' },
-            { y: -20, label: 'OutB' },
-            { y:  20, label: '-InB' },
-            { y:  40, label: '+InB' }
-        ];
-
-        ctx.font      = '9px monospace';
-        ctx.fillStyle = '#d1d5db';
-        leftPins.forEach(p => {
-            ctx.beginPath();
-            ctx.moveTo(body.x, p.y);
-            ctx.lineTo(body.x - 12, p.y);
-            ctx.stroke();
-        });
-        rightPins.forEach(p => {
-            ctx.beginPath();
-            ctx.moveTo(body.x + body.w, p.y);
-            ctx.lineTo(body.x + body.w + 12, p.y);
-            ctx.stroke();
-        });
-
-        // pin markers
+        ctx.strokeStyle = '#ffffff';
         ctx.fillStyle = '#60a5fa';
-        leftPins.concat(rightPins).forEach(p => {
-            const x = leftPins.includes(p) ? body.x : body.x + body.w;
+        this.pins.forEach(p => {
+            const edgeX = p.x < 0 ? body.x : body.x + body.w;
             ctx.beginPath();
-            ctx.arc(x, p.y, 2.5, 0, Math.PI * 2);
+            ctx.moveTo(edgeX, p.y);
+            ctx.lineTo(p.x, p.y);
+            ctx.stroke();
+
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, 2.6, 0, Math.PI * 2);
             ctx.fill();
         });
         ctx.restore();
     }
 
+    drawSym(ctx) { this.drawPackage(ctx, false); }
     drawPhys(ctx) {
         const g = ctx.createLinearGradient(-40, 0, 40, 0);
         g.addColorStop(0, '#222222');
         g.addColorStop(1, '#000000');
-        ctx.fillStyle = g;
-        ctx.fillRect(-40, -50, 80, 100);
-
-        // notch
-        ctx.fillStyle = '#333333';
-        ctx.beginPath();
-        ctx.arc(0, -50, 7, 0, Math.PI);
-        ctx.fill();
-
-        ctx.fillStyle = '#dddddd';
-        [-40, -20, 20, 40].forEach(y => {
-            ctx.fillRect(-45, y - 2, 5, 4);
-            ctx.fillRect( 40, y - 2, 5, 4);
-        });
+        this.drawPackage(ctx, true, g);
     }
 
-    drawLabels(ctx, mode) {
+    drawLabels(ctx) {
         ctx.save();
         ctx.shadowColor = 'rgba(0,0,0,0)';
         ctx.shadowBlur = 0;
         ctx.shadowOffsetX = 0;
         ctx.shadowOffsetY = 0;
-        if (mode === 'schematic') {
-            const titlePos = getPinCenter(this);
-            ctx.fillStyle = '#9ca3af';
-            ctx.font = LABEL_FONT_BOLD;
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            ctx.fillText('LF412', titlePos.x, titlePos.y);
 
-            const labels = [
-                { idx: 0, text: 'OutA' },
-                { idx: 1, text: '-InA' },
-                { idx: 2, text: '+InA' },
-                { idx: 3, text: 'V-'  },
-                { idx: 4, text: 'V+'  },
-                { idx: 5, text: 'OutB'},
-                { idx: 6, text: '-InB'},
-                { idx: 7, text: '+InB'}
-            ];
+        const center = getPinCenter(this);
+        ctx.fillStyle = '#9ca3af';
+        ctx.font = LABEL_FONT_BOLD;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('LF412', center.x, center.y);
 
-            ctx.font = LABEL_FONT_SMALL;
-            ctx.fillStyle = '#d1d5db';
-            ctx.textBaseline = 'middle';
-            labels.forEach(l => {
-                const dir = getPinDirection(this, l.idx) || { x: 0, y: 1 };
-                const pos = offsetLabelFromPin(this, l.idx, LABEL_OUTSIDE_OFFSET, dir);
-                ctx.textAlign = dir.x < 0 ? 'right' : dir.x > 0 ? 'left' : 'center';
-                ctx.fillText(l.text, pos.x, pos.y);
-            });
-        } else if (mode === 'physical') {
-            const pos = getPinCenter(this);
-            ctx.fillStyle = '#cccccc';
-            ctx.font = '11px monospace';
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            ctx.fillText('LF412', pos.x, pos.y);
-        }
+        ctx.font = LABEL_FONT_SMALL;
+        ctx.fillStyle = '#d1d5db';
+        this.pinNames.forEach((label, idx) => {
+            const dir = getPinDirection(this, idx) || { x: 0, y: 1 };
+            const pos = offsetLabelFromPin(this, idx, LABEL_OUTSIDE_OFFSET, dir);
+            ctx.textAlign = dir.x < 0 ? 'right' : dir.x > 0 ? 'left' : 'center';
+            ctx.fillText(label, pos.x, pos.y);
+        });
+
         ctx.restore();
     }
 }
-
 /* === SOURCES: DC + FUNCTION GENERATOR (Vpp) === */
 class VoltageSource extends Component {
     setup() {
@@ -1996,6 +2138,36 @@ function simulate(t) {
             const g = 1 / R;
             stampG(nA, nK, g);
         }
+        else if (c instanceof Switch) {
+            const gOn  = 1 / 1e-3; // ~1 mΩ when closed
+            const gOff = 1e-9;
+            const pairs = c.getActiveConnections();
+            if (!pairs.length && c.props.Type === 'SPST') {
+                const nA = getNodeIdx(c, 0);
+                const nB = getNodeIdx(c, 1);
+                stampG(nA, nB, gOff);
+            }
+            pairs.forEach(([aIdx, bIdx]) => {
+                const nA = getNodeIdx(c, aIdx);
+                const nB = getNodeIdx(c, bIdx);
+                stampG(nA, nB, gOn);
+            });
+            if (c.props.Type === 'SPDT') {
+                const unused = (c.props.Position === 'A') ? 2 : 1;
+                const nCom = getNodeIdx(c, 0);
+                const nUnused = getNodeIdx(c, unused);
+                stampG(nCom, nUnused, gOff);
+            } else if (c.props.Type === 'DPDT') {
+                const upperUnused = (c.props.Position === 'A') ? 2 : 1;
+                const lowerUnused = (c.props.Position === 'A') ? 5 : 4;
+                const nCom1 = getNodeIdx(c, 0);
+                const nCom2 = getNodeIdx(c, 3);
+                const nUnused1 = getNodeIdx(c, upperUnused);
+                const nUnused2 = getNodeIdx(c, lowerUnused);
+                stampG(nCom1, nUnused1, gOff);
+                stampG(nCom2, nUnused2, gOff);
+            }
+        }
         else if (c instanceof MOSFET) {
             const nG = getNodeIdx(c, 0);
             const nD = getNodeIdx(c, 1);
@@ -2054,8 +2226,8 @@ function simulate(t) {
                 if (nInv !== -1) G.add(nOut, nInv,  gain);
                 G.add(nOut, nOut, 1.0);
             }
-            stampOpAmpHalf(2, 1, 0);
-            stampOpAmpHalf(7, 6, 5);
+            stampOpAmpHalf(2, 1, 0); // 1IN+, 1IN-, 1OUT
+            stampOpAmpHalf(4, 5, 6); // 2IN+, 2IN-, 2OUT
         }
     });
 
@@ -2096,7 +2268,7 @@ function simulate(t) {
     // Gently clamp op-amp outputs to keep the solver stable
     components.forEach(c => {
         if (c instanceof LF412) {
-            const outs = [getNodeIdx(c, 0), getNodeIdx(c, 5)];
+            const outs = [getNodeIdx(c, 0), getNodeIdx(c, 6)];
             outs.forEach(n => {
                 if (n != null && n !== -1) {
                     const v = sol[n];
@@ -2734,6 +2906,10 @@ function renderToolIcons() {
     createToolIcon("button[onclick=\"selectTool('mosfet', this)\"]", MOSFET, m => {
         m.props.Type = 'NMOS';
     });
+    createToolIcon("button[onclick=\"selectTool('switch', this)\"]", Switch, s => {
+        s.applyType('SPST', true);
+        s.props.Position = 'A';
+    });
     createToolIcon("button[onclick=\"selectTool('lf412', this)\"]", LF412);
     createToolIcon("button[onclick=\"selectTool('voltageSource', this)\"]", VoltageSource);
     createToolIcon("button[onclick=\"selectTool('funcGen', this)\"]", FunctionGenerator, undefined, -6);
@@ -2772,6 +2948,7 @@ function setMode(mode) {
     selectedWire      = null;
     activeWire        = null;
     hoverWire         = null;
+    pendingComponentDrag = null;
     currentTool       = null;
     updateProps();
 }
@@ -2792,6 +2969,26 @@ function selectTool(type, btn) {
     document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
 
     if (btn) btn.classList.add('active');
+}
+
+function syncSwitchTypeSelector(type = currentSwitchType) {
+    const select = document.getElementById('switch-type-select');
+    if (select && type && select.value !== type) {
+        select.value = type;
+    }
+}
+
+function setSwitchToolType(type) {
+    const normalized = SWITCH_TYPES.includes(type) ? type : DEFAULT_SWITCH_TYPE;
+    currentSwitchType = normalized;
+    syncSwitchTypeSelector(normalized);
+    if (selectedComponent instanceof Switch) {
+        selectedComponent.applyType(normalized);
+        rerouteWiresForComponent(selectedComponent);
+        cleanupJunctions();
+        markStateDirty();
+        updateProps();
+    }
 }
 
 function setSelectedComponent(c) {
@@ -2913,6 +3110,9 @@ function updateProps() {
     if (!panel || !dyn || !title) return;
 
     dyn.innerHTML = '';
+    syncSwitchTypeSelector(selectedComponent instanceof Switch
+        ? (selectedComponent.props.Type || DEFAULT_SWITCH_TYPE)
+        : currentSwitchType);
 
     if (selectedWire) {
         panel.classList.remove('hidden');
@@ -2985,9 +3185,54 @@ function updateProps() {
         dyn.appendChild(advRow);
     }
 
+    if (selectedComponent instanceof Switch) {
+        syncSwitchTypeSelector(selectedComponent.props.Type || DEFAULT_SWITCH_TYPE);
+        currentSwitchType = selectedComponent.props.Type || DEFAULT_SWITCH_TYPE;
+
+        const typeRow = document.createElement('div');
+        typeRow.className = 'flex justify-between items-center bg-gray-700/50 p-2 rounded mb-2';
+        const typeLabel = document.createElement('span');
+        typeLabel.className = 'text-[10px] text-gray-300';
+        typeLabel.innerText = 'Type';
+        const typeSelect = document.createElement('select');
+        typeSelect.className = 'w-24 bg-gray-900 border border-gray-600 rounded px-1 text-right text-xs';
+        SWITCH_TYPES.forEach(opt => {
+            const o = document.createElement('option');
+            o.value = opt;
+            o.innerText = opt;
+            if (opt === (selectedComponent.props.Type || DEFAULT_SWITCH_TYPE)) o.selected = true;
+            typeSelect.appendChild(o);
+        });
+        typeSelect.onchange = ev => setSwitchToolType(ev.target.value);
+        typeRow.appendChild(typeLabel);
+        typeRow.appendChild(typeSelect);
+        dyn.appendChild(typeRow);
+
+        const stateRow = document.createElement('div');
+        stateRow.className = 'flex justify-between items-center bg-gray-700/50 p-2 rounded mb-2';
+        const stateLabel = document.createElement('span');
+        stateLabel.className = 'text-[10px] text-gray-300';
+        stateLabel.innerText = 'State';
+        const pos = selectedComponent.props.Position === 'B' ? 'B' : 'A';
+        const stateBtn = document.createElement('button');
+        stateBtn.className = 'bg-blue-600 px-2 py-1 text-xs rounded text-white';
+        stateBtn.innerText = selectedComponent.props.Type === 'SPST'
+            ? (pos === 'A' ? 'Closed' : 'Open')
+            : `Throw ${pos}`;
+        stateBtn.onclick = () => {
+            selectedComponent.toggle();
+            markStateDirty();
+            updateProps();
+        };
+        stateRow.appendChild(stateLabel);
+        stateRow.appendChild(stateBtn);
+        dyn.appendChild(stateRow);
+    }
+
     const comp = selectedComponent;
     for (const key in comp.props) {
         if (key === 'Type') continue;
+        if (comp instanceof Switch && key === 'Position') continue;
         if (comp instanceof Oscilloscope &&
             ['TimeDiv', 'VDiv1', 'VDiv2'].includes(key)) {
             continue;
@@ -3119,6 +3364,144 @@ function updateProps() {
     }
 }
 
+
+function getTemplateOrigin() {
+    if (!canvas) return { x: 0, y: 0 };
+    const center = screenToWorld(canvas.width / 2, canvas.height / 2);
+    const col = templatePlacementCount % 3;
+    const row = Math.floor(templatePlacementCount / 3);
+    const spacingX = 280;
+    const spacingY = 240;
+    const origin = {
+        x: center.x + (col - 1) * spacingX,
+        y: center.y + row * spacingY
+    };
+    templatePlacementCount++;
+    return origin;
+}
+
+function applyTemplate(name) {
+    if (!canvas) return;
+    const origin = getTemplateOrigin();
+    const created = [];
+    const add = (Ctor, dx, dy, props = {}) => {
+        const c = new Ctor(origin.x + dx, origin.y + dy);
+        c.props = { ...c.props, ...props };
+        if (c instanceof Switch) {
+            c.applyType(currentSwitchType, true);
+        }
+        components.push(c);
+        created.push(c);
+        return c;
+    };
+    const connect = (a, pa, b, pb, mid = []) => {
+        const verts = buildWireVertices({ c: a, p: pa }, mid, { c: b, p: pb }) || [];
+        wires.push({ from: { c: a, p: pa }, to: { c: b, p: pb }, vertices: verts, v: 0 });
+    };
+
+    switch (name) {
+        case 'rc-low-pass': {
+            const fg = add(FunctionGenerator, -200, 0, { Vpp: '2', Freq: '1k' });
+            const r  = add(Resistor, -40, 0, { R: '10k' });
+            const c  = add(Capacitor, 120, 40, { C: '100n' });
+            const g  = add(Ground, 120, 120);
+            const scope = add(Oscilloscope, 260, 0);
+
+            connect(fg, 0, r, 0);
+            connect(fg, 1, g, 0);
+            connect(fg, 2, g, 0);
+            connect(r, 1, c, 0);
+            connect(c, 1, g, 0);
+            connect(scope, 0, r, 1);
+            connect(scope, 1, r, 0);
+            connect(scope, 2, g, 0);
+            break;
+        }
+        case 'rc-high-pass': {
+            const fg = add(FunctionGenerator, -200, 0, { Vpp: '2', Freq: '1k' });
+            const c  = add(Capacitor, -40, 0, { C: '47n' });
+            const r  = add(Resistor, 120, 0, { R: '10k' });
+            const g  = add(Ground, 120, 120);
+            const scope = add(Oscilloscope, 260, 0);
+
+            connect(fg, 0, c, 0);
+            connect(fg, 1, g, 0);
+            connect(fg, 2, g, 0);
+            connect(c, 1, r, 0);
+            connect(r, 1, g, 0);
+            connect(scope, 0, r, 0);
+            connect(scope, 1, fg, 0);
+            connect(scope, 2, g, 0);
+            break;
+        }
+        case 'inverting-opamp': {
+            const op   = add(LF412, 200, 0);
+            const vcc  = add(VoltageSource, 200, -180, { Vdc: '12' });
+            const g    = add(Ground, 200, 160);
+            const fg   = add(FunctionGenerator, -140, 40, { Vpp: '2', Freq: '1k' });
+            const rin  = add(Resistor, 40, 20, { R: '10k' });
+            const rf   = add(Resistor, 260, -20, { R: '20k' });
+            const scope= add(Oscilloscope, 420, 0);
+
+            connect(vcc, 0, op, 7);
+            connect(vcc, 1, g, 0);
+            connect(op, 3, g, 0);
+
+            connect(fg, 0, rin, 0);
+            connect(fg, 1, g, 0);
+            connect(fg, 2, g, 0);
+            connect(rin, 1, op, 1);
+            connect(op, 2, g, 0);
+
+            connect(rf, 0, op, 0);
+            connect(rf, 1, op, 1);
+
+            connect(scope, 0, op, 0);
+            connect(scope, 1, fg, 0);
+            connect(scope, 2, g, 0);
+            break;
+        }
+        case 'non-inverting-opamp': {
+            const op   = add(LF412, 200, 0);
+            const vcc  = add(VoltageSource, 200, -180, { Vdc: '12' });
+            const g    = add(Ground, 200, 160);
+            const fg   = add(FunctionGenerator, -140, 40, { Vpp: '2', Freq: '1k' });
+            const rg   = add(Resistor, 80, 60, { R: '10k' });
+            const rf   = add(Resistor, 260, -10, { R: '10k' });
+            const scope= add(Oscilloscope, 420, 0);
+
+            connect(vcc, 0, op, 7);
+            connect(vcc, 1, g, 0);
+            connect(op, 3, g, 0);
+
+            connect(fg, 0, op, 2);
+            connect(fg, 1, g, 0);
+            connect(fg, 2, g, 0);
+
+            connect(rg, 0, op, 1);
+            connect(rg, 1, g, 0);
+            connect(rf, 0, op, 0);
+            connect(rf, 1, op, 1);
+
+            connect(scope, 0, op, 0);
+            connect(scope, 1, fg, 0);
+            connect(scope, 2, g, 0);
+            break;
+        }
+        default:
+            return;
+    }
+
+    selectionGroup = created;
+    selectedComponent = created[0] || null;
+    selectedWire = null;
+    activeWire = null;
+    pendingComponentDrag = null;
+    cleanupJunctions();
+    markStateDirty();
+    updateProps();
+}
+
 /* ---------- MOUSE & KEYBOARD ---------- */
 
 const TOOL_COMPONENTS = {
@@ -3126,6 +3509,7 @@ const TOOL_COMPONENTS = {
     capacitor: Capacitor,
     potentiometer: Potentiometer,
     mosfet: MOSFET,
+    switch: Switch,
     lf412: LF412,
     voltageSource: VoltageSource,
     funcGen: FunctionGenerator,
@@ -3189,6 +3573,10 @@ function applySerializedState(data) {
             c.mirrorX = !!entry.mirrorX;
             if (entry.props && typeof entry.props === 'object') {
                 c.props = { ...c.props, ...entry.props };
+            }
+            if (c instanceof Switch) {
+                const t = SWITCH_TYPES.includes(c.props.Type) ? c.props.Type : DEFAULT_SWITCH_TYPE;
+                c.applyType(t, true);
             }
             created.push(c);
         });
@@ -3309,13 +3697,21 @@ function triggerImportDialog() {
 function createComponentFromTool(tool, snapPoint) {
     const ComponentCtor = TOOL_COMPONENTS[tool];
     if (!ComponentCtor) return null;
-    return new ComponentCtor(snapPoint.x, snapPoint.y);
+    const c = new ComponentCtor(snapPoint.x, snapPoint.y);
+    if (c instanceof Switch) {
+        const t = SWITCH_TYPES.includes(currentSwitchType) ? currentSwitchType : DEFAULT_SWITCH_TYPE;
+        c.applyType(t, true);
+        c.props.Position = c.props.Position || 'A';
+    }
+    return c;
 }
 
 function attachDragListeners() {
     if (dragListenersAttached) return;
     window.addEventListener('mousemove', onMove);
     window.addEventListener('mouseup', onUp);
+    window.addEventListener('touchmove', onMove, { passive: false });
+    window.addEventListener('touchend', onUp);
     dragListenersAttached = true;
 }
 
@@ -3323,11 +3719,25 @@ function detachDragListeners() {
     if (!dragListenersAttached) return;
     window.removeEventListener('mousemove', onMove);
     window.removeEventListener('mouseup', onUp);
+    window.removeEventListener('touchmove', onMove);
+    window.removeEventListener('touchend', onUp);
     dragListenersAttached = false;
 }
 
+function getPointerXY(e) {
+    if (!e) return { clientX: 0, clientY: 0 };
+    if (e && e.touches && e.touches.length) {
+        return { clientX: e.touches[0].clientX, clientY: e.touches[0].clientY };
+    }
+    if (e && e.changedTouches && e.changedTouches.length) {
+        return { clientX: e.changedTouches[0].clientX, clientY: e.changedTouches[0].clientY };
+    }
+    return { clientX: e.clientX, clientY: e.clientY };
+}
+
 function canvasPoint(e) {
-    const p = screenToWorld(e.clientX, e.clientY);
+    const { clientX, clientY } = getPointerXY(e);
+    const p = screenToWorld(clientX, clientY);
     return { x: p.x, y: p.y };
 }
 
@@ -3361,14 +3771,17 @@ function pickWireAt(m, maxDist = WIRE_HIT_DISTANCE) {
     return bestWire;
 }
 
+function applyZoom(factor) {
+    zoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, zoom * factor));
+    clampView();
+    markStateDirty();
+}
+
 function onWheel(e) {
     e.preventDefault();
     const delta = -e.deltaY || e.wheelDelta || 0;
     const factor = delta > 0 ? ZOOM_IN_STEP : ZOOM_OUT_STEP;
-
-    zoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, zoom * factor));
-    clampView();
-    markStateDirty();
+    applyZoom(factor);
 }
 
 function autoConnectPins(component) {
@@ -3403,14 +3816,20 @@ function autoConnectPins(component) {
 }
 
 function onDown(e) {
+    const isTouch = !!(e && e.touches && e.touches.length);
+    if (isTouch && e.cancelable !== false) {
+        e.preventDefault();
+    }
     // ignore clicks inside UI inputs
     if (isEditableElement(e.target)) {
         return;
     }
 
+    const button = (typeof e.button === 'number') ? e.button : 0;
+    const shift = !!e.shiftKey;
     const m = canvasPoint(e);
 
-    if (e.button === 1) { // middle mouse
+    if (!isTouch && button === 1) { // middle mouse
         isPanning = true;
         wireDragStart = m;
         attachDragListeners();
@@ -3418,12 +3837,13 @@ function onDown(e) {
     }
 
     // right-click -> deselect / cancel
-    if (e.button === 2) {
+    if (!isTouch && button === 2) {
         if (currentTool) {
             clearToolSelection();
         } else if (activeWire) {
             activeWire = null;
         }
+        pendingComponentDrag = null;
         draggingComponent = null;
         draggingWire      = null;
         wireDragMoved     = false;
@@ -3531,17 +3951,36 @@ function onDown(e) {
         const c = components[i];
         if (c.isInside(m.x, m.y)) {
             currentTool = null;
-            setSelectedComponent(c);
-            selectedWire      = null;
-            activeWire        = null;
+            activeWire = null;
+            selectedWire = null;
+
+            if (shift) {
+                if (selectionGroup.includes(c)) {
+                    selectionGroup = selectionGroup.filter(x => x !== c);
+                } else {
+                    selectionGroup = [...selectionGroup, c];
+                }
+                selectedComponent = selectionGroup[selectionGroup.length - 1] || null;
+                pendingComponentDrag = null;
+                updateProps();
+                return;
+            }
+
+            if (!selectionGroup.includes(c)) {
+                selectionGroup = [c];
+            }
+            selectedComponent = c;
             const targets = selectionGroup.length ? selectionGroup : [c];
-            draggingComponent = {
+            pendingComponentDrag = {
+                start: m,
+                target: c,
                 objs: targets.map(obj => ({
                     obj,
                     offsetX: m.x - obj.x,
                     offsetY: m.y - obj.y
                 }))
             };
+            draggingComponent = null;
             attachDragListeners();
             updateProps();
             return;
@@ -3582,19 +4021,30 @@ function onDown(e) {
     updateProps();
 }
 
-
 function onMove(e) {
+    if (e && e.touches && e.cancelable !== false) {
+        e.preventDefault();
+    }
     const m = canvasPoint(e);
 
     if (isPanning && wireDragStart) {
-        const dx = (e.movementX || 0) / zoom;
-        const dy = (e.movementY || 0) / zoom;
+        const dx = m.x - wireDragStart.x;
+        const dy = m.y - wireDragStart.y;
         viewOffsetX += dx;
         viewOffsetY += dy;
-        // clamp to board with margin
+        wireDragStart = m;
         clampView();
         markStateDirty();
         return;
+    }
+
+    if (pendingComponentDrag && !draggingComponent) {
+        const dx = m.x - pendingComponentDrag.start.x;
+        const dy = m.y - pendingComponentDrag.start.y;
+        if (Math.hypot(dx, dy) >= DRAG_DEADZONE) {
+            draggingComponent = pendingComponentDrag;
+            pendingComponentDrag = null;
+        }
     }
 
     if (draggingComponent) {
@@ -3630,7 +4080,7 @@ function onMove(e) {
         activeWire.currentPoint = snapToBoardPoint(m.x, m.y);
     }
 
-    if (!draggingComponent && !draggingWire && !selectionBox && !isPanning) {
+    if (!draggingComponent && !draggingWire && !selectionBox && !isPanning && !pendingComponentDrag) {
         hoverWire = pickWireAt(m, WIRE_HIT_DISTANCE);
     } else {
         hoverWire = null;
@@ -3643,6 +4093,7 @@ function onCanvasMove(e) {
 }
 
 function onUp(e) {
+    const m = canvasPoint(e);
     let handled = false;
 
     if (isPanning) {
@@ -3662,12 +4113,10 @@ function onUp(e) {
         selectionGroup = [];
         components.forEach(c => {
             const b = c.getBoundingBox();
-            if (b.x1 >= rect.x1 && b.x2 <= rect.x2 &&
-                b.y1 >= rect.y1 && b.y2 <= rect.y2) {
-                selectionGroup.push(c);
-            }
+            const overlaps = !(b.x2 < rect.x1 || b.x1 > rect.x2 || b.y2 < rect.y1 || b.y1 > rect.y2);
+            if (overlaps) selectionGroup.push(c);
         });
-        selectedComponent = selectionGroup[0] || null;
+        selectedComponent = selectionGroup[selectionGroup.length - 1] || null;
         selectionBox = null;
         updateProps();
         handled = true;
@@ -3679,8 +4128,23 @@ function onUp(e) {
             rerouteWiresForComponent(entry.obj);
         });
         draggingComponent = null;
+        pendingComponentDrag = null;
         cleanupJunctions();
         markStateDirty();
+        handled = true;
+    } else if (pendingComponentDrag) {
+        const target = pendingComponentDrag.target;
+        if (target instanceof Switch) {
+            target.toggle();
+            markStateDirty();
+        }
+        if (target) {
+            selectedComponent = target;
+            if (!selectionGroup.includes(target)) {
+                selectionGroup = [target];
+            }
+        }
+        pendingComponentDrag = null;
         handled = true;
     }
 
@@ -3713,6 +4177,16 @@ function onUp(e) {
         cleanupJunctions();
         markStateDirty();
         handled = true;
+    }
+
+    if (activeWire && !activeWire.toPin) {
+        activeWire.currentPoint = snapToBoardPoint(m.x, m.y);
+    }
+
+    if (!draggingComponent && !draggingWire && !selectionBox && !isPanning) {
+        hoverWire = pickWireAt(m, WIRE_HIT_DISTANCE);
+    } else {
+        hoverWire = null;
     }
 
     if (handled) {
@@ -3749,6 +4223,7 @@ function onKey(e) {
         selectionBox = null;
         draggingComponent = null;
         draggingWire = null;
+        pendingComponentDrag = null;
         activeWire = null;
         isPanning = false;
         wireDragMoved = false;
@@ -3851,15 +4326,19 @@ function startDragCursor(id, e) {
     activeCursor = id;
     window.addEventListener('mousemove', dragCursor);
     window.addEventListener('mouseup', stopDragCursor);
-    e.stopPropagation();
-    e.preventDefault();
+    window.addEventListener('touchmove', dragCursor, { passive: false });
+    window.addEventListener('touchend', stopDragCursor);
+    if (e && e.stopPropagation) e.stopPropagation();
+    if (e && e.cancelable !== false) e.preventDefault();
 }
 
 function dragCursor(e) {
+    if (e && e.touches && e.cancelable !== false) e.preventDefault();
     const container = document.getElementById('scope-container');
     if (!container) return;
     const rect = container.getBoundingClientRect();
-    let x = e.clientX - rect.left;
+    const { clientX } = getPointerXY(e || {});
+    let x = clientX - rect.left;
     x = Math.max(0, Math.min(rect.width, x));
     const pct = (x / rect.width) * 100;
     const el = document.getElementById(`cursor-${activeCursor}`);
@@ -3872,6 +4351,8 @@ function dragCursor(e) {
 function stopDragCursor() {
     window.removeEventListener('mousemove', dragCursor);
     window.removeEventListener('mouseup', stopDragCursor);
+    window.removeEventListener('touchmove', dragCursor);
+    window.removeEventListener('touchend', stopDragCursor);
 }
 
 function updateCursors() {
@@ -3890,50 +4371,80 @@ function updateCursors() {
 
     const tDiv        = parseUnit(scope.props.TimeDiv || '1m');
     const totalWindow = tDiv * 10;
-    const dt          = Math.abs(c1Pct - c2Pct) / 100 * totalWindow;
-
-    const dtEl  = document.getElementById('scope-dt');
-    const dv1El = document.getElementById('scope-dv1');
-    const dv2El = document.getElementById('scope-dv2'); // optional second readout
-    if (dtEl) dtEl.innerText = formatUnit(dt, 's');
+    const tA          = (c1Pct / 100) * totalWindow;
+    const tB          = (c2Pct / 100) * totalWindow;
+    const deltaT      = tB - tA;
+    const freq        = deltaT !== 0 ? 1 / Math.abs(deltaT) : null;
 
     const startIdx = (scope.head + 1) % HISTORY_SIZE;
-    const idx1 = (startIdx + Math.floor((c1Pct / 100) * HISTORY_SIZE)) % HISTORY_SIZE;
-    const idx2 = (startIdx + Math.floor((c2Pct / 100) * HISTORY_SIZE)) % HISTORY_SIZE;
+    const sampleAt = (arr, pct) => {
+        const pos = (pct / 100) * HISTORY_SIZE;
+        const idx = Math.floor(pos);
+        const frac = pos - idx;
+        const i1 = (startIdx + idx) % HISTORY_SIZE;
+        const i2 = (startIdx + idx + 1) % HISTORY_SIZE;
+        const v1 = arr[i1];
+        const v2 = arr[i2];
+        return v1 + (v2 - v1) * frac;
+    };
 
-    const v1ch1 = scope.data.ch1[idx1];
-    const v2ch1 = scope.data.ch1[idx2];
-    const v1ch2 = scope.data.ch2[idx1];
-    const v2ch2 = scope.data.ch2[idx2];
+    const vA1 = sampleAt(scope.data.ch1, c1Pct);
+    const vB1 = sampleAt(scope.data.ch1, c2Pct);
+    const vA2 = sampleAt(scope.data.ch2, c1Pct);
+    const vB2 = sampleAt(scope.data.ch2, c2Pct);
 
-    if (dv1El) dv1El.innerText = formatUnit(Math.abs(v1ch1 - v2ch1), 'V');
-    if (dv2El) dv2El.innerText = formatUnit(Math.abs(v1ch2 - v2ch2), 'V');
+    const tAEl = document.getElementById('cursor-ta');
+    const tBEl = document.getElementById('cursor-tb');
+    const dtEl = document.getElementById('cursor-dt') || document.getElementById('scope-dt');
+    const fEl  = document.getElementById('cursor-freq');
+    if (tAEl) tAEl.innerText = formatUnit(tA, 's');
+    if (tBEl) tBEl.innerText = formatUnit(tB, 's');
+    if (dtEl) dtEl.innerText = formatSignedUnit(deltaT, 's');
+    if (fEl)  fEl.innerText  = (deltaT !== 0) ? formatUnit(freq, 'Hz') : '--';
+
+    const rows = [
+        { key: 'ch1', va: vA1, vb: vB1 },
+        { key: 'ch2', va: vA2, vb: vB2 }
+    ];
+    rows.forEach(row => {
+        const vaEl = document.getElementById(`${row.key}-va`);
+        const vbEl = document.getElementById(`${row.key}-vb`);
+        const dvEl = document.getElementById(`${row.key}-dv`);
+        if (vaEl) vaEl.innerText = formatSignedUnit(row.va, 'V');
+        if (vbEl) vbEl.innerText = formatSignedUnit(row.vb, 'V');
+        if (dvEl) dvEl.innerText = formatSignedUnit(row.vb - row.va, 'V');
+    });
 }
+
 
 function startScopeWindowDrag(e) {
     if (scopeDisplayMode !== 'window') return;
-    // avoid dragging when clicking interactive elements inside the header
     if (e.target && (e.target.tagName === 'BUTTON' || e.target.closest('button'))) return;
     const overlay = document.getElementById('scope-overlay');
     if (!overlay) return;
     const rect = overlay.getBoundingClientRect();
-    scopeDragOffset = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+    const { clientX, clientY } = getPointerXY(e);
+    scopeDragOffset = { x: clientX - rect.left, y: clientY - rect.top };
     isDraggingScope = true;
     window.addEventListener('mousemove', dragScopeWindow);
     window.addEventListener('mouseup', stopScopeWindowDrag);
-    e.preventDefault();
+    window.addEventListener('touchmove', dragScopeWindow, { passive: false });
+    window.addEventListener('touchend', stopScopeWindowDrag);
+    if (e && e.cancelable !== false) e.preventDefault();
 }
 
 function dragScopeWindow(e) {
     if (!isDraggingScope) return;
+    if (e && e.touches && e.cancelable !== false) e.preventDefault();
     const overlay = document.getElementById('scope-overlay');
     if (!overlay) return;
 
     const w = overlay.offsetWidth;
     const h = overlay.offsetHeight;
     const pad = 8;
-    let x = e.clientX - scopeDragOffset.x;
-    let y = e.clientY - scopeDragOffset.y;
+    const { clientX, clientY } = getPointerXY(e);
+    let x = clientX - scopeDragOffset.x;
+    let y = clientY - scopeDragOffset.y;
     const maxX = Math.max(pad, window.innerWidth - w - pad);
     const maxY = Math.max(pad, window.innerHeight - h - pad);
     x = Math.min(Math.max(x, pad), maxX);
@@ -3950,6 +4461,8 @@ function stopScopeWindowDrag() {
     isDraggingScope = false;
     window.removeEventListener('mousemove', dragScopeWindow);
     window.removeEventListener('mouseup', stopScopeWindowDrag);
+    window.removeEventListener('touchmove', dragScopeWindow);
+    window.removeEventListener('touchend', stopScopeWindowDrag);
 }
 
 function syncScopeControls() {
@@ -4027,6 +4540,19 @@ function toggleView() {
     }
 }
 
+function toggleSidebar() {
+    const sidebar = document.getElementById('sidebar');
+    if (!sidebar) return;
+    const collapsed = sidebar.classList.toggle('collapsed');
+    document.body.classList.toggle('sidebar-collapsed', collapsed);
+    const icon = document.getElementById('sidebar-toggle-icon');
+    if (icon) icon.className = collapsed ? 'fas fa-chevron-right' : 'fas fa-chevron-left';
+    resize();
+}
+
+function zoomInButton() { applyZoom(ZOOM_IN_STEP); }
+function zoomOutButton() { applyZoom(ZOOM_OUT_STEP); }
+
 function toggleSim() {
     isPaused = !isPaused;
     updatePlayPauseButton();
@@ -4043,10 +4569,12 @@ function clearCanvas() {
     selectionGroup    = [];
     selectionBox      = null;
     draggingComponent = null;
+    pendingComponentDrag = null;
     draggingWire      = null;
     wireDragMoved     = false;
     wireDragStart     = null;
     activeScopeComponent = null;
+    templatePlacementCount = 0;
     markStateDirty();
     updateProps();
 }
@@ -4101,6 +4629,9 @@ function init() {
     canvas.addEventListener('dblclick',  onDblClick);
     canvas.addEventListener('contextmenu', e => e.preventDefault());
     canvas.addEventListener('wheel', onWheel, { passive: false });
+    canvas.addEventListener('touchstart', onDown, { passive: false });
+    canvas.addEventListener('touchmove', onCanvasMove, { passive: false });
+    canvas.addEventListener('touchend', onUp);
     window.addEventListener('keydown',   onKey);
 
     loadStateFromLocalStorage();
