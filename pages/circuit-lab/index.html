@@ -41,8 +41,9 @@
             --header-h: 64px;
             --sidebar-width: 20rem;
             --sidebar-width-collapsed: 56px;
-            --sidebar-width-current: var(--sidebar-width);
         }
+        body { --sidebar-width-current: var(--sidebar-width); }
+        body.sidebar-collapsed { --sidebar-width-current: var(--sidebar-width-collapsed); }
         .theme-dark {
             color-scheme: dark;
             --body-bg: #0f0f0f;
@@ -122,7 +123,7 @@
         canvas { background-color: var(--canvas-bg); cursor: crosshair; touch-action: none; }
         .app-layout {
             display: grid;
-            grid-template-columns: var(--sidebar-width-current) minmax(0, 1fr);
+            grid-template-columns: minmax(var(--sidebar-width-current), var(--sidebar-width-current)) minmax(0, 1fr);
             grid-template-rows: 1fr;
             align-items: stretch;
             height: calc(100vh - var(--header-h));
