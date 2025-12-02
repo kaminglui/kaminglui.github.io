@@ -99,6 +99,8 @@ let ctx = null;
 let scopeCanvas = null;
 let scopeCtx = null;
 let initRan = false;
+let canvasDisplayWidth = 0;
+let canvasDisplayHeight = 0;
 
 /* === UTILITIES === */
 function screenToWorld(clientX, clientY) {
@@ -117,10 +119,12 @@ function snapToGrid(v) {
 }
 
 function clampView() {
+    const viewW = canvasDisplayWidth || canvas?.width || 0;
+    const viewH = canvasDisplayHeight || canvas?.height || 0;
     const maxX = BOARD_MARGIN;
-    const minX = -(BOARD_W + BOARD_MARGIN * 2 - canvas.width / zoom);
+    const minX = -(BOARD_W + BOARD_MARGIN * 2 - viewW / zoom);
     const maxY = BOARD_MARGIN;
-    const minY = -(BOARD_H + BOARD_MARGIN * 2 - canvas.height / zoom);
+    const minY = -(BOARD_H + BOARD_MARGIN * 2 - viewH / zoom);
     viewOffsetX = Math.min(maxX, Math.max(minX, viewOffsetX));
     viewOffsetY = Math.min(maxY, Math.max(minY, viewOffsetY));
 }
@@ -2825,14 +2829,21 @@ function resize() {
     if (!canvas) return;
     const parent = canvas.parentElement || canvas;
     const rect = parent.getBoundingClientRect();
-    const w = Math.max(1, rect.width);
-    const h = Math.max(1, rect.height);
-    canvas.width  = w;
-    canvas.height = h;
+    const dpr = Math.max(1, Math.floor(window.devicePixelRatio || 1));
+    const cssW = Math.max(1, rect.width);
+    const cssH = Math.max(1, rect.height);
+    canvasDisplayWidth  = cssW;
+    canvasDisplayHeight = cssH;
+    canvas.style.width  = `${cssW}px`;
+    canvas.style.height = `${cssH}px`;
+    canvas.width  = Math.round(cssW * dpr);
+    canvas.height = Math.round(cssH * dpr);
     // keep initial view centered
+    const viewW = canvasDisplayWidth || canvas.width;
+    const viewH = canvasDisplayHeight || canvas.height;
     if (viewOffsetX === 0 && viewOffsetY === 0) {
-        viewOffsetX = (canvas.width  / (2 * zoom) - BOARD_W / 2);
-        viewOffsetY = (canvas.height / (2 * zoom) - BOARD_H / 2);
+        viewOffsetX = (viewW  / (2 * zoom) - BOARD_W / 2);
+        viewOffsetY = (viewH / (2 * zoom) - BOARD_H / 2);
     }
     clampView();
 
