@@ -41,6 +41,8 @@ const PIN_LABEL_OFFSET      = 24;
 const PIN_LABEL_DISTANCE    = 16;
 const CENTER_LABEL_DISTANCE = 12;
 const DRAG_DEADZONE         = 3;
+const TOUCH_SELECTION_HOLD_MS = 280;
+const COMPONENT_DELETE_HOLD_MS = 650;
 const SWITCH_TYPES          = ['SPST', 'SPDT', 'DPDT'];
 const DEFAULT_SWITCH_TYPE   = 'SPDT';
 const PROP_UNITS = {
@@ -115,6 +117,10 @@ let autosaveTimer = null;
 let isRestoringState = false;
 let currentSwitchType = DEFAULT_SWITCH_TYPE;
 let templatePlacementCount = 0;
+let touchSelectionTimer = null;
+let touchDeleteTimer = null;
+let touchHoldStart = null;
+let touchMovedSinceDown = false;
 
 // Canvas handles (set after DOM exists)
 let canvas = null;
@@ -141,8 +147,10 @@ function screenToWorld(clientX, clientY) {
 
 function getViewportSize() {
     const vv = window.visualViewport;
-    const width = Math.round(vv?.width || window.innerWidth || document.documentElement.clientWidth || 0);
-    const height = Math.round(vv?.height || window.innerHeight || document.documentElement.clientHeight || 0);
+    const fallbackW = Math.round(window.screen?.width || 0);
+    const fallbackH = Math.round(window.screen?.height || 0);
+    const width = Math.round(vv?.width || window.innerWidth || document.documentElement.clientWidth || fallbackW);
+    const height = Math.round(vv?.height || window.innerHeight || document.documentElement.clientHeight || fallbackH);
     return { width, height };
 }
 
@@ -2957,6 +2965,10 @@ function resize() {
         scopeCanvas.width  = Math.floor(scopeW * dpr);
         scopeCanvas.height = Math.floor(scopeH * dpr);
     }
+
+    if (scopeMode) {
+        setScopeOverlayLayout(scopeDisplayMode);
+    }
 }
 
 function createToolIcon(selector, ComponentClass, setupFn, offsetY = 0) {
@@ -3533,6 +3545,11 @@ function updateProps() {
 }
 
 
+function getTemplateLibrary() {
+    if (Array.isArray(window.CIRCUIT_TEMPLATES)) return window.CIRCUIT_TEMPLATES;
+    return [];
+}
+
 function getTemplateOrigin() {
     if (!canvas) return { x: 0, y: 0 };
     const rect = canvas.getBoundingClientRect();
@@ -3551,115 +3568,39 @@ function getTemplateOrigin() {
 
 function applyTemplate(name) {
     if (!canvas) return;
+    const template = getTemplateLibrary().find(t => t.id === name);
+    if (!template) return;
     const origin = getTemplateOrigin();
     const created = [];
-    const add = (Ctor, dx, dy, props = {}) => {
-        const c = new Ctor(origin.x + dx, origin.y + dy);
-        c.props = { ...c.props, ...props };
+    const idMap = new Map();
+
+    (template.components || []).forEach(def => {
+        const Ctor = TOOL_COMPONENTS[def.type];
+        if (!Ctor) return;
+        const c = new Ctor(origin.x + (def.x || 0), origin.y + (def.y || 0));
+        c.props = { ...c.props, ...(def.props || {}) };
         if (c instanceof Switch) {
             c.applyType(currentSwitchType, true);
         }
         components.push(c);
         created.push(c);
-        return c;
-    };
-    const connect = (a, pa, b, pb, mid = []) => {
-        const verts = buildWireVertices({ c: a, p: pa }, mid, { c: b, p: pb }) || [];
-        wires.push({ from: { c: a, p: pa }, to: { c: b, p: pb }, vertices: verts, v: 0 });
-    };
+        if (def.id) idMap.set(def.id, c);
+    });
 
-    switch (name) {
-        case 'rc-low-pass': {
-            const fg = add(FunctionGenerator, -200, 0, { Vpp: '2', Freq: '1k' });
-            const r  = add(Resistor, -40, 0, { R: '10k' });
-            const c  = add(Capacitor, 120, 40, { C: '100n' });
-            const g  = add(Ground, 120, 120);
-            const scope = add(Oscilloscope, 260, 0);
+    (template.wires || []).forEach(wire => {
+        const fromComp = idMap.get(wire?.from?.id);
+        const toComp = idMap.get(wire?.to?.id);
+        const fromPin = wire?.from?.pin;
+        const toPin = wire?.to?.pin;
+        if (!fromComp || !toComp || typeof fromPin !== 'number' || typeof toPin !== 'number') return;
 
-            connect(fg, 0, r, 0);
-            connect(fg, 1, g, 0);
-            connect(fg, 2, g, 0);
-            connect(r, 1, c, 0);
-            connect(c, 1, g, 0);
-            connect(scope, 0, r, 1);
-            connect(scope, 1, r, 0);
-            connect(scope, 2, g, 0);
-            break;
-        }
-        case 'rc-high-pass': {
-            const fg = add(FunctionGenerator, -200, 0, { Vpp: '2', Freq: '1k' });
-            const c  = add(Capacitor, -40, 0, { C: '47n' });
-            const r  = add(Resistor, 120, 0, { R: '10k' });
-            const g  = add(Ground, 120, 120);
-            const scope = add(Oscilloscope, 260, 0);
-
-            connect(fg, 0, c, 0);
-            connect(fg, 1, g, 0);
-            connect(fg, 2, g, 0);
-            connect(c, 1, r, 0);
-            connect(r, 1, g, 0);
-            connect(scope, 0, r, 0);
-            connect(scope, 1, fg, 0);
-            connect(scope, 2, g, 0);
-            break;
-        }
-        case 'inverting-opamp': {
-            const op   = add(LF412, 200, 0);
-            const vcc  = add(VoltageSource, 200, -180, { Vdc: '12' });
-            const g    = add(Ground, 200, 160);
-            const fg   = add(FunctionGenerator, -140, 40, { Vpp: '2', Freq: '1k' });
-            const rin  = add(Resistor, 40, 20, { R: '10k' });
-            const rf   = add(Resistor, 260, -20, { R: '20k' });
-            const scope= add(Oscilloscope, 420, 0);
-
-            connect(vcc, 0, op, 7);
-            connect(vcc, 1, g, 0);
-            connect(op, 3, g, 0);
-
-            connect(fg, 0, rin, 0);
-            connect(fg, 1, g, 0);
-            connect(fg, 2, g, 0);
-            connect(rin, 1, op, 1);
-            connect(op, 2, g, 0);
-
-            connect(rf, 0, op, 0);
-            connect(rf, 1, op, 1);
-
-            connect(scope, 0, op, 0);
-            connect(scope, 1, fg, 0);
-            connect(scope, 2, g, 0);
-            break;
-        }
-        case 'non-inverting-opamp': {
-            const op   = add(LF412, 200, 0);
-            const vcc  = add(VoltageSource, 200, -180, { Vdc: '12' });
-            const g    = add(Ground, 200, 160);
-            const fg   = add(FunctionGenerator, -140, 40, { Vpp: '2', Freq: '1k' });
-            const rg   = add(Resistor, 80, 60, { R: '10k' });
-            const rf   = add(Resistor, 260, -10, { R: '10k' });
-            const scope= add(Oscilloscope, 420, 0);
-
-            connect(vcc, 0, op, 7);
-            connect(vcc, 1, g, 0);
-            connect(op, 3, g, 0);
-
-            connect(fg, 0, op, 2);
-            connect(fg, 1, g, 0);
-            connect(fg, 2, g, 0);
-
-            connect(rg, 0, op, 1);
-            connect(rg, 1, g, 0);
-            connect(rf, 0, op, 0);
-            connect(rf, 1, op, 1);
-
-            connect(scope, 0, op, 0);
-            connect(scope, 1, fg, 0);
-            connect(scope, 2, g, 0);
-            break;
-        }
-        default:
-            return;
-    }
+        const mid = (wire.vertices || []).map(v => ({
+            x: origin.x + (v?.x || 0),
+            y: origin.y + (v?.y || 0)
+        }));
+        const verts = buildWireVertices({ c: fromComp, p: fromPin }, mid, { c: toComp, p: toPin }) || [];
+        wires.push({ from: { c: fromComp, p: fromPin }, to: { c: toComp, p: toPin }, vertices: verts, v: 0 });
+    });
 
     selectionGroup = created;
     selectedComponent = created[0] || null;
@@ -3669,6 +3610,36 @@ function applyTemplate(name) {
     cleanupJunctions();
     markStateDirty();
     updateProps();
+}
+
+function renderTemplateButtons() {
+    const grid = document.getElementById('template-grid');
+    if (!grid) return;
+    grid.innerHTML = '';
+    const templates = getTemplateLibrary();
+    if (!templates.length) {
+        const empty = document.createElement('div');
+        empty.className = 'col-span-2 text-xs text-gray-500 text-center py-2';
+        empty.innerText = 'No templates available yet';
+        grid.appendChild(empty);
+        return;
+    }
+
+    templates.forEach(t => {
+        const btn = document.createElement('button');
+        btn.className = 'tool-btn p-3 rounded flex flex-col items-center justify-center gap-2 text-center';
+        btn.onclick = () => applyTemplate(t.id);
+
+        const icon = document.createElement('i');
+        icon.className = t.icon || 'fas fa-microchip text-blue-200';
+        const label = document.createElement('span');
+        label.className = 'text-[11px] font-medium';
+        label.innerText = t.label || t.id;
+
+        btn.appendChild(icon);
+        btn.appendChild(label);
+        grid.appendChild(btn);
+    });
 }
 
 /* ---------- MOUSE & KEYBOARD ---------- */
@@ -3889,6 +3860,44 @@ function detachDragListeners() {
     dragListenersAttached = false;
 }
 
+function clearTouchTimers() {
+    if (touchSelectionTimer) {
+        clearTimeout(touchSelectionTimer);
+        touchSelectionTimer = null;
+    }
+    if (touchDeleteTimer) {
+        clearTimeout(touchDeleteTimer);
+        touchDeleteTimer = null;
+    }
+}
+
+function scheduleTouchSelection(origin) {
+    if (!origin) return;
+    clearTouchTimers();
+    touchHoldStart = origin;
+    touchMovedSinceDown = false;
+    touchSelectionTimer = setTimeout(() => {
+        if (touchMovedSinceDown) return;
+        selectionBox = { start: origin, current: origin };
+        isPanning = false;
+        wireDragStart = null;
+        attachDragListeners();
+        touchSelectionTimer = null;
+    }, TOUCH_SELECTION_HOLD_MS);
+}
+
+function scheduleDeleteHold(targetComp) {
+    if (!targetComp) return;
+    if (touchDeleteTimer) clearTimeout(touchDeleteTimer);
+    touchDeleteTimer = setTimeout(() => {
+        if (touchMovedSinceDown) return;
+        if (selectionGroup.includes(targetComp) && confirm('Delete selected component(s)?')) {
+            deleteSelected();
+            updateProps();
+        }
+    }, COMPONENT_DELETE_HOLD_MS);
+}
+
 function getPointerXY(e) {
     if (!e) return { clientX: 0, clientY: 0 };
     if (e && e.touches && e.touches.length) {
@@ -3991,9 +4000,13 @@ function onDown(e) {
         return;
     }
 
+    clearTouchTimers();
+
     const button = (typeof e.button === 'number') ? e.button : 0;
     const shift = !!e.shiftKey;
     const m = canvasPoint(e);
+    touchHoldStart = isTouch ? m : null;
+    touchMovedSinceDown = false;
 
     if (!isTouch && button === 1) { // middle mouse
         isPanning = true;
@@ -4033,8 +4046,15 @@ function onDown(e) {
 
     // start selection marquee if empty area and not wiring/dragging
     if (!activeWire && !pinHit && !wireHit && !compHit && !currentTool) {
-        selectionBox = { start: m, current: m };
-        attachDragListeners();
+        if (isTouch) {
+            isPanning = true;
+            wireDragStart = m;
+            attachDragListeners();
+            scheduleTouchSelection(m);
+        } else {
+            selectionBox = { start: m, current: m };
+            attachDragListeners();
+        }
     }
 
     // 1) If clicking a pin: start / extend / finish a wire
@@ -4154,6 +4174,9 @@ function onDown(e) {
             };
             draggingComponent = null;
             attachDragListeners();
+            if (isTouch) {
+                scheduleDeleteHold(c);
+            }
             updateProps();
             return;
         }
@@ -4198,6 +4221,15 @@ function onMove(e) {
         e.preventDefault();
     }
     const m = canvasPoint(e);
+
+    if (touchHoldStart) {
+        const dist = Math.hypot(m.x - touchHoldStart.x, m.y - touchHoldStart.y);
+        if (dist > DRAG_DEADZONE) {
+            touchMovedSinceDown = true;
+            if (touchSelectionTimer) { clearTimeout(touchSelectionTimer); touchSelectionTimer = null; }
+            if (touchDeleteTimer) { clearTimeout(touchDeleteTimer); touchDeleteTimer = null; }
+        }
+    }
 
     if (isPanning && wireDragStart) {
         const dx = m.x - wireDragStart.x;
@@ -4269,13 +4301,17 @@ function onMove(e) {
 }
 
 function onCanvasMove(e) {
-    if (draggingComponent || draggingWire || isPanning || selectionBox) return;
+    if (draggingComponent || draggingWire || isPanning) return;
     onMove(e);
 }
 
 function onUp(e) {
     const m = canvasPoint(e);
     let handled = false;
+
+    clearTouchTimers();
+    touchHoldStart = null;
+    touchMovedSinceDown = false;
 
     if (isPanning) {
         isPanning = false;
@@ -4486,17 +4522,21 @@ function setScopeOverlayLayout(mode = scopeDisplayMode || getDefaultScopeMode())
     if (!overlay) return;
     scopeDisplayMode = (mode === 'window') ? 'window' : 'fullscreen';
     const windowed = (scopeDisplayMode === 'window');
+    const headerH = document.querySelector('.site-header')?.offsetHeight || 0;
+    const { height: viewportH } = getViewportSize();
     overlay.classList.toggle('scope-window', windowed);
     if (windowed) {
         overlay.style.left   = `${scopeWindowPos.x}px`;
-        overlay.style.top    = `${scopeWindowPos.y}px`;
+        overlay.style.top    = `${headerH + scopeWindowPos.y}px`;
         overlay.style.right  = 'auto';
         overlay.style.bottom = 'auto';
+        overlay.style.height = `min(520px, ${Math.max(0, viewportH - headerH - 96)}px)`;
     } else {
         overlay.style.left = '';
-        overlay.style.top = '';
         overlay.style.right = '';
         overlay.style.bottom = '';
+        overlay.style.top = `${headerH}px`;
+        overlay.style.height = `${Math.max(0, viewportH - headerH)}px`;
     }
     updateScopeModeButton();
 }
@@ -4642,15 +4682,17 @@ function dragScopeWindow(e) {
     const w = overlay.offsetWidth;
     const h = overlay.offsetHeight;
     const pad = 8;
+    const headerH = document.querySelector('.site-header')?.offsetHeight || 0;
     const { clientX, clientY } = getPointerXY(e);
     let x = clientX - scopeDragOffset.x;
     let y = clientY - scopeDragOffset.y;
     const maxX = Math.max(pad, window.innerWidth - w - pad);
-    const maxY = Math.max(pad, window.innerHeight - h - pad);
+    const minY = headerH + pad;
+    const maxY = Math.max(minY, window.innerHeight - h - pad);
     x = Math.min(Math.max(x, pad), maxX);
-    y = Math.min(Math.max(y, pad), maxY);
+    y = Math.min(Math.max(y, minY), maxY);
 
-    scopeWindowPos = { x, y };
+    scopeWindowPos = { x, y: y - headerH };
     overlay.style.left   = `${x}px`;
     overlay.style.top    = `${y}px`;
     overlay.style.right  = 'auto';
@@ -4828,6 +4870,7 @@ function init() {
     }
     resize();
     renderToolIcons();
+    renderTemplateButtons();
     alignScopeButton();
     attachScopeControlHandlers();
     syncScopeControls();
