@@ -57,6 +57,29 @@ function setupNav() {
       return;
     }
 
+    let closeTimeoutId = null;
+
+    const clearCloseTimeout = () => {
+      if (closeTimeoutId !== null) {
+        window.clearTimeout(closeTimeoutId);
+        closeTimeoutId = null;
+      }
+    };
+
+    const startCloseTimeout = () => {
+      if (shouldUseClickToggle()) return;
+      clearCloseTimeout();
+      closeTimeoutId = window.setTimeout(() => {
+        if (
+          !wrapper.matches(':hover') &&
+          !menu.matches(':hover') &&
+          !toggle.matches(':hover')
+        ) {
+          instance.close();
+        }
+      }, 220);
+    };
+
     const instance = {
       wrapper,
       toggle,
@@ -66,11 +89,13 @@ function setupNav() {
         toggle.setAttribute('aria-expanded', 'true');
         wrapper.setAttribute('data-open', 'true');
         menu.hidden = false;
+        clearCloseTimeout();
       },
       close: () => {
         toggle.setAttribute('aria-expanded', 'false');
         wrapper.setAttribute('data-open', 'false');
         menu.hidden = true;
+        clearCloseTimeout();
       }
     };
 
@@ -82,15 +107,23 @@ function setupNav() {
       instance.open();
     };
 
-    wrapper.addEventListener('pointerenter', () => {
+    const handleHoverEnter = () => {
       if (shouldUseClickToggle()) return;
+      clearCloseTimeout();
       openExclusive();
-    });
+    };
 
-    wrapper.addEventListener('pointerleave', () => {
+    const handleHoverLeave = () => {
       if (shouldUseClickToggle()) return;
-      instance.close();
-    });
+      startCloseTimeout();
+    };
+
+    wrapper.addEventListener('pointerenter', handleHoverEnter);
+    wrapper.addEventListener('pointerleave', handleHoverLeave);
+    toggle.addEventListener('pointerenter', handleHoverEnter);
+    toggle.addEventListener('pointerleave', handleHoverLeave);
+    menu.addEventListener('pointerenter', handleHoverEnter);
+    menu.addEventListener('pointerleave', handleHoverLeave);
 
     wrapper.addEventListener('focusin', (event) => {
       const target = event.target;
