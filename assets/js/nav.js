@@ -66,6 +66,20 @@ function setupNav() {
       }
     };
 
+    const startCloseTimeout = () => {
+      if (shouldUseClickToggle()) return;
+      clearCloseTimeout();
+      closeTimeoutId = window.setTimeout(() => {
+        if (
+          !wrapper.matches(':hover') &&
+          !menu.matches(':hover') &&
+          !toggle.matches(':hover')
+        ) {
+          instance.close();
+        }
+      }, 220);
+    };
+
     const instance = {
       wrapper,
       toggle,
@@ -93,21 +107,23 @@ function setupNav() {
       instance.open();
     };
 
-    wrapper.addEventListener('pointerenter', () => {
+    const handleHoverEnter = () => {
       if (shouldUseClickToggle()) return;
       clearCloseTimeout();
       openExclusive();
-    });
+    };
 
-    wrapper.addEventListener('pointerleave', () => {
+    const handleHoverLeave = () => {
       if (shouldUseClickToggle()) return;
-      clearCloseTimeout();
-      closeTimeoutId = window.setTimeout(() => {
-        if (!wrapper.matches(':hover')) {
-          instance.close();
-        }
-      }, 120);
-    });
+      startCloseTimeout();
+    };
+
+    wrapper.addEventListener('pointerenter', handleHoverEnter);
+    wrapper.addEventListener('pointerleave', handleHoverLeave);
+    toggle.addEventListener('pointerenter', handleHoverEnter);
+    toggle.addEventListener('pointerleave', handleHoverLeave);
+    menu.addEventListener('pointerenter', handleHoverEnter);
+    menu.addEventListener('pointerleave', handleHoverLeave);
 
     wrapper.addEventListener('focusin', (event) => {
       const target = event.target;
