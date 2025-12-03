@@ -179,7 +179,7 @@ img {
 
 .nav-dropdown-menu {
   position: absolute;
-  top: calc(100% + 0.65rem);
+  top: calc(100% + 0.15rem);
   left: 0;
   min-width: 200px;
   display: flex;
