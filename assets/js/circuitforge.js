@@ -75,9 +75,9 @@ let canvasBgColor = '#1a1a1a';
 let zoom     = 1.0;
 const MIN_ZOOM = 0.5;
 const MAX_ZOOM = 3.0;
-const BOARD_W     = 3000; // world units (~150 grid cells)
-const BOARD_H     = 2000;
-const BOARD_MARGIN= 200;  // empty border
+const BOARD_W     = 4200; // world units (~210 grid cells)
+const BOARD_H     = 3200;
+const BOARD_MARGIN= 400;  // extra pan room at edges
 
 // Simulation state
 let components = [];
@@ -146,10 +146,11 @@ function snapToGrid(v) {
 function clampView() {
     const viewW = canvasDisplayWidth || canvas?.width || 0;
     const viewH = canvasDisplayHeight || canvas?.height || 0;
-    const maxX = BOARD_MARGIN;
-    const minX = -(BOARD_W + BOARD_MARGIN * 2 - viewW / zoom);
-    const maxY = BOARD_MARGIN;
-    const minY = -(BOARD_H + BOARD_MARGIN * 2 - viewH / zoom);
+    const slack = BOARD_MARGIN * 0.5; // allow slight overscroll/pan beyond edges
+    const maxX = BOARD_MARGIN + slack;
+    const minX = -(BOARD_W + BOARD_MARGIN * 2 - viewW / zoom) - slack;
+    const maxY = BOARD_MARGIN + slack;
+    const minY = -(BOARD_H + BOARD_MARGIN * 2 - viewH / zoom) - slack;
     viewOffsetX = Math.min(maxX, Math.max(minX, viewOffsetX));
     viewOffsetY = Math.min(maxY, Math.max(minY, viewOffsetY));
 }
@@ -2404,15 +2405,21 @@ function updateBoardThemeColors() {
 }
 
 function drawGrid() {
-    const w = BOARD_W + BOARD_MARGIN * 2;
-    const h = BOARD_H + BOARD_MARGIN * 2;
+    const viewW = (canvasDisplayWidth || canvas.width) / zoom;
+    const viewH = (canvasDisplayHeight || canvas.height) / zoom;
+    const worldLeft = -viewOffsetX;
+    const worldTop  = -viewOffsetY;
+    const startX = Math.floor((worldLeft - GRID * 2) / GRID) * GRID;
+    const endX   = Math.ceil((worldLeft + viewW + GRID * 2) / GRID) * GRID;
+    const startY = Math.floor((worldTop - GRID * 2) / GRID) * GRID;
+    const endY   = Math.ceil((worldTop + viewH + GRID * 2) / GRID) * GRID;
 
     ctx.fillStyle = boardBgColor;
-    ctx.fillRect(-BOARD_MARGIN, -BOARD_MARGIN, w, h);
+    ctx.fillRect(worldLeft - GRID * 2, worldTop - GRID * 2, viewW + GRID * 4, viewH + GRID * 4);
 
     ctx.fillStyle = gridHoleColor;
-    for (let x = -BOARD_MARGIN + GRID / 2; x < BOARD_W + BOARD_MARGIN; x += GRID) {
-        for (let y = -BOARD_MARGIN + GRID / 2; y < BOARD_H + BOARD_MARGIN; y += GRID) {
+    for (let x = startX; x <= endX; x += GRID) {
+        for (let y = startY; y <= endY; y += GRID) {
             ctx.beginPath();
             ctx.arc(x, y, GRID_HOLE_RADIUS, 0, Math.PI * 2);
             ctx.fill();
@@ -2853,8 +2860,8 @@ function resize() {
     if (!canvas) return;
 
     const parent = canvas.parentElement || canvas;
-    const cssW = Math.max(1, parent.clientWidth  || 0);
-    const cssH = Math.max(1, parent.clientHeight || 0);
+    const cssW = Math.max(1, parent.clientWidth  || parent.offsetWidth  || window.innerWidth);
+    const cssH = Math.max(1, parent.clientHeight || parent.offsetHeight || (window.innerHeight - (document.querySelector('.site-header')?.offsetHeight || 0)));
     const dpr = window.devicePixelRatio || 1;
 
     canvas.style.width  = `${cssW}px`;
@@ -3921,6 +3928,12 @@ function onDown(e) {
     const m = canvasPoint(e);
 
     if (!isTouch && button === 1) { // middle mouse
+        isPanning = true;
+        wireDragStart = m;
+        attachDragListeners();
+        return;
+    }
+    if (isTouch && !currentTool && !selectedComponent && selectionGroup.length === 0) {
         isPanning = true;
         wireDragStart = m;
         attachDragListeners();
