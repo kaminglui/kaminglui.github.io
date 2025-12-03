@@ -150,27 +150,17 @@
       </section>
     </main>
 
-    <footer class="site-footer">
-      <div class="container footer__grid">
-        <div>
-          <h2>Back to the main site?</h2>
-          <p>Check out projects, posts, and the ML roadmap that inspired this mini-game.</p>
-          <div class="footer__actions">
-            <a class="button button--primary" href="index.html#projects">View projects</a>
-            <a class="button button--ghost" href="index.html#contact">Get in touch</a>
-          </div>
-        </div>
-        <div class="footer__meta">
-          <p>Progress saves to your browser so you can pick up where you left off.</p>
-          <p>&copy; <span id="year"></span> Ka Ming Lui. Built for performance and accessibility.</p>
-        </div>
-      </div>
-      <a class="back-to-top" href="#top">Back to top</a>
-    </footer>
+    <footer
+      class="site-footer"
+      data-site-footer
+      data-footer-id="endless-depths"
+      data-nav-root="../.."
+    ></footer>
 
     <!-- Patch notes: Fixed layout fullscreen for entire wrapper, hardened game loop/input safety, and stabilized purgatory restore and crafting messaging. -->
 
     <script type="module" src="../../assets/js/nav.js"></script>
+    <script type="module" src="../../assets/js/site-footer-init.js"></script>
     <script type="module">
       const body = document.body;
       const themeToggle = document.querySelector('.theme-toggle');

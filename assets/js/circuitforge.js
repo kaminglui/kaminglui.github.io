@@ -139,6 +139,25 @@ function screenToWorld(clientX, clientY) {
     };
 }
 
+function getViewportSize() {
+    const vv = window.visualViewport;
+    const width = Math.round(vv?.width || window.innerWidth || document.documentElement.clientWidth || 0);
+    const height = Math.round(vv?.height || window.innerHeight || document.documentElement.clientHeight || 0);
+    return { width, height };
+}
+
+function syncViewportCssVars() {
+    const root = document.documentElement;
+    const { width, height } = getViewportSize();
+    if (width)  root.style.setProperty('--viewport-w', `${width}px`);
+    if (height) root.style.setProperty('--viewport-h', `${height}px`);
+
+    const header = document.querySelector('.site-header');
+    if (header) {
+        root.style.setProperty('--header-h', `${header.offsetHeight}px`);
+    }
+}
+
 function snapToGrid(v) {
     return Math.round(v / GRID) * GRID;
 }
@@ -2409,10 +2428,12 @@ function drawGrid() {
     const viewH = (canvasDisplayHeight || canvas.height) / zoom;
     const worldLeft = -viewOffsetX;
     const worldTop  = -viewOffsetY;
-    const startX = Math.floor((worldLeft - GRID * 2) / GRID) * GRID;
-    const endX   = Math.ceil((worldLeft + viewW + GRID * 2) / GRID) * GRID;
-    const startY = Math.floor((worldTop - GRID * 2) / GRID) * GRID;
-    const endY   = Math.ceil((worldTop + viewH + GRID * 2) / GRID) * GRID;
+    const startSnap = snapToBoardPoint(worldLeft - GRID * 2, worldTop - GRID * 2);
+    const endSnap = snapToBoardPoint(worldLeft + viewW + GRID * 2, worldTop + viewH + GRID * 2);
+    const startX = startSnap.x;
+    const endX   = endSnap.x;
+    const startY = startSnap.y;
+    const endY   = endSnap.y;
 
     ctx.fillStyle = boardBgColor;
     ctx.fillRect(worldLeft - GRID * 2, worldTop - GRID * 2, viewW + GRID * 4, viewH + GRID * 4);
@@ -2832,24 +2853,65 @@ function drawScope() {
 
     const startIdx = (scope.head + 1) % HISTORY_SIZE;
 
-    function renderChannel(chData, color, scaleY) {
-        scopeCtx.strokeStyle = color;
+    const channels = [
+        { key: 'ch1', color: '#fbbf24', scale: scaleCh1, data: scope.data.ch1 },
+        { key: 'ch2', color: '#22d3ee', scale: scaleCh2, data: scope.data.ch2 }
+    ];
+
+    function renderChannel(ch) {
+        scopeCtx.strokeStyle = ch.color;
         scopeCtx.lineWidth   = 2;
         scopeCtx.beginPath();
         for (let x = 0; x < w; x++) {
             const t   = x / w;
             const off = Math.floor(t * HISTORY_SIZE);
             const idx = (startIdx + off) % HISTORY_SIZE;
-            const v   = chData[idx];
-            const y   = midY - v * scaleY;
+            const v   = ch.data[idx];
+            const y   = midY - v * ch.scale;
             if (x === 0) scopeCtx.moveTo(x, y);
             else         scopeCtx.lineTo(x, y);
         }
         scopeCtx.stroke();
     }
 
-    renderChannel(scope.data.ch1, '#fbbf24', scaleCh1);
-    renderChannel(scope.data.ch2, '#22d3ee', scaleCh2);
+    channels.forEach(renderChannel);
+
+    const cursorMetrics = buildCursorMetrics(scope);
+    if (cursorMetrics) {
+        const drawCursorMarker = (pct, color, values) => {
+            const x = (pct / 100) * w;
+            scopeCtx.save();
+            scopeCtx.setLineDash([4, 4]);
+            scopeCtx.strokeStyle = color;
+            scopeCtx.beginPath();
+            scopeCtx.moveTo(x, 0);
+            scopeCtx.lineTo(x, h);
+            scopeCtx.stroke();
+            scopeCtx.setLineDash([]);
+            values.forEach(v => {
+                scopeCtx.fillStyle = v.color;
+                const y = midY - (v.scale ? v.value * v.scale : 0);
+                scopeCtx.beginPath();
+                scopeCtx.arc(x, y, 4, 0, Math.PI * 2);
+                scopeCtx.fill();
+            });
+            scopeCtx.restore();
+        };
+
+        const valuesA = channels.map(ch => ({
+            color: ch.color,
+            scale: ch.scale,
+            value: cursorMetrics.channels.find(row => row.key === ch.key)?.va || 0
+        }));
+        const valuesB = channels.map(ch => ({
+            color: ch.color,
+            scale: ch.scale,
+            value: cursorMetrics.channels.find(row => row.key === ch.key)?.vb || 0
+        }));
+
+        drawCursorMarker(cursorMetrics.pctA, '#fcd34d', valuesA);
+        drawCursorMarker(cursorMetrics.pctB, '#06b6d4', valuesB);
+    }
 
     // keep cursor Δt / ΔV working even when the sim is paused
     updateCursors();
@@ -2859,9 +2921,14 @@ function drawScope() {
 function resize() {
     if (!canvas) return;
 
+    syncViewportCssVars();
+
+    const { width: viewportW, height: viewportH } = getViewportSize();
+    const headerH = document.querySelector('.site-header')?.offsetHeight || 0;
     const parent = canvas.parentElement || canvas;
-    const cssW = Math.max(1, parent.clientWidth  || parent.offsetWidth  || window.innerWidth);
-    const cssH = Math.max(1, parent.clientHeight || parent.offsetHeight || (window.innerHeight - (document.querySelector('.site-header')?.offsetHeight || 0)));
+    const fallbackH = Math.max(1, viewportH - headerH);
+    const cssW = Math.max(1, parent.clientWidth  || parent.offsetWidth  || viewportW);
+    const cssH = Math.max(1, parent.clientHeight || parent.offsetHeight || fallbackH);
     const dpr = window.devicePixelRatio || 1;
 
     canvas.style.width  = `${cssW}px`;
@@ -3915,6 +3982,7 @@ function autoConnectPins(component) {
 
 function onDown(e) {
     const isTouch = !!(e && e.touches && e.touches.length);
+    const touchCount = isTouch ? (e.touches.length || e.changedTouches?.length || 0) : 0;
     if (isTouch && e.cancelable !== false) {
         e.preventDefault();
     }
@@ -3933,7 +4001,7 @@ function onDown(e) {
         attachDragListeners();
         return;
     }
-    if (isTouch && !currentTool && !selectedComponent && selectionGroup.length === 0) {
+    if (isTouch && touchCount >= 2) {
         isPanning = true;
         wireDragStart = m;
         attachDragListeners();
@@ -4134,11 +4202,13 @@ function onMove(e) {
     if (isPanning && wireDragStart) {
         const dx = m.x - wireDragStart.x;
         const dy = m.y - wireDragStart.y;
-        viewOffsetX += dx;
-        viewOffsetY += dy;
-        wireDragStart = m;
-        clampView();
-        markStateDirty();
+        if (dx || dy) {
+            viewOffsetX += dx;
+            viewOffsetY += dy;
+            wireDragStart = m;
+            clampView();
+            markStateDirty();
+        }
         return;
     }
 
@@ -4152,15 +4222,22 @@ function onMove(e) {
     }
 
     if (draggingComponent) {
+        let moved = false;
         draggingComponent.objs.forEach(entry => {
             const c = entry.obj;
             const nx = m.x - entry.offsetX;
             const ny = m.y - entry.offsetY;
             const snap = snapToBoardPoint(nx, ny);
-            c.x = snap.x;
-            c.y = snap.y;
-            rerouteWiresForComponent(c);
+            if (c.x !== snap.x || c.y !== snap.y) {
+                c.x = snap.x;
+                c.y = snap.y;
+                rerouteWiresForComponent(c);
+                moved = true;
+            }
         });
+        if (moved) {
+            markStateDirty();
+        }
     }
 
     if (selectionBox) {
@@ -4246,6 +4323,10 @@ function onUp(e) {
             selectedComponent = target;
             if (!selectionGroup.includes(target)) {
                 selectionGroup = [target];
+            }
+            if (target instanceof Oscilloscope) {
+                activeScopeComponent = target;
+                openScope(target);
             }
         }
         pendingComponentDrag = null;
@@ -4356,6 +4437,50 @@ function updateScopeModeButton() {
     if (icon)  icon.className = windowed ? 'fas fa-expand' : 'fas fa-clone';
 }
 
+function getCursorPercents() {
+    const c1El = document.getElementById('cursor-1');
+    const c2El = document.getElementById('cursor-2');
+    let pctA = parseFloat(c1El?.style.left || '');
+    let pctB = parseFloat(c2El?.style.left || '');
+    if (!isFinite(pctA)) pctA = 30;
+    if (!isFinite(pctB)) pctB = 70;
+    return { a: pctA, b: pctB };
+}
+
+function sampleChannelAt(arr, startIdx, pct) {
+    const pos = (pct / 100) * HISTORY_SIZE;
+    const idx = Math.floor(pos);
+    const frac = pos - idx;
+    const i1 = (startIdx + idx) % HISTORY_SIZE;
+    const i2 = (startIdx + idx + 1) % HISTORY_SIZE;
+    const v1 = arr[i1];
+    const v2 = arr[i2];
+    return v1 + (v2 - v1) * frac;
+}
+
+function buildCursorMetrics(scope) {
+    if (!scope) return null;
+    const { a: pctA, b: pctB } = getCursorPercents();
+    const tDiv        = parseUnit(scope.props.TimeDiv || '1m');
+    const totalWindow = tDiv * 10;
+    const tA          = (pctA / 100) * totalWindow;
+    const tB          = (pctB / 100) * totalWindow;
+    const deltaT      = tB - tA;
+    const freq        = deltaT !== 0 ? 1 / Math.abs(deltaT) : null;
+    const startIdx    = (scope.head + 1) % HISTORY_SIZE;
+
+    const channels = [
+        { key: 'ch1', label: 'CH1', color: '#fbbf24', data: scope.data.ch1 },
+        { key: 'ch2', label: 'CH2', color: '#22d3ee', data: scope.data.ch2 }
+    ].map(ch => ({
+        ...ch,
+        va: sampleChannelAt(ch.data, startIdx, pctA),
+        vb: sampleChannelAt(ch.data, startIdx, pctB)
+    }));
+
+    return { pctA, pctB, tA, tB, deltaT, freq, channels };
+}
+
 function setScopeOverlayLayout(mode = scopeDisplayMode || getDefaultScopeMode()) {
     const overlay = document.getElementById('scope-overlay');
     if (!overlay) return;
@@ -4461,62 +4586,33 @@ function stopDragCursor() {
 
 function updateCursors() {
     if (!scopeCanvas || !scopeCtx) return;
-    const c1El = document.getElementById('cursor-1');
-    const c2El = document.getElementById('cursor-2');
-    if (!c1El || !c2El) return;
-
-    let c1Pct = parseFloat(c1El.style.left);
-    let c2Pct = parseFloat(c2El.style.left);
-    if (!isFinite(c1Pct)) c1Pct = 30;
-    if (!isFinite(c2Pct)) c2Pct = 70;
-
     const scope = activeScopeComponent || components.find(c => c instanceof Oscilloscope);
     if (!scope) return;
 
-    const tDiv        = parseUnit(scope.props.TimeDiv || '1m');
-    const totalWindow = tDiv * 10;
-    const tA          = (c1Pct / 100) * totalWindow;
-    const tB          = (c2Pct / 100) * totalWindow;
-    const deltaT      = tB - tA;
-    const freq        = deltaT !== 0 ? 1 / Math.abs(deltaT) : null;
-
-    const startIdx = (scope.head + 1) % HISTORY_SIZE;
-    const sampleAt = (arr, pct) => {
-        const pos = (pct / 100) * HISTORY_SIZE;
-        const idx = Math.floor(pos);
-        const frac = pos - idx;
-        const i1 = (startIdx + idx) % HISTORY_SIZE;
-        const i2 = (startIdx + idx + 1) % HISTORY_SIZE;
-        const v1 = arr[i1];
-        const v2 = arr[i2];
-        return v1 + (v2 - v1) * frac;
-    };
-
-    const vA1 = sampleAt(scope.data.ch1, c1Pct);
-    const vB1 = sampleAt(scope.data.ch1, c2Pct);
-    const vA2 = sampleAt(scope.data.ch2, c1Pct);
-    const vB2 = sampleAt(scope.data.ch2, c2Pct);
+    const metrics = buildCursorMetrics(scope);
+    if (!metrics) return;
 
     const tAEl = document.getElementById('cursor-ta');
     const tBEl = document.getElementById('cursor-tb');
     const dtEl = document.getElementById('cursor-dt') || document.getElementById('scope-dt');
-    const fEl  = document.getElementById('cursor-freq');
-    if (tAEl) tAEl.innerText = formatUnit(tA, 's');
-    if (tBEl) tBEl.innerText = formatUnit(tB, 's');
-    if (dtEl) dtEl.innerText = formatSignedUnit(deltaT, 's');
-    if (fEl)  fEl.innerText  = (deltaT !== 0) ? formatUnit(freq, 'Hz') : '--';
+    const fEl  = document.getElementById('cursor-freq') || document.getElementById('scope-freq');
+    const dtHeader = document.getElementById('scope-dt');
 
-    const rows = [
-        { key: 'ch1', va: vA1, vb: vB1 },
-        { key: 'ch2', va: vA2, vb: vB2 }
-    ];
-    rows.forEach(row => {
+    if (tAEl) tAEl.innerText = formatUnit(metrics.tA, 's');
+    if (tBEl) tBEl.innerText = formatUnit(metrics.tB, 's');
+    if (dtEl) dtEl.innerText = formatSignedUnit(metrics.deltaT, 's');
+    if (dtHeader && dtHeader !== dtEl) dtHeader.innerText = formatSignedUnit(metrics.deltaT, 's');
+    if (fEl)  fEl.innerText  = (metrics.deltaT !== 0) ? formatUnit(metrics.freq, 'Hz') : '--';
+
+    metrics.channels.forEach((row, idx) => {
         const vaEl = document.getElementById(`${row.key}-va`);
         const vbEl = document.getElementById(`${row.key}-vb`);
         const dvEl = document.getElementById(`${row.key}-dv`);
         if (vaEl) vaEl.innerText = formatSignedUnit(row.va, 'V');
         if (vbEl) vbEl.innerText = formatSignedUnit(row.vb, 'V');
         if (dvEl) dvEl.innerText = formatSignedUnit(row.vb - row.va, 'V');
+        const legacyDv = document.getElementById(`scope-dv${idx + 1}`);
+        if (legacyDv) legacyDv.innerText = formatSignedUnit(row.vb - row.va, 'V');
     });
 }
 
@@ -4725,6 +4821,11 @@ function init() {
     updateBoardThemeColors();
 
     window.addEventListener('resize', resize);
+    window.addEventListener('orientationchange', resize);
+    if (window.visualViewport) {
+        window.visualViewport.addEventListener('resize', resize);
+        window.visualViewport.addEventListener('scroll', resize);
+    }
     resize();
     renderToolIcons();
     alignScopeButton();

@@ -245,28 +245,15 @@
       </section>
     </main>
 
-    <footer class="site-footer">
-      <div class="container footer__layout">
-        <div>
-          <h2>Ready for more machine learning stories?</h2>
-          <p>
-            Head back to the main site to explore projects, journal entries, and the learning roadmap behind this transformer
-            lab.
-          </p>
-          <div class="footer__actions">
-            <a class="button button--primary" href="index.html#projects">View projects</a>
-            <a class="button button--ghost" href="index.html#contact">Get in touch</a>
-          </div>
-        </div>
-        <div class="footer__meta">
-          <p>Enjoyed the walkthrough? Share it with fellow ML explorers.</p>
-          <p>&copy; <span id="year"></span> Ka Ming Lui. Built with accessibility and performance in mind.</p>
-        </div>
-      </div>
-      <a class="back-to-top" href="#top">Back to top</a>
-    </footer>
+    <footer
+      class="site-footer"
+      data-site-footer
+      data-footer-id="transformer-lab"
+      data-nav-root="../.."
+    ></footer>
 
     <script type="module" src="../../assets/js/nav.js"></script>
+    <script type="module" src="../../assets/js/site-footer-init.js"></script>
     <script>
       window.TRANSFORMER_LAB_CONFIG = {
         // No backend is required for the static deployment; provide an API base to enable remote sync.
