@@ -1,10 +1,32 @@
-const body = document.body;
-const navToggle = document.querySelector('.nav-toggle');
-const navLinks = document.querySelector('.nav-links');
+import { renderSiteHeader } from './site-header.js';
+
+let globalDropdownHandlersBound = false;
+let navReady = false;
 
 function setupNav() {
+  if (navReady) return;
+
+  const navElement = renderSiteHeader();
+  const navRoot = navElement ?? document.querySelector('.nav');
+  const navToggle =
+    navRoot?.querySelector('.nav-toggle') ??
+    document.querySelector('.nav-toggle');
+  const navLinks =
+    navRoot?.querySelector('.nav-links') ??
+    document.querySelector('.nav-links');
+
+  if (!navRoot || !navToggle || !navLinks) {
+    return;
+  }
+
+  if (navRoot.dataset.navEnhanced === 'true') {
+    navReady = true;
+    return;
+  }
+
+  const body = document.body;
   const dropdownWrappers = Array.from(
-    document.querySelectorAll('.nav-item--dropdown')
+    navRoot.querySelectorAll('.nav-item--dropdown')
   );
   const dropdownInstances = [];
 
@@ -141,7 +163,7 @@ function setupNav() {
     }
   }
 
-  if (dropdownInstances.length > 0) {
+  if (dropdownInstances.length > 0 && !globalDropdownHandlersBound) {
     document.addEventListener('pointerdown', (event) => {
       const target = event.target;
       if (target instanceof Node) {
@@ -157,6 +179,8 @@ function setupNav() {
         closeAllDropdowns();
       }
     });
+
+    globalDropdownHandlersBound = true;
   }
 
   if (navToggle) {
@@ -196,8 +220,17 @@ function setupNav() {
       closeAllDropdowns();
     }
   });
+
+  navRoot.dataset.navEnhanced = 'true';
+  navReady = true;
 }
 
-setupNav();
+const runWhenReady = () => setupNav();
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', runWhenReady, { once: true });
+} else {
+  runWhenReady();
+}
 
 export { setupNav };

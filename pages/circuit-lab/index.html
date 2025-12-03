@@ -322,57 +322,18 @@
 </head>
 <body class="theme-dark flex flex-col min-h-screen text-sm">
 
-    <header class="site-header sticky top-0 z-30" id="top">
-        <div class="container">
-            <nav class="nav" aria-label="Primary">
-                <a class="logo" href="../../index.html#hero">Ka Ming Lui</a>
-                <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="primary-navigation">
-                    <span class="nav-toggle__bar"></span>
-                    <span class="nav-toggle__bar"></span>
-                    <span class="nav-toggle__bar"></span>
-                    <span class="sr-only">Toggle navigation</span>
-                </button>
-                <ul class="nav-links" id="primary-navigation" data-visible="false">
-                    <li class="nav-item nav-item--dropdown">
-                        <button class="nav-dropdown-toggle nav-pill" type="button" aria-expanded="false" aria-controls="section-menu">
-                            Sections
-                            <svg class="nav-dropdown__icon" aria-hidden="true" focusable="false" viewBox="0 0 12 12">
-                                <path d="M2.47 4.47a.75.75 0 0 1 1.06 0L6 6.94l2.47-2.47a.75.75 0 0 1 1.06 1.06l-3 3a.75.75 0 0 1-1.06 0l-3-3a.75.75 0 0 1 0-1.06Z" />
-                            </svg>
-                        </button>
-                        <ul class="nav-dropdown-menu" id="section-menu" hidden>
-                            <li><a href="../../index.html#about">About</a></li>
-                            <li><a href="../../index.html#learning">Learning</a></li>
-                            <li><a href="../../index.html#posts">Posts</a></li>
-                            <li><a href="../../index.html#projects">Projects</a></li>
-                            <li><a href="../../index.html#experience">Experience</a></li>
-                            <li><a href="../../index.html#education">Education</a></li>
-                            <li><a href="../../index.html#contact">Contact</a></li>
-                        </ul>
-                    </li>
-                    <li class="nav-item nav-item--dropdown">
-                        <button class="nav-dropdown-toggle nav-pill" type="button" aria-expanded="false" aria-controls="labs-menu">
-                            Labs
-                            <svg class="nav-dropdown__icon" aria-hidden="true" focusable="false" viewBox="0 0 12 12">
-                                <path d="M2.47 4.47a.75.75 0 0 1 1.06 0L6 6.94l2.47-2.47a.75.75 0 0 1 1.06 1.06l-3 3a.75.75 0 0 1-1.06 0l-3-3a.75.75 0 0 1 0-1.06Z" />
-                            </svg>
-                        </button>
-                        <ul class="nav-dropdown-menu" id="labs-menu" hidden>
-                            <li><a href="." aria-current="page">Circuit Lab</a></li>
-                            <li><a href="../transformer-lab/">Transformer Lab</a></li>
-                            <li><a href="../ml-playground/">ML Playground</a></li>
-                            <li><a href="../endless-depths/">Endless Depths</a></li>
-                        </ul>
-                    </li>
-                </ul>
-                <div class="nav-actions">
-                    <button class="theme-toggle" type="button" aria-label="Toggle color theme">
-                        <span aria-hidden="true">🌙</span>
-                    </button>
-                </div>
-            </nav>
-        </div>
-    </header>
+    <header
+        class="site-header sticky top-0 z-30"
+        id="top"
+        data-site-header
+        data-nav-root="../.."
+        data-current-lab="circuit-lab"
+    ></header>
+
+    <script type="module">
+        import { renderSiteHeader } from '../../assets/js/site-header.js';
+        renderSiteHeader();
+    </script>
 
     <main class="flex-1 flex overflow-hidden lab-main">
     <!-- Sidebar -->
@@ -724,7 +685,7 @@
 
     <!-- Main simulation / editor logic -->
     <script src="../../assets/js/circuitforge.js"></script>
-    <script>
+    <script type="module">
         const themeToggle = document.querySelector('.theme-toggle');
         const THEME_KEY = 'circuitforge-theme';
 
