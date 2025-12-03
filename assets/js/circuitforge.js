@@ -41,8 +41,15 @@ const PIN_LABEL_OFFSET      = 24;
 const PIN_LABEL_DISTANCE    = 16;
 const CENTER_LABEL_DISTANCE = 12;
 const DRAG_DEADZONE         = 3;
+const TOUCH_SELECTION_HOLD_MS = 280;
+const COMPONENT_DELETE_HOLD_MS = 650;
 const SWITCH_TYPES          = ['SPST', 'SPDT', 'DPDT'];
 const DEFAULT_SWITCH_TYPE   = 'SPDT';
+const MOBILE_BREAKPOINT     = 1024;
+const BASELINE_NODE_LEAK    = 1e-12;
+const OPAMP_GAIN            = 1e6;
+const OPAMP_INPUT_LEAK      = 1e-12;
+const OPAMP_OUTPUT_LEAK     = 1e-9;
 const PROP_UNITS = {
     R: 'Ω',
     Tol: '%',
@@ -115,6 +122,10 @@ let autosaveTimer = null;
 let isRestoringState = false;
 let currentSwitchType = DEFAULT_SWITCH_TYPE;
 let templatePlacementCount = 0;
+let touchSelectionTimer = null;
+let touchDeleteTimer = null;
+let touchHoldStart = null;
+let touchMovedSinceDown = false;
 
 // Canvas handles (set after DOM exists)
 let canvas = null;
@@ -141,9 +152,16 @@ function screenToWorld(clientX, clientY) {
 
 function getViewportSize() {
     const vv = window.visualViewport;
-    const width = Math.round(vv?.width || window.innerWidth || document.documentElement.clientWidth || 0);
-    const height = Math.round(vv?.height || window.innerHeight || document.documentElement.clientHeight || 0);
+    const fallbackW = Math.round(window.screen?.width || 0);
+    const fallbackH = Math.round(window.screen?.height || 0);
+    const width = Math.round(vv?.width || window.innerWidth || document.documentElement.clientWidth || fallbackW);
+    const height = Math.round(vv?.height || window.innerHeight || document.documentElement.clientHeight || fallbackH);
     return { width, height };
+}
+
+function isMobileViewport() {
+    const { width } = getViewportSize();
+    return width <= MOBILE_BREAKPOINT;
 }
 
 function syncViewportCssVars() {
@@ -155,6 +173,11 @@ function syncViewportCssVars() {
     const header = document.querySelector('.site-header');
     if (header) {
         root.style.setProperty('--header-h', `${header.offsetHeight}px`);
+    }
+
+    const simBar = document.getElementById('sim-bar');
+    if (simBar) {
+        root.style.setProperty('--simbar-height', `${simBar.offsetHeight}px`);
     }
 }
 
@@ -2125,6 +2148,13 @@ function simulate(t) {
     const G = new Matrix(N);
     const I = new Float64Array(N);
 
+    // Provide a tiny reference to ground for every active node to avoid floating-node singularities
+    rootToNode.forEach(n => {
+        if (n !== -1) {
+            stampG(n, -1, BASELINE_NODE_LEAK);
+        }
+    });
+
     function stampG(n1, n2, g) {
         if (!g) return;
         if (n1 !== -1) G.add(n1, n1, g);
@@ -2265,15 +2295,27 @@ function simulate(t) {
             stampG(nD, nS, gLeak);
         }
         else if (c instanceof LF412) {
-            const gain = 5e3;
+            const gain = OPAMP_GAIN;
             function stampOpAmpHalf(pNon, pInv, pOut) {
                 const nNon = getNodeIdx(c, pNon);
                 const nInv = getNodeIdx(c, pInv);
                 const nOut = getNodeIdx(c, pOut);
-                if (nOut === -1) return;
-                if (nNon !== -1) G.add(nOut, nNon, -gain);
-                if (nInv !== -1) G.add(nOut, nInv,  gain);
+                if (nOut === -1 && nNon === -1 && nInv === -1) return;
+                if (nOut === -1) {
+                    if (nNon !== -1) stampG(nNon, -1, OPAMP_INPUT_LEAK);
+                    if (nInv !== -1) stampG(nInv, -1, OPAMP_INPUT_LEAK);
+                    return;
+                }
+                if (nNon !== -1) {
+                    G.add(nOut, nNon, -gain);
+                    stampG(nNon, -1, OPAMP_INPUT_LEAK);
+                }
+                if (nInv !== -1) {
+                    G.add(nOut, nInv,  gain);
+                    stampG(nInv, -1, OPAMP_INPUT_LEAK);
+                }
                 G.add(nOut, nOut, 1.0);
+                stampG(nOut, -1, OPAMP_OUTPUT_LEAK);
             }
             stampOpAmpHalf(2, 1, 0); // 1IN+, 1IN-, 1OUT
             stampOpAmpHalf(4, 5, 6); // 2IN+, 2IN-, 2OUT
@@ -2957,6 +2999,12 @@ function resize() {
         scopeCanvas.width  = Math.floor(scopeW * dpr);
         scopeCanvas.height = Math.floor(scopeH * dpr);
     }
+
+    if (scopeMode) {
+        setScopeOverlayLayout(scopeDisplayMode);
+    }
+
+    syncSidebarOverlayState();
 }
 
 function createToolIcon(selector, ComponentClass, setupFn, offsetY = 0) {
@@ -3083,6 +3131,15 @@ function ensureSidebarExpanded() {
         if (icon) icon.className = 'fas fa-chevron-left';
         sidebar.setAttribute('aria-expanded', 'true');
     }
+}
+
+function syncSidebarOverlayState(forceCollapsed = null) {
+    const sidebar = document.getElementById('sidebar');
+    const isCollapsed = (forceCollapsed != null)
+        ? forceCollapsed
+        : (sidebar ? sidebar.classList.contains('collapsed') : true);
+    const shouldOverlay = isMobileViewport() && !isCollapsed;
+    document.body.classList.toggle('sidebar-open-mobile', shouldOverlay);
 }
 
 // Tool selection (resistor, capacitor, funcGen, etc.)
@@ -3533,6 +3590,11 @@ function updateProps() {
 }
 
 
+function getTemplateLibrary() {
+    if (Array.isArray(window.CIRCUIT_TEMPLATES)) return window.CIRCUIT_TEMPLATES;
+    return [];
+}
+
 function getTemplateOrigin() {
     if (!canvas) return { x: 0, y: 0 };
     const rect = canvas.getBoundingClientRect();
@@ -3551,115 +3613,39 @@ function getTemplateOrigin() {
 
 function applyTemplate(name) {
     if (!canvas) return;
+    const template = getTemplateLibrary().find(t => t.id === name);
+    if (!template) return;
     const origin = getTemplateOrigin();
     const created = [];
-    const add = (Ctor, dx, dy, props = {}) => {
-        const c = new Ctor(origin.x + dx, origin.y + dy);
-        c.props = { ...c.props, ...props };
+    const idMap = new Map();
+
+    (template.components || []).forEach(def => {
+        const Ctor = TOOL_COMPONENTS[def.type];
+        if (!Ctor) return;
+        const c = new Ctor(origin.x + (def.x || 0), origin.y + (def.y || 0));
+        c.props = { ...c.props, ...(def.props || {}) };
         if (c instanceof Switch) {
             c.applyType(currentSwitchType, true);
         }
         components.push(c);
         created.push(c);
-        return c;
-    };
-    const connect = (a, pa, b, pb, mid = []) => {
-        const verts = buildWireVertices({ c: a, p: pa }, mid, { c: b, p: pb }) || [];
-        wires.push({ from: { c: a, p: pa }, to: { c: b, p: pb }, vertices: verts, v: 0 });
-    };
+        if (def.id) idMap.set(def.id, c);
+    });
 
-    switch (name) {
-        case 'rc-low-pass': {
-            const fg = add(FunctionGenerator, -200, 0, { Vpp: '2', Freq: '1k' });
-            const r  = add(Resistor, -40, 0, { R: '10k' });
-            const c  = add(Capacitor, 120, 40, { C: '100n' });
-            const g  = add(Ground, 120, 120);
-            const scope = add(Oscilloscope, 260, 0);
+    (template.wires || []).forEach(wire => {
+        const fromComp = idMap.get(wire?.from?.id);
+        const toComp = idMap.get(wire?.to?.id);
+        const fromPin = wire?.from?.pin;
+        const toPin = wire?.to?.pin;
+        if (!fromComp || !toComp || typeof fromPin !== 'number' || typeof toPin !== 'number') return;
 
-            connect(fg, 0, r, 0);
-            connect(fg, 1, g, 0);
-            connect(fg, 2, g, 0);
-            connect(r, 1, c, 0);
-            connect(c, 1, g, 0);
-            connect(scope, 0, r, 1);
-            connect(scope, 1, r, 0);
-            connect(scope, 2, g, 0);
-            break;
-        }
-        case 'rc-high-pass': {
-            const fg = add(FunctionGenerator, -200, 0, { Vpp: '2', Freq: '1k' });
-            const c  = add(Capacitor, -40, 0, { C: '47n' });
-            const r  = add(Resistor, 120, 0, { R: '10k' });
-            const g  = add(Ground, 120, 120);
-            const scope = add(Oscilloscope, 260, 0);
-
-            connect(fg, 0, c, 0);
-            connect(fg, 1, g, 0);
-            connect(fg, 2, g, 0);
-            connect(c, 1, r, 0);
-            connect(r, 1, g, 0);
-            connect(scope, 0, r, 0);
-            connect(scope, 1, fg, 0);
-            connect(scope, 2, g, 0);
-            break;
-        }
-        case 'inverting-opamp': {
-            const op   = add(LF412, 200, 0);
-            const vcc  = add(VoltageSource, 200, -180, { Vdc: '12' });
-            const g    = add(Ground, 200, 160);
-            const fg   = add(FunctionGenerator, -140, 40, { Vpp: '2', Freq: '1k' });
-            const rin  = add(Resistor, 40, 20, { R: '10k' });
-            const rf   = add(Resistor, 260, -20, { R: '20k' });
-            const scope= add(Oscilloscope, 420, 0);
-
-            connect(vcc, 0, op, 7);
-            connect(vcc, 1, g, 0);
-            connect(op, 3, g, 0);
-
-            connect(fg, 0, rin, 0);
-            connect(fg, 1, g, 0);
-            connect(fg, 2, g, 0);
-            connect(rin, 1, op, 1);
-            connect(op, 2, g, 0);
-
-            connect(rf, 0, op, 0);
-            connect(rf, 1, op, 1);
-
-            connect(scope, 0, op, 0);
-            connect(scope, 1, fg, 0);
-            connect(scope, 2, g, 0);
-            break;
-        }
-        case 'non-inverting-opamp': {
-            const op   = add(LF412, 200, 0);
-            const vcc  = add(VoltageSource, 200, -180, { Vdc: '12' });
-            const g    = add(Ground, 200, 160);
-            const fg   = add(FunctionGenerator, -140, 40, { Vpp: '2', Freq: '1k' });
-            const rg   = add(Resistor, 80, 60, { R: '10k' });
-            const rf   = add(Resistor, 260, -10, { R: '10k' });
-            const scope= add(Oscilloscope, 420, 0);
-
-            connect(vcc, 0, op, 7);
-            connect(vcc, 1, g, 0);
-            connect(op, 3, g, 0);
-
-            connect(fg, 0, op, 2);
-            connect(fg, 1, g, 0);
-            connect(fg, 2, g, 0);
-
-            connect(rg, 0, op, 1);
-            connect(rg, 1, g, 0);
-            connect(rf, 0, op, 0);
-            connect(rf, 1, op, 1);
-
-            connect(scope, 0, op, 0);
-            connect(scope, 1, fg, 0);
-            connect(scope, 2, g, 0);
-            break;
-        }
-        default:
-            return;
-    }
+        const mid = (wire.vertices || []).map(v => ({
+            x: origin.x + (v?.x || 0),
+            y: origin.y + (v?.y || 0)
+        }));
+        const verts = buildWireVertices({ c: fromComp, p: fromPin }, mid, { c: toComp, p: toPin }) || [];
+        wires.push({ from: { c: fromComp, p: fromPin }, to: { c: toComp, p: toPin }, vertices: verts, v: 0 });
+    });
 
     selectionGroup = created;
     selectedComponent = created[0] || null;
@@ -3669,6 +3655,36 @@ function applyTemplate(name) {
     cleanupJunctions();
     markStateDirty();
     updateProps();
+}
+
+function renderTemplateButtons() {
+    const grid = document.getElementById('template-grid');
+    if (!grid) return;
+    grid.innerHTML = '';
+    const templates = getTemplateLibrary();
+    if (!templates.length) {
+        const empty = document.createElement('div');
+        empty.className = 'col-span-2 text-xs text-gray-500 text-center py-2';
+        empty.innerText = 'No templates available yet';
+        grid.appendChild(empty);
+        return;
+    }
+
+    templates.forEach(t => {
+        const btn = document.createElement('button');
+        btn.className = 'tool-btn p-3 rounded flex flex-col items-center justify-center gap-2 text-center';
+        btn.onclick = () => applyTemplate(t.id);
+
+        const icon = document.createElement('i');
+        icon.className = t.icon || 'fas fa-microchip text-blue-200';
+        const label = document.createElement('span');
+        label.className = 'text-[11px] font-medium';
+        label.innerText = t.label || t.id;
+
+        btn.appendChild(icon);
+        btn.appendChild(label);
+        grid.appendChild(btn);
+    });
 }
 
 /* ---------- MOUSE & KEYBOARD ---------- */
@@ -3684,7 +3700,8 @@ const TOOL_COMPONENTS = {
     funcGen: FunctionGenerator,
     ground: Ground,
     oscilloscope: Oscilloscope,
-    led: LED
+    led: LED,
+    junction: Junction
 };
 
 function getComponentTypeId(comp) {
@@ -3712,12 +3729,12 @@ function serializeState() {
             rotation: c.rotation,
             mirrorX: !!c.mirrorX,
             props: { ...c.props }
-        })).filter(entry => entry.type),
+        })).filter(entry => entry.type !== null),
         wires: wires.map(w => ({
             from: { id: w.from?.c?.id, p: w.from?.p },
             to:   { id: w.to?.c?.id,   p: w.to?.p },
             vertices: (w.vertices || []).map(v => ({ x: v.x, y: v.y }))
-        })).filter(w => w.from.id && w.to.id)
+        })).filter(w => w.from.id != null && w.to.id != null)
     };
     return payload;
 }
@@ -3889,6 +3906,44 @@ function detachDragListeners() {
     dragListenersAttached = false;
 }
 
+function clearTouchTimers() {
+    if (touchSelectionTimer) {
+        clearTimeout(touchSelectionTimer);
+        touchSelectionTimer = null;
+    }
+    if (touchDeleteTimer) {
+        clearTimeout(touchDeleteTimer);
+        touchDeleteTimer = null;
+    }
+}
+
+function scheduleTouchSelection(origin) {
+    if (!origin) return;
+    clearTouchTimers();
+    touchHoldStart = origin;
+    touchMovedSinceDown = false;
+    touchSelectionTimer = setTimeout(() => {
+        if (touchMovedSinceDown) return;
+        selectionBox = { start: origin, current: origin };
+        isPanning = false;
+        wireDragStart = null;
+        attachDragListeners();
+        touchSelectionTimer = null;
+    }, TOUCH_SELECTION_HOLD_MS);
+}
+
+function scheduleDeleteHold(targetComp) {
+    if (!targetComp) return;
+    if (touchDeleteTimer) clearTimeout(touchDeleteTimer);
+    touchDeleteTimer = setTimeout(() => {
+        if (touchMovedSinceDown) return;
+        if (selectionGroup.includes(targetComp) && confirm('Delete selected component(s)?')) {
+            deleteSelected();
+            updateProps();
+        }
+    }, COMPONENT_DELETE_HOLD_MS);
+}
+
 function getPointerXY(e) {
     if (!e) return { clientX: 0, clientY: 0 };
     if (e && e.touches && e.touches.length) {
@@ -3991,9 +4046,13 @@ function onDown(e) {
         return;
     }
 
+    clearTouchTimers();
+
     const button = (typeof e.button === 'number') ? e.button : 0;
     const shift = !!e.shiftKey;
     const m = canvasPoint(e);
+    touchHoldStart = isTouch ? m : null;
+    touchMovedSinceDown = false;
 
     if (!isTouch && button === 1) { // middle mouse
         isPanning = true;
@@ -4033,8 +4092,15 @@ function onDown(e) {
 
     // start selection marquee if empty area and not wiring/dragging
     if (!activeWire && !pinHit && !wireHit && !compHit && !currentTool) {
-        selectionBox = { start: m, current: m };
-        attachDragListeners();
+        if (isTouch) {
+            isPanning = true;
+            wireDragStart = m;
+            attachDragListeners();
+            scheduleTouchSelection(m);
+        } else {
+            selectionBox = { start: m, current: m };
+            attachDragListeners();
+        }
     }
 
     // 1) If clicking a pin: start / extend / finish a wire
@@ -4154,6 +4220,9 @@ function onDown(e) {
             };
             draggingComponent = null;
             attachDragListeners();
+            if (isTouch) {
+                scheduleDeleteHold(c);
+            }
             updateProps();
             return;
         }
@@ -4198,6 +4267,15 @@ function onMove(e) {
         e.preventDefault();
     }
     const m = canvasPoint(e);
+
+    if (touchHoldStart) {
+        const dist = Math.hypot(m.x - touchHoldStart.x, m.y - touchHoldStart.y);
+        if (dist > DRAG_DEADZONE) {
+            touchMovedSinceDown = true;
+            if (touchSelectionTimer) { clearTimeout(touchSelectionTimer); touchSelectionTimer = null; }
+            if (touchDeleteTimer) { clearTimeout(touchDeleteTimer); touchDeleteTimer = null; }
+        }
+    }
 
     if (isPanning && wireDragStart) {
         const dx = m.x - wireDragStart.x;
@@ -4269,13 +4347,17 @@ function onMove(e) {
 }
 
 function onCanvasMove(e) {
-    if (draggingComponent || draggingWire || isPanning || selectionBox) return;
+    if (draggingComponent || draggingWire || isPanning) return;
     onMove(e);
 }
 
 function onUp(e) {
     const m = canvasPoint(e);
     let handled = false;
+
+    clearTouchTimers();
+    touchHoldStart = null;
+    touchMovedSinceDown = false;
 
     if (isPanning) {
         isPanning = false;
@@ -4486,17 +4568,21 @@ function setScopeOverlayLayout(mode = scopeDisplayMode || getDefaultScopeMode())
     if (!overlay) return;
     scopeDisplayMode = (mode === 'window') ? 'window' : 'fullscreen';
     const windowed = (scopeDisplayMode === 'window');
+    const headerH = document.querySelector('.site-header')?.offsetHeight || 0;
+    const { height: viewportH } = getViewportSize();
     overlay.classList.toggle('scope-window', windowed);
     if (windowed) {
         overlay.style.left   = `${scopeWindowPos.x}px`;
-        overlay.style.top    = `${scopeWindowPos.y}px`;
+        overlay.style.top    = `${headerH + scopeWindowPos.y}px`;
         overlay.style.right  = 'auto';
         overlay.style.bottom = 'auto';
+        overlay.style.height = `min(520px, ${Math.max(0, viewportH - headerH - 96)}px)`;
     } else {
         overlay.style.left = '';
-        overlay.style.top = '';
         overlay.style.right = '';
         overlay.style.bottom = '';
+        overlay.style.top = `${headerH}px`;
+        overlay.style.height = `${Math.max(0, viewportH - headerH)}px`;
     }
     updateScopeModeButton();
 }
@@ -4642,15 +4728,17 @@ function dragScopeWindow(e) {
     const w = overlay.offsetWidth;
     const h = overlay.offsetHeight;
     const pad = 8;
+    const headerH = document.querySelector('.site-header')?.offsetHeight || 0;
     const { clientX, clientY } = getPointerXY(e);
     let x = clientX - scopeDragOffset.x;
     let y = clientY - scopeDragOffset.y;
     const maxX = Math.max(pad, window.innerWidth - w - pad);
-    const maxY = Math.max(pad, window.innerHeight - h - pad);
+    const minY = headerH + pad;
+    const maxY = Math.max(minY, window.innerHeight - h - pad);
     x = Math.min(Math.max(x, pad), maxX);
-    y = Math.min(Math.max(y, pad), maxY);
+    y = Math.min(Math.max(y, minY), maxY);
 
-    scopeWindowPos = { x, y };
+    scopeWindowPos = { x, y: y - headerH };
     overlay.style.left   = `${x}px`;
     overlay.style.top    = `${y}px`;
     overlay.style.right  = 'auto';
@@ -4750,6 +4838,7 @@ function toggleSidebar() {
     const icon = document.getElementById('sidebar-toggle-icon');
     if (icon) icon.className = collapsed ? 'fas fa-chevron-right' : 'fas fa-chevron-left';
     if (sidebar) sidebar.setAttribute('aria-expanded', (!collapsed).toString());
+    syncSidebarOverlayState(collapsed);
     resize();
     requestAnimationFrame(resize);
 }
@@ -4828,12 +4917,14 @@ function init() {
     }
     resize();
     renderToolIcons();
+    renderTemplateButtons();
     alignScopeButton();
     attachScopeControlHandlers();
     syncScopeControls();
     updatePlayPauseButton();
     updateViewLabel();
     ensureSidebarExpanded();
+    syncSidebarOverlayState();
     if (canvas && canvas.parentElement && typeof ResizeObserver !== 'undefined') {
         const ro = new ResizeObserver(() => resize());
         ro.observe(canvas.parentElement);
