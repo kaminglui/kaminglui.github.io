@@ -86,6 +86,7 @@
             --input-border: #cbd5e1;
             --input-text: #0f172a;
         }
+        html, body { height: 100%; }
         body {
             overflow: hidden;
             background-color: var(--body-bg);
@@ -126,6 +127,7 @@
             border-right: 1px solid var(--sidebar-border);
             height: calc(100vh - var(--header-h));
             min-height: calc(100vh - var(--header-h));
+            max-height: calc(100vh - var(--header-h));
             width: var(--sidebar-width-current);
             min-width: var(--sidebar-width-current);
             max-width: var(--sidebar-width-current);
@@ -178,7 +180,21 @@
             transform: translate(0, 0);
         }
         #sim-bar { position: sticky; bottom: 0; box-sizing: border-box; }
-        .lab-main { min-height: calc(100vh - var(--header-h)); }
+        .lab-main {
+            min-height: calc(100vh - var(--header-h));
+            height: calc(100vh - var(--header-h));
+            max-height: calc(100vh - var(--header-h));
+        }
+        .canvas-shell {
+            min-height: calc(100vh - var(--header-h));
+            height: calc(100vh - var(--header-h));
+            max-height: calc(100vh - var(--header-h));
+        }
+        .site-header .container {
+            width: min(1120px, 92vw);
+            max-width: min(1120px, 92vw);
+            margin: 0 auto;
+        }
         .sim-btn {
             height: 40px;
             min-width: 40px;
@@ -193,6 +209,26 @@
         }
         @media (max-width: 768px) {
             :root { --sidebar-width: 100vw; }
+            body { overflow-y: auto; }
+            .lab-main {
+                flex-direction: column;
+                height: auto;
+                min-height: calc(100vh - var(--header-h));
+                max-height: none;
+            }
+            .sidebar {
+                width: 100%;
+                max-width: 100%;
+                height: auto;
+                min-height: auto;
+                max-height: none;
+            }
+            .canvas-shell {
+                min-height: 60vh;
+                height: auto;
+                max-height: none;
+            }
+            #tool-scroll { max-height: none; }
             .sidebar-toggle {
                 left: 12px;
                 transform: none;
@@ -323,7 +359,7 @@
 <body class="theme-dark flex flex-col min-h-screen text-sm">
 
     <header
-        class="site-header sticky top-0 z-30"
+        class="site-header"
         id="top"
         data-site-header
         data-nav-root="../.."
@@ -545,7 +581,7 @@
     </button>
 
     <!-- Main Canvas Area -->
-    <div class="flex-1 flex flex-col relative bg-[#111] min-w-0 overflow-hidden">
+    <div class="flex-1 flex flex-col relative bg-[#111] min-w-0 overflow-hidden canvas-shell">
         <div class="absolute top-4 right-4 z-10 flex flex-col gap-2 items-end">
             <div class="flex bg-gray-800/90 text-gray-200 rounded shadow-lg border border-gray-600 overflow-hidden backdrop-blur">
                 <button onclick="zoomOutButton()"
