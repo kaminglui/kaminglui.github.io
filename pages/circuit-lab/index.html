@@ -30,9 +30,9 @@
             --controls-border: #3a3a3a;
             --controls-hover-bg: #3a3a3a;
             --controls-hover-border: #555;
-            --canvas-bg: #111827;
-            --board-bg: #0d172a;
-            --board-hole: #25344a;
+            --canvas-bg: #0d1526;
+            --board-bg: #0e1a32;
+            --board-hole: #2d4876;
             --simbar-bg: #0b0d12;
             --simbar-border: #1f2937;
             --input-bg: #111;
@@ -57,9 +57,9 @@
             --controls-border: #3a3a3a;
             --controls-hover-bg: #3a3a3a;
             --controls-hover-border: #555;
-            --canvas-bg: #111827;
-            --board-bg: #0d172a;
-            --board-hole: #25344a;
+            --canvas-bg: #0d1526;
+            --board-bg: #0e1a32;
+            --board-hole: #2d4876;
             --simbar-bg: #0b0d12;
             --simbar-border: #1f2937;
             --input-bg: #111;
@@ -123,8 +123,8 @@
         canvas { background-color: var(--canvas-bg); cursor: crosshair; touch-action: none; }
         #circuitCanvas {
             background-image:
-                radial-gradient(circle at 10px 10px, var(--board-hole) 1.6px, transparent 0),
-                radial-gradient(circle at 22px 22px, var(--board-hole) 1.6px, transparent 0);
+                radial-gradient(circle at 10px 10px, var(--board-hole) 2.2px, transparent 0),
+                radial-gradient(circle at 22px 22px, var(--board-hole) 2.2px, transparent 0);
             background-size: 24px 24px;
             background-color: var(--board-bg);
         }
@@ -342,6 +342,30 @@
             #tool-scroll { max-height: none; }
             .sidebar { max-width: 82vw; }
             .sidebar.collapsed { width: var(--sidebar-width-collapsed); max-height: 100%; }
+        }
+        /* Portrait / mobile adjustments */
+        body.is-portrait .lab-layout {
+            flex-direction: column;
+            height: auto;
+            min-height: calc(100vh - var(--header-h));
+            max-height: none;
+        }
+        body.is-portrait .sidebar-shell {
+            width: 100%;
+            min-width: 0;
+            max-width: none;
+            flex: 0 0 auto;
+        }
+        body.is-portrait .sidebar-toggle {
+            left: auto;
+            right: 12px;
+            top: calc(var(--header-h) + 8px);
+            transform: none;
+        }
+        body.is-portrait .lab-layout > .canvas-shell {
+            min-height: 52vh;
+            height: calc(100vh - var(--header-h) - 260px);
+            max-height: none;
         }
     </style>
 </head>

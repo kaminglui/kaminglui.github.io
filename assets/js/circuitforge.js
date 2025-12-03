@@ -9,7 +9,7 @@ const HISTORY_SIZE = 1200;  // samples in scope history
 const PIN_HIT_RADIUS        = GRID * 0.4;
 const PIN_LEG_LENGTH        = GRID * 0.3;
 const PIN_HEAD_RADIUS       = 2.2;
-const GRID_HOLE_RADIUS      = 2.2;
+const GRID_HOLE_RADIUS      = 2.6;
 const WIRE_HIT_DISTANCE     = 12;
 const WIRE_WIDTH_SELECTED   = 6;
 const WIRE_WIDTH_HOVER      = 3.2;
@@ -126,6 +126,11 @@ let canvasDisplayWidth = 0;
 let canvasDisplayHeight = 0;
 let canvasCssWidth = 0;
 let canvasCssHeight = 0;
+
+function syncViewportClass() {
+    const portrait = window.innerHeight > window.innerWidth;
+    document.body.classList.toggle('is-portrait', portrait);
+}
 
 /* === UTILITIES === */
 function screenToWorld(clientX, clientY) {
@@ -2853,6 +2858,8 @@ function drawScope() {
 function resizeCanvas() {
     if (!canvas) return;
 
+    syncViewportClass();
+
     const shell = document.querySelector('.canvas-shell')
         || canvas.parentElement
         || canvas;
@@ -3760,11 +3767,7 @@ function applySerializedState(data) {
             }
         }
 
-        const viewLabel = document.getElementById('view-label');
-        if (viewLabel) {
-            viewLabel.innerText = (viewMode === 'physical') ? 'Breadboard View'
-                                                          : 'Schematic View';
-        }
+        updateViewLabel();
 
         cleanupJunctions();
         updateProps();
