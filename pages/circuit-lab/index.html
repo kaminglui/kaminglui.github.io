@@ -137,6 +137,9 @@
             max-width: var(--sidebar-width-current);
             flex: 0 0 var(--sidebar-width-current);
             transition: width 0.2s ease, min-width 0.2s ease, max-width 0.2s ease, flex-basis 0.2s ease;
+            position: sticky;
+            top: var(--header-h);
+            align-self: flex-start;
         }
         .sidebar.collapsed {
             border-right: 0;
@@ -147,7 +150,7 @@
             overflow: hidden;
         }
         .sidebar .sidebar-content { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; }
-        .sidebar-header { position: sticky; top: var(--header-h); z-index: 30; background-color: var(--sidebar-bg); }
+        .sidebar-header { position: sticky; top: 0; z-index: 30; background-color: var(--sidebar-bg); }
         #tool-scroll {
             overflow-y: auto;
             flex: 1 1 auto;
@@ -190,6 +193,7 @@
             height: calc(var(--viewport-h) - var(--header-h) - var(--simbar-height));
             max-height: calc(var(--viewport-h) - var(--header-h) - var(--simbar-height));
             padding-bottom: var(--simbar-height);
+            align-items: stretch;
         }
         .canvas-shell {
             min-height: calc(var(--viewport-h) - var(--header-h) - var(--simbar-height));
@@ -210,6 +214,7 @@
             gap: 0.5rem;
         }
         .sim-info { min-width: 230px; }
+        .mobile-sidebar-toggle { display: none; }
         @media (max-width: 1024px) {
             :root { --sidebar-width: min(22rem, 90vw); }
         }
@@ -229,6 +234,8 @@
                 height: auto;
                 min-height: auto;
                 max-height: none;
+                position: static;
+                top: auto;
             }
             .canvas-shell {
                 min-height: calc(var(--viewport-h) - var(--header-h) - var(--simbar-height));
@@ -238,14 +245,7 @@
             #tool-scroll {
                 max-height: calc(var(--viewport-h) - var(--header-h) - var(--simbar-height) - 72px);
             }
-            .sidebar-toggle {
-                left: 12px;
-                transform: none;
-            }
-            .sidebar.collapsed + .sidebar-toggle {
-                left: 12px;
-                transform: none;
-            }
+            .sidebar-toggle { display: none; }
             #sim-bar {
                 position: fixed;
                 left: 0;
@@ -253,6 +253,34 @@
                 bottom: 0;
                 z-index: 60;
                 width: 100%;
+            }
+            .mobile-sidebar-toggle {
+                display: inline-flex;
+                width: 100%;
+                justify-content: center;
+                margin-top: 8px;
+            }
+            #scope-overlay {
+                padding: 12px;
+            }
+            .scope-topbar {
+                position: sticky;
+                top: 0;
+                background: var(--sidebar-bg);
+                padding-bottom: 8px;
+                z-index: 10;
+                gap: 10px;
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            .scope-topbar > div {
+                width: 100%;
+                flex-wrap: wrap;
+                gap: 8px;
+            }
+            #scope-container {
+                min-height: 240px;
+                max-height: 60vh;
             }
         }
         @media (max-width: 1024px) {
@@ -264,6 +292,22 @@
             }
             body.sidebar-open-mobile #tool-scroll {
                 max-height: calc(var(--viewport-h) - var(--header-h) - var(--simbar-height) - 48px);
+            }
+            body.sidebar-open-mobile #sidebar {
+                position: fixed;
+                inset: var(--header-h) 0 0 0;
+                height: calc(var(--viewport-h) - var(--header-h));
+                max-height: calc(var(--viewport-h) - var(--header-h));
+                min-height: calc(var(--viewport-h) - var(--header-h));
+                box-shadow: 0 18px 36px rgba(0, 0, 0, 0.55);
+                z-index: 80;
+                background: var(--sidebar-bg);
+            }
+            body.sidebar-open-mobile .sidebar-header {
+                top: 0;
+            }
+            body.sidebar-open-mobile main.lab-main {
+                align-items: stretch;
             }
         }
         .tool-btn {
@@ -344,6 +388,7 @@
             top: var(--header-h);
             height: calc(var(--viewport-h) - var(--header-h));
             padding-top: 24px;
+            overflow-y: auto;
         }
         #scope-overlay.scope-window {
             position: fixed;
@@ -581,6 +626,13 @@
                         <input id="import-json-input" type="file" accept="application/json" class="hidden" onchange="handleImportJSON(this.files[0])" />
                     </div>
                 </div>
+                <div class="mt-2">
+                    <button class="mobile-sidebar-toggle sim-btn bg-gray-800 hover:bg-gray-700 text-xs px-4 rounded border border-gray-600"
+                            onclick="toggleSidebar()" aria-label="Toggle sidebar on mobile">
+                        <i class="fas fa-sliders-h"></i>
+                        <span class="font-semibold">Tools</span>
+                    </button>
+                </div>
             </div>
 
         </div>
@@ -619,13 +671,13 @@
 
     <!-- Full Screen Oscilloscope Overlay -->
     <div id="scope-overlay" class="fixed inset-0 bg-black/95 z-[1200] hidden flex flex-col p-6">
-        <div class="flex justify-between items-center mb-4">
+        <div class="scope-topbar flex justify-between items-center mb-4 flex-wrap gap-3">
             <h2 class="text-2xl font-bold text-yellow-400 font-mono scope-drag-handle"
                 onmousedown="startScopeWindowDrag(event)" ontouchstart="startScopeWindowDrag(event)">
                 <i class="fas fa-wave-square"></i>
                 OSCILLOSCOPE <span class="text-gray-500 text-sm">Dual Channel X-Y</span>
             </h2>
-            <div class="flex gap-6 text-sm font-mono items-center">
+            <div class="flex gap-6 text-sm font-mono items-center flex-wrap">
                 <div class="text-yellow-400 border-l-2 border-yellow-400 pl-2">
                     CH1: <span id="scope-ch1-val">0.00V</span>
                 </div>

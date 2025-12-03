@@ -46,10 +46,12 @@ const COMPONENT_DELETE_HOLD_MS = 650;
 const SWITCH_TYPES          = ['SPST', 'SPDT', 'DPDT'];
 const DEFAULT_SWITCH_TYPE   = 'SPDT';
 const MOBILE_BREAKPOINT     = 1024;
-const BASELINE_NODE_LEAK    = 1e-12;
-const OPAMP_GAIN            = 1e6;
-const OPAMP_INPUT_LEAK      = 1e-12;
-const OPAMP_OUTPUT_LEAK     = 1e-9;
+const BASELINE_NODE_LEAK    = 1e-11;
+const OPAMP_GAIN            = 1e9;
+const OPAMP_INPUT_LEAK      = 1e-15;
+const OPAMP_OUTPUT_LEAK     = 1e-12;
+const FUNCGEN_REF_RES       = 1e9;   // gentle tie from COM to reference
+const FUNCGEN_SERIES_RES    = 1e6;   // tiny source impedance to keep stacks stable
 const PROP_UNITS = {
     R: 'Ω',
     Tol: '%',
@@ -2124,6 +2126,17 @@ function simulate(t) {
                 }
                 return { ac, offset };
             };
+            const refG = 1 / FUNCGEN_REF_RES;
+            const seriesG = 1 / FUNCGEN_SERIES_RES;
+            if (nCom !== -1) {
+                stampG(nCom, -1, refG);
+            }
+            if (nPlus !== -1 && nCom !== -1) {
+                stampG(nPlus, nCom, seriesG);
+            }
+            if (nNeg !== -1 && nCom !== -1) {
+                stampG(nNeg, nCom, seriesG);
+            }
             if (!(nPlus === -1 && nCom === -1)) {
                 // Pin + swings offset + 0.5*Vpp*wave(t) relative to COM
                 vsEntries.push({ comp: c, nPlus, nMinus: nCom, valueFn: () => {
@@ -2346,13 +2359,24 @@ function simulate(t) {
     });
 
     // ---- Solve for node voltages & source currents ----
-    const solved = G.solve(I);
+    let solved = G.solve(I);
+
+    // If the matrix is singular (often caused by open pins), add a tiny shunt to ground
+    // on every node and retry before surfacing an error.
+    if (solved.singular) {
+        for (let n = 0; n < nodeCount; n++) {
+            G.add(n, n, BASELINE_NODE_LEAK * 10);
+        }
+        solved = G.solve(I);
+    }
+
     if (solved.singular) {
         simError = 'Circuit is singular (check ground or shorted sources)';
         isPaused = true;
         updatePlayPauseButton();
         return;
     }
+
     const sol = solved.x;
     simError = null;
 
@@ -3133,14 +3157,18 @@ function ensureSidebarExpanded() {
     }
 }
 
-function syncSidebarOverlayState(forceCollapsed = null) {
-    const sidebar = document.getElementById('sidebar');
-    const isCollapsed = (forceCollapsed != null)
-        ? forceCollapsed
-        : (sidebar ? sidebar.classList.contains('collapsed') : true);
-    const shouldOverlay = isMobileViewport() && !isCollapsed;
-    document.body.classList.toggle('sidebar-open-mobile', shouldOverlay);
-}
+    function syncSidebarOverlayState(forceCollapsed = null) {
+        const sidebar = document.getElementById('sidebar');
+        const isCollapsed = (forceCollapsed != null)
+            ? forceCollapsed
+            : (sidebar ? sidebar.classList.contains('collapsed') : true);
+        const shouldOverlay = isMobileViewport() && !isCollapsed;
+        document.body.classList.toggle('sidebar-open-mobile', shouldOverlay);
+        const canvasShell = document.querySelector('.canvas-shell');
+        if (canvasShell) {
+            canvasShell.setAttribute('aria-hidden', shouldOverlay ? 'true' : 'false');
+        }
+    }
 
 // Tool selection (resistor, capacitor, funcGen, etc.)
 function clearToolSelection() {
