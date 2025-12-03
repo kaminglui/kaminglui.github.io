@@ -37,6 +37,7 @@
             --board-hole: #1f2937;
             --simbar-bg: #0b0d12;
             --simbar-border: #1f2937;
+            --simbar-height: 92px;
             --input-bg: #111;
             --input-border: #444;
             --input-text: #0f0;
@@ -145,12 +146,16 @@
             overflow: hidden;
         }
         .sidebar .sidebar-content { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; }
+        .sidebar-header { position: sticky; top: 0; z-index: 30; background-color: var(--sidebar-bg); }
+        @media (max-width: 768px) {
+            .sidebar-header { top: var(--header-h); }
+        }
         #tool-scroll {
             overflow-y: auto;
             flex: 1 1 auto;
             min-height: 0;
             max-height: calc(var(--viewport-h) - var(--header-h) - 160px);
-            padding-bottom: 96px;
+            padding-bottom: calc(var(--simbar-height) + 32px);
         }
         .sidebar.collapsed .sidebar-label,
         .sidebar.collapsed .component-title,
@@ -219,6 +224,7 @@
                 height: auto;
                 min-height: calc(100vh - var(--header-h));
                 max-height: none;
+                padding-bottom: var(--simbar-height);
             }
             .sidebar {
                 width: 100%;
@@ -228,11 +234,13 @@
                 max-height: none;
             }
             .canvas-shell {
-                min-height: 60vh;
+                min-height: calc(var(--viewport-h) - var(--header-h) - var(--simbar-height));
                 height: auto;
                 max-height: none;
             }
-            #tool-scroll { max-height: none; }
+            #tool-scroll {
+                max-height: calc(var(--viewport-h) - var(--header-h) - var(--simbar-height) - 72px);
+            }
             .sidebar-toggle {
                 left: 12px;
                 transform: none;
@@ -240,6 +248,14 @@
             .sidebar.collapsed + .sidebar-toggle {
                 left: 12px;
                 transform: none;
+            }
+            #sim-bar {
+                position: fixed;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                z-index: 60;
+                width: 100%;
             }
         }
         .tool-btn {
@@ -317,14 +333,17 @@
         #scope-overlay {
             transition: opacity 0.2s;
             backdrop-filter: blur(5px);
+            top: var(--header-h);
+            height: calc(var(--viewport-h) - var(--header-h));
+            padding-top: 24px;
         }
         #scope-overlay.scope-window {
             position: fixed;
             inset: auto;
-            top: 24px;
+            top: calc(var(--header-h) + 24px);
             left: 24px;
             width: min(900px, calc(100vw - 48px));
-            height: min(520px, calc(100vh - 120px));
+            height: min(520px, calc(var(--viewport-h) - var(--header-h) - 96px));
             border-radius: 16px;
             border: 1px solid #334155;
             background-color: rgba(10, 12, 20, 0.92);
@@ -478,28 +497,7 @@
             <!-- Templates -->
             <div>
                 <h3 class="text-[10px] font-bold text-gray-500 uppercase mb-3 tracking-widest templates-title">Templates</h3>
-                <div class="grid grid-cols-2 gap-2">
-                    <button class="tool-btn p-3 rounded flex flex-col items-center justify-center gap-2 text-center"
-                            onclick="applyTemplate('rc-low-pass')">
-                        <i class="fas fa-filter text-blue-300"></i>
-                        <span class="text-[11px] font-medium">RC Low-Pass</span>
-                    </button>
-                    <button class="tool-btn p-3 rounded flex flex-col items-center justify-center gap-2 text-center"
-                            onclick="applyTemplate('rc-high-pass')">
-                        <i class="fas fa-chart-line text-emerald-300"></i>
-                        <span class="text-[11px] font-medium">RC High-Pass</span>
-                    </button>
-                    <button class="tool-btn p-3 rounded flex flex-col items-center justify-center gap-2 text-center"
-                            onclick="applyTemplate('inverting-opamp')">
-                        <i class="fas fa-rotate-left text-amber-300"></i>
-                        <span class="text-[11px] font-medium">Inverting Op-Amp</span>
-                    </button>
-                    <button class="tool-btn p-3 rounded flex flex-col items-center justify-center gap-2 text-center"
-                            onclick="applyTemplate('non-inverting-opamp')">
-                        <i class="fas fa-plus text-fuchsia-300"></i>
-                        <span class="text-[11px] font-medium">Non-Inverting Op-Amp</span>
-                    </button>
-                </div>
+                <div id="template-grid" class="grid grid-cols-2 gap-2"></div>
             </div>
 
             <!-- Analysis -->
@@ -767,6 +765,8 @@
     </main>
 
     <script type="module" src="../../assets/js/nav.js"></script>
+
+    <script src="../../assets/js/circuitforge.templates.js"></script>
 
     <!-- Main simulation / editor logic -->
     <script src="../../assets/js/circuitforge.js"></script>
