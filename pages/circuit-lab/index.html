@@ -86,6 +86,7 @@
             --input-border: #cbd5e1;
             --input-text: #0f172a;
         }
+        html, body { height: 100%; }
         body {
             overflow: hidden;
             background-color: var(--body-bg);
@@ -126,6 +127,7 @@
             border-right: 1px solid var(--sidebar-border);
             height: calc(100vh - var(--header-h));
             min-height: calc(100vh - var(--header-h));
+            max-height: calc(100vh - var(--header-h));
             width: var(--sidebar-width-current);
             min-width: var(--sidebar-width-current);
             max-width: var(--sidebar-width-current);
@@ -181,9 +183,12 @@
         .lab-main {
             min-height: calc(100vh - var(--header-h));
             height: calc(100vh - var(--header-h));
+            max-height: calc(100vh - var(--header-h));
         }
         .canvas-shell {
             min-height: calc(100vh - var(--header-h));
+            height: calc(100vh - var(--header-h));
+            max-height: calc(100vh - var(--header-h));
         }
         .site-header .container {
             width: min(1120px, 92vw);
@@ -209,16 +214,19 @@
                 flex-direction: column;
                 height: auto;
                 min-height: calc(100vh - var(--header-h));
+                max-height: none;
             }
             .sidebar {
                 width: 100%;
                 max-width: 100%;
                 height: auto;
                 min-height: auto;
+                max-height: none;
             }
             .canvas-shell {
                 min-height: 60vh;
                 height: auto;
+                max-height: none;
             }
             #tool-scroll { max-height: none; }
             .sidebar-toggle {
