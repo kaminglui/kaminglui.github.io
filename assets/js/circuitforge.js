@@ -64,7 +64,7 @@ const PROP_UNITS = {
     Gamma: 'V^0.5',
     Phi: 'V',
     Vdc: 'V',
-    Vpp: 'V',
+    Vpp: 'Vpp',
     Freq: 'Hz',
     Offset: 'V',
     Phase: 'deg',
