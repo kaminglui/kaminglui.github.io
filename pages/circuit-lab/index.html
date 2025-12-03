@@ -629,6 +629,9 @@
                     <div class="text-gray-300">
                         ΔV (CH1): <span id="scope-dv1" class="text-yellow-200 font-bold">0.00V</span>
                     </div>
+                    <div class="text-gray-300">
+                        f: <span id="scope-freq" class="text-green-200 font-bold">--</span>
+                    </div>
                 </div>
                 <button id="scope-mode-btn" onclick="toggleScopeDisplayMode()"
                         class="text-white bg-gray-800 px-3 py-2 rounded border border-gray-700 hover:bg-gray-700 flex items-center gap-2">
@@ -697,6 +700,51 @@
             <div id="cursor-2" class="cursor-line border-cyan-500/80 left-[70%]">
                 <div class="cursor-handle bg-cyan-500 text-black font-bold text-[10px]"
                      onmousedown="startDragCursor(2, event)" ontouchstart="startDragCursor(2, event)">2</div>
+            </div>
+        </div>
+
+        <div class="mt-4 grid gap-4 text-[11px] font-mono md:grid-cols-2">
+            <div class="bg-gray-800/70 border border-gray-700 rounded p-3">
+                <div class="flex items-center gap-2 text-gray-200 mb-2">
+                    <i class="fas fa-arrows-alt-h text-yellow-300"></i>
+                    <span class="uppercase tracking-wider text-xs">Time Cursors</span>
+                </div>
+                <div class="grid grid-cols-2 gap-2 text-gray-300">
+                    <div class="flex justify-between"><span>t<sub>A</sub></span><span id="cursor-ta" class="text-white">0s</span></div>
+                    <div class="flex justify-between"><span>t<sub>B</sub></span><span id="cursor-tb" class="text-white">0s</span></div>
+                    <div class="flex justify-between"><span>Δt</span><span id="cursor-dt" class="text-white">0s</span></div>
+                    <div class="flex justify-between"><span>frequency</span><span id="cursor-freq" class="text-green-200">--</span></div>
+                </div>
+            </div>
+            <div class="bg-gray-800/70 border border-gray-700 rounded p-3 overflow-x-auto">
+                <div class="flex items-center gap-2 text-gray-200 mb-2">
+                    <i class="fas fa-bolt text-cyan-300"></i>
+                    <span class="uppercase tracking-wider text-xs">Voltage difference</span>
+                </div>
+                <table class="w-full text-left text-gray-200 border-collapse">
+                    <thead class="text-[10px] text-gray-400">
+                        <tr>
+                            <th class="pb-1">Channel</th>
+                            <th class="pb-1">V(A)</th>
+                            <th class="pb-1">V(B)</th>
+                            <th class="pb-1">ΔV</th>
+                        </tr>
+                    </thead>
+                    <tbody class="text-[11px]">
+                        <tr>
+                            <td class="py-1">CH1</td>
+                            <td class="py-1" id="ch1-va">0V</td>
+                            <td class="py-1" id="ch1-vb">0V</td>
+                            <td class="py-1" id="ch1-dv">0V</td>
+                        </tr>
+                        <tr>
+                            <td class="py-1">CH2</td>
+                            <td class="py-1" id="ch2-va">0V</td>
+                            <td class="py-1" id="ch2-vb">0V</td>
+                            <td class="py-1" id="ch2-dv">0V</td>
+                        </tr>
+                    </tbody>
+                </table>
             </div>
         </div>
 
