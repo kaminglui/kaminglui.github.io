@@ -139,6 +139,25 @@ function screenToWorld(clientX, clientY) {
     };
 }
 
+function getViewportSize() {
+    const vv = window.visualViewport;
+    const width = Math.round(vv?.width || window.innerWidth || document.documentElement.clientWidth || 0);
+    const height = Math.round(vv?.height || window.innerHeight || document.documentElement.clientHeight || 0);
+    return { width, height };
+}
+
+function syncViewportCssVars() {
+    const root = document.documentElement;
+    const { width, height } = getViewportSize();
+    if (width)  root.style.setProperty('--viewport-w', `${width}px`);
+    if (height) root.style.setProperty('--viewport-h', `${height}px`);
+
+    const header = document.querySelector('.site-header');
+    if (header) {
+        root.style.setProperty('--header-h', `${header.offsetHeight}px`);
+    }
+}
+
 function snapToGrid(v) {
     return Math.round(v / GRID) * GRID;
 }
@@ -2902,9 +2921,14 @@ function drawScope() {
 function resize() {
     if (!canvas) return;
 
+    syncViewportCssVars();
+
+    const { width: viewportW, height: viewportH } = getViewportSize();
+    const headerH = document.querySelector('.site-header')?.offsetHeight || 0;
     const parent = canvas.parentElement || canvas;
-    const cssW = Math.max(1, parent.clientWidth  || parent.offsetWidth  || window.innerWidth);
-    const cssH = Math.max(1, parent.clientHeight || parent.offsetHeight || (window.innerHeight - (document.querySelector('.site-header')?.offsetHeight || 0)));
+    const fallbackH = Math.max(1, viewportH - headerH);
+    const cssW = Math.max(1, parent.clientWidth  || parent.offsetWidth  || viewportW);
+    const cssH = Math.max(1, parent.clientHeight || parent.offsetHeight || fallbackH);
     const dpr = window.devicePixelRatio || 1;
 
     canvas.style.width  = `${cssW}px`;
@@ -4797,6 +4821,11 @@ function init() {
     updateBoardThemeColors();
 
     window.addEventListener('resize', resize);
+    window.addEventListener('orientationchange', resize);
+    if (window.visualViewport) {
+        window.visualViewport.addEventListener('resize', resize);
+        window.visualViewport.addEventListener('scroll', resize);
+    }
     resize();
     renderToolIcons();
     alignScopeButton();
