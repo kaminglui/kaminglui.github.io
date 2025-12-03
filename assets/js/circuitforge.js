@@ -51,7 +51,7 @@ const OPAMP_GAIN            = 1e9;
 const OPAMP_INPUT_LEAK      = 1e-15;
 const OPAMP_OUTPUT_LEAK     = 1e-12;
 const FUNCGEN_REF_RES       = 1e9;   // gentle tie from COM to reference
-const FUNCGEN_SERIES_RES    = 1e6;   // tiny source impedance to keep stacks stable
+const FUNCGEN_SERIES_RES    = 1;     // tiny source impedance to keep stacks stable
 const PROP_UNITS = {
     R: 'Ω',
     Tol: '%',
