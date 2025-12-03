@@ -50,7 +50,11 @@ const BASELINE_NODE_LEAK    = 1e-11;
 const OPAMP_GAIN            = 1e9;
 const OPAMP_INPUT_LEAK      = 1e-15;
 const OPAMP_OUTPUT_LEAK     = 1e-12;
-const FUNCGEN_REF_RES       = 1e9;   // gentle tie from COM to reference
+// A bench function generator normally references its output to chassis/ground.
+// Keep COM near ground with a low impedance so “floating” hookups (COM not
+// explicitly wired) still deliver the configured amplitude instead of letting
+// the COM node wander and steal half the signal.
+const FUNCGEN_REF_RES       = 1;     // tie COM solidly to reference
 const FUNCGEN_SERIES_RES    = 1;     // tiny source impedance to keep stacks stable
 const PROP_UNITS = {
     R: 'Ω',
