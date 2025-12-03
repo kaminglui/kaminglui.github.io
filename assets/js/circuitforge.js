@@ -45,6 +45,11 @@ const TOUCH_SELECTION_HOLD_MS = 280;
 const COMPONENT_DELETE_HOLD_MS = 650;
 const SWITCH_TYPES          = ['SPST', 'SPDT', 'DPDT'];
 const DEFAULT_SWITCH_TYPE   = 'SPDT';
+const MOBILE_BREAKPOINT     = 1024;
+const BASELINE_NODE_LEAK    = 1e-12;
+const OPAMP_GAIN            = 1e6;
+const OPAMP_INPUT_LEAK      = 1e-12;
+const OPAMP_OUTPUT_LEAK     = 1e-9;
 const PROP_UNITS = {
     R: 'Ω',
     Tol: '%',
@@ -154,6 +159,11 @@ function getViewportSize() {
     return { width, height };
 }
 
+function isMobileViewport() {
+    const { width } = getViewportSize();
+    return width <= MOBILE_BREAKPOINT;
+}
+
 function syncViewportCssVars() {
     const root = document.documentElement;
     const { width, height } = getViewportSize();
@@ -163,6 +173,11 @@ function syncViewportCssVars() {
     const header = document.querySelector('.site-header');
     if (header) {
         root.style.setProperty('--header-h', `${header.offsetHeight}px`);
+    }
+
+    const simBar = document.getElementById('sim-bar');
+    if (simBar) {
+        root.style.setProperty('--simbar-height', `${simBar.offsetHeight}px`);
     }
 }
 
@@ -2133,6 +2148,13 @@ function simulate(t) {
     const G = new Matrix(N);
     const I = new Float64Array(N);
 
+    // Provide a tiny reference to ground for every active node to avoid floating-node singularities
+    rootToNode.forEach(n => {
+        if (n !== -1) {
+            stampG(n, -1, BASELINE_NODE_LEAK);
+        }
+    });
+
     function stampG(n1, n2, g) {
         if (!g) return;
         if (n1 !== -1) G.add(n1, n1, g);
@@ -2273,15 +2295,27 @@ function simulate(t) {
             stampG(nD, nS, gLeak);
         }
         else if (c instanceof LF412) {
-            const gain = 5e3;
+            const gain = OPAMP_GAIN;
             function stampOpAmpHalf(pNon, pInv, pOut) {
                 const nNon = getNodeIdx(c, pNon);
                 const nInv = getNodeIdx(c, pInv);
                 const nOut = getNodeIdx(c, pOut);
-                if (nOut === -1) return;
-                if (nNon !== -1) G.add(nOut, nNon, -gain);
-                if (nInv !== -1) G.add(nOut, nInv,  gain);
+                if (nOut === -1 && nNon === -1 && nInv === -1) return;
+                if (nOut === -1) {
+                    if (nNon !== -1) stampG(nNon, -1, OPAMP_INPUT_LEAK);
+                    if (nInv !== -1) stampG(nInv, -1, OPAMP_INPUT_LEAK);
+                    return;
+                }
+                if (nNon !== -1) {
+                    G.add(nOut, nNon, -gain);
+                    stampG(nNon, -1, OPAMP_INPUT_LEAK);
+                }
+                if (nInv !== -1) {
+                    G.add(nOut, nInv,  gain);
+                    stampG(nInv, -1, OPAMP_INPUT_LEAK);
+                }
                 G.add(nOut, nOut, 1.0);
+                stampG(nOut, -1, OPAMP_OUTPUT_LEAK);
             }
             stampOpAmpHalf(2, 1, 0); // 1IN+, 1IN-, 1OUT
             stampOpAmpHalf(4, 5, 6); // 2IN+, 2IN-, 2OUT
@@ -2969,6 +3003,8 @@ function resize() {
     if (scopeMode) {
         setScopeOverlayLayout(scopeDisplayMode);
     }
+
+    syncSidebarOverlayState();
 }
 
 function createToolIcon(selector, ComponentClass, setupFn, offsetY = 0) {
@@ -3095,6 +3131,15 @@ function ensureSidebarExpanded() {
         if (icon) icon.className = 'fas fa-chevron-left';
         sidebar.setAttribute('aria-expanded', 'true');
     }
+}
+
+function syncSidebarOverlayState(forceCollapsed = null) {
+    const sidebar = document.getElementById('sidebar');
+    const isCollapsed = (forceCollapsed != null)
+        ? forceCollapsed
+        : (sidebar ? sidebar.classList.contains('collapsed') : true);
+    const shouldOverlay = isMobileViewport() && !isCollapsed;
+    document.body.classList.toggle('sidebar-open-mobile', shouldOverlay);
 }
 
 // Tool selection (resistor, capacitor, funcGen, etc.)
@@ -3655,7 +3700,8 @@ const TOOL_COMPONENTS = {
     funcGen: FunctionGenerator,
     ground: Ground,
     oscilloscope: Oscilloscope,
-    led: LED
+    led: LED,
+    junction: Junction
 };
 
 function getComponentTypeId(comp) {
@@ -3683,12 +3729,12 @@ function serializeState() {
             rotation: c.rotation,
             mirrorX: !!c.mirrorX,
             props: { ...c.props }
-        })).filter(entry => entry.type),
+        })).filter(entry => entry.type !== null),
         wires: wires.map(w => ({
             from: { id: w.from?.c?.id, p: w.from?.p },
             to:   { id: w.to?.c?.id,   p: w.to?.p },
             vertices: (w.vertices || []).map(v => ({ x: v.x, y: v.y }))
-        })).filter(w => w.from.id && w.to.id)
+        })).filter(w => w.from.id != null && w.to.id != null)
     };
     return payload;
 }
@@ -4792,6 +4838,7 @@ function toggleSidebar() {
     const icon = document.getElementById('sidebar-toggle-icon');
     if (icon) icon.className = collapsed ? 'fas fa-chevron-right' : 'fas fa-chevron-left';
     if (sidebar) sidebar.setAttribute('aria-expanded', (!collapsed).toString());
+    syncSidebarOverlayState(collapsed);
     resize();
     requestAnimationFrame(resize);
 }
@@ -4877,6 +4924,7 @@ function init() {
     updatePlayPauseButton();
     updateViewLabel();
     ensureSidebarExpanded();
+    syncSidebarOverlayState();
     if (canvas && canvas.parentElement && typeof ResizeObserver !== 'undefined') {
         const ro = new ResizeObserver(() => resize());
         ro.observe(canvas.parentElement);
