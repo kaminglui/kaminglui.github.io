@@ -119,12 +119,19 @@ function renderSiteHeader(options = {}) {
     header.dataset.currentLab ??
     detectCurrentLabId(window.location?.pathname);
 
+  const shouldRenderEditToggle =
+    options.showEditToggle === true || header.dataset.showEditToggle === 'true';
+
   const logoHref = useLocalAnchors
     ? '#hero'
     : `${rootPrefix}index.html#hero`;
 
   const sections = buildSectionLinks({ rootPrefix, useLocalAnchors });
   const labs = buildLabLinks({ rootPrefix, currentLabId });
+
+  const editToggleMarkup = shouldRenderEditToggle
+    ? '<button class="edit-toggle" type="button" aria-pressed="false" hidden>Edit mode</button>'
+    : '';
 
   const navMarkup = `
     <div class="container">
@@ -161,6 +168,7 @@ function renderSiteHeader(options = {}) {
           </li>
         </ul>
         <div class="nav-actions">
+          ${editToggleMarkup}
           <button class="theme-toggle" type="button" aria-label="Toggle color theme">
             <span aria-hidden="true">🌙</span>
           </button>
