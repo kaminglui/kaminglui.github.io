@@ -111,8 +111,7 @@ function renderSiteHeader(options = {}) {
   );
   const useLocalAnchors =
     options.useLocalAnchors ??
-    rootPrefix === '' ||
-    header.dataset.useLocalAnchors === 'true';
+    (rootPrefix === '' || header.dataset.useLocalAnchors === 'true');
 
   const currentLabId =
     options.currentLab ??
