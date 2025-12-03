@@ -30,20 +30,18 @@
             --controls-border: #3a3a3a;
             --controls-hover-bg: #3a3a3a;
             --controls-hover-border: #555;
-            --canvas-bg: #0d1526;
-            --board-bg: #0e1a32;
-            --board-hole: #2d4876;
+            --canvas-bg: #1a1a1a;
+            --board-bg: #020617;
+            --board-hole: #1f2937;
             --simbar-bg: #0b0d12;
             --simbar-border: #1f2937;
             --input-bg: #111;
             --input-border: #444;
             --input-text: #0f0;
             --header-h: var(--nav-height, 64px);
-            --sidebar-width: 21rem;
-            --sidebar-width-collapsed: 0px;
+            --sidebar-width: 20rem;
+            --sidebar-width-collapsed: 4.5rem;
         }
-        body { --sidebar-width-current: var(--sidebar-width); }
-        body.sidebar-collapsed { --sidebar-width-current: var(--sidebar-width-collapsed); }
         .theme-dark {
             color-scheme: dark;
             --body-bg: #0f0f0f;
@@ -57,9 +55,9 @@
             --controls-border: #3a3a3a;
             --controls-hover-bg: #3a3a3a;
             --controls-hover-border: #555;
-            --canvas-bg: #0d1526;
-            --board-bg: #0e1a32;
-            --board-hole: #2d4876;
+            --canvas-bg: #1a1a1a;
+            --board-bg: #020617;
+            --board-hole: #1f2937;
             --simbar-bg: #0b0d12;
             --simbar-border: #1f2937;
             --input-bg: #111;
@@ -88,7 +86,6 @@
             --input-border: #cbd5e1;
             --input-text: #0f172a;
         }
-        html, body { height: 100%; }
         body {
             overflow: hidden;
             background-color: var(--body-bg);
@@ -97,27 +94,25 @@
             font-family: 'Inter', system-ui, sans-serif;
             scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
             scrollbar-width: thin;
+            --sidebar-width-current: var(--sidebar-width);
         }
+        body.sidebar-collapsed { --sidebar-width-current: var(--sidebar-width-collapsed); }
         body::-webkit-scrollbar,
-        .sidebar::-webkit-scrollbar,
-        #tool-scroll::-webkit-scrollbar {
+        .sidebar::-webkit-scrollbar {
             width: 10px;
         }
         body::-webkit-scrollbar-track,
-        .sidebar::-webkit-scrollbar-track,
-        #tool-scroll::-webkit-scrollbar-track {
+        .sidebar::-webkit-scrollbar-track {
             background: var(--scrollbar-track);
         }
         body::-webkit-scrollbar-thumb,
-        .sidebar::-webkit-scrollbar-thumb,
-        #tool-scroll::-webkit-scrollbar-thumb {
+        .sidebar::-webkit-scrollbar-thumb {
             background: var(--scrollbar-thumb);
             border-radius: 8px;
             border: 2px solid var(--scrollbar-track);
         }
         body::-webkit-scrollbar-thumb:hover,
-        .sidebar::-webkit-scrollbar-thumb:hover,
-        #tool-scroll::-webkit-scrollbar-thumb:hover {
+        .sidebar::-webkit-scrollbar-thumb:hover {
             background: var(--scrollbar-thumb-hover);
         }
         canvas { background-color: var(--canvas-bg); cursor: crosshair; touch-action: none; }
@@ -128,34 +123,49 @@
             background-size: 24px 24px;
             background-color: var(--board-bg);
         }
-        .sidebar-shell {
-            position: relative;
-            display: flex;
-            flex-direction: column;
+        .sidebar {
+            background-color: var(--sidebar-bg);
+            border-right: 1px solid var(--sidebar-border);
             width: var(--sidebar-width-current);
             min-width: var(--sidebar-width-current);
             max-width: var(--sidebar-width-current);
             flex: 0 0 var(--sidebar-width-current);
             transition: width 0.2s ease, min-width 0.2s ease, max-width 0.2s ease, flex-basis 0.2s ease;
-            z-index: 30;
         }
-        .sidebar-shell.collapsed {
-            width: 0;
-            min-width: 0;
-            max-width: 0;
-            flex-basis: 0;
+        .sidebar.collapsed {
+            border-right: 0;
+            width: var(--sidebar-width-collapsed);
+            min-width: var(--sidebar-width-collapsed);
+            max-width: var(--sidebar-width-collapsed);
+            flex-basis: var(--sidebar-width-collapsed);
         }
-        .sidebar-header { position: relative; }
-        .sidebar { background-color: var(--sidebar-bg); border-right: 1px solid var(--sidebar-border); height: 100%; width: 100%; flex: 1 1 auto; min-height: 0; overflow: hidden; pointer-events: auto; }
-        .sidebar.collapsed { border-right: 0; }
-        .sidebar.collapsed .sidebar-content,
-        .sidebar.collapsed #sim-bar { display: none; }
-        .sidebar.collapsed .sidebar-label { display: none; }
+        .sidebar .sidebar-content { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; }
+        #tool-scroll { overflow-y: auto; flex: 1 1 auto; min-height: 0; max-height: none; }
+        .sidebar.collapsed .sidebar-label,
         .sidebar.collapsed .component-title,
         .sidebar.collapsed .templates-title { display: none; }
         .sidebar.collapsed .tool-btn { min-height: 48px; padding: 10px 6px; }
         .sidebar.collapsed .tool-btn span { font-size: 10px; }
         .sidebar.collapsed .collapse-text { display: none; }
+        .sidebar.collapsed #sim-bar { display: none; }
+        .sidebar:not(.collapsed) #sim-bar { display: block; }
+        .sidebar-toggle {
+            background: var(--controls-bg);
+            border: 1px solid var(--controls-border);
+            width: 28px;
+            height: 28px;
+            border-radius: 8px;
+            display: grid;
+            place-items: center;
+            position: absolute;
+            left: var(--sidebar-width-current);
+            top: calc(var(--header-h) + 12px);
+            transform: translate(50%, 0);
+            box-shadow: 0 12px 28px rgba(0,0,0,0.35);
+            z-index: 50;
+            transition: left 0.2s ease, transform 0.2s ease;
+            pointer-events: auto;
+        }
         .tool-btn {
             transition: all 0.1s;
             background: var(--controls-bg);
@@ -178,65 +188,6 @@
             border-color: #60a5fa;
             box-shadow: 0 0 12px rgba(37, 99, 235, 0.4);
         }
-        .sidebar .sidebar-content { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; }
-        #tool-scroll {
-            overflow-y: auto;
-            flex: 1 1 auto;
-            min-height: 0;
-            max-height: none;
-        }
-        .sidebar:not(.collapsed) #sim-bar { display: block; }
-        .sidebar-toggle {
-            background: var(--controls-bg);
-            border: 1px solid var(--controls-border);
-            width: 28px;
-            height: 28px;
-            border-radius: 8px;
-            display: grid;
-            place-items: center;
-            position: absolute;
-            left: var(--sidebar-width-current);
-            top: calc(var(--header-h) + 12px);
-            transform: translate(50%, 0);
-            box-shadow: 0 12px 28px rgba(0,0,0,0.35);
-            z-index: 50;
-            transition: left 0.2s ease, transform 0.2s ease;
-            pointer-events: auto;
-        }
-        .sidebar.collapsed .sidebar-header { padding-right: 12px; padding-left: 12px; }
-        .sidebar-shell.collapsed + .sidebar-toggle {
-            left: 12px;
-            transform: translate(0, 0);
-        }
-        .cursor-table th, .cursor-table td {
-            padding: 4px 6px;
-            text-align: right;
-        }
-        .cursor-table th:first-child, .cursor-table td:first-child {
-            text-align: left;
-        }
-        .canvas-shell { position: relative; flex: 1 1 auto; display: flex; min-width: 0; overflow: hidden; z-index: 1; }
-        .canvas-shell canvas { display: block; width: 100%; height: 100%; }
-        .lab-layout {
-            position: relative;
-            display: flex;
-            flex: 1 1 auto;
-            height: calc(100vh - var(--header-h));
-            min-height: calc(100vh - var(--header-h));
-            max-height: calc(100vh - var(--header-h));
-            overflow: hidden;
-            min-width: 0;
-            align-items: stretch;
-        }
-        .lab-layout > .canvas-shell {
-            min-height: calc(100vh - var(--header-h));
-            height: 100%;
-            min-width: 0;
-        }
-        .canvas-shell {
-            align-items: stretch;
-            min-height: 0;
-        }
         .tool-icon {
             display: block;
             width: 56px;
@@ -247,8 +198,6 @@
             background: var(--simbar-bg);
             border-top: 1px solid var(--simbar-border);
             box-shadow: inset 0 1px 0 rgba(255,255,255,0.03);
-            margin-top: auto;
-            flex: 0 0 auto;
         }
         .has-tooltip {
             position: relative;
@@ -292,7 +241,6 @@
         #scope-overlay {
             transition: opacity 0.2s;
             backdrop-filter: blur(5px);
-            overflow: auto;
         }
         #scope-overlay.scope-window {
             position: fixed;
@@ -333,39 +281,6 @@
             justify-content: center;
             box-shadow: 0 4px 6px rgba(0,0,0,0.5);
             border: 2px solid white;
-        }
-        @media (max-width: 1024px) {
-            :root {
-                --sidebar-width: min(20rem, 82vw);
-            }
-            body { overflow: hidden; }
-            #tool-scroll { max-height: none; }
-            .sidebar { max-width: 82vw; }
-            .sidebar.collapsed { width: var(--sidebar-width-collapsed); max-height: 100%; }
-        }
-        /* Portrait / mobile adjustments */
-        body.is-portrait .lab-layout {
-            flex-direction: column;
-            height: auto;
-            min-height: calc(100vh - var(--header-h));
-            max-height: none;
-        }
-        body.is-portrait .sidebar-shell {
-            width: 100%;
-            min-width: 0;
-            max-width: none;
-            flex: 0 0 auto;
-        }
-        body.is-portrait .sidebar-toggle {
-            left: auto;
-            right: 12px;
-            top: calc(var(--header-h) + 8px);
-            transform: none;
-        }
-        body.is-portrait .lab-layout > .canvas-shell {
-            min-height: 52vh;
-            height: calc(100vh - var(--header-h) - 260px);
-            max-height: none;
         }
     </style>
 </head>
@@ -423,24 +338,23 @@
         </div>
     </header>
 
-    <main class="flex-1 flex overflow-hidden lab-layout">
+    <main class="flex-1 flex overflow-hidden">
     <!-- Sidebar -->
-    <div class="sidebar-shell">
-        <div id="sidebar" class="sidebar flex flex-col flex-shrink-0 shadow-2xl z-20 relative">
-            <div class="sidebar-header p-4 pr-10 border-b border-gray-700 bg-gray-800/50 backdrop-blur flex items-center gap-2">
-                <div class="flex items-center gap-2 sidebar-label">
-                    <i class="fas fa-microchip text-blue-400"></i>
-                    <div class="flex items-center gap-2">
-                        <span class="text-xl font-bold text-blue-400 tracking-tight">Circuit Forge</span>
-                        <span class="text-[10px] bg-blue-900/50 text-blue-200 px-1.5 py-0.5 rounded border border-blue-800">
-                            BETA
-                        </span>
-                    </div>
+    <div id="sidebar" class="sidebar w-80 flex flex-col flex-shrink-0 shadow-2xl z-20 relative" aria-expanded="true">
+        <div class="sidebar-header p-4 pr-10 border-b border-gray-700 bg-gray-800/50 backdrop-blur flex items-center gap-2">
+            <div class="flex items-center gap-2 sidebar-label">
+                <i class="fas fa-microchip text-blue-400"></i>
+                <div class="flex items-center gap-2">
+                    <span class="text-xl font-bold text-blue-400 tracking-tight">Circuit Forge</span>
+                    <span class="text-[10px] bg-blue-900/50 text-blue-200 px-1.5 py-0.5 rounded border border-blue-800">
+                        BETA
+                    </span>
                 </div>
             </div>
+        </div>
 
-            <div class="flex-1 flex flex-col overflow-hidden min-h-0 sidebar-content">
-                <div id="tool-scroll" class="flex-1 p-4 space-y-6 overflow-y-auto">
+        <div class="flex-1 flex flex-col overflow-hidden min-h-0 sidebar-content">
+            <div id="tool-scroll" class="flex-1 p-4 space-y-6 overflow-y-auto">
 
             <!-- Power Sources -->
             <div>
@@ -595,7 +509,7 @@
         </div>
 
             <!-- Simulation Bar -->
-            <div id="sim-bar" class="p-2 text-[11px] text-gray-300 mt-auto">
+            <div id="sim-bar" class="p-2 text-[11px] text-gray-300">
                 <div class="flex items-center justify-between gap-3">
                     <div class="flex items-center gap-3 font-mono">
                         <span>SIM TIME: <span id="sim-time" class="text-green-400">0.00µs</span></span>
@@ -620,7 +534,7 @@
                             <i class="fas fa-file-import"></i>
                         </button>
                         <button onclick="clearCanvas()"
-                                class="bg-red-900/70 hover:bg-red-800 text-xs px-3 h-9 rounded border border-red-700 flex items-center justify-center has-tooltip"
+                                class="bg-red-900/70 hover:bg-red-800 text-xs px-3 h-9 rounded border border-red-800 flex items-center justify-center has-tooltip"
                                 data-tooltip="Clear All" aria-label="Clear All">
                             <i class="fas fa-bomb"></i>
                         </button>
@@ -637,7 +551,7 @@
     </button>
 
     <!-- Main Canvas Area -->
-    <div class="canvas-shell flex-1 flex flex-col relative bg-[#111]">
+    <div class="flex-1 flex flex-col relative bg-[#111]">
         <div class="absolute top-4 right-4 z-10 flex flex-col gap-2 items-end">
             <div class="flex bg-gray-800/90 text-gray-200 rounded shadow-lg border border-gray-600 overflow-hidden backdrop-blur">
                 <button onclick="zoomOutButton()"
@@ -671,12 +585,20 @@
                 <i class="fas fa-wave-square"></i>
                 OSCILLOSCOPE <span class="text-gray-500 text-sm">Dual Channel X-Y</span>
             </h2>
-            <div class="flex gap-4 text-sm font-mono items-center flex-wrap justify-end">
+            <div class="flex gap-6 text-sm font-mono items-center">
                 <div class="text-yellow-400 border-l-2 border-yellow-400 pl-2">
                     CH1: <span id="scope-ch1-val">0.00V</span>
                 </div>
                 <div class="text-cyan-400 border-l-2 border-cyan-400 pl-2">
                     CH2: <span id="scope-ch2-val">0.00V</span>
+                </div>
+                <div class="bg-gray-800 px-3 py-1 rounded border border-gray-600 flex gap-4">
+                    <div class="text-gray-300">
+                        ΔT: <span id="scope-dt" class="text-white font-bold">0.00µs</span>
+                    </div>
+                    <div class="text-gray-300">
+                        ΔV (CH1): <span id="scope-dv1" class="text-yellow-200 font-bold">0.00V</span>
+                    </div>
                 </div>
                 <button id="scope-mode-btn" onclick="toggleScopeDisplayMode()"
                         class="text-white bg-gray-800 px-3 py-2 rounded border border-gray-700 hover:bg-gray-700 flex items-center gap-2">
@@ -734,60 +656,17 @@
             </label>
         </div>
 
-        <div class="grid md:grid-cols-2 gap-3 text-xs font-mono mb-3">
-            <div class="bg-gray-800 border border-gray-700 rounded p-3 space-y-2">
-                <div class="flex justify-between text-gray-300">
-                    <span>t_A</span><span id="cursor-ta" class="text-white">0s</span>
-                </div>
-                <div class="flex justify-between text-gray-300">
-                    <span>t_B</span><span id="cursor-tb" class="text-white">0s</span>
-                </div>
-                <div class="flex justify-between text-gray-300">
-                    <span>Δt</span><span id="cursor-dt" class="text-white">0s</span>
-                </div>
-                <div class="flex justify-between text-gray-300">
-                    <span>Frequency</span><span id="cursor-freq" class="text-white">--</span>
-                </div>
-            </div>
-            <div class="bg-gray-800 border border-gray-700 rounded p-3">
-                <table class="w-full cursor-table">
-                    <thead class="text-gray-400">
-                        <tr>
-                            <th>Channel</th>
-                            <th>V(A)</th>
-                            <th>V(B)</th>
-                            <th>ΔV</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr class="text-yellow-100">
-                            <td class="text-yellow-300">CH1</td>
-                            <td id="ch1-va">0V</td>
-                            <td id="ch1-vb">0V</td>
-                            <td id="ch1-dv">0V</td>
-                        </tr>
-                        <tr class="text-cyan-100">
-                            <td class="text-cyan-300">CH2</td>
-                            <td id="ch2-va">0V</td>
-                            <td id="ch2-vb">0V</td>
-                            <td id="ch2-dv">0V</td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-        </div>
-
         <div id="scope-container"
              class="flex-1 relative bg-gray-900 border border-gray-700 rounded overflow-hidden
                     cursor-crosshair shadow-inner">
             <canvas id="scopeCanvas" class="w-full h-full block"></canvas>
             <div id="cursor-1" class="cursor-line border-yellow-500/80 left-[30%]">
                 <div class="cursor-handle bg-yellow-500 text-black font-bold text-[10px]"
-                     onmousedown="startDragCursor(1, event)" ontouchstart="startDragCursor(1, event)">A</div>
+                     onmousedown="startDragCursor(1, event)" ontouchstart="startDragCursor(1, event)">1</div>
             </div>
             <div id="cursor-2" class="cursor-line border-cyan-500/80 left-[70%]">
                 <div class="cursor-handle bg-cyan-500 text-black font-bold text-[10px]"
-                     onmousedown="startDragCursor(2, event)" ontouchstart="startDragCursor(2, event)">B</div>
+                     onmousedown="startDragCursor(2, event)" ontouchstart="startDragCursor(2, event)">2</div>
             </div>
         </div>
 

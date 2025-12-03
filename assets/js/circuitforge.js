@@ -127,12 +127,6 @@ let canvasDisplayHeight = 0;
 let canvasCssWidth = 0;
 let canvasCssHeight = 0;
 
-function syncViewportClass() {
-    const isSmallScreen = window.innerWidth < 768;
-    const portrait = isSmallScreen && window.innerHeight > window.innerWidth;
-    document.body.classList.toggle('is-portrait', portrait);
-}
-
 /* === UTILITIES === */
 function screenToWorld(clientX, clientY) {
     if (!canvas) return { x: 0, y: 0 };
@@ -2855,90 +2849,39 @@ function drawScope() {
 }
 
 /* ---------- UI HELPERS / MODES ---------- */
-function resizeCanvas() {
+function resize() {
     if (!canvas) return;
 
-    syncViewportClass();
-
-    // Use the canvas' parent (the .canvas-shell) as the sizing reference,
-    // just like the OLD version did.
     const parent = canvas.parentElement || canvas;
-    let cssW = Math.max(1, parent.clientWidth  || 0);
-    let cssH = Math.max(1, parent.clientHeight || 0);
-
-    // Fallback if layout hasn't settled yet (e.g. still 0x0)
-    if (cssW < 32 || cssH < 32) {
-        cssW = Math.max(1, window.innerWidth);
-        cssH = Math.max(1, window.innerHeight);
-    }
-
-    const dpr = Math.max(1, Math.floor(window.devicePixelRatio || 1));
-
-    const prevCssW = canvasCssWidth || cssW;
-    const prevCssH = canvasCssHeight || cssH;
-
-    canvasCssWidth = cssW;
-    canvasCssHeight = cssH;
-
-    const pixelW = Math.round(cssW * dpr);
-    const pixelH = Math.round(cssH * dpr);
-
-    canvasDisplayWidth  = pixelW;
-    canvasDisplayHeight = pixelH;
+    const cssW = Math.max(1, parent.clientWidth  || 0);
+    const cssH = Math.max(1, parent.clientHeight || 0);
+    const dpr = window.devicePixelRatio || 1;
 
     canvas.style.width  = `${cssW}px`;
     canvas.style.height = `${cssH}px`;
-    canvas.width  = pixelW;
-    canvas.height = pixelH;
+    canvas.width  = Math.floor(cssW * dpr);
+    canvas.height = Math.floor(cssH * dpr);
 
-    // --- View centering logic (kept from your new version) ---
+    canvasCssWidth = cssW;
+    canvasCssHeight = cssH;
+    canvasDisplayWidth  = canvas.width;
+    canvasDisplayHeight = canvas.height;
 
-    const viewW = canvasDisplayWidth || canvas.width;
-    const viewH = canvasDisplayHeight || canvas.height;
-
+    // keep initial view centered
     if (viewOffsetX === 0 && viewOffsetY === 0) {
-        // First time: center the board
-        viewOffsetX = (viewW / (2 * zoom) - BOARD_W / 2);
-        viewOffsetY = (viewH / (2 * zoom) - BOARD_H / 2);
-    } else {
-        // Subsequent resizes: keep the current center roughly fixed
-        viewOffsetX += (cssW - prevCssW) / (2 * zoom);
-        viewOffsetY += (cssH - prevCssH) / (2 * zoom);
+        viewOffsetX = (canvas.width  / (2 * zoom) - BOARD_W / 2);
+        viewOffsetY = (canvas.height / (2 * zoom) - BOARD_H / 2);
     }
-
     clampView();
-
-    // If the viewport center no longer intersects the board (e.g. bad restore), recentre the board.
-    const viewCenterX = (cssW / (2 * zoom)) - viewOffsetX;
-    const viewCenterY = (cssH / (2 * zoom)) - viewOffsetY;
-    const boardMinX   = -BOARD_MARGIN;
-    const boardMaxX   = BOARD_W + BOARD_MARGIN;
-    const boardMinY   = -BOARD_MARGIN;
-    const boardMaxY   = BOARD_H + BOARD_MARGIN;
-
-    const centerOutsideBoard = (
-        viewCenterX < boardMinX || viewCenterX > boardMaxX ||
-        viewCenterY < boardMinY || viewCenterY > boardMaxY
-    );
-
-    if (centerOutsideBoard) {
-        viewOffsetX = (viewW / (2 * zoom) - BOARD_W / 2);
-        viewOffsetY = (viewH / (2 * zoom) - BOARD_H / 2);
-        clampView();
-    }
-
-    // --- Scope canvas resize (kept from your new version) ---
 
     const scopeContainer = document.getElementById('scope-container');
     if (scopeContainer && scopeCanvas) {
-        const scopeRect = scopeContainer.getBoundingClientRect();
-        const scopeCssW = Math.max(1, scopeRect.width);
-        const scopeCssH = Math.max(1, scopeRect.height);
-
-        scopeCanvas.style.width  = `${scopeCssW}px`;
-        scopeCanvas.style.height = `${scopeCssH}px`;
-        scopeCanvas.width  = Math.round(scopeCssW * dpr);
-        scopeCanvas.height = Math.round(scopeCssH * dpr);
+        const scopeW = Math.max(1, scopeContainer.clientWidth);
+        const scopeH = Math.max(1, scopeContainer.clientHeight);
+        scopeCanvas.style.width  = `${scopeW}px`;
+        scopeCanvas.style.height = `${scopeH}px`;
+        scopeCanvas.width  = Math.floor(scopeW * dpr);
+        scopeCanvas.height = Math.floor(scopeH * dpr);
     }
 }
 
@@ -3061,8 +3004,6 @@ function ensureSidebarExpanded() {
     if (!sidebar) return;
     if (sidebar.classList.contains('collapsed')) {
         sidebar.classList.remove('collapsed');
-        const shell = sidebar.closest('.sidebar-shell');
-        if (shell) shell.classList.remove('collapsed');
         document.body.classList.remove('sidebar-collapsed');
         const icon = document.getElementById('sidebar-toggle-icon');
         if (icon) icon.className = 'fas fa-chevron-left';
@@ -3520,7 +3461,8 @@ function updateProps() {
 
 function getTemplateOrigin() {
     if (!canvas) return { x: 0, y: 0 };
-    const center = screenToWorld(canvas.width / 2, canvas.height / 2);
+    const rect = canvas.getBoundingClientRect();
+    const center = screenToWorld(rect.width / 2, rect.height / 2);
     const col = templatePlacementCount % 3;
     const row = Math.floor(templatePlacementCount / 3);
     const spacingX = 280;
@@ -4424,7 +4366,7 @@ function setScopeOverlayLayout(mode = scopeDisplayMode || getDefaultScopeMode())
 function toggleScopeDisplayMode() {
     const next = (scopeDisplayMode === 'window') ? 'fullscreen' : 'window';
     setScopeOverlayLayout(next);
-    resizeCanvas();
+    resize();
     if (scopeMode) drawScope();
 }
 
@@ -4445,7 +4387,7 @@ function openScope(targetScope = null) {
     setScopeOverlayLayout(scopeDisplayMode || getDefaultScopeMode());
     const overlay = document.getElementById('scope-overlay');
     if (overlay) overlay.classList.remove('hidden');
-    resizeCanvas();
+    resize();
     attachScopeControlHandlers();
     syncScopeControls();
     drawScope();
@@ -4686,7 +4628,7 @@ function toggleView() {
     if (!scopeDisplayMode) scopeDisplayMode = getDefaultScopeMode();
     setScopeOverlayLayout(scopeDisplayMode);
     if (scopeMode) {
-        resizeCanvas();
+        resize();
         drawScope();
     }
 }
@@ -4695,14 +4637,12 @@ function toggleSidebar() {
     const sidebar = document.getElementById('sidebar');
     if (!sidebar) return;
     const collapsed = sidebar.classList.toggle('collapsed');
-    const shell = sidebar.closest('.sidebar-shell');
-    if (shell) shell.classList.toggle('collapsed', collapsed);
     document.body.classList.toggle('sidebar-collapsed', collapsed);
     const icon = document.getElementById('sidebar-toggle-icon');
     if (icon) icon.className = collapsed ? 'fas fa-chevron-right' : 'fas fa-chevron-left';
     if (sidebar) sidebar.setAttribute('aria-expanded', (!collapsed).toString());
-    resizeCanvas();
-    requestAnimationFrame(resizeCanvas);
+    resize();
+    requestAnimationFrame(resize);
 }
 
 function zoomInButton() { applyZoom(ZOOM_IN_STEP); }
@@ -4771,9 +4711,8 @@ function init() {
 
     updateBoardThemeColors();
 
-    window.addEventListener('load', resizeCanvas);
-    window.addEventListener('resize', resizeCanvas);
-    resizeCanvas();
+    window.addEventListener('resize', resize);
+    resize();
     renderToolIcons();
     alignScopeButton();
     attachScopeControlHandlers();
@@ -4781,9 +4720,8 @@ function init() {
     updatePlayPauseButton();
     updateViewLabel();
     ensureSidebarExpanded();
-    resizeCanvas();
     if (canvas && canvas.parentElement && typeof ResizeObserver !== 'undefined') {
-        const ro = new ResizeObserver(() => resizeCanvas());
+        const ro = new ResizeObserver(() => resize());
         ro.observe(canvas.parentElement);
     }
 
