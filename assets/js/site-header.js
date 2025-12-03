@@ -102,8 +102,12 @@ function renderSiteHeader(options = {}) {
     return hasExistingNav;
   }
 
+  const explicitRoot =
+    (typeof options.rootPrefix === 'string' && options.rootPrefix.trim()) ||
+    (typeof header?.dataset?.navRoot === 'string' && header.dataset.navRoot.trim());
+
   const rootPrefix = normalizeRootPrefix(
-    options.rootPrefix ?? computeRootPrefix(window.location?.pathname)
+    explicitRoot ?? computeRootPrefix(window.location?.pathname)
   );
   const useLocalAnchors =
     options.useLocalAnchors ??
