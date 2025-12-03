@@ -190,6 +190,7 @@
             height: calc(var(--viewport-h) - var(--header-h) - var(--simbar-height));
             max-height: calc(var(--viewport-h) - var(--header-h) - var(--simbar-height));
             padding-bottom: var(--simbar-height);
+            align-items: stretch;
         }
         .canvas-shell {
             min-height: calc(var(--viewport-h) - var(--header-h) - var(--simbar-height));
@@ -264,6 +265,22 @@
             }
             body.sidebar-open-mobile #tool-scroll {
                 max-height: calc(var(--viewport-h) - var(--header-h) - var(--simbar-height) - 48px);
+            }
+            body.sidebar-open-mobile #sidebar {
+                position: fixed;
+                inset: var(--header-h) 0 0 0;
+                height: calc(var(--viewport-h) - var(--header-h));
+                max-height: calc(var(--viewport-h) - var(--header-h));
+                min-height: calc(var(--viewport-h) - var(--header-h));
+                box-shadow: 0 18px 36px rgba(0, 0, 0, 0.55);
+                z-index: 80;
+                background: var(--sidebar-bg);
+            }
+            body.sidebar-open-mobile .sidebar-header {
+                top: 0;
+            }
+            body.sidebar-open-mobile main.lab-main {
+                align-items: stretch;
             }
         }
         .tool-btn {
