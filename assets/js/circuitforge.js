@@ -2089,6 +2089,8 @@ function simulate(t) {
     // ---- Collect voltage sources (DC + FunctionGens) ----
     // Only keep a source if it touches at least one real node; otherwise the MNA row would be empty.
     const vsEntries = [];
+    const pendingGStamps = [];
+
     components.forEach(c => {
         if (c instanceof VoltageSource) {
             const nPlus  = getNodeIdx(c, 0);
@@ -2129,13 +2131,13 @@ function simulate(t) {
             const refG = 1 / FUNCGEN_REF_RES;
             const seriesG = 1 / FUNCGEN_SERIES_RES;
             if (nCom !== -1) {
-                stampG(nCom, -1, refG);
+                pendingGStamps.push([nCom, -1, refG]);
             }
             if (nPlus !== -1 && nCom !== -1) {
-                stampG(nPlus, nCom, seriesG);
+                pendingGStamps.push([nPlus, nCom, seriesG]);
             }
             if (nNeg !== -1 && nCom !== -1) {
-                stampG(nNeg, nCom, seriesG);
+                pendingGStamps.push([nNeg, nCom, seriesG]);
             }
             if (!(nPlus === -1 && nCom === -1)) {
                 // Pin + swings offset + 0.5*Vpp*wave(t) relative to COM
@@ -2160,6 +2162,8 @@ function simulate(t) {
     const N = nodeCount + vsEntries.length;
     const G = new Matrix(N);
     const I = new Float64Array(N);
+
+    pendingGStamps.forEach(([n1, n2, g]) => stampG(n1, n2, g));
 
     // Provide a tiny reference to ground for every active node to avoid floating-node singularities
     rootToNode.forEach(n => {
