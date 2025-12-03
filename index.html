@@ -138,20 +138,13 @@
       </div>
     </main>
 
-    <footer class="site-footer" id="contact">
-      <div class="container footer__layout">
-        <div>
-          <h2 data-content="contact.title"></h2>
-          <p data-content="contact.body"></p>
-          <div class="footer__actions" data-contact-actions></div>
-        </div>
-        <div class="footer__meta">
-          <p data-content="contact.meta"></p>
-          <p>&copy; <span id="year"></span> Ka Ming Lui. Built with accessibility and performance in mind.</p>
-        </div>
-      </div>
-      <a class="back-to-top" href="#top">Back to top</a>
-    </footer>
+    <footer
+      class="site-footer"
+      id="contact"
+      data-site-footer
+      data-footer-id="home"
+    ></footer>
+    <script type="module" src="assets/js/site-footer-init.js"></script>
 
     <dialog class="editor-dialog" id="manage-dialog">
       <form method="dialog" class="editor-form" data-form="manage">

@@ -254,27 +254,15 @@
       </div>
     </main>
 
-    <footer class="site-footer">
-      <div class="container footer__layout">
-        <div>
-          <h2>Want to explore more ML demos?</h2>
-          <p>Try the transformer lab or reach out to share your favorite visualization ideas.</p>
-          <div class="footer__actions">
-            <a class="button button--primary" href="../transformer-lab/">Visit Transformer Lab</a>
-            <a class="button button--ghost" href="mailto:contact@kaminglui.com">Email Ka-Ming</a>
-          </div>
-        </div>
-        <div class="footer__meta">
-          <p>Curious how this playground works? Inspect the source on GitHub to tweak the algorithm.</p>
-          <p>&copy; <span id="year"></span> Ka Ming Lui. Built with accessibility and performance in mind.</p>
-        </div>
-      </div>
-      <a class="back-to-top" href="#top">Back to top</a>
-    </footer>
+    <footer
+      class="site-footer"
+      data-site-footer
+      data-footer-id="ml-playground"
+      data-nav-root="../.."
+    ></footer>
 
-    <script type="module">
-      import '../../assets/js/site-header-init.js';
-    </script>
+    <script type="module" src="../../assets/js/site-header-init.js"></script>
+    <script type="module" src="../../assets/js/site-footer-init.js"></script>
     <script type="module" src="../../assets/js/main.js"></script>
     <script type="module" src="../../assets/js/ml-playground.js"></script>
   </body>
