@@ -50,6 +50,8 @@ const BASELINE_NODE_LEAK    = 1e-11;
 const OPAMP_GAIN            = 1e9;
 const OPAMP_INPUT_LEAK      = 1e-15;
 const OPAMP_OUTPUT_LEAK     = 1e-12;
+const FUNCGEN_REF_RES       = 1e9;   // gentle tie from COM to reference
+const FUNCGEN_SERIES_RES    = 1e6;   // tiny source impedance to keep stacks stable
 const PROP_UNITS = {
     R: 'Ω',
     Tol: '%',
@@ -2124,6 +2126,17 @@ function simulate(t) {
                 }
                 return { ac, offset };
             };
+            const refG = 1 / FUNCGEN_REF_RES;
+            const seriesG = 1 / FUNCGEN_SERIES_RES;
+            if (nCom !== -1) {
+                stampG(nCom, -1, refG);
+            }
+            if (nPlus !== -1 && nCom !== -1) {
+                stampG(nPlus, nCom, seriesG);
+            }
+            if (nNeg !== -1 && nCom !== -1) {
+                stampG(nNeg, nCom, seriesG);
+            }
             if (!(nPlus === -1 && nCom === -1)) {
                 // Pin + swings offset + 0.5*Vpp*wave(t) relative to COM
                 vsEntries.push({ comp: c, nPlus, nMinus: nCom, valueFn: () => {
