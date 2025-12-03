@@ -57,6 +57,15 @@ function setupNav() {
       return;
     }
 
+    let closeTimeoutId = null;
+
+    const clearCloseTimeout = () => {
+      if (closeTimeoutId !== null) {
+        window.clearTimeout(closeTimeoutId);
+        closeTimeoutId = null;
+      }
+    };
+
     const instance = {
       wrapper,
       toggle,
@@ -66,11 +75,13 @@ function setupNav() {
         toggle.setAttribute('aria-expanded', 'true');
         wrapper.setAttribute('data-open', 'true');
         menu.hidden = false;
+        clearCloseTimeout();
       },
       close: () => {
         toggle.setAttribute('aria-expanded', 'false');
         wrapper.setAttribute('data-open', 'false');
         menu.hidden = true;
+        clearCloseTimeout();
       }
     };
 
@@ -84,12 +95,18 @@ function setupNav() {
 
     wrapper.addEventListener('pointerenter', () => {
       if (shouldUseClickToggle()) return;
+      clearCloseTimeout();
       openExclusive();
     });
 
     wrapper.addEventListener('pointerleave', () => {
       if (shouldUseClickToggle()) return;
-      instance.close();
+      clearCloseTimeout();
+      closeTimeoutId = window.setTimeout(() => {
+        if (!wrapper.matches(':hover')) {
+          instance.close();
+        }
+      }, 120);
     });
 
     wrapper.addEventListener('focusin', (event) => {
