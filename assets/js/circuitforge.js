@@ -9,7 +9,7 @@ const HISTORY_SIZE = 1200;  // samples in scope history
 const PIN_HIT_RADIUS        = GRID * 0.4;
 const PIN_LEG_LENGTH        = GRID * 0.3;
 const PIN_HEAD_RADIUS       = 2.2;
-const GRID_HOLE_RADIUS      = 1.6;
+const GRID_HOLE_RADIUS      = 2.2;
 const WIRE_HIT_DISTANCE     = 12;
 const WIRE_WIDTH_SELECTED   = 6;
 const WIRE_WIDTH_HOVER      = 3.2;
@@ -2857,9 +2857,19 @@ function resizeCanvas() {
         || canvas.parentElement
         || canvas;
     const rect = shell.getBoundingClientRect();
+    const rootStyle = getComputedStyle(document.documentElement);
+    const bodyStyle = getComputedStyle(document.body);
+    const headerH = parseFloat(rootStyle.getPropertyValue('--header-h')) || 72;
+    const sidebarW = parseFloat(bodyStyle.getPropertyValue('--sidebar-width-current')) || 0;
     const dpr = Math.max(1, Math.floor(window.devicePixelRatio || 1));
-    const cssW = Math.max(1, rect.width);
-    const cssH = Math.max(1, rect.height);
+    let cssW = Math.max(1, rect.width);
+    let cssH = Math.max(1, rect.height);
+
+    // If layout hasn't settled yet (e.g., when hidden or measuring too early), fall back to viewport sizes.
+    if (cssW < 32 || cssH < 32) {
+        cssW = Math.max(1, window.innerWidth - sidebarW);
+        cssH = Math.max(1, window.innerHeight - headerH);
+    }
     const prevCssW = canvasCssWidth || cssW;
     const prevCssH = canvasCssHeight || cssH;
 
@@ -2887,6 +2897,23 @@ function resizeCanvas() {
     }
     clampView();
 
+    // If the viewport center no longer intersects the board (e.g., bad restore), recentre the board.
+    const viewCenterX = (cssW / (2 * zoom)) - viewOffsetX;
+    const viewCenterY = (cssH / (2 * zoom)) - viewOffsetY;
+    const boardMinX = -BOARD_MARGIN;
+    const boardMaxX = BOARD_W + BOARD_MARGIN;
+    const boardMinY = -BOARD_MARGIN;
+    const boardMaxY = BOARD_H + BOARD_MARGIN;
+    const centerOutsideBoard = (
+        viewCenterX < boardMinX || viewCenterX > boardMaxX ||
+        viewCenterY < boardMinY || viewCenterY > boardMaxY
+    );
+    if (centerOutsideBoard) {
+        viewOffsetX = (viewW  / (2 * zoom) - BOARD_W / 2);
+        viewOffsetY = (viewH / (2 * zoom) - BOARD_H / 2);
+        clampView();
+    }
+
     const scopeContainer = document.getElementById('scope-container');
     if (scopeContainer && scopeCanvas) {
         const scopeRect = scopeContainer.getBoundingClientRect();
@@ -2897,6 +2924,10 @@ function resizeCanvas() {
         scopeCanvas.width  = Math.round(scopeCssW * dpr);
         scopeCanvas.height = Math.round(scopeCssH * dpr);
     }
+
+    // Render immediately in case rAF hasn't fired yet (helps with initial load/screenshot).
+    draw();
+    if (scopeMode) drawScope();
 }
 
 function createToolIcon(selector, ComponentClass, setupFn, offsetY = 0) {
@@ -4634,13 +4665,15 @@ function updatePlayPauseButton() {
         : '<i class="fas fa-pause"></i> Pause';
 }
 
+function updateViewLabel() {
+    const label = document.getElementById('view-label');
+    if (!label) return;
+    label.innerText = (viewMode === 'physical') ? 'Breadboard View' : 'Schematic View';
+}
+
 function toggleView() {
     viewMode = (viewMode === 'physical') ? 'schematic' : 'physical';
-    const label = document.getElementById('view-label');
-    if (label) {
-        label.innerText = (viewMode === 'physical') ? 'Breadboard View'
-                                                    : 'Schematic View';
-    }
+    updateViewLabel();
     markStateDirty();
     if (!scopeDisplayMode) scopeDisplayMode = getDefaultScopeMode();
     setScopeOverlayLayout(scopeDisplayMode);
@@ -4738,6 +4771,7 @@ function init() {
     attachScopeControlHandlers();
     syncScopeControls();
     updatePlayPauseButton();
+    updateViewLabel();
     ensureSidebarExpanded();
     resizeCanvas();
     if (canvas && canvas.parentElement && typeof ResizeObserver !== 'undefined') {

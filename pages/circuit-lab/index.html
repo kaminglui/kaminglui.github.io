@@ -30,9 +30,9 @@
             --controls-border: #3a3a3a;
             --controls-hover-bg: #3a3a3a;
             --controls-hover-border: #555;
-            --canvas-bg: #1a1a1a;
-            --board-bg: #020617;
-            --board-hole: #1f2937;
+            --canvas-bg: #111827;
+            --board-bg: #0d172a;
+            --board-hole: #25344a;
             --simbar-bg: #0b0d12;
             --simbar-border: #1f2937;
             --input-bg: #111;
@@ -57,9 +57,9 @@
             --controls-border: #3a3a3a;
             --controls-hover-bg: #3a3a3a;
             --controls-hover-border: #555;
-            --canvas-bg: #1a1a1a;
-            --board-bg: #020617;
-            --board-hole: #1f2937;
+            --canvas-bg: #111827;
+            --board-bg: #0d172a;
+            --board-hole: #25344a;
             --simbar-bg: #0b0d12;
             --simbar-border: #1f2937;
             --input-bg: #111;
@@ -121,6 +121,13 @@
             background: var(--scrollbar-thumb-hover);
         }
         canvas { background-color: var(--canvas-bg); cursor: crosshair; touch-action: none; }
+        #circuitCanvas {
+            background-image:
+                radial-gradient(circle at 10px 10px, var(--board-hole) 1.6px, transparent 0),
+                radial-gradient(circle at 22px 22px, var(--board-hole) 1.6px, transparent 0);
+            background-size: 24px 24px;
+            background-color: var(--board-bg);
+        }
         .sidebar-shell {
             position: relative;
             display: flex;
