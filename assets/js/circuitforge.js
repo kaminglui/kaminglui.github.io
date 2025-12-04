@@ -2047,7 +2047,8 @@ function simulate(t) {
             const raw = pinMap.get(c.id + '_' + i);
             if (raw == null) return;
             const r = find(raw);
-            if (!isMeasurement) {
+            const wired = pinConnected(c, i);
+            if (!isMeasurement && wired) {
                 rootHasPhysics.set(r, true);
             } else if (!rootHasPhysics.has(r)) {
                 rootHasPhysics.set(r, false);
@@ -2104,9 +2105,12 @@ function simulate(t) {
             const valueFn = () => parseUnit(c.props.Vdc || '0');
             vsEntries.push({ comp: c, nPlus, nMinus, valueFn });
         } else if (c instanceof FunctionGenerator) {
-            const nPlus = getNodeIdx(c, 0);
-            const nCom  = getNodeIdx(c, 1);
-            const nNeg  = getNodeIdx(c, 2);
+            const plusUsed = pinConnected(c, 0);
+            const comUsed  = pinConnected(c, 1);
+            const negUsed  = pinConnected(c, 2);
+            const nPlus = plusUsed ? getNodeIdx(c, 0) : -1;
+            const nCom  = (comUsed || plusUsed || negUsed) ? getNodeIdx(c, 1) : -1;
+            const nNeg  = negUsed ? getNodeIdx(c, 2) : -1;
             const waveValue = () => {
                 const Vpp   = parseUnit(c.props.Vpp    || '0');
                 const Freq  = parseUnit(c.props.Freq   || '0');
@@ -2140,18 +2144,14 @@ function simulate(t) {
             }
             if (nPlus !== -1 && nCom !== -1) {
                 pendingGStamps.push([nPlus, nCom, seriesG]);
-            }
-            if (nNeg !== -1 && nCom !== -1) {
-                pendingGStamps.push([nNeg, nCom, seriesG]);
-            }
-            if (!(nPlus === -1 && nCom === -1)) {
                 // Pin + swings offset + 0.5*Vpp*wave(t) relative to COM
                 vsEntries.push({ comp: c, nPlus, nMinus: nCom, valueFn: () => {
                     const { ac, offset } = waveValue();
                     return offset + ac;
                 } });
             }
-            if (!(nNeg === -1 && nCom === -1)) {
+            if (nNeg !== -1 && nCom !== -1) {
+                pendingGStamps.push([nNeg, nCom, seriesG]);
                 // Pin - swings offset - 0.5*Vpp*wave(t) relative to COM
                 vsEntries.push({ comp: c, nPlus: nNeg, nMinus: nCom, valueFn: () => {
                     const { ac, offset } = waveValue();
