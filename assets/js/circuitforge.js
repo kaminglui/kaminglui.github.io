@@ -304,9 +304,9 @@ function formatSignedUnit(num, unit = '') {
 
 // Resistor color code bands: returns array of 4 CSS colors
 function getResColor(val, tol) {
-    const colors = ['#000000', '#8B4513', '#FF0000', '#FFA500',
-                    '#FFFF00', '#00FF00', '#0000FF', '#EE82EE',
-                    '#808080', '#FFFFFF'];
+    const colors = ['#000000', '#512627', '#FF2100', '#D87347',
+                    '#E6C951', '#528F65', '#0F5190', '#6967CE',
+                    '#7D7D7D', '#FFFFFF'];
 
     let ohms = parseUnit(val);
     if (!isFinite(ohms) || ohms <= 0) ohms = 1000; // fallback 1k
@@ -328,16 +328,16 @@ function getResColor(val, tol) {
     // multiplier band
     let multColor = '#000000';
     if (mult >= 0 && mult <= 9) multColor = colors[mult];
-    else if (mult === -1) multColor = '#FFD700'; // gold
-    else if (mult === -2) multColor = '#C0C0C0'; // silver
+    else if (mult === -1) multColor = '#C08327'; // gold
+    else if (mult === -2) multColor = '#BFBEBF'; // silver
     bands.push(multColor);
 
     // tolerance band
     const t = parseFloat(tol);
-    let tolColor = '#d4af37'; // default ~5%
-    if (t === 1)  tolColor = '#8B4513';
-    if (t === 2)  tolColor = '#FF0000';
-    if (t === 10) tolColor = '#C0C0C0';
+    let tolColor = '#C08327'; // default ~5%
+    if (t === 1)  tolColor = '#512627';
+    if (t === 2)  tolColor = '#FF2100';
+    if (t === 10) tolColor = '#BFBEBF';
     bands.push(tolColor);
 
     return bands;
