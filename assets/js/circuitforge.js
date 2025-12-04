@@ -2108,9 +2108,13 @@ function simulate(t) {
             const plusUsed = pinConnected(c, 0);
             const comUsed  = pinConnected(c, 1);
             const negUsed  = pinConnected(c, 2);
+
+            // Nodes: COM can legitimately be the global reference (-1). Preserve it
+            // so the source still stamps when COM is tied to ground.
             const nPlus = plusUsed ? getNodeIdx(c, 0) : -1;
             const nCom  = (comUsed || plusUsed || negUsed) ? getNodeIdx(c, 1) : -1;
             const nNeg  = negUsed ? getNodeIdx(c, 2) : -1;
+
             const waveValue = () => {
                 const Vpp   = parseUnit(c.props.Vpp    || '0');
                 const Freq  = parseUnit(c.props.Freq   || '0');
@@ -2137,22 +2141,24 @@ function simulate(t) {
                 }
                 return { ac, offset };
             };
+
             const refG = 1 / FUNCGEN_REF_RES;
             const seriesG = 1 / FUNCGEN_SERIES_RES;
             if (nCom !== -1) {
                 pendingGStamps.push([nCom, -1, refG]);
             }
-            if (nPlus !== -1 && nCom !== -1) {
+
+            if (nPlus !== -1) {
                 pendingGStamps.push([nPlus, nCom, seriesG]);
-                // Pin + swings offset + 0.5*Vpp*wave(t) relative to COM
+                // Pin + swings offset + 0.5*Vpp*wave(t) relative to COM (or ground)
                 vsEntries.push({ comp: c, nPlus, nMinus: nCom, valueFn: () => {
                     const { ac, offset } = waveValue();
                     return offset + ac;
                 } });
             }
-            if (nNeg !== -1 && nCom !== -1) {
+            if (nNeg !== -1) {
                 pendingGStamps.push([nNeg, nCom, seriesG]);
-                // Pin - swings offset - 0.5*Vpp*wave(t) relative to COM
+                // Pin - swings offset - 0.5*Vpp*wave(t) relative to COM (or ground)
                 vsEntries.push({ comp: c, nPlus: nNeg, nMinus: nCom, valueFn: () => {
                     const { ac, offset } = waveValue();
                     return offset - ac;
