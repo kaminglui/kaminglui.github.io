@@ -6,11 +6,16 @@ const { MNASystem } = require('../MNASystem');
 const { Resistor } = require('../components/Resistor');
 const { VoltageSource } = require('../components/VoltageSource');
 const { IdealOpAmp } = require('../components/IdealOpAmp');
+const { Capacitor } = require('../components/Capacitor');
 
-function solveCircuit(components, baseNodeCount) {
+function solveCircuit(components, baseNodeCount, { dt = null, prevSolution = null } = {}) {
     const system = new MNASystem(baseNodeCount);
+    const context = { dt, prevSolution };
+
     components.forEach((c) => {
-        if (typeof c.stampDC === 'function') {
+        if (typeof c.stampTransient === 'function' && dt !== null) {
+            c.stampTransient(system, context);
+        } else if (typeof c.stampDC === 'function') {
             c.stampDC(system);
         } else if (typeof c.stamp === 'function') {
             c.stamp(system);
@@ -31,6 +36,16 @@ function sampleTimeSeries(times, componentBuilder, baseNodeCount, pickFn) {
     return times.map((t) => {
         const { solution } = solveCircuit(componentBuilder(t), baseNodeCount);
         return pickFn(solution);
+    });
+}
+
+function sampleTransient(times, componentBuilder, baseNodeCount, pickFn) {
+    let prevSolution = null;
+    return times.map((t, idx) => {
+        const dt = idx === 0 ? (times[1] - times[0]) : (times[idx] - times[idx - 1]);
+        const { solution } = solveCircuit(componentBuilder(t, idx, prevSolution), baseNodeCount, { dt, prevSolution });
+        prevSolution = solution;
+        return pickFn(solution, t, idx);
     });
 }
 
@@ -214,6 +229,119 @@ function testDifferenceAmpMultiSine() {
     console.log('Max absolute error vs ideal difference:', maxErr.toExponential(3), 'V');
 }
 
+function testIdealIntegrator() {
+    const R = 10e3;
+    const C = 1e-6;
+    const Vpp = 0.5;
+    const freq = 200;
+    const omega = 2 * Math.PI * freq;
+    const Vpk = Vpp / 2;
+
+    const nodes = { gnd: 0, vin: 1, vneg: 2, vout: 3 };
+    const cap = new Capacitor(nodes.vout, nodes.vneg, C);
+
+    const totalTime = 4 / freq;
+    const dt = 1 / (freq * 800);
+    const times = [];
+    for (let t = 0; t <= totalTime; t += dt) times.push(t);
+
+    const builder = (t) => {
+        const vin = Vpk * Math.sin(omega * t);
+        const opAmp = new IdealOpAmp(nodes.gnd, nodes.vneg, nodes.vout, { A_OL: 1e6 });
+        return [
+            new VoltageSource(nodes.vin, nodes.gnd, vin),
+            new Resistor(nodes.vin, nodes.vneg, R),
+            cap,
+            opAmp
+        ];
+    };
+
+    const pickVout = (solution) => solution[nodes.vout];
+    const outputs = sampleTransient(times, builder, 4, pickVout);
+    const expected = times.map((t) => (Vpk / (R * C * omega)) * Math.cos(omega * t));
+
+    let maxErr = 0;
+    for (let i = 0; i < outputs.length; i += 1) {
+        maxErr = Math.max(maxErr, Math.abs(outputs[i] - expected[i]));
+    }
+    console.log('Integrator max error vs ideal cosine:', maxErr.toExponential(3), 'V');
+}
+
+function testIdealDifferentiator() {
+    const Rf = 10e3;
+    const C = 1e-6;
+    const Vpp = 0.5;
+    const freq = 200;
+    const omega = 2 * Math.PI * freq;
+    const Vpk = Vpp / 2;
+
+    const nodes = { gnd: 0, vin: 1, vneg: 2, vout: 3 };
+    const cap = new Capacitor(nodes.vin, nodes.vneg, C);
+
+    const totalTime = 4 / freq;
+    const dt = 1 / (freq * 800);
+    const times = [];
+    for (let t = 0; t <= totalTime; t += dt) times.push(t);
+
+    const builder = (t) => {
+        const vin = Vpk * Math.sin(omega * t);
+        const opAmp = new IdealOpAmp(nodes.gnd, nodes.vneg, nodes.vout, { A_OL: 1e6 });
+        return [
+            new VoltageSource(nodes.vin, nodes.gnd, vin),
+            cap,
+            new Resistor(nodes.vout, nodes.vneg, Rf),
+            opAmp
+        ];
+    };
+
+    const pickVout = (solution) => solution[nodes.vout];
+    const outputs = sampleTransient(times, builder, 4, pickVout);
+    const expected = times.map((t) => -Rf * C * Vpk * omega * Math.cos(omega * t));
+
+    let maxErr = 0;
+    for (let i = 0; i < outputs.length; i += 1) {
+        maxErr = Math.max(maxErr, Math.abs(outputs[i] - expected[i]));
+    }
+    const vMax = Math.max(...outputs);
+    const vMin = Math.min(...outputs);
+    const vpp = vMax - vMin;
+    const targetVpp = 2 * Rf * C * Vpk * omega;
+    console.log('Differentiator Vpp ≈', vpp.toFixed(4), 'V (target', targetVpp.toFixed(4), 'V)');
+    console.log('Differentiator max error vs ideal derivative:', maxErr.toExponential(3), 'V');
+}
+
+function testComparatorRails() {
+    const nodes = { gnd: 0, vinp: 1, vinm: 2, vout: 3, vplus: 4, vminus: 5 };
+    const rail = 5;
+    const opAmp = new IdealOpAmp(nodes.vinp, nodes.vinm, nodes.vout, {
+        nodeVplus: nodes.vplus,
+        nodeVminus: nodes.vminus,
+        railHeadroom: 0,
+        A_OL: 1e6
+    });
+
+    const cases = [
+        { vp: 0.1, vm: -0.05, label: 'vp > vm' },
+        { vp: -0.2, vm: 0.25, label: 'vp < vm' },
+        { vp: 0.01, vm: 0.01, label: 'vp ≈ vm' }
+    ];
+
+    cases.forEach((scenario) => {
+        const components = [
+            new VoltageSource(nodes.vinp, nodes.gnd, scenario.vp),
+            new VoltageSource(nodes.vinm, nodes.gnd, scenario.vm),
+            new VoltageSource(nodes.vplus, nodes.gnd, rail),
+            new VoltageSource(nodes.vminus, nodes.gnd, 0),
+            opAmp
+        ];
+
+        const { solution } = solveCircuit(components, 6);
+        const clamped = opAmp.applySaturation(solution);
+        const expected = scenario.vp > scenario.vm ? rail : 0;
+        report(`Comparator (${scenario.label})`, expected, clamped);
+    });
+}
+
 function main() {
     console.log('--- IdealOpAmp Harness ---');
     testInvertingAmplifier();
@@ -221,6 +349,9 @@ function main() {
     testSaturation();
     testInvertingSummerMultiSine();
     testDifferenceAmpMultiSine();
+    testIdealIntegrator();
+    testIdealDifferentiator();
+    testComparatorRails();
 }
 
 if (require.main === module) {
@@ -233,5 +364,8 @@ module.exports = {
     testSaturation,
     testInvertingSummerMultiSine,
     testDifferenceAmpMultiSine,
+    testIdealIntegrator,
+    testIdealDifferentiator,
+    testComparatorRails,
     solveCircuit
 };

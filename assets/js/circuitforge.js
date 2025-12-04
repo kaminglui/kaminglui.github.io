@@ -128,6 +128,9 @@ let autosaveTimer = null;
 let isRestoringState = false;
 let currentSwitchType = DEFAULT_SWITCH_TYPE;
 let templatePlacementCount = 0;
+let activeTemplatePlacement = null; // { template, origin }
+let templatePreviewOrigin = null;
+let lastMouseWorld = { x: 0, y: 0 };
 let touchSelectionTimer = null;
 let touchDeleteTimer = null;
 let touchHoldStart = null;
@@ -2860,6 +2863,52 @@ function drawWires() {
     }
 }
 
+function drawTemplatePreview() {
+    if (!activeTemplatePlacement || !templatePreviewOrigin) return;
+    const template = activeTemplatePlacement.template;
+    const origin = templatePreviewOrigin;
+    const center = getTemplateCenter(template);
+    const idMap = new Map();
+
+    const tempComponents = (template.components || []).map((def) => {
+        const Ctor = TOOL_COMPONENTS[def.type];
+        if (!Ctor) return null;
+        const c = new Ctor(origin.x + ((def.x || 0) - center.x), origin.y + ((def.y || 0) - center.y));
+        c.props = { ...c.props, ...(def.props || {}) };
+        c.rotation = def.rotation ?? 0;
+        c.mirrorX = !!def.mirrorX;
+        if (def.id) idMap.set(def.id, c);
+        return c;
+    }).filter(Boolean);
+
+    const tempWires = (template.wires || []).map((wire) => {
+        const fromComp = idMap.get(wire?.from?.id);
+        const toComp = idMap.get(wire?.to?.id);
+        if (!fromComp || !toComp) return null;
+        const mid = (wire.vertices || []).map(v => ({
+            x: origin.x + ((v?.x || 0) - center.x),
+            y: origin.y + ((v?.y || 0) - center.y)
+        }));
+        return {
+            from: { c: fromComp, p: wire.from?.pin },
+            to: { c: toComp, p: wire.to?.pin },
+            vertices: mid
+        };
+    }).filter(Boolean);
+
+    ctx.save();
+    ctx.globalAlpha = 0.35;
+    tempWires.forEach(w => {
+        const pts = getWirePolyline(w);
+        drawWirePolyline(pts, '#93c5fd', WIRE_WIDTH_DEFAULT, true);
+    });
+    tempComponents.forEach(c => c.draw(ctx, viewMode));
+    tempComponents.forEach(c => {
+        if (typeof c.drawLabels === 'function') c.drawLabels(ctx, viewMode);
+    });
+    ctx.restore();
+}
+
 function draw() {
     if (!ctx || !canvas) return;
     ctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -2877,6 +2926,7 @@ function draw() {
             c.drawLabels(ctx, viewMode);
         }
     });
+    drawTemplatePreview();
 
     // selection marquee
     if (selectionBox) {
@@ -3207,6 +3257,7 @@ function ensureSidebarExpanded() {
 
 // Tool selection (resistor, capacitor, funcGen, etc.)
 function clearToolSelection() {
+    clearTemplatePlacement();
     currentTool = null;
     document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
 }
@@ -3216,6 +3267,7 @@ function selectTool(type, btn) {
         clearToolSelection();
         return;
     }
+    clearTemplatePlacement();
     currentTool = type;
 
     document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
@@ -3658,6 +3710,28 @@ function getTemplateLibrary() {
     return [];
 }
 
+function getTemplateBounds(template) {
+    const comps = template?.components || [];
+    if (!comps.length) {
+        return { x1: 0, y1: 0, x2: 0, y2: 0 };
+    }
+    let x1 = Infinity, y1 = Infinity, x2 = -Infinity, y2 = -Infinity;
+    comps.forEach((c) => {
+        const cx = c?.x || 0;
+        const cy = c?.y || 0;
+        x1 = Math.min(x1, cx);
+        y1 = Math.min(y1, cy);
+        x2 = Math.max(x2, cx);
+        y2 = Math.max(y2, cy);
+    });
+    return { x1, y1, x2, y2 };
+}
+
+function getTemplateCenter(template) {
+    const b = getTemplateBounds(template);
+    return { x: (b.x1 + b.x2) / 2, y: (b.y1 + b.y2) / 2 };
+}
+
 function getTemplateOrigin() {
     if (!canvas) return { x: 0, y: 0 };
     const rect = canvas.getBoundingClientRect();
@@ -3674,19 +3748,19 @@ function getTemplateOrigin() {
     return origin;
 }
 
-function applyTemplate(name) {
-    if (!canvas) return;
-    const template = getTemplateLibrary().find(t => t.id === name);
-    if (!template) return;
-    const origin = getTemplateOrigin();
+function placeTemplate(template, origin) {
+    if (!canvas || !template) return [];
+    const center = getTemplateCenter(template);
     const created = [];
     const idMap = new Map();
 
     (template.components || []).forEach(def => {
         const Ctor = TOOL_COMPONENTS[def.type];
         if (!Ctor) return;
-        const c = new Ctor(origin.x + (def.x || 0), origin.y + (def.y || 0));
+        const c = new Ctor(origin.x + ((def.x || 0) - center.x), origin.y + ((def.y || 0) - center.y));
         c.props = { ...c.props, ...(def.props || {}) };
+        c.rotation = def.rotation ?? 0;
+        c.mirrorX = !!def.mirrorX;
         if (c instanceof Switch) {
             c.applyType(currentSwitchType, true);
         }
@@ -3703,8 +3777,8 @@ function applyTemplate(name) {
         if (!fromComp || !toComp || typeof fromPin !== 'number' || typeof toPin !== 'number') return;
 
         const mid = (wire.vertices || []).map(v => ({
-            x: origin.x + (v?.x || 0),
-            y: origin.y + (v?.y || 0)
+            x: origin.x + ((v?.x || 0) - center.x),
+            y: origin.y + ((v?.y || 0) - center.y)
         }));
         const verts = buildWireVertices({ c: fromComp, p: fromPin }, mid, { c: toComp, p: toPin }) || [];
         wires.push({ from: { c: fromComp, p: fromPin }, to: { c: toComp, p: toPin }, vertices: verts, v: 0 });
@@ -3718,6 +3792,33 @@ function applyTemplate(name) {
     cleanupJunctions();
     markStateDirty();
     updateProps();
+    return created;
+}
+
+function applyTemplate(name, origin = getTemplateOrigin()) {
+    const template = getTemplateLibrary().find(t => t.id === name);
+    if (!template) return;
+    placeTemplate(template, origin);
+}
+
+function queueTemplatePlacement(template) {
+    if (!template) return;
+    const fallback = getTemplateOrigin();
+    const base = (lastMouseWorld.x === 0 && lastMouseWorld.y === 0) ? fallback : lastMouseWorld;
+    activeTemplatePlacement = { template };
+    templatePreviewOrigin = snapToBoardPoint(base.x, base.y);
+    currentTool = null;
+    selectionGroup = [];
+    selectedComponent = null;
+    selectedWire = null;
+    activeWire = null;
+    markStateDirty();
+}
+
+function clearTemplatePlacement() {
+    activeTemplatePlacement = null;
+    templatePreviewOrigin = null;
+    markStateDirty();
 }
 
 function renderTemplateButtons() {
@@ -3736,7 +3837,7 @@ function renderTemplateButtons() {
     templates.forEach(t => {
         const btn = document.createElement('button');
         btn.className = 'tool-btn p-3 rounded flex flex-col items-center justify-center gap-2 text-center';
-        btn.onclick = () => applyTemplate(t.id);
+        btn.onclick = () => queueTemplatePlacement(t);
 
         const icon = document.createElement('i');
         icon.className = t.icon || 'fas fa-microchip text-blue-200';
@@ -4136,6 +4237,8 @@ function onDown(e) {
             clearToolSelection();
         } else if (activeWire) {
             activeWire = null;
+        } else if (activeTemplatePlacement) {
+            clearTemplatePlacement();
         }
         pendingComponentDrag = null;
         draggingComponent = null;
@@ -4151,6 +4254,14 @@ function onDown(e) {
     let compHit = false;
     for (const c of components) {
         if (c.isInside(m.x, m.y)) { compHit = true; break; }
+    }
+
+    // Start placing a template where the cursor is
+    if (activeTemplatePlacement && button === 0) {
+        const snap = snapToBoardPoint(m.x, m.y);
+        placeTemplate(activeTemplatePlacement.template, snap);
+        clearTemplatePlacement();
+        return;
     }
 
     // start selection marquee if empty area and not wiring/dragging
@@ -4330,6 +4441,14 @@ function onMove(e) {
         e.preventDefault();
     }
     const m = canvasPoint(e);
+    lastMouseWorld = m;
+    if (activeTemplatePlacement) {
+        const snap = snapToBoardPoint(m.x, m.y);
+        if (!templatePreviewOrigin || snap.x !== templatePreviewOrigin.x || snap.y !== templatePreviewOrigin.y) {
+            templatePreviewOrigin = snap;
+            markStateDirty();
+        }
+    }
 
     if (touchHoldStart) {
         const dist = Math.hypot(m.x - touchHoldStart.x, m.y - touchHoldStart.y);
