@@ -58,7 +58,7 @@ const FUNCGEN_REF_RES       = 1;     // tie COM solidly to reference
 const FUNCGEN_SERIES_RES    = 1;     // tiny source impedance to keep stacks stable
 const PROP_UNITS = {
     R: 'Ω',
-    Tol: '%',
+    Tolerance: '%',
     C: 'F',
     Vf: 'V',
     If: 'A',
@@ -73,7 +73,7 @@ const PROP_UNITS = {
     Vpp: 'Vpp',
     Freq: 'Hz',
     Offset: 'V',
-    Phase: 'deg',
+    Phase: '°',
     Turn: '%',
     TimeDiv: 's/div',
     VDiv1: 'V/div',
@@ -303,7 +303,7 @@ function formatSignedUnit(num, unit = '') {
 }
 
 // Resistor color code bands: returns array of 4 CSS colors
-function getResColor(val, tol) {
+function getResColor(val, Tolerance) {
     const colors = ['#000000', '#512627', '#FF2100', '#D87347',
                     '#E6C951', '#528F65', '#0F5190', '#6967CE',
                     '#7D7D7D', '#FFFFFF'];
@@ -333,7 +333,7 @@ function getResColor(val, tol) {
     bands.push(multColor);
 
     // tolerance band
-    const t = parseFloat(tol);
+    const t = parseFloat(Tolerance);
     let tolColor = '#C08327'; // default ~5%
     if (t === 1)  tolColor = '#512627';
     if (t === 2)  tolColor = '#FF2100';
@@ -575,7 +575,7 @@ class Resistor extends Component {
         this.pins = [{ x: -40, y: 0 }, { x: 40, y: 0 }];
         this.w = 90;
         this.h = 16;
-        this.props = { R: '10k', Tol: '5' };
+        this.props = { R: '10k', Tolerance: '5' };
     }
 
     drawSym(ctx) {
@@ -606,7 +606,7 @@ class Resistor extends Component {
         ctx.fillStyle = g;
         ctx.fillRect(-22, -7, 44, 14);
 
-        const bands = getResColor(this.props.R, this.props.Tol);
+        const bands = getResColor(this.props.R, this.props.Tolerance);
         bands.forEach((c, i) => {
             ctx.fillStyle = c;
             ctx.fillRect(-18 + i * 8, -7, 4, 14);
