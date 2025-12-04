@@ -50,8 +50,12 @@ const BASELINE_NODE_LEAK    = 1e-11;
 const OPAMP_GAIN            = 1e9;
 const OPAMP_INPUT_LEAK      = 1e-15;
 const OPAMP_OUTPUT_LEAK     = 1e-12;
-const FUNCGEN_REF_RES       = 1e9;   // gentle tie from COM to reference
-const FUNCGEN_SERIES_RES    = 1e6;   // tiny source impedance to keep stacks stable
+// A bench function generator normally references its output to chassis/ground.
+// Keep COM near ground with a low impedance so “floating” hookups (COM not
+// explicitly wired) still deliver the configured amplitude instead of letting
+// the COM node wander and steal half the signal.
+const FUNCGEN_REF_RES       = 1;     // tie COM solidly to reference
+const FUNCGEN_SERIES_RES    = 1;     // tiny source impedance to keep stacks stable
 const PROP_UNITS = {
     R: 'Ω',
     Tol: '%',
@@ -2043,7 +2047,8 @@ function simulate(t) {
             const raw = pinMap.get(c.id + '_' + i);
             if (raw == null) return;
             const r = find(raw);
-            if (!isMeasurement) {
+            const wired = pinConnected(c, i);
+            if (!isMeasurement && wired) {
                 rootHasPhysics.set(r, true);
             } else if (!rootHasPhysics.has(r)) {
                 rootHasPhysics.set(r, false);
@@ -2090,6 +2095,7 @@ function simulate(t) {
     // Only keep a source if it touches at least one real node; otherwise the MNA row would be empty.
     const vsEntries = [];
     const pendingGStamps = [];
+    const opAmpEntries = [];
 
     components.forEach(c => {
         if (c instanceof VoltageSource) {
@@ -2099,9 +2105,12 @@ function simulate(t) {
             const valueFn = () => parseUnit(c.props.Vdc || '0');
             vsEntries.push({ comp: c, nPlus, nMinus, valueFn });
         } else if (c instanceof FunctionGenerator) {
-            const nPlus = getNodeIdx(c, 0);
-            const nCom  = getNodeIdx(c, 1);
-            const nNeg  = getNodeIdx(c, 2);
+            const plusUsed = pinConnected(c, 0);
+            const comUsed  = pinConnected(c, 1);
+            const negUsed  = pinConnected(c, 2);
+            const nPlus = plusUsed ? getNodeIdx(c, 0) : -1;
+            const nCom  = (comUsed || plusUsed || negUsed) ? getNodeIdx(c, 1) : -1;
+            const nNeg  = negUsed ? getNodeIdx(c, 2) : -1;
             const waveValue = () => {
                 const Vpp   = parseUnit(c.props.Vpp    || '0');
                 const Freq  = parseUnit(c.props.Freq   || '0');
@@ -2135,18 +2144,14 @@ function simulate(t) {
             }
             if (nPlus !== -1 && nCom !== -1) {
                 pendingGStamps.push([nPlus, nCom, seriesG]);
-            }
-            if (nNeg !== -1 && nCom !== -1) {
-                pendingGStamps.push([nNeg, nCom, seriesG]);
-            }
-            if (!(nPlus === -1 && nCom === -1)) {
                 // Pin + swings offset + 0.5*Vpp*wave(t) relative to COM
                 vsEntries.push({ comp: c, nPlus, nMinus: nCom, valueFn: () => {
                     const { ac, offset } = waveValue();
                     return offset + ac;
                 } });
             }
-            if (!(nNeg === -1 && nCom === -1)) {
+            if (nNeg !== -1 && nCom !== -1) {
+                pendingGStamps.push([nNeg, nCom, seriesG]);
                 // Pin - swings offset - 0.5*Vpp*wave(t) relative to COM
                 vsEntries.push({ comp: c, nPlus: nNeg, nMinus: nCom, valueFn: () => {
                     const { ac, offset } = waveValue();
@@ -2155,11 +2160,26 @@ function simulate(t) {
             }
         }
     });
+
+    // ---- Collect op-amp control equations (each half of LF412) ----
+    components.forEach(c => {
+        if (!(c instanceof LF412)) return;
+        const halves = [
+            { nOut: getNodeIdx(c, 0), nInv: getNodeIdx(c, 1), nNon: getNodeIdx(c, 2) },
+            { nOut: getNodeIdx(c, 6), nInv: getNodeIdx(c, 5), nNon: getNodeIdx(c, 4) }
+        ];
+        halves.forEach((h) => {
+            const { nOut, nInv, nNon } = h;
+            if (nOut === -1 && nInv === -1 && nNon === -1) return;
+            opAmpEntries.push(h);
+        });
+    });
     // Quick sim sanity check (manual): tie FunctionGenerator COM to Ground,
     // place a resistor from pin + to ground, and probe pin + with the scope.
     // Expect offset + 0.5*Vpp wave(t) as configured.
 
-    const N = nodeCount + vsEntries.length;
+    const opAmpOffset = nodeCount + vsEntries.length;
+    const N = opAmpOffset + opAmpEntries.length;
     const G = new Matrix(N);
     const I = new Float64Array(N);
 
@@ -2185,6 +2205,20 @@ function simulate(t) {
     function stampI(n, iVal) {
         if (!iVal) return;
         if (n !== -1) I[n] += iVal;
+    }
+
+    function stampVCVS(nOut, nRef, nPos, nNeg, row) {
+        // Equation: (vOut - vRef) - gain * (vPos - vNeg) = 0
+        if (nOut !== -1) G.add(nOut, row, 1);
+        if (nRef !== -1) G.add(nRef, row, -1);
+
+        if (nOut !== -1) G.add(row, nOut, 1);
+        if (nRef !== -1) G.add(row, nRef, -1);
+        if (nPos !== -1) G.add(row, nPos, -OPAMP_GAIN);
+        if (nNeg !== -1) G.add(row, nNeg,  OPAMP_GAIN);
+
+        // keep the auxiliary row pivotable
+        G.add(row, row, 1e-9);
     }
 
     // ---- Stamp passive, MOSFET, op-amp, etc. (node block only) ----
@@ -2312,31 +2346,22 @@ function simulate(t) {
             stampG(nD, nS, gLeak);
         }
         else if (c instanceof LF412) {
-            const gain = OPAMP_GAIN;
-            function stampOpAmpHalf(pNon, pInv, pOut) {
-                const nNon = getNodeIdx(c, pNon);
-                const nInv = getNodeIdx(c, pInv);
-                const nOut = getNodeIdx(c, pOut);
-                if (nOut === -1 && nNon === -1 && nInv === -1) return;
-                if (nOut === -1) {
-                    if (nNon !== -1) stampG(nNon, -1, OPAMP_INPUT_LEAK);
-                    if (nInv !== -1) stampG(nInv, -1, OPAMP_INPUT_LEAK);
-                    return;
-                }
-                if (nNon !== -1) {
-                    G.add(nOut, nNon, -gain);
-                    stampG(nNon, -1, OPAMP_INPUT_LEAK);
-                }
-                if (nInv !== -1) {
-                    G.add(nOut, nInv,  gain);
-                    stampG(nInv, -1, OPAMP_INPUT_LEAK);
-                }
-                G.add(nOut, nOut, 1.0);
-                stampG(nOut, -1, OPAMP_OUTPUT_LEAK);
-            }
-            stampOpAmpHalf(2, 1, 0); // 1IN+, 1IN-, 1OUT
-            stampOpAmpHalf(4, 5, 6); // 2IN+, 2IN-, 2OUT
+            // Op-amp halves are stamped separately after this loop using a
+            // proper VCVS formulation with an auxiliary variable per output.
+            // Input/output leakages are still handled there.
         }
+    });
+
+    // ---- Stamp op-amp VCVS constraints ----
+    opAmpEntries.forEach((entry, idx) => {
+        const row = opAmpOffset + idx;
+        const { nOut, nInv, nNon } = entry;
+
+        if (nNon !== -1) stampG(nNon, -1, OPAMP_INPUT_LEAK);
+        if (nInv !== -1) stampG(nInv, -1, OPAMP_INPUT_LEAK);
+        if (nOut !== -1) stampG(nOut, -1, OPAMP_OUTPUT_LEAK);
+
+        stampVCVS(nOut, -1, nNon, nInv, row);
     });
 
     // ---- Stamp independent voltage sources (DC + Function Generator) ----
