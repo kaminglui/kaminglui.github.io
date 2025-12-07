@@ -20,6 +20,7 @@ import {
     resetIdRegistry as resetIdRegistryState
 } from './sim/utils/idGenerator.js';
 import { listTemplates, loadTemplate } from './circuit-lab/templateRegistry.js';
+import { solveCircuitWasm, updateCircuitState } from './sim/wasmInterface.js';
 
 /* === CONFIG === */
 // Grid + time-step config
@@ -144,6 +145,7 @@ let wires      = [];
 let time       = 0;
 let isPaused   = true;
 let simError   = null;
+let warnedNoSources = false;
 
 let selectedComponent = null;
 let selectedWire      = null;
@@ -665,18 +667,43 @@ const Oscilloscope = createOscilloscope(componentFactoryContext);
 
 /* ---------- SIMULATION CORE (MNA) ---------- */
 
+function checkSimReadiness() {
+    if (!components.length) return { ok: true };
+
+    const hasReferenceCandidate = components.some(c =>
+        c instanceof Ground || c instanceof VoltageSource || c instanceof FunctionGenerator
+    );
+    if (!hasReferenceCandidate) {
+        return { ok: false, message: 'Add a Ground or tie a source reference before running simulation.' };
+    }
+
+    const hasSource = components.some(c =>
+        c instanceof VoltageSource || c instanceof FunctionGenerator
+    );
+    if (!hasSource && !warnedNoSources) {
+        console.warn('Circuit Forge: no sources detected; simulation will stay at 0V until a source is added.');
+        warnedNoSources = true;
+    } else if (hasSource) {
+        warnedNoSources = false;
+    }
+
+    return { ok: true };
+}
+
 function simulate(t) {
     if (!components.length) {
         simError = null;
         return;
     }
 
-    if (typeof CircuitSim === 'undefined' || typeof CircuitSim.runSimulation !== 'function') {
+    if (typeof solveCircuitWasm !== 'function' || typeof updateCircuitState !== 'function') {
         simError = 'Simulation core not available';
+        isPaused = true;
+        updatePlayPauseButton();
         return;
     }
 
-    const result = CircuitSim.runSimulation({
+    const result = solveCircuitWasm({
         components,
         wires,
         time: t,
@@ -693,6 +720,7 @@ function simulate(t) {
     });
 
     if (result.error) {
+        console.warn('Simulation halted:', result.error);
         simError = result.error;
         isPaused = true;
         updatePlayPauseButton();
@@ -702,7 +730,7 @@ function simulate(t) {
     const sol = result.solution || [];
     const getNodeIdx = result.getNodeIndex || (() => -1);
 
-    CircuitSim.updateComponentState({
+    updateCircuitState({
         components,
         solution: sol,
         getNodeIndex: getNodeIdx,
@@ -2250,6 +2278,7 @@ function saveStateToLocalStorage() {
 
 function markStateDirty() {
     if (isRestoringState) return;
+    warnedNoSources = false;
     if (autosaveTimer) clearTimeout(autosaveTimer);
     autosaveTimer = setTimeout(saveStateToLocalStorage, AUTOSAVE_DELAY_MS);
 }
@@ -3297,6 +3326,7 @@ function clearCanvas() {
     components = [];
     wires      = [];
     simError   = null;
+    warnedNoSources = false;
     setSelectedComponent(null);
     selectedWire      = null;
     activeWire        = null;
@@ -3316,16 +3346,47 @@ function clearCanvas() {
 
 /* ---------- MAIN LOOP & INIT ---------- */
 
-function loop() {
-    if (!isPaused) {
-        for (let s = 0; s < SUB_STEPS; s++) {
-            time += DT;
-            simulate(time);
-            if (simError) break;
-        }
+function reportInitError(message) {
+    console.error(message);
+    let banner = document.getElementById('circuit-lab-init-error');
+    if (!banner) {
+        banner = document.createElement('div');
+        banner.id = 'circuit-lab-init-error';
+        banner.style.position = 'fixed';
+        banner.style.top = '0';
+        banner.style.left = '0';
+        banner.style.right = '0';
+        banner.style.zIndex = '1400';
+        banner.style.padding = '12px 16px';
+        banner.style.background = 'rgba(185, 28, 28, 0.92)';
+        banner.style.color = '#fff';
+        banner.style.fontWeight = '600';
+        banner.style.textAlign = 'center';
+        banner.style.fontFamily = 'Inter, system-ui, sans-serif';
+        banner.style.boxShadow = '0 8px 20px rgba(0,0,0,0.35)';
+        document.body.appendChild(banner);
     }
-    draw();
-    if (scopeMode) drawScope();
+    banner.textContent = message;
+}
+  
+  function loop() {
+      if (!isPaused) {
+          const readiness = checkSimReadiness();
+          if (!readiness.ok) {
+              simError = readiness.message;
+              isPaused = true;
+              updatePlayPauseButton();
+          } else {
+              simError = null;
+              for (let s = 0; s < SUB_STEPS; s++) {
+                  time += DT;
+                  simulate(time);
+                  if (simError) break;
+              }
+          }
+      }
+      draw();
+      if (scopeMode) drawScope();
 
     const simTimeEl = document.getElementById('sim-time');
     const statusEl  = document.getElementById('sim-status');
@@ -3334,24 +3395,43 @@ function loop() {
                                                   : (isPaused ? 'PAUSED' : 'RUNNING');
 
     requestAnimationFrame(loop);
-}
+  }
+  
+  function init() {
+      if (initRan) return;
+  
+      canvas = document.getElementById('circuitCanvas');
+      if (!canvas) {
+          reportInitError('Circuit canvas (#circuitCanvas) not found; Circuit Forge cannot start.');
+          return;
+      }
+      ctx = canvas.getContext('2d');
+      if (!ctx) {
+          reportInitError('2D context unavailable for #circuitCanvas; is the browser canvas API disabled?');
+          return;
+      }
+      scopeCanvas = document.getElementById('scopeCanvas');
+      scopeCtx = scopeCanvas ? scopeCanvas.getContext('2d') : null;
+      if (!scopeCanvas) {
+          console.warn('Scope canvas not found; oscilloscope overlay disabled.');
+      } else if (!scopeCtx) {
+          console.warn('Scope canvas context unavailable; oscilloscope overlay disabled.');
+      }
 
-function init() {
-    if (initRan) return;
-    initRan = true;
+      initRan = true;
 
-    canvas = document.getElementById('circuitCanvas');
-    if (!canvas) {
-        console.error('circuitCanvas not found; aborting simulator init.');
-        return;
-    }
-    ctx = canvas.getContext('2d');
-    scopeCanvas = document.getElementById('scopeCanvas');
-    scopeCtx = scopeCanvas ? scopeCanvas.getContext('2d') : null;
-
-    updateBoardThemeColors();
-
-    window.addEventListener('resize', resize);
+      const sidebar = document.getElementById('sidebar');
+      if (!sidebar) {
+          console.warn('Sidebar container (#sidebar) not found; component palette will not render.');
+      }
+      const simBar = document.getElementById('sim-bar');
+      if (!simBar) {
+          console.warn('Simulation bar (#sim-bar) not found; transport controls may be missing.');
+      }
+  
+      updateBoardThemeColors();
+  
+      window.addEventListener('resize', resize);
     window.addEventListener('orientationchange', resize);
     if (window.visualViewport) {
         window.visualViewport.addEventListener('resize', resize);
@@ -3426,9 +3506,18 @@ Object.assign(window, circuitForgeApi, {
     Oscilloscope
 });
 
+function startCircuitForge() {
+    try {
+        init();
+    } catch (err) {
+        reportInitError(`Circuit Forge failed to start: ${err?.message || err}`);
+        console.error(err);
+    }
+}
+
 // Start it
 if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', init);
+    document.addEventListener('DOMContentLoaded', startCircuitForge);
 } else {
-    init();
+    startCircuitForge();
 }
