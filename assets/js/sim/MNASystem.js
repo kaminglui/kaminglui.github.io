@@ -4,7 +4,7 @@
  * Responsibility:
  * - Maintain a conductance matrix G and RHS vector b.
  * - Allow dynamic growth for auxiliary variables (e.g., voltage sources, VCVS).
- * - Provide a simple Gaussian elimination solver for small educational circuits.
+ * - Provide a Gaussian elimination solver with singularity detection.
  *
  * This module is intentionally UI-free and can be reused by any simulation host.
  */
@@ -13,8 +13,11 @@ class MNASystem {
         this.size = Math.max(1, baseNodeCount);
         this.G = Array.from({ length: this.size }, () => Array(this.size).fill(0));
         this.b = Array(this.size).fill(0);
-        // Anchor the reference node (index 0) at 0 V to avoid singular systems.
-        this.G[0][0] = 1;
+        this.anchorReference();
+    }
+
+    anchorReference() {
+        if (this.G[0]) this.G[0][0] = 1;
     }
 
     /**
@@ -34,6 +37,7 @@ class MNASystem {
             this.G.push(Array(this.size).fill(0));
             this.b.push(0);
         }
+        this.anchorReference();
     }
 
     /**
@@ -66,35 +70,43 @@ class MNASystem {
 
     /**
      * Solve the linear system G * x = b using partial pivoting.
-     * This is sufficient for the small matrices used in the demo harness.
+     * Returns both the solution vector and a singularity flag.
      */
-    solve() {
+    solveWithStatus() {
         const n = this.size;
         const A = this.G.map((row) => row.slice());
         const rhs = this.b.slice();
+        const EPS = 1e-12;
+        let singular = false;
 
         for (let k = 0; k < n; k += 1) {
             let pivot = k;
+            let pivotVal = Math.abs(A[k][k]);
             for (let i = k + 1; i < n; i += 1) {
-                if (Math.abs(A[i][k]) > Math.abs(A[pivot][k])) pivot = i;
+                const val = Math.abs(A[i][k]);
+                if (val > pivotVal) {
+                    pivotVal = val;
+                    pivot = i;
+                }
             }
-            if (Math.abs(A[pivot][k]) < 1e-18) {
-                throw new Error(`Singular matrix encountered at pivot ${k}`);
+            if (pivotVal < EPS) {
+                singular = true;
+                break;
             }
             if (pivot !== k) {
                 [A[k], A[pivot]] = [A[pivot], A[k]];
                 [rhs[k], rhs[pivot]] = [rhs[pivot], rhs[k]];
             }
 
-            const pivotVal = A[k][k];
+            const pivotValue = A[k][k];
             for (let j = k; j < n; j += 1) {
-                A[k][j] /= pivotVal;
+                A[k][j] /= pivotValue;
             }
-            rhs[k] /= pivotVal;
+            rhs[k] /= pivotValue;
 
             for (let i = k + 1; i < n; i += 1) {
                 const factor = A[i][k];
-                if (factor === 0) continue;
+                if (!factor) continue;
                 for (let j = k; j < n; j += 1) {
                     A[i][j] -= factor * A[k][j];
                 }
@@ -103,15 +115,29 @@ class MNASystem {
         }
 
         const x = Array(n).fill(0);
-        for (let i = n - 1; i >= 0; i -= 1) {
-            let sum = rhs[i];
-            for (let j = i + 1; j < n; j += 1) {
-                sum -= A[i][j] * x[j];
+        if (!singular) {
+            for (let i = n - 1; i >= 0; i -= 1) {
+                let sum = rhs[i];
+                for (let j = i + 1; j < n; j += 1) {
+                    sum -= A[i][j] * x[j];
+                }
+                const pivot = A[i][i];
+                x[i] = Math.abs(pivot) < EPS ? 0 : sum / pivot;
+                if (!Number.isFinite(x[i])) x[i] = 0;
             }
-            x[i] = sum;
         }
-        return x;
+
+        return { solution: x, singular };
+    }
+
+    /**
+     * Legacy convenience wrapper returning only the solution vector.
+     */
+    solve() {
+        const { solution } = this.solveWithStatus();
+        return solution;
     }
 }
 
-module.exports = { MNASystem };
+export { MNASystem };
+export default { MNASystem };

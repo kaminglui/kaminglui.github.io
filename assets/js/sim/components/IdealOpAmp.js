@@ -1,141 +1,65 @@
 /**
- * Ideal operational amplifier modeled as a Voltage-Controlled Voltage Source (VCVS).
- *
- * Core assumptions:
- * - Infinite input impedance (no input currents), zero output impedance.
- * - Large but finite open-loop gain A_OL to keep matrices well-conditioned.
- * - Stamped as a VCVS in Modified Nodal Analysis: (vOut - vRef) = A_OL (v+ - v-).
- *
- * Optional non-ideal behaviors (disabled by default):
- * - Supply rails + headroom for a simple post-solve saturation clamp.
- * - Hooks for finite bandwidth and slew-rate limiting for future extension.
+ * Ideal operational amplifier modeled as a VCVS with optional rail clamping.
  */
 class IdealOpAmp {
-    constructor(nodePos, nodeNeg, nodeOut, {
-        nodeVplus = null,
-        nodeVminus = null,
-        nodeOutRef = 0,
-        A_OL = 1e6,
-        railHeadroom = 0,
-        finiteBandwidth = false,
-        unityGainFreq = null,
-        finiteSlew = false,
-        slewRate = null
-    } = {}) {
-        this.nodePos = nodePos;
-        this.nodeNeg = nodeNeg;
-        this.nodeOut = nodeOut;
-        this.nodeOutRef = nodeOutRef;
-        this.nodeVplus = nodeVplus;
-        this.nodeVminus = nodeVminus;
-        this.A_OL = A_OL;
-        this.railHeadroom = railHeadroom;
-        this.finiteBandwidth = finiteBandwidth;
-        this.unityGainFreq = unityGainFreq;
-        this.finiteSlew = finiteSlew;
-        this.slewRate = slewRate;
-
-        this.lastOutput = null;
+    constructor({
+        nOut,
+        nInv,
+        nNon,
+        nVPlus = null,
+        nVMinus = null,
+        gain = 1e6,
+        inputLeak = 0,
+        outputLeak = 0,
+        headroom = 0,
+        maxOutputClamp = 100,
+        mapNode
+    }) {
+        this.nOut = nOut;
+        this.nInv = nInv;
+        this.nNon = nNon;
+        this.nVPlus = nVPlus;
+        this.nVMinus = nVMinus;
+        this.gain = gain;
+        this.inputLeak = inputLeak;
+        this.outputLeak = outputLeak;
+        this.headroom = headroom;
+        this.maxOutputClamp = maxOutputClamp;
+        this.mapNode = mapNode;
     }
 
-    /**
-     * Stamp for DC analysis (linear, memoryless).
-     */
-    stampDC(system) {
-        this.stampLinear(system);
+    stamp(stamps) {
+        if (this.nNon !== -1) stamps.stampConductance(this.nNon, -1, this.inputLeak);
+        if (this.nInv !== -1) stamps.stampConductance(this.nInv, -1, this.inputLeak);
+        if (this.nOut !== -1) stamps.stampConductance(this.nOut, -1, this.outputLeak);
+        stamps.stampVCVS(this.nOut, -1, this.nNon, this.nInv, this.gain);
     }
 
-    /**
-     * Stamp for AC analysis. Bandwidth hooks can later convert unityGainFreq
-     * into a small-signal pole; currently this is purely ideal.
-     */
-    stampAC(system, _omega) {
-        this.stampLinear(system);
-    }
+    clampOutput(systemSolution) {
+        if (this.nOut == null || this.nOut === -1) return;
+        const nodeVoltage = (node) => {
+            if (node == null || node === -1) return 0;
+            const idx = this.mapNode(node);
+            return systemSolution?.[idx] ?? 0;
+        };
 
-    /**
-     * Common linear stamp: VCVS modeled with an auxiliary variable.
-     *
-     * Equation: (vOut - vRef) - A_OL * (vPos - vNeg) = 0
-     */
-    stampLinear(system) {
-        const k = system.allocateAuxVariable();
-        const nOut = this.nodeOut;
-        const nRef = this.nodeOutRef;
-        const { nodePos: nPos, nodeNeg: nNeg } = this;
-
-        system.addToG(nOut, k, 1);
-        system.addToG(nRef, k, -1);
-        system.addToG(k, nOut, 1);
-        system.addToG(k, nRef, -1);
-        system.addToG(k, nPos, -this.A_OL);
-        system.addToG(k, nNeg, this.A_OL);
-    }
-
-    /**
-     * Compute the ideal open-loop output before any limiting.
-     */
-    computeIdealOutput(nodeVoltages) {
-        const vp = nodeVoltages[this.nodePos] ?? 0;
-        const vn = nodeVoltages[this.nodeNeg] ?? 0;
-        return this.A_OL * (vp - vn);
-    }
-
-    /**
-     * Calculate output rail limits from the current node voltages.
-     */
-    computeRailLimits(nodeVoltages) {
-        const Vplus = this.nodeVplus != null ? nodeVoltages[this.nodeVplus] : Infinity;
-        const Vminus = this.nodeVminus != null ? nodeVoltages[this.nodeVminus] : -Infinity;
-        const Vmax = Vplus - this.railHeadroom;
-        const Vmin = Vminus + this.railHeadroom;
-        return { Vmin, Vmax };
-    }
-
-    /**
-     * Clamp a candidate output against supply rails if they exist.
-     */
-    applyOutputRails(nodeVoltages, candidate) {
-        const { Vmin, Vmax } = this.computeRailLimits(nodeVoltages);
-        return Math.max(Vmin, Math.min(Vmax, candidate));
-    }
-
-    /**
-     * After solving the linear system, approximate saturation by clamping the
-     * ideal output without iterating the matrix again. This keeps the component
-     * memoryless while still preventing unbounded outputs when rails exist.
-     */
-    applySaturation(nodeVoltages) {
-        const ideal = this.computeIdealOutput(nodeVoltages);
-        const clamped = this.applyOutputRails(nodeVoltages, ideal);
-        nodeVoltages[this.nodeOut] = clamped;
-        this.lastOutput = clamped;
-        return clamped;
-    }
-
-    /**
-     * Transient hook. Ideal behavior is memoryless, but when finite slew is
-     * enabled we limit dv/dt relative to the previous output sample.
-     */
-    updateTransient(state, dt) {
-        const nodeVoltages = state?.nodeVoltages || [];
-        let target = this.computeIdealOutput(nodeVoltages);
-        target = this.applyOutputRails(nodeVoltages, target);
-
-        if (this.finiteSlew && this.slewRate != null && dt > 0 && Number.isFinite(this.slewRate)) {
-            if (this.lastOutput == null) {
-                this.lastOutput = target;
-            }
-            const dv = target - this.lastOutput;
-            const maxDv = this.slewRate * dt;
-            const limitedDv = Math.max(-maxDv, Math.min(maxDv, dv));
-            target = this.lastOutput + limitedDv;
-        }
-
-        nodeVoltages[this.nodeOut] = target;
-        this.lastOutput = target;
-        return target;
+        const outIdx = this.mapNode(this.nOut);
+        const railsHigh = (this.nVPlus == null)
+            ? this.maxOutputClamp
+            : (this.nVPlus === -1 ? 0 : nodeVoltage(this.nVPlus));
+        const railsLow = (this.nVMinus == null)
+            ? -this.maxOutputClamp
+            : (this.nVMinus === -1 ? 0 : nodeVoltage(this.nVMinus));
+        const railMax = Math.max(railsHigh, railsLow);
+        const railMin = Math.min(railsHigh, railsLow);
+        const vmax = Math.min(railMax - this.headroom, this.maxOutputClamp);
+        const vmin = Math.max(railMin + this.headroom, -this.maxOutputClamp);
+        const safeMin = Math.min(vmin, vmax);
+        const safeMax = Math.max(vmin, vmax);
+        const clamped = Math.max(safeMin, Math.min(safeMax, systemSolution[outIdx] ?? 0));
+        systemSolution[outIdx] = clamped;
     }
 }
 
-module.exports = { IdealOpAmp };
+export { IdealOpAmp };
+export default IdealOpAmp;

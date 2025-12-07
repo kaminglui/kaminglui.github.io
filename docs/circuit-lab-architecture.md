@@ -2,6 +2,7 @@
 
 ## Where things live
 - **UI / editor**: `assets/js/circuitforge.js` (components, wiring UI, scope rendering).
+- **Component renderers**: one file per component under `assets/js/circuit-lab/components/`, imported by the UI entry point.
 - **Headless simulation core**: `assets/js/sim/engine.js` exports `CircuitSim.runSimulation`, `updateComponentState`, and utilities. The circuit-lab page loads this file before `circuitforge.js`.
 - **Automated tests**: `pages/circuit-lab/tests/` exercise the engine directly via Node/Vitest.
 
@@ -29,4 +30,3 @@
 
 ## Simulation entry
 - The UI’s `simulate(t)` delegates to `CircuitSim.runSimulation(...)`, then writes results back into wires for colouring and feeds the oscilloscope buffer.
-

@@ -12,6 +12,7 @@
 ## Circuit Lab simulation + tests
 
 - Simulation core lives in `assets/js/sim/engine.js` and is shared with the UI (`assets/js/circuitforge.js`). A short architecture note is in `docs/circuit-lab-architecture.md`.
+- Visual component renderers are split one-per-file in `assets/js/circuit-lab/components/` and imported by the Circuit Lab UI entry.
 - Automated, headless tests for all Circuit Lab components are under `pages/circuit-lab/tests/`.
 - Run the suite with:
 

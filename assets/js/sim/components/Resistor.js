@@ -4,25 +4,20 @@
  */
 class Resistor {
     constructor(n1, n2, resistance) {
-        if (resistance <= 0) {
-            throw new Error('Resistance must be positive');
-        }
         this.n1 = n1;
         this.n2 = n2;
-        this.g = 1 / resistance;
+        const R = Number(resistance);
+        this.g = (R > 0 && Number.isFinite(R)) ? 1 / R : 0;
     }
 
     /**
      * Stamp the resistor into the conductance matrix.
-     * G[n1][n1] += g; G[n1][n2] -= g; G[n2][n1] -= g; G[n2][n2] += g
      */
-    stamp(system) {
-        const { n1, n2, g } = this;
-        system.addToG(n1, n1, g);
-        system.addToG(n1, n2, -g);
-        system.addToG(n2, n1, -g);
-        system.addToG(n2, n2, g);
+    stamp(stamps) {
+        if (!this.g) return;
+        stamps.stampConductance(this.n1, this.n2, this.g);
     }
 }
 
-module.exports = { Resistor };
+export { Resistor };
+export default Resistor;
