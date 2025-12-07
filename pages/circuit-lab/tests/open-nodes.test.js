@@ -67,6 +67,22 @@ describe('Open and floating networks', () => {
     expect(voltage(island1a, 0)).toBeCloseTo(voltage(island1a, 1), 6);
   });
 
+  it('treats multiple grounded symbols on one net as a single reference', () => {
+    const circuit = buildCircuit();
+    const gnd1 = makeGround();
+    const gnd2 = makeGround();
+    const src = makeVoltageSource(5);
+    const r = makeResistor(1e3);
+    circuit.add(gnd1, gnd2, src, r);
+    circuit.connect(src, 1, gnd1, 0);
+    circuit.connect(gnd2, 0, gnd1, 0);
+    circuit.connect(src, 0, r, 0);
+    circuit.connect(r, 1, gnd2, 0);
+    const { voltage } = runDC(circuit);
+    expect(Math.abs(voltage(gnd1, 0) - voltage(gnd2, 0))).toBeLessThan(1e-9);
+    expect(voltage(r, 0)).toBeCloseTo(5, 3);
+  });
+
   it('surfaces singular conflicts between ideal sources', () => {
     const gnd = makeGround();
     const v5 = makeVoltageSource(5);

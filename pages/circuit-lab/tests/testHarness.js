@@ -6,20 +6,87 @@ const { runSimulation, parseUnit } = engine;
 const FUNCGEN_REF_RES = 1;
 const FUNCGEN_SERIES_RES = 1;
 
-function makeComponent(kind, pinCount, props = {}) {
+const PREFIX_MAP = {
+  ground: 'GND',
+  voltagesource: 'V',
+  functiongenerator: 'FG',
+  resistor: 'R',
+  capacitor: 'C',
+  potentiometer: 'POT',
+  led: 'LED',
+  mosfet: 'M',
+  lf412: 'U',
+  switch: 'SW',
+  oscilloscope: 'SCOPE',
+  junction: 'J'
+};
+
+const idPools = new Map();
+const usedIds = new Set();
+
+function resetIdRegistry() {
+  idPools.clear();
+  usedIds.clear();
+}
+
+function getIdState(prefix) {
+  let state = idPools.get(prefix);
+  if (!state) {
+    state = { used: new Set(), free: new Set(), next: 1 };
+    idPools.set(prefix, state);
+  }
+  return state;
+}
+
+function reserveId(kind, providedId) {
+  if (providedId && !usedIds.has(providedId)) {
+    usedIds.add(providedId);
+    const parsed = String(providedId).match(/^([A-Za-z]+)(\d+)$/);
+    if (parsed) {
+      const prefix = parsed[1];
+      const num = parseInt(parsed[2], 10);
+      const state = getIdState(prefix);
+      state.used.add(num);
+      state.free.delete(num);
+      if (state.next <= num) state.next = num + 1;
+    }
+    return providedId;
+  }
+  const prefix = PREFIX_MAP[kind] || 'X';
+  const state = getIdState(prefix);
+  let num;
+  if (state.free.size) {
+    num = Math.min(...state.free);
+    state.free.delete(num);
+  } else {
+    num = state.next;
+    state.next += 1;
+  }
+  let id = `${prefix}${num}`;
+  while (usedIds.has(id)) {
+    num = state.next;
+    state.next += 1;
+    id = `${prefix}${num}`;
+  }
+  state.used.add(num);
+  usedIds.add(id);
+  return id;
+}
+
+function makeComponent(kind, pinCount, props = {}, id) {
   return {
-    id: `${kind}-${Math.random().toString(16).slice(2)}`,
+    id: reserveId(kind, id),
     kind,
     pins: Array.from({ length: pinCount }, () => ({ x: 0, y: 0 })),
     props
   };
 }
 
-function makeSwitch(type = 'SPST', position = 'A') {
+function makeSwitch(type = 'SPST', position = 'A', id) {
   const typeUpper = (type || 'SPST').toUpperCase();
   const counts = { SPST: 2, SPDT: 3, DPDT: 6 };
   const pinCount = counts[typeUpper] || 2;
-  const comp = makeComponent('switch', pinCount, { Type: typeUpper, Position: position || 'A' });
+  const comp = makeComponent('switch', pinCount, { Type: typeUpper, Position: position || 'A' }, id);
   comp.getActiveConnections = function getActiveConnections() {
     const pos = this.props.Position === 'B' ? 'B' : 'A';
     const t = this.props.Type || 'SPST';
@@ -41,57 +108,57 @@ function makeSwitch(type = 'SPST', position = 'A') {
   return comp;
 }
 
-function makeGround() {
-  return makeComponent('ground', 1);
+function makeGround(id) {
+  return makeComponent('ground', 1, {}, id);
 }
 
-function makeVoltageSource(value) {
-  return makeComponent('voltagesource', 2, { Vdc: String(value) });
+function makeVoltageSource(value, id) {
+  return makeComponent('voltagesource', 2, { Vdc: String(value) }, id);
 }
 
-function makeFunctionGenerator(props = {}) {
+function makeFunctionGenerator(props = {}, id) {
   return makeComponent('functiongenerator', 3, {
     Vpp: props.Vpp || '1',
     Freq: props.Freq || '1k',
     Offset: props.Offset || '0',
     Phase: props.Phase || '0',
     Wave: props.Wave || 'sine'
-  });
+  }, id);
 }
 
-function makeResistor(value) {
-  return makeComponent('resistor', 2, { R: String(value) });
+function makeResistor(value, id) {
+  return makeComponent('resistor', 2, { R: String(value) }, id);
 }
 
-function makeCapacitor(value) {
-  return makeComponent('capacitor', 2, { C: String(value) });
+function makeCapacitor(value, id) {
+  return makeComponent('capacitor', 2, { C: String(value) }, id);
 }
 
-function makePotentiometer(total, turn = 50) {
-  return makeComponent('potentiometer', 3, { R: String(total), Turn: String(turn) });
+function makePotentiometer(total, turn = 50, id) {
+  return makeComponent('potentiometer', 3, { R: String(total), Turn: String(turn) }, id);
 }
 
-function makeLED(props = {}) {
+function makeLED(props = {}, id) {
   return makeComponent('led', 2, {
     Vf: props.Vf || '3.3',
     If: props.If || '10m',
     Color: props.Color || 'red'
-  });
+  }, id);
 }
 
-function makeOpAmp() {
-  return makeComponent('lf412', 8, {});
+function makeOpAmp(id) {
+  return makeComponent('lf412', 8, {}, id);
 }
 
-function makeOscilloscope(props = {}) {
+function makeOscilloscope(props = {}, id) {
   return makeComponent('oscilloscope', 3, {
     TimeDiv: props.TimeDiv || '1m',
     VDiv1: props.VDiv1 || '1',
     VDiv2: props.VDiv2 || '1'
-  });
+  }, id);
 }
 
-function makeMosfet(type = 'NMOS', props = {}) {
+function makeMosfet(type = 'NMOS', props = {}, id) {
   return makeComponent('mosfet', 4, {
     Type: type || 'NMOS',
     W: props.W || '1u',
@@ -101,7 +168,7 @@ function makeMosfet(type = 'NMOS', props = {}) {
     Lambda: props.Lambda || '0.1',
     Gamma: props.Gamma || '0.45',
     Phi: props.Phi || '0.9'
-  });
+  }, id);
 }
 
 function wire(c1, p1, c2, p2) {
@@ -190,6 +257,80 @@ function runTransient(circuit, {
   return { samples };
 }
 
+function peakToPeak(values) {
+  if (!values.length) return 0;
+  return Math.max(...values) - Math.min(...values);
+}
+
+function rms(values) {
+  if (!values.length) return 0;
+  const meanSq = values.reduce((acc, v) => acc + v * v, 0) / values.length;
+  return Math.sqrt(meanSq);
+}
+
+function singleToneAmplitude(samples, freq) {
+  if (!samples.length) return 0;
+  const dt = samples[1] ? (samples[1].t - samples[0].t) : 0;
+  if (dt <= 0) return 0;
+  let sumSin = 0;
+  let sumCos = 0;
+  samples.forEach(({ t, v }) => {
+    const ph = 2 * Math.PI * freq * t;
+    sumCos += v * Math.cos(ph);
+    sumSin += v * Math.sin(ph);
+  });
+  const n = samples.length;
+  const aCos = (2 / n) * sumCos;
+  const aSin = (2 / n) * sumSin;
+  return Math.sqrt(aCos * aCos + aSin * aSin);
+}
+
+function exportCircuit(components, wires) {
+  return {
+    components: components.map((c) => ({
+      id: c.id,
+      kind: c.kind,
+      props: { ...c.props }
+    })),
+    wires: wires.map((w) => ({
+      from: { id: w.from.c.id, p: w.from.p },
+      to: { id: w.to.c.id, p: w.to.p }
+    }))
+  };
+}
+
+function importCircuit(data, { resetIds: shouldReset = true } = {}) {
+  if (shouldReset) resetIdRegistry();
+  const factories = {
+    ground: (entry) => makeGround(entry.id),
+    voltagesource: (entry) => makeVoltageSource(entry.props?.Vdc || 0, entry.id),
+    functiongenerator: (entry) => makeFunctionGenerator(entry.props || {}, entry.id),
+    resistor: (entry) => makeResistor(entry.props?.R || 0, entry.id),
+    capacitor: (entry) => makeCapacitor(entry.props?.C || 0, entry.id),
+    potentiometer: (entry) => makePotentiometer(entry.props?.R || 0, entry.props?.Turn || 0, entry.id),
+    led: (entry) => makeLED(entry.props || {}, entry.id),
+    mosfet: (entry) => makeMosfet(entry.props?.Type || 'NMOS', entry.props || {}, entry.id),
+    lf412: (entry) => makeOpAmp(entry.id),
+    switch: (entry) => makeSwitch(entry.props?.Type || 'SPST', entry.props?.Position || 'A', entry.id),
+    oscilloscope: (entry) => makeOscilloscope(entry.props || {}, entry.id)
+  };
+
+  const components = (data.components || []).map((entry) => {
+    const factory = factories[entry.kind];
+    return factory
+      ? factory(entry)
+      : makeComponent(entry.kind || 'x', (entry.pins || []).length || 2, entry.props || {}, entry.id);
+  });
+  const compMap = new Map(components.map((c) => [c.id, c]));
+  const wires = (data.wires || []).map((w) => wire(
+    compMap.get(w.from?.id),
+    w.from?.p ?? 0,
+    compMap.get(w.to?.id),
+    w.to?.p ?? 0
+  )).filter((w) => w.from.c && w.to.c);
+  return { components, wires };
+}
+
 function resistorCurrent(resistor, voltage) {
   const R = parseUnit(resistor.props?.R || '1');
   if (R === 0) return 0;
@@ -233,5 +374,11 @@ export {
   sineAt,
   triangleAt,
   FUNCGEN_REF_RES,
-  FUNCGEN_SERIES_RES
+  FUNCGEN_SERIES_RES,
+  peakToPeak,
+  rms,
+  singleToneAmplitude,
+  exportCircuit,
+  importCircuit,
+  resetIdRegistry
 };

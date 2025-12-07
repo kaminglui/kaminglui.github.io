@@ -81,6 +81,92 @@ const PROP_UNITS = {
     VDiv2: 'V/div'
 };
 
+const ID_PREFIXES = {
+    ground: 'GND',
+    voltagesource: 'V',
+    functiongenerator: 'FG',
+    resistor: 'R',
+    capacitor: 'C',
+    potentiometer: 'POT',
+    led: 'LED',
+    mosfet: 'M',
+    lf412: 'U',
+    switch: 'SW',
+    oscilloscope: 'SCOPE',
+    junction: 'J'
+};
+
+const idPools = new Map();
+const usedIds = new Set();
+
+function resetIdRegistry() {
+    idPools.clear();
+    usedIds.clear();
+}
+
+function getIdState(prefix) {
+    let state = idPools.get(prefix);
+    if (!state) {
+        state = { used: new Set(), free: new Set(), next: 1 };
+        idPools.set(prefix, state);
+    }
+    return state;
+}
+
+function reserveComponentId(kind, providedId) {
+    if (providedId && !usedIds.has(providedId)) {
+        usedIds.add(providedId);
+        const parsed = String(providedId).match(/^([A-Za-z]+)(\d+)$/);
+        if (parsed) {
+            const prefix = parsed[1];
+            const num = parseInt(parsed[2], 10);
+            const state = getIdState(prefix);
+            state.used.add(num);
+            state.free.delete(num);
+            if (state.next <= num) state.next = num + 1;
+        }
+        return providedId;
+    }
+    const prefix = (ID_PREFIXES[kind] || 'X').toUpperCase();
+    const state = getIdState(prefix);
+    let num;
+    if (state.free.size) {
+        num = Math.min(...state.free);
+        state.free.delete(num);
+    } else {
+        num = state.next;
+        state.next += 1;
+    }
+    let id = `${prefix}${num}`;
+    while (usedIds.has(id)) {
+        num = state.next;
+        state.next += 1;
+        id = `${prefix}${num}`;
+    }
+    state.used.add(num);
+    usedIds.add(id);
+    return id;
+}
+
+function releaseComponentId(id) {
+    if (!id || !usedIds.has(id)) return;
+    usedIds.delete(id);
+    const parsed = String(id).match(/^([A-Za-z]+)(\d+)$/);
+    if (!parsed) return;
+    const prefix = parsed[1];
+    const num = parseInt(parsed[2], 10);
+    const state = getIdState(prefix);
+    state.used.delete(num);
+    state.free.add(num);
+}
+
+function reassignComponentId(comp, newId) {
+    if (!newId || newId === comp.id) return comp.id;
+    releaseComponentId(comp.id);
+    comp.id = reserveComponentId(comp.kind, newId);
+    return comp.id;
+}
+
 let boardBgColor = '#020617';
 let gridHoleColor = '#1f2937';
 let canvasBgColor = '#1a1a1a';
@@ -430,7 +516,7 @@ class Matrix {
 
 class Component {
     constructor(x, y) {
-        this.id   = Math.random().toString(36).slice(2);
+        this.id   = reserveComponentId((this.constructor?.name || 'component').toLowerCase());
         this.kind = (this.constructor?.name || 'component').toLowerCase();
         // align component origin to grid centers so pin legs land in holes
         const snap = snapToBoardPoint(x, y);
@@ -2319,7 +2405,13 @@ function pruneFloatingJunctions() {
         connected.add(w.from.c);
         connected.add(w.to.c);
     });
-    components = components.filter(c => !(c instanceof Junction) || connected.has(c));
+    components = components.filter(c => {
+        if (c instanceof Junction && !connected.has(c)) {
+            releaseComponentId(c.id);
+            return false;
+        }
+        return true;
+    });
 }
 
 function cleanupJunctions() {
@@ -2338,9 +2430,11 @@ function cleanupJunctions() {
             const conn = getConnected(j);
             const deg = conn.length;
             if (deg === 0) {
+                releaseComponentId(j.id);
                 components = components.filter(c => c !== j);
                 changed = true;
             } else if (deg === 1) {
+                releaseComponentId(j.id);
                 wires = wires.filter(w => !conn.includes(w));
                 components = components.filter(c => c !== j);
                 changed = true;
@@ -2357,6 +2451,7 @@ function cleanupJunctions() {
                 };
                 wires = wires.filter(w => w !== w1 && w !== w2);
                 wires.push(newWire);
+                releaseComponentId(j.id);
                 components = components.filter(c => c !== j);
                 changed = true;
             }
@@ -2937,6 +3032,7 @@ function deleteSelected() {
     const compsToRemove = selectionGroup.length ? selectionGroup : (selectedComponent ? [selectedComponent] : []);
 
     if (compsToRemove.length) {
+        compsToRemove.forEach(c => releaseComponentId(c.id));
         wires = wires.filter(
             w => !compsToRemove.includes(w.from.c) && !compsToRemove.includes(w.to.c)
         );
@@ -3463,6 +3559,7 @@ function applySerializedState(data) {
         throw new Error('Save file requires a newer version of Circuit Forge.');
     }
 
+    resetIdRegistry();
     isRestoringState = true;
     try {
         const created = [];
@@ -3470,7 +3567,7 @@ function applySerializedState(data) {
             const Ctor = TOOL_COMPONENTS[entry.type];
             if (!Ctor) return;
             const c = new Ctor(entry.x ?? 0, entry.y ?? 0);
-            c.id = entry.id || c.id;
+            if (entry.id) reassignComponentId(c, entry.id);
             c.rotation = entry.rotation ?? 0;
             c.mirrorX = !!entry.mirrorX;
             if (entry.props && typeof entry.props === 'object') {
@@ -4586,6 +4683,7 @@ function toggleSim() {
 }
 
 function clearCanvas() {
+    resetIdRegistry();
     components = [];
     wires      = [];
     simError   = null;

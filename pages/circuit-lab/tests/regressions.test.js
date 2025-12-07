@@ -8,11 +8,14 @@ import {
   makeCapacitor,
   makeOpAmp,
   makeMosfet,
+  makeSwitch,
   makeOscilloscope,
   runTransient,
   runDC,
   wire,
-  resistorCurrent
+  resistorCurrent,
+  peakToPeak,
+  singleToneAmplitude
 } from './testHarness';
 
 function measureAmplitude(trace) {
@@ -151,5 +154,88 @@ describe('Integrated behaviour', () => {
     expect(Number.isFinite(max)).toBe(true);
     expect(Number.isFinite(min)).toBe(true);
     expect(max - min).toBeGreaterThan(1);
+  });
+
+  it('switches an op-amp between summing and difference modes to cancel common tones', () => {
+    const freqsA = [110, 880];
+    const freqsB = [35300, 880];
+    const buildChannel = (f1, f2) => {
+      const fg1 = makeFunctionGenerator({ Vpp: '0.25', Freq: String(f1), Offset: '0' });
+      const fg2 = makeFunctionGenerator({ Vpp: '0.25', Freq: String(f2), Offset: '0' });
+      return { fg1, fg2 };
+    };
+
+    const buildCircuitFor = (position) => {
+      const circuit = buildCircuit();
+      const gnd = makeGround();
+      const op = makeOpAmp();
+      const spdt = makeSwitch('SPDT', position);
+      const ra = makeResistor(10e3);
+      const rbInv = makeResistor(10e3);
+      const rNon = makeResistor(10e3);
+      const rBias = makeResistor(10e3);
+      const rf = makeResistor(10e3);
+      const load = makeResistor(10e3);
+      const railsPos = makeVoltageSource(12);
+      const railsNeg = makeVoltageSource(-12);
+      const chanA = buildChannel(freqsA[0], freqsA[1]);
+      const chanB = buildChannel(freqsB[0], freqsB[1]);
+
+      circuit.add(
+        gnd, op, spdt, ra, rbInv, rNon, rBias, rf, load,
+        railsPos, railsNeg,
+        chanA.fg1, chanA.fg2, chanB.fg1, chanB.fg2
+      );
+
+      // Rails
+      circuit.connect(railsPos, 0, op, 7); circuit.connect(railsPos, 1, gnd, 0);
+      circuit.connect(railsNeg, 0, op, 3); circuit.connect(railsNeg, 1, gnd, 0);
+
+      // Feedback and bias
+      circuit.connect(op, 0, rf, 0); circuit.connect(rf, 1, op, 1);
+      circuit.connect(op, 2, rBias, 0); circuit.connect(rBias, 1, gnd, 0);
+      circuit.connect(op, 0, load, 0); circuit.connect(load, 1, gnd, 0);
+
+      // Channel A into inverting node
+      circuit.connect(chanA.fg1, 0, ra, 0);
+      circuit.connect(ra, 1, op, 1);
+      circuit.connect(chanA.fg1, 1, chanA.fg2, 0);
+      circuit.connect(chanA.fg2, 1, gnd, 0);
+
+      // Channel B series stack into SPDT common
+      circuit.connect(chanB.fg1, 0, spdt, 0);
+      circuit.connect(chanB.fg1, 1, chanB.fg2, 0);
+      circuit.connect(chanB.fg2, 1, gnd, 0);
+
+      // SPDT throw A -> inverting resistor, throw B -> non-inverting resistor
+      circuit.connect(spdt, 1, rbInv, 0); circuit.connect(rbInv, 1, op, 1);
+      circuit.connect(spdt, 2, rNon, 0); circuit.connect(rNon, 1, op, 2);
+
+      return { circuit, op };
+    };
+
+    const collect = (pos) => {
+      const { circuit, op } = buildCircuitFor(pos);
+      const samples = [];
+      runTransient(circuit, {
+        duration: 0.02,
+        dt: 4e-6,
+        sampleInterval: 4e-5,
+        measure: ({ t, sim }) => {
+          if (t > 0.004) samples.push({ t, v: sim.voltage(op, 0) });
+        }
+      });
+      return samples;
+    };
+
+    const sumSamples = collect('A');
+    const diffSamples = collect('B');
+    const ampSum = peakToPeak(sumSamples.map((s) => s.v)) / 2;
+    const ampDiff = peakToPeak(diffSamples.map((s) => s.v)) / 2;
+    expect(ampDiff).toBeLessThan(ampSum * 0.8);
+
+    const tone880Sum = singleToneAmplitude(sumSamples, 880);
+    const tone880Diff = singleToneAmplitude(diffSamples, 880);
+    expect(tone880Diff).toBeLessThan(tone880Sum * 0.5);
   });
 });

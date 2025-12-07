@@ -138,4 +138,25 @@ describe('Potentiometers', () => {
       expect(voltage(pot, 1)).toBeCloseTo(expected, 2);
     });
   });
+
+  it('accounts for a finite load at the wiper', () => {
+    const circuit = buildCircuit();
+    const gnd = makeGround();
+    const src = makeVoltageSource(5);
+    const pot = makePotentiometer(10e3, 50);
+    const load = makeResistor(10e3);
+    circuit.add(gnd, src, pot, load);
+    circuit.connect(src, 1, gnd, 0);
+    circuit.connect(src, 0, pot, 0);
+    circuit.connect(pot, 2, gnd, 0);
+    circuit.connect(pot, 1, load, 0);
+    circuit.connect(load, 1, gnd, 0);
+
+    const { voltage } = runDC(circuit);
+    const rTop = 5e3;
+    const rBottom = 5e3;
+    const rBottomLoaded = (rBottom * 10e3) / (rBottom + 10e3);
+    const expected = 5 * (rBottomLoaded / (rTop + rBottomLoaded));
+    expect(voltage(pot, 1)).toBeCloseTo(expected, 2);
+  });
 });
