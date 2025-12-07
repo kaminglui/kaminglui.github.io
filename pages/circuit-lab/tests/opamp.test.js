@@ -5,6 +5,8 @@ import {
   makeResistor,
   makeCapacitor,
   makeOpAmp,
+  makeFunctionGenerator,
+  makeSwitch,
   wire,
   simulateCircuit
 } from './helpers';
@@ -190,5 +192,101 @@ describe('Op-amp nonlinear/temporal uses', () => {
     const expectedPeak = peakVin * gain;
     const measuredPeak = Math.max(...samples.map((s) => Math.abs(s.out)));
     expect(measuredPeak).toBeCloseTo(expectedPeak, 1);
+  });
+
+  it('mixes multiple AC sources like the karaoke template', () => {
+    const gnd = makeGround();
+    const op = makeOpAmp();
+    const railsPos = makeVoltageSource(15);
+    const railsNeg = makeVoltageSource(-15);
+
+    const freqs = [880, 110, 3520, 880];
+    const gens = freqs.map((f) => makeFunctionGenerator({ Vpp: '0.25', Freq: String(f), Offset: '0', Phase: '0', Wave: 'sine' }));
+    const resistors = gens.map(() => makeResistor(7.5e3));
+    const rf = makeResistor(7.5e3);
+    const load = makeResistor(10e3);
+
+    const components = [gnd, op, railsPos, railsNeg, rf, load, ...gens, ...resistors];
+    const wires = [
+      wire(railsPos, 0, op, 7), wire(railsPos, 1, gnd, 0),
+      wire(railsNeg, 0, op, 3), wire(railsNeg, 1, gnd, 0),
+      wire(op, 2, gnd, 0),
+      wire(op, 0, rf, 0),
+      wire(rf, 1, op, 1),
+      wire(op, 0, load, 0),
+      wire(load, 1, gnd, 0)
+    ];
+
+    gens.forEach((fg, idx) => {
+      const r = resistors[idx];
+      wires.push(
+        wire(fg, 1, gnd, 0), // COM to ground
+        wire(fg, 0, r, 0),   // + to series resistor
+        wire(r, 1, op, 1)    // resistor into inverting node
+      );
+    });
+
+    const times = [0, 0.00025, 0.0005, 0.00075, 0.001];
+    times.forEach((t) => {
+      const { voltage } = simulateCircuit({ components, wires, time: t, dt: 1e-5 });
+      const expected = -gens.reduce((acc, fg, i) => {
+        const amp = 0.25 / 2;
+        return acc + amp * Math.sin(2 * Math.PI * freqs[i] * t);
+      }, 0);
+      expect(voltage(op, 0)).toBeCloseTo(expected, 2);
+    });
+  });
+
+  it('switches between summing and mixed-mode via SPDT', () => {
+    const buildCircuit = (position) => {
+      const gnd = makeGround();
+      const op = makeOpAmp();
+      const railsPos = makeVoltageSource(15);
+      const railsNeg = makeVoltageSource(-15);
+      const sw = makeSwitch('SPDT', position);
+
+      const v1 = makeFunctionGenerator({ Vpp: '0', Offset: '0.5', Freq: '0' });
+      const v2 = makeFunctionGenerator({ Vpp: '0', Offset: '0.25', Freq: '0' });
+      const v3 = makeFunctionGenerator({ Vpp: '0', Offset: '1.0', Freq: '0' });
+
+      const r1 = makeResistor(7.5e3);
+      const r2 = makeResistor(7.5e3);
+      const r3 = makeResistor(7.5e3);
+      const rf = makeResistor(7.5e3);
+      const rBias = makeResistor(7.5e3);
+      const load = makeResistor(10e3);
+
+      const components = [gnd, op, railsPos, railsNeg, sw, v1, v2, v3, r1, r2, r3, rf, rBias, load];
+      const wires = [
+        wire(railsPos, 0, op, 7), wire(railsPos, 1, gnd, 0),
+        wire(railsNeg, 0, op, 3), wire(railsNeg, 1, gnd, 0),
+        wire(op, 0, rf, 0), wire(rf, 1, op, 1),
+        wire(op, 0, load, 0), wire(load, 1, gnd, 0),
+        wire(v1, 1, gnd, 0), wire(v1, 0, r1, 0), wire(r1, 1, op, 1),
+        wire(v2, 1, gnd, 0), wire(v2, 0, r2, 0), wire(r2, 1, op, 1),
+        wire(v3, 1, gnd, 0), wire(v3, 0, r3, 0), wire(r3, 1, sw, 0),
+        wire(sw, 1, op, 1), // position A path to inverting node
+        wire(op, 2, rBias, 0), wire(rBias, 1, gnd, 0),
+        wire(sw, 2, op, 2) // position B path to non-inverting node
+      ];
+
+      return { components, wires, op };
+    };
+
+    const evalCircuit = (position) => {
+      const { components, wires, op } = buildCircuit(position);
+      const { voltage } = simulateCircuit({ components, wires, time: 0, dt: 1e-6 });
+      return voltage(op, 0);
+    };
+
+    const outA = evalCircuit('A'); // All three inputs into inverting summing node
+    const outB = evalCircuit('B'); // Third input into non-inverting node via bias network
+
+    const v1 = 0.5, v2 = 0.25, v3 = 1.0;
+    const expectedA = -(v1 + v2 + v3); // -1.75 V
+    const expectedB = 1.5 * v3 - v1 - v2; // 0.75 V
+
+    expect(outA).toBeCloseTo(expectedA, 2);
+    expect(outB).toBeCloseTo(expectedB, 2);
   });
 });

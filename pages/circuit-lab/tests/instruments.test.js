@@ -134,4 +134,29 @@ describe('Floating node handling', () => {
     const withFloat = simulateCircuit({ components: [gnd, src, r, floating], wires });
     expect(withFloat.voltage(r, 1)).toBeCloseTo(base.voltage(r, 1), 6);
   });
+
+  it('ignores an unconnected ground symbol and keeps node voltages unchanged', () => {
+    const src = makeVoltageSource(5);
+    const r1 = makeResistor(1e3);
+    const r2 = makeResistor(1e3);
+
+    // Source plus -> node HI; minus -> node LO. Two parallel resistors HI-LO.
+    const wires = [
+      wire(src, 0, r1, 0),
+      wire(src, 1, r1, 1),
+      wire(src, 0, r2, 0),
+      wire(src, 1, r2, 1)
+    ];
+
+    const base = simulateCircuit({ components: [src, r1, r2], wires });
+    const vHiBase = base.voltage(r1, 0) - base.voltage(r1, 1);
+
+    // Drop an unconnected ground symbol; voltages should stay identical
+    const strayGnd = makeGround();
+    const withGnd = simulateCircuit({ components: [src, r1, r2, strayGnd], wires });
+    const vHiGnd = withGnd.voltage(r1, 0) - withGnd.voltage(r1, 1);
+
+    expect(vHiBase).toBeCloseTo(5, 6);
+    expect(vHiGnd).toBeCloseTo(vHiBase, 6);
+  });
 });

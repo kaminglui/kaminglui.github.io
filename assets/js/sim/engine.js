@@ -176,14 +176,12 @@
       if (a != null && b != null) union(a, b);
     });
 
-    let groundRoot = null;
+    const groundRoots = [];
     components.forEach((c) => {
       if (kindOf(c) === 'ground') {
         const idx = pinMap.get(makePinKey(c, 0));
         if (idx != null) {
-          const r = find(idx);
-          groundRoot = (groundRoot == null) ? r : groundRoot;
-          union(groundRoot, r);
+          groundRoots.push(find(idx));
         }
       }
     });
@@ -199,10 +197,6 @@
         if (idx != null) vsNegCandidates.push(find(idx));
       }
     });
-    if (groundRoot == null && vsNegCandidates.length) {
-      groundRoot = vsNegCandidates[0];
-    }
-
     const measurementKinds = new Set(['oscilloscope', 'junction']);
     const rootHasPhysics = new Map();
     components.forEach((c) => {
@@ -219,6 +213,23 @@
         }
       });
     });
+
+    // Select a reference that is actually tied to a physical net
+    let groundRoot = null;
+    for (const gr of groundRoots) {
+      if (rootHasPhysics.get(gr) === true) {
+        groundRoot = gr;
+        break;
+      }
+    }
+    if (groundRoot == null) {
+      for (const cand of vsNegCandidates) {
+        if (rootHasPhysics.get(cand) === true) {
+          groundRoot = cand;
+          break;
+        }
+      }
+    }
 
     const rootToNode = new Map();
     const pinToNode = new Map();
@@ -324,7 +335,7 @@
         nodeCount: mapping.nodeCount,
         groundRoot: null,
         singular: false,
-        error: 'No reference node found: add a Ground or tie a source COM/negative to the circuit.'
+        error: 'No reference node found: connect a Ground or tie a source COM/negative to the circuit.'
       };
     }
 
