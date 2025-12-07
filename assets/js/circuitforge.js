@@ -50,6 +50,7 @@ const BASELINE_NODE_LEAK    = 1e-11;
 const OPAMP_GAIN            = 1e9;
 const OPAMP_INPUT_LEAK      = 1e-15;
 const OPAMP_OUTPUT_LEAK     = 1e-12;
+const OPAMP_RAIL_HEADROOM   = 0.1;
 // A bench function generator normally references its output to chassis/ground.
 // Keep COM near ground with a low impedance so “floating” hookups (COM not
 // explicitly wired) still deliver the configured amplitude instead of letting
@@ -430,6 +431,7 @@ class Matrix {
 class Component {
     constructor(x, y) {
         this.id   = Math.random().toString(36).slice(2);
+        this.kind = (this.constructor?.name || 'component').toLowerCase();
         // align component origin to grid centers so pin legs land in holes
         const snap = snapToBoardPoint(x, y);
         this.x    = snap.x;
@@ -1975,465 +1977,46 @@ function simulate(t) {
         return;
     }
 
-    // ---- Build pin map ----
-    const pinMap = new Map(); // key: "id_idx" -> raw index
-    let rawCount = 0;
-    components.forEach(c => {
-        c.pins.forEach((_, i) => {
-            pinMap.set(c.id + '_' + i, rawCount++);
-        });
-    });
-    if (rawCount === 0) return;
-
-    // ---- Union-Find for connectivity ----
-    const parent = new Array(rawCount);
-    for (let i = 0; i < rawCount; i++) parent[i] = i;
-    function find(i) {
-        while (parent[i] !== i) {
-            parent[i] = parent[parent[i]];
-            i = parent[i];
-        }
-        return i;
-    }
-    function union(a, b) {
-        a = find(a); b = find(b);
-        if (a !== b) parent[b] = a;
+    if (typeof CircuitSim === 'undefined' || typeof CircuitSim.runSimulation !== 'function') {
+        simError = 'Simulation core not available';
+        return;
     }
 
-    // unify pin groups by wires
-    wires.forEach(w => {
-        const a = pinMap.get(w.from.c.id + '_' + w.from.p);
-        const b = pinMap.get(w.to.c.id   + '_' + w.to.p);
-        if (a != null && b != null) union(a, b);
+    const result = CircuitSim.runSimulation({
+        components,
+        wires,
+        time: t,
+        dt: DT,
+        parseUnit,
+        baselineLeak: BASELINE_NODE_LEAK,
+        opAmpGain: OPAMP_GAIN,
+        opAmpInputLeak: OPAMP_INPUT_LEAK,
+        opAmpOutputLeak: OPAMP_OUTPUT_LEAK,
+        opAmpHeadroom: OPAMP_RAIL_HEADROOM,
+        funcGenRefRes: FUNCGEN_REF_RES,
+        funcGenSeriesRes: FUNCGEN_SERIES_RES,
+        updateState: false
     });
 
-    // force all Ground pins to share the same root (global reference)
-    let firstGroundIdx = null;
-    components.forEach(c => {
-        if (c instanceof Ground) {
-            const key = c.id + '_0';
-            const idx = pinMap.get(key);
-            if (idx != null) {
-                if (firstGroundIdx == null) firstGroundIdx = idx;
-                else union(firstGroundIdx, idx);
-            }
-        }
-    });
-
-    // ---- Find ground root (prefer unified GND, else VS- / FG COM) ----
-    let groundRoot = (firstGroundIdx != null) ? find(firstGroundIdx) : null;
-    const vsNegCandidates = [];
-    components.forEach(c => {
-        if (c instanceof VoltageSource) {
-            const idx = pinMap.get(c.id + '_1');
-            if (idx != null) vsNegCandidates.push(find(idx));
-        } else if (c instanceof FunctionGenerator) {
-            const idx = pinMap.get(c.id + '_1');
-            if (idx != null) vsNegCandidates.push(find(idx));
-        }
-    });
-    if (groundRoot == null && vsNegCandidates.length) {
-        groundRoot = vsNegCandidates[0];
-    }
-    if (groundRoot == null) {
-        simError = 'No reference node found: add a Ground or tie a source COM/negative to the circuit.';
+    if (result.error) {
+        simError = result.error;
         isPaused = true;
         updatePlayPauseButton();
         return;
     }
 
-    // Determine which union roots correspond to actual circuit elements (non-measurement)
-    const rootHasPhysics = new Map();
-    components.forEach(c => {
-        const isMeasurement = (c instanceof Oscilloscope) || (c instanceof Junction);
-        c.pins.forEach((_, i) => {
-            const raw = pinMap.get(c.id + '_' + i);
-            if (raw == null) return;
-            const r = find(raw);
-            const wired = pinConnected(c, i);
-            if (!isMeasurement && wired) {
-                rootHasPhysics.set(r, true);
-            } else if (!rootHasPhysics.has(r)) {
-                rootHasPhysics.set(r, false);
-            }
-        });
+    const sol = result.solution || [];
+    const getNodeIdx = result.getNodeIndex || (() => -1);
+
+    CircuitSim.updateComponentState({
+        components,
+        solution: sol,
+        getNodeIndex: getNodeIdx,
+        parseUnit
     });
 
-    // ---- Assign node indices (excluding ground) ----
-    // Only roots that touch real circuit elements (rootHasPhysics === true) become MNA nodes.
-    // Measurement-only nets (scopes/junctions alone) remain at -1 and read as reference.
-    const rootToNode = new Map();
-    rootToNode.set(groundRoot, -1);
-    let nodeCount = 0;
-    const seenRoots = new Set();
-    components.forEach(c => {
-        c.pins.forEach((_, i) => {
-            const raw = pinMap.get(c.id + '_' + i);
-            if (raw == null) return;
-            const r   = find(raw);
-            if (seenRoots.has(r)) return;
-            seenRoots.add(r);
-            if (r === groundRoot) return;
-
-            const hasPhys = rootHasPhysics.get(r) === true;
-            if (hasPhys) {
-                rootToNode.set(r, nodeCount++);
-            }
-        });
-    });
-    if (nodeCount === 0) {
-        simError = null;
-        return;
-    }
-
-    function getNodeIdx(c, pIdx) {
-        const raw = pinMap.get(c.id + '_' + pIdx);
-        if (raw == null) return -1;
-        const r = find(raw);
-        const n = rootToNode.get(r);
-        return (n == null ? -1 : n);
-    }
-
-    // ---- Collect voltage sources (DC + FunctionGens) ----
-    // Only keep a source if it touches at least one real node; otherwise the MNA row would be empty.
-    const vsEntries = [];
-    const pendingGStamps = [];
-    const opAmpEntries = [];
-
-    components.forEach(c => {
-        if (c instanceof VoltageSource) {
-            const nPlus  = getNodeIdx(c, 0);
-            const nMinus = getNodeIdx(c, 1);
-            if (nPlus === -1 && nMinus === -1) return;
-            const valueFn = () => parseUnit(c.props.Vdc || '0');
-            vsEntries.push({ comp: c, nPlus, nMinus, valueFn });
-        } else if (c instanceof FunctionGenerator) {
-            const plusUsed = pinConnected(c, 0);
-            const comUsed  = pinConnected(c, 1);
-            const negUsed  = pinConnected(c, 2);
-
-            // Nodes: COM can legitimately be the global reference (-1). Preserve it
-            // so the source still stamps when COM is tied to ground.
-            const nPlus = plusUsed ? getNodeIdx(c, 0) : -1;
-            const nCom  = (comUsed || plusUsed || negUsed) ? getNodeIdx(c, 1) : -1;
-            const nNeg  = negUsed ? getNodeIdx(c, 2) : -1;
-
-            const waveValue = () => {
-                const Vpp   = parseUnit(c.props.Vpp    || '0');
-                const Freq  = parseUnit(c.props.Freq   || '0');
-                const offset= parseUnit(c.props.Offset || '0');
-                const phaseDeg = parseFloat(c.props.Phase || '0') || 0;
-                const phaseRad = phaseDeg * Math.PI / 180;
-                const amp = Vpp / 2;
-                const waveType = String(c.props.Wave || 'sine').toLowerCase();
-                const omega = 2 * Math.PI * Freq;
-                const phase = omega * t + phaseRad;
-                let ac = 0;
-                switch (waveType) {
-                    case 'square':
-                        ac = amp * (Math.sin(phase) >= 0 ? 1 : -1);
-                        break;
-                    case 'triangle': {
-                        const cyc = ((phase / (2 * Math.PI)) % 1 + 1) % 1; // 0..1
-                        const tri = cyc < 0.5 ? (cyc * 4 - 1) : (3 - cyc * 4);
-                        ac = amp * tri;
-                        break;
-                    }
-                    default:
-                        ac = amp * Math.sin(phase);
-                }
-                return { ac, offset };
-            };
-
-            const refG = 1 / FUNCGEN_REF_RES;
-            const seriesG = 1 / FUNCGEN_SERIES_RES;
-            if (nCom !== -1) {
-                pendingGStamps.push([nCom, -1, refG]);
-            }
-
-            if (nPlus !== -1) {
-                pendingGStamps.push([nPlus, nCom, seriesG]);
-                // Pin + swings offset + 0.5*Vpp*wave(t) relative to COM (or ground)
-                vsEntries.push({ comp: c, nPlus, nMinus: nCom, valueFn: () => {
-                    const { ac, offset } = waveValue();
-                    return offset + ac;
-                } });
-            }
-            if (nNeg !== -1) {
-                pendingGStamps.push([nNeg, nCom, seriesG]);
-                // Pin - swings offset - 0.5*Vpp*wave(t) relative to COM (or ground)
-                vsEntries.push({ comp: c, nPlus: nNeg, nMinus: nCom, valueFn: () => {
-                    const { ac, offset } = waveValue();
-                    return offset - ac;
-                } });
-            }
-        }
-    });
-
-    // ---- Collect op-amp control equations (each half of LF412) ----
-    components.forEach(c => {
-        if (!(c instanceof LF412)) return;
-        const halves = [
-            { nOut: getNodeIdx(c, 0), nInv: getNodeIdx(c, 1), nNon: getNodeIdx(c, 2) },
-            { nOut: getNodeIdx(c, 6), nInv: getNodeIdx(c, 5), nNon: getNodeIdx(c, 4) }
-        ];
-        halves.forEach((h) => {
-            const { nOut, nInv, nNon } = h;
-            if (nOut === -1 && nInv === -1 && nNon === -1) return;
-            opAmpEntries.push(h);
-        });
-    });
-    // Quick sim sanity check (manual): tie FunctionGenerator COM to Ground,
-    // place a resistor from pin + to ground, and probe pin + with the scope.
-    // Expect offset + 0.5*Vpp wave(t) as configured.
-
-    const opAmpOffset = nodeCount + vsEntries.length;
-    const N = opAmpOffset + opAmpEntries.length;
-    const G = new Matrix(N);
-    const I = new Float64Array(N);
-
-    pendingGStamps.forEach(([n1, n2, g]) => stampG(n1, n2, g));
-
-    // Provide a tiny reference to ground for every active node to avoid floating-node singularities
-    rootToNode.forEach(n => {
-        if (n !== -1) {
-            stampG(n, -1, BASELINE_NODE_LEAK);
-        }
-    });
-
-    function stampG(n1, n2, g) {
-        if (!g) return;
-        if (n1 !== -1) G.add(n1, n1, g);
-        if (n2 !== -1) G.add(n2, n2, g);
-        if (n1 !== -1 && n2 !== -1) {
-            G.add(n1, n2, -g);
-            G.add(n2, n1, -g);
-        }
-    }
-
-    function stampI(n, iVal) {
-        if (!iVal) return;
-        if (n !== -1) I[n] += iVal;
-    }
-
-    function stampVCVS(nOut, nRef, nPos, nNeg, row) {
-        // Equation: (vOut - vRef) - gain * (vPos - vNeg) = 0
-        if (nOut !== -1) G.add(nOut, row, 1);
-        if (nRef !== -1) G.add(nRef, row, -1);
-
-        if (nOut !== -1) G.add(row, nOut, 1);
-        if (nRef !== -1) G.add(row, nRef, -1);
-        if (nPos !== -1) G.add(row, nPos, -OPAMP_GAIN);
-        if (nNeg !== -1) G.add(row, nNeg,  OPAMP_GAIN);
-
-        // keep the auxiliary row pivotable
-        G.add(row, row, 1e-9);
-    }
-
-    // ---- Stamp passive, MOSFET, op-amp, etc. (node block only) ----
-    components.forEach(c => {
-        if (c instanceof Resistor) {
-            const n1 = getNodeIdx(c, 0);
-            const n2 = getNodeIdx(c, 1);
-            const R  = parseUnit(c.props.R || '1');
-            const g  = (R > 0) ? 1 / R : 0;
-            stampG(n1, n2, g);
-        }
-        else if (c instanceof Potentiometer) {
-            const n1 = getNodeIdx(c, 0);
-            const nW = getNodeIdx(c, 1);
-            const n3 = getNodeIdx(c, 2);
-            const totalR = Math.max(parseUnit(c.props.R || '0'), 1e-3);
-            const frac = (typeof c.getTurnFraction === 'function')
-                ? c.getTurnFraction()
-                : Math.min(1, Math.max(0, parseFloat(c.props.Turn || '50') / 100));
-
-            const minLeg = 1e-3;
-            const R1 = Math.max(minLeg, totalR * frac);
-            const R2 = Math.max(minLeg, totalR * (1 - frac));
-
-            stampG(n1, nW, 1 / R1);
-            stampG(nW, n3, 1 / R2);
-        }
-        else if (c instanceof Capacitor) {
-            const n1 = getNodeIdx(c, 0);
-            const n2 = getNodeIdx(c, 1);
-            const C  = parseUnit(c.props.C || '0');
-            if (C <= 0) return;
-            const g = C / DT;
-            const vPrev = c._lastV || 0;
-
-            stampG(n1, n2, g);
-            stampI(n1,  g * vPrev);
-            stampI(n2, -g * vPrev);
-        }
-        else if (c instanceof LED) {
-            const nA = getNodeIdx(c, 0);
-            const nK = getNodeIdx(c, 1);
-            const Vf = parseUnit(c.props.Vf || '3.3');
-            const If = parseUnit(c.props.If || '10m') || 0.01;
-            let R = Math.abs(Vf / If);
-            if (!isFinite(R) || R <= 0) R = 330;
-            const g = 1 / R;
-            stampG(nA, nK, g);
-        }
-        else if (c instanceof Switch) {
-            const gOn  = 1 / 1e-3; // ~1 mΩ when closed
-            const gOff = 1e-9;
-            const pairs = c.getActiveConnections();
-            if (!pairs.length && c.props.Type === 'SPST') {
-                const nA = getNodeIdx(c, 0);
-                const nB = getNodeIdx(c, 1);
-                stampG(nA, nB, gOff);
-            }
-            pairs.forEach(([aIdx, bIdx]) => {
-                const nA = getNodeIdx(c, aIdx);
-                const nB = getNodeIdx(c, bIdx);
-                stampG(nA, nB, gOn);
-            });
-            if (c.props.Type === 'SPDT') {
-                const unused = (c.props.Position === 'A') ? 2 : 1;
-                const nCom = getNodeIdx(c, 0);
-                const nUnused = getNodeIdx(c, unused);
-                stampG(nCom, nUnused, gOff);
-            } else if (c.props.Type === 'DPDT') {
-                const upperUnused = (c.props.Position === 'A') ? 2 : 1;
-                const lowerUnused = (c.props.Position === 'A') ? 5 : 4;
-                const nCom1 = getNodeIdx(c, 0);
-                const nCom2 = getNodeIdx(c, 3);
-                const nUnused1 = getNodeIdx(c, upperUnused);
-                const nUnused2 = getNodeIdx(c, lowerUnused);
-                stampG(nCom1, nUnused1, gOff);
-                stampG(nCom2, nUnused2, gOff);
-            }
-        }
-        else if (c instanceof MOSFET) {
-            const nG = getNodeIdx(c, 0);
-            const nD = getNodeIdx(c, 1);
-            const nS = getNodeIdx(c, 2);
-            const nB = getNodeIdx(c, 3);
-
-            const vG = (nG === -1 ? 0 : (c._lastVg ?? 0));
-            const vD = (nD === -1 ? 0 : (c._lastVd ?? 0));
-            const vS = (nS === -1 ? 0 : (c._lastVs ?? 0));
-            const vB = (nB === -1 ? vS : (c._lastVb ?? vS));
-
-            const isP   = (c.props.Type === 'PMOS');
-            const vt    = Math.abs(parseUnit(c.props.Vth || '0.7'));
-            const kp0   = parseUnit(c.props.Kp  || '140u');
-            const W     = parseUnit(c.props.W   || '1u');
-            const L     = parseUnit(c.props.L   || '1u') || 1e-6;
-            const k     = kp0 * (W / L);
-            const lambda= parseUnit(c.props.Lambda || '0.0');
-            const gamma = Math.max(0, parseUnit(c.props.Gamma || '0'));
-            const phi   = Math.max(0, parseUnit(c.props.Phi   || '0.9'));
-
-            const VsbRaw = isP ? (vB - vS) : (vS - vB);
-            const Vsb = Math.max(0, VsbRaw);
-            const rootBase = Math.sqrt(Math.max(0, phi));
-            const rootBias = Math.sqrt(Math.max(0, phi + Vsb));
-            const vtEff = vt + gamma * (rootBias - rootBase);
-
-            let vgs = isP ? (vS - vG) : (vG - vS);
-            let vds = isP ? (vS - vD) : (vD - vS);
-            let ids = 0;
-
-            if (vgs > vtEff) {
-                if (vds < vgs - vtEff) {
-                    ids = k * ((vgs - vtEff) * vds - 0.5 * vds * vds);
-                } else {
-                    const vov = vgs - vtEff;
-                    ids = 0.5 * k * vov * vov * (1 + lambda * (vds - vov));
-                }
-            }
-            if (isP) ids = -ids;
-
-            if (nD !== -1) I[nD] -= ids;
-            if (nS !== -1) I[nS] += ids;
-
-            const gLeak = 1e-9;
-            stampG(nD, nS, gLeak);
-        }
-        else if (c instanceof LF412) {
-            // Op-amp halves are stamped separately after this loop using a
-            // proper VCVS formulation with an auxiliary variable per output.
-            // Input/output leakages are still handled there.
-        }
-    });
-
-    // ---- Stamp op-amp VCVS constraints ----
-    opAmpEntries.forEach((entry, idx) => {
-        const row = opAmpOffset + idx;
-        const { nOut, nInv, nNon } = entry;
-
-        if (nNon !== -1) stampG(nNon, -1, OPAMP_INPUT_LEAK);
-        if (nInv !== -1) stampG(nInv, -1, OPAMP_INPUT_LEAK);
-        if (nOut !== -1) stampG(nOut, -1, OPAMP_OUTPUT_LEAK);
-
-        stampVCVS(nOut, -1, nNon, nInv, row);
-    });
-
-    // ---- Stamp independent voltage sources (DC + Function Generator) ----
-    vsEntries.forEach((src, idx) => {
-        const row   = nodeCount + idx;
-        const nPlus = src.nPlus;
-        const nMinus= src.nMinus;
-        if (nPlus === -1 && nMinus === -1) return;
-
-        if (nPlus !== -1) {
-            G.add(nPlus, row,  1);
-            G.add(row,  nPlus, 1);
-        }
-        if (nMinus !== -1) {
-            G.add(nMinus, row, -1);
-            G.add(row,   nMinus,-1);
-        }
-
-        // keep this row pivotable so the matrix isn't singular
-        G.add(row, row, 1e-9);
-
-        const vSrc = src.valueFn ? src.valueFn() : 0;
-        I[row] += vSrc;
-    });
-
-    // ---- Solve for node voltages & source currents ----
-    let solved = G.solve(I);
-
-    // If the matrix is singular (often caused by open pins), add a tiny shunt to ground
-    // on every node and retry before surfacing an error.
-    if (solved.singular) {
-        for (let n = 0; n < nodeCount; n++) {
-            G.add(n, n, BASELINE_NODE_LEAK * 10);
-        }
-        solved = G.solve(I);
-    }
-
-    if (solved.singular) {
-        simError = 'Circuit is singular (check ground or shorted sources)';
-        isPaused = true;
-        updatePlayPauseButton();
-        return;
-    }
-
-    const sol = solved.x;
     simError = null;
 
-    // Gently clamp op-amp outputs to keep the solver stable
-    components.forEach(c => {
-        if (c instanceof LF412) {
-            const outs = [getNodeIdx(c, 0), getNodeIdx(c, 6)];
-            outs.forEach(n => {
-                if (n != null && n !== -1) {
-                    const v = sol[n];
-                    if (Math.abs(v) > 100) {
-                        sol[n] = Math.sign(v) * 100;
-                    }
-                }
-            });
-        }
-    });
-
-    // ---- Store results in wires (for color) ----
     wires.forEach(w => {
         const n = getNodeIdx(w.from.c, w.from.p);
         const v = (n === -1 ? 0 : sol[n]);
@@ -2441,38 +2024,7 @@ function simulate(t) {
         w.v = 0.8 * w.v + 0.2 * v;
     });
 
-    // ---- Update component internal states & scope sampling ----
     components.forEach(c => {
-        if (c instanceof Capacitor) {
-            const n1 = getNodeIdx(c, 0);
-            const n2 = getNodeIdx(c, 1);
-            const v1 = (n1 === -1 ? 0 : sol[n1]);
-            const v2 = (n2 === -1 ? 0 : sol[n2]);
-            c._lastV = v1 - v2;
-        }
-        if (c instanceof LED) {
-            const nA = getNodeIdx(c, 0);
-            const nK = getNodeIdx(c, 1);
-            const vA = (nA === -1 ? 0 : sol[nA]);
-            const vK = (nK === -1 ? 0 : sol[nK]);
-
-            const Vf = parseUnit(c.props.Vf || '3.3');
-            const If = parseUnit(c.props.If || '10m') || 0.01;
-            let R = Math.abs(Vf / If);
-            if (!isFinite(R) || R <= 0) R = 330;
-
-            c._lastI = (vA - vK) / R;
-        }
-        if (c instanceof MOSFET) {
-            const nG = getNodeIdx(c, 0);
-            const nD = getNodeIdx(c, 1);
-            const nS = getNodeIdx(c, 2);
-            const nB = getNodeIdx(c, 3);
-            c._lastVg = (nG === -1 ? 0 : sol[nG]);
-            c._lastVd = (nD === -1 ? 0 : sol[nD]);
-            c._lastVs = (nS === -1 ? 0 : sol[nS]);
-            c._lastVb = (nB === -1 ? c._lastVs : sol[nB]);
-        }
         if (c instanceof Oscilloscope) {
             const n1 = getNodeIdx(c, 0);
             const n2 = getNodeIdx(c, 1);
