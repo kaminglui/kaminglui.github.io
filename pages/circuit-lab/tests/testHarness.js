@@ -285,6 +285,14 @@ function singleToneAmplitude(samples, freq) {
   return Math.sqrt(aCos * aCos + aSin * aSin);
 }
 
+function normalizeKind(entry) {
+  const raw = (entry.kind || entry.type || '').toLowerCase();
+  if (raw === 'funcgen') return 'functiongenerator';
+  if (raw === 'voltagesource') return 'voltagesource';
+  if (raw === 'voltageSource'.toLowerCase()) return 'voltagesource';
+  return raw;
+}
+
 function exportCircuit(components, wires) {
   return {
     components: components.map((c) => ({
@@ -312,14 +320,16 @@ function importCircuit(data, { resetIds: shouldReset = true } = {}) {
     mosfet: (entry) => makeMosfet(entry.props?.Type || 'NMOS', entry.props || {}, entry.id),
     lf412: (entry) => makeOpAmp(entry.id),
     switch: (entry) => makeSwitch(entry.props?.Type || 'SPST', entry.props?.Position || 'A', entry.id),
-    oscilloscope: (entry) => makeOscilloscope(entry.props || {}, entry.id)
+    oscilloscope: (entry) => makeOscilloscope(entry.props || {}, entry.id),
+    junction: (entry) => makeComponent('junction', 1, entry.props || {}, entry.id)
   };
 
   const components = (data.components || []).map((entry) => {
-    const factory = factories[entry.kind];
+    const kind = normalizeKind(entry);
+    const factory = factories[kind];
     return factory
       ? factory(entry)
-      : makeComponent(entry.kind || 'x', (entry.pins || []).length || 2, entry.props || {}, entry.id);
+      : makeComponent(kind || 'x', (entry.pins || []).length || 2, entry.props || {}, entry.id);
   });
   const compMap = new Map(components.map((c) => [c.id, c]));
   const wires = (data.wires || []).map((w) => wire(
