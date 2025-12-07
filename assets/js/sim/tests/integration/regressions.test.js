@@ -16,7 +16,7 @@ import {
   resistorCurrent,
   peakToPeak,
   singleToneAmplitude
-} from './testHarness';
+} from '../testHarness';
 
 function measureAmplitude(trace) {
   if (!trace.length) return 0;

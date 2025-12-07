@@ -9,7 +9,7 @@ import {
   makePotentiometer,
   runDC,
   resistorCurrent
-} from './testHarness';
+} from '../testHarness';
 
 describe('Switch behaviour across families', () => {
   it('routes an SPDT throw cleanly between two loads', () => {
@@ -113,6 +113,38 @@ describe('Semiconductor components', () => {
     const { voltage } = runDC(circuit);
     expect(Math.abs(resistorCurrent(r, voltage))).toBeLessThan(1e-6);
   });
+
+  it('keeps reverse leakage far below forward conduction', () => {
+    const forwardGnd = makeGround();
+    const forwardSrc = makeVoltageSource(5);
+    const reverseGnd = makeGround();
+    const reverseSrc = makeVoltageSource(5);
+    const forward = makeLED({ Vf: '2', If: '10m' });
+    const reverse = makeLED();
+    const rForward = makeResistor(1e3);
+    const rReverse = makeResistor(1e3);
+
+    const forwardCircuit = buildCircuit();
+    forwardCircuit.add(forwardGnd, forwardSrc, rForward, forward);
+    forwardCircuit.connect(forwardSrc, 1, forwardGnd, 0);
+    forwardCircuit.connect(forwardSrc, 0, rForward, 0);
+    forwardCircuit.connect(rForward, 1, forward, 0);
+    forwardCircuit.connect(forward, 1, forwardGnd, 0);
+
+    const reverseCircuit = buildCircuit();
+    reverseCircuit.add(reverseGnd, reverseSrc, rReverse, reverse);
+    reverseCircuit.connect(reverseSrc, 1, reverseGnd, 0);
+    reverseCircuit.connect(reverseSrc, 0, rReverse, 0);
+    reverseCircuit.connect(rReverse, 1, reverse, 1);
+    reverseCircuit.connect(reverse, 0, reverseGnd, 0);
+
+    const forwardCurrent = Math.abs(resistorCurrent(rForward, runDC(forwardCircuit).voltage));
+    const reverseCurrent = Math.abs(resistorCurrent(rReverse, runDC(reverseCircuit).voltage));
+
+    expect(forwardCurrent).toBeGreaterThan(2e-3);
+    expect(reverseCurrent).toBeLessThan(1e-6);
+    expect(forwardCurrent / Math.max(reverseCurrent, 1e-9)).toBeGreaterThan(1e4);
+  });
 });
 
 describe('Potentiometers', () => {
@@ -157,6 +189,9 @@ describe('Potentiometers', () => {
     const rBottom = 5e3;
     const rBottomLoaded = (rBottom * 10e3) / (rBottom + 10e3);
     const expected = 5 * (rBottomLoaded / (rTop + rBottomLoaded));
-    expect(voltage(pot, 1)).toBeCloseTo(expected, 2);
+    const actual = voltage(pot, 1);
+    expect(actual).toBeCloseTo(expected, 2);
+    expect(actual).toBeLessThan(2.5);
+    expect(Math.abs(resistorCurrent(load, voltage))).toBeCloseTo(actual / 10e3, 5);
   });
 });

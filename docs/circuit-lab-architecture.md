@@ -3,8 +3,15 @@
 ## Where things live
 - **UI / editor**: `assets/js/circuitforge.js` (components, wiring UI, scope rendering).
 - **Component renderers**: one file per component under `assets/js/circuit-lab/components/`, imported by the UI entry point.
-- **Headless simulation core**: `assets/js/sim/engine.js` exports `CircuitSim.runSimulation`, `updateComponentState`, and utilities. The circuit-lab page loads this file before `circuitforge.js`.
-- **Automated tests**: `pages/circuit-lab/tests/` exercise the engine directly via Node/Vitest.
+- **Templates and loader**: JSON definitions live under `assets/js/circuit-lab/templates/` and are loaded via `assets/js/circuit-lab/templateRegistry.js` (which also hydrates `window.CIRCUIT_TEMPLATES` through `circuitforge.templates.js`).
+- **Headless simulation core**: `assets/js/sim/engine.js` exports `CircuitSim.runSimulation`, `updateComponentState`, and utilities.
+- **Shared sim utilities**: `assets/js/sim/utils/` holds reusable helpers (ID registry, waveform analysis) shared by the UI and tests.
+- **Automated tests**: `assets/js/sim/tests/` split into `unit/` and `integration/`, all using the shared `testHarness.js`.
+
+## Testing
+- Run the full suite with `npm test`.
+- Add focused component tests under `assets/js/sim/tests/unit/` and multi-block/template circuits under `assets/js/sim/tests/integration/`.
+- Import helpers from `assets/js/sim/tests/testHarness.js`; template-driven tests should load JSON via `assets/js/circuit-lab/templateRegistry.js`.
 
 ## Node and reference handling
 - Pins from every component are unioned using the wire list to form connectivity roots.

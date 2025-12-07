@@ -8,7 +8,7 @@ import {
   runSimulation,
   runDC,
   wire
-} from './testHarness';
+} from '../testHarness';
 
 describe('Open and floating networks', () => {
   it('reports an error when no reference node exists', () => {

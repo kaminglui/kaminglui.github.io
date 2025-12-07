@@ -9,7 +9,7 @@ import {
   runDC,
   runTransient,
   wire
-} from './testHarness';
+} from '../testHarness';
 
 function connectDualRails(op, gnd, vPos, vNeg, components, wires) {
   const vccp = makeVoltageSource(vPos);

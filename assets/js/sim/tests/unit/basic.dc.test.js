@@ -7,7 +7,7 @@ import {
   wire,
   runDC,
   resistorCurrent
-} from './testHarness';
+} from '../testHarness';
 
 describe('Basic DC elements', () => {
   [

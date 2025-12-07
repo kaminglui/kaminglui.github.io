@@ -8,8 +8,9 @@ import {
   makeFunctionGenerator,
   makeSwitch,
   wire,
-  simulateCircuit
-} from './helpers';
+  simulateCircuit,
+  runTransient
+} from '../helpers';
 
 function connectDualRails(op, gnd, vPos, vNeg, components, wires) {
   const vccp = makeVoltageSource(vPos);
@@ -148,6 +149,52 @@ describe('Op-amp nonlinear/temporal uses', () => {
     expect(voltage(op, 0)).toBeCloseTo(-0.5, 1);
   });
 
+  it('ramps at the expected slope until it hits the rails', () => {
+    const gnd = makeGround();
+    const op = makeOpAmp();
+    const vin = makeVoltageSource(1);
+    const rin = makeResistor(10e3);
+    const cf = makeCapacitor(1e-6);
+
+    const components = [gnd, op, vin, rin, cf];
+    const wires = [
+      wire(vin, 1, gnd, 0),
+      wire(vin, 0, rin, 0),
+      wire(rin, 1, op, 1),
+      wire(op, 2, gnd, 0),
+      wire(op, 0, cf, 0),
+      wire(cf, 1, op, 1)
+    ];
+    connectDualRails(op, gnd, 5, -5, components, wires);
+
+    const targets = [0.01, 0.02, 0.07];
+    const { samples } = runTransient({ components, wires }, {
+      duration: 0.08,
+      dt: 1e-4,
+      samplePoints: targets,
+      measure: ({ t, sim }) => ({ t, v: sim.voltage(op, 0) })
+    });
+
+    const lookup = (tTarget) => {
+      let closest = samples[0];
+      samples.forEach((s) => {
+        if (Math.abs(s.t - tTarget) < Math.abs(closest.t - tTarget)) closest = s;
+      });
+      return closest?.v ?? 0;
+    };
+
+    const v10 = lookup(0.01);
+    const v20 = lookup(0.02);
+    const slope = (v20 - v10) / 0.01;
+    const expectedSlope = -1 / (10e3 * 1e-6);
+    const slopeError = Math.abs((slope - expectedSlope) / expectedSlope);
+    expect(slopeError).toBeLessThan(0.1);
+
+    const v70 = lookup(0.07);
+    expect(v70).toBeLessThan(-4.7);
+    expect(v70).toBeGreaterThan(-5.2);
+  });
+
   it('differentiates a sine input', () => {
     const gnd = makeGround();
     const op = makeOpAmp();
@@ -192,6 +239,78 @@ describe('Op-amp nonlinear/temporal uses', () => {
     const expectedPeak = peakVin * gain;
     const measuredPeak = Math.max(...samples.map((s) => Math.abs(s.out)));
     expect(measuredPeak).toBeCloseTo(expectedPeak, 1);
+  });
+
+  it('leads the input by roughly 90° in an inverting differentiator', () => {
+    const gnd = makeGround();
+    const op = makeOpAmp();
+    const src = makeVoltageSource(0);
+    const cap = makeCapacitor(100e-9);
+    const rf = makeResistor(10e3);
+
+    const components = [gnd, op, src, cap, rf];
+    const wires = [
+      wire(src, 1, gnd, 0),
+      wire(src, 0, cap, 0),
+      wire(cap, 1, op, 1),
+      wire(op, 0, rf, 0),
+      wire(rf, 1, op, 1),
+      wire(op, 2, gnd, 0)
+    ];
+    connectDualRails(op, gnd, 12, -12, components, wires);
+
+    const freq = 200;
+    const omega = 2 * Math.PI * freq;
+    const Vpp = 1;
+    const period = 1 / freq;
+    const dt = period / 200;
+    const settle = period * 2;
+    const samples = [];
+
+    runTransient({ components, wires }, {
+      duration: period * 6,
+      dt,
+      sampleInterval: dt,
+      onStep: ({ t }) => { src.props.Vdc = String((Vpp / 2) * Math.sin(omega * t)); },
+      measure: ({ t, sim }) => {
+        if (t >= settle) {
+          samples.push({
+            t,
+            vin: sim.voltage(src, 0),
+            vout: sim.voltage(op, 0)
+          });
+        }
+      }
+    });
+
+    const analyzeTone = (series) => {
+      let sumCos = 0;
+      let sumSin = 0;
+      series.forEach(({ t, v }) => {
+        const ph = omega * t;
+        sumCos += v * Math.cos(ph);
+        sumSin += v * Math.sin(ph);
+      });
+      const n = series.length || 1;
+      const aCos = (2 / n) * sumCos;
+      const aSin = (2 / n) * sumSin;
+      return {
+        amplitude: Math.sqrt(aCos * aCos + aSin * aSin),
+        phase: Math.atan2(aSin, aCos)
+      };
+    };
+
+    const vinTone = analyzeTone(samples.map(({ t, vin }) => ({ t, v: vin })));
+    const voutTone = analyzeTone(samples.map(({ t, vout }) => ({ t, v: vout })));
+    const gainMeasured = voutTone.amplitude / vinTone.amplitude;
+    const gainExpected = omega * 10e3 * 100e-9;
+    expect(gainMeasured).toBeCloseTo(gainExpected, 1);
+
+    let phaseLead = voutTone.phase - vinTone.phase;
+    while (phaseLead > Math.PI) phaseLead -= 2 * Math.PI;
+    while (phaseLead < -Math.PI) phaseLead += 2 * Math.PI;
+    expect(phaseLead).toBeGreaterThan(Math.PI / 2 - 0.35);
+    expect(phaseLead).toBeLessThan(Math.PI / 2 + 0.35);
   });
 
   it('mixes multiple AC sources like the karaoke template', () => {

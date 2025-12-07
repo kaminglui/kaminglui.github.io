@@ -9,7 +9,7 @@ import {
   triangleAt,
   FUNCGEN_REF_RES,
   FUNCGEN_SERIES_RES
-} from './testHarness';
+} from '../testHarness';
 
 function measureWaveform({ circuit, node, times, dt }) {
   const samples = [];

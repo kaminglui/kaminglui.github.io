@@ -12,6 +12,14 @@ import {
     createGround,
     createOscilloscope
 } from './circuit-lab/components/index.js';
+import {
+    COMPONENT_ID_PREFIXES,
+    defaultIdRegistry as componentIdRegistry,
+    reserveComponentId as reserveComponentIdForRegistry,
+    releaseComponentId as releaseComponentIdForRegistry,
+    resetIdRegistry as resetIdRegistryState
+} from './sim/utils/idGenerator.js';
+import { listTemplates, loadTemplate } from './circuit-lab/templateRegistry.js';
 
 /* === CONFIG === */
 // Grid + time-step config
@@ -96,83 +104,19 @@ const PROP_UNITS = {
     VDiv2: 'V/div'
 };
 
-const ID_PREFIXES = {
-    ground: 'GND',
-    voltagesource: 'V',
-    functiongenerator: 'FG',
-    resistor: 'R',
-    capacitor: 'C',
-    potentiometer: 'POT',
-    led: 'LED',
-    mosfet: 'M',
-    lf412: 'U',
-    switch: 'SW',
-    oscilloscope: 'SCOPE',
-    junction: 'J'
-};
-
-const idPools = new Map();
-const usedIds = new Set();
+const ID_PREFIXES = COMPONENT_ID_PREFIXES;
 
 function resetIdRegistry() {
-    idPools.clear();
-    usedIds.clear();
-}
-
-function getIdState(prefix) {
-    let state = idPools.get(prefix);
-    if (!state) {
-        state = { used: new Set(), free: new Set(), next: 1 };
-        idPools.set(prefix, state);
-    }
-    return state;
+    resetIdRegistryState(componentIdRegistry);
 }
 
 function reserveComponentId(kind, providedId) {
-    if (providedId && !usedIds.has(providedId)) {
-        usedIds.add(providedId);
-        const parsed = String(providedId).match(/^([A-Za-z]+)(\d+)$/);
-        if (parsed) {
-            const prefix = parsed[1];
-            const num = parseInt(parsed[2], 10);
-            const state = getIdState(prefix);
-            state.used.add(num);
-            state.free.delete(num);
-            if (state.next <= num) state.next = num + 1;
-        }
-        return providedId;
-    }
     const prefix = (ID_PREFIXES[kind] || 'X').toUpperCase();
-    const state = getIdState(prefix);
-    let num;
-    if (state.free.size) {
-        num = Math.min(...state.free);
-        state.free.delete(num);
-    } else {
-        num = state.next;
-        state.next += 1;
-    }
-    let id = `${prefix}${num}`;
-    while (usedIds.has(id)) {
-        num = state.next;
-        state.next += 1;
-        id = `${prefix}${num}`;
-    }
-    state.used.add(num);
-    usedIds.add(id);
-    return id;
+    return reserveComponentIdForRegistry(prefix, componentIdRegistry, providedId);
 }
 
 function releaseComponentId(id) {
-    if (!id || !usedIds.has(id)) return;
-    usedIds.delete(id);
-    const parsed = String(id).match(/^([A-Za-z]+)(\d+)$/);
-    if (!parsed) return;
-    const prefix = parsed[1];
-    const num = parseInt(parsed[2], 10);
-    const state = getIdState(prefix);
-    state.used.delete(num);
-    state.free.add(num);
+    releaseComponentIdForRegistry(id, componentIdRegistry);
 }
 
 function reassignComponentId(comp, newId) {
@@ -2018,6 +1962,8 @@ function updateProps() {
 
 
 function getTemplateLibrary() {
+    const templates = listTemplates();
+    if (templates.length) return templates;
     if (Array.isArray(window.CIRCUIT_TEMPLATES)) return window.CIRCUIT_TEMPLATES;
     return [];
 }
@@ -2108,7 +2054,7 @@ function placeTemplate(template, origin) {
 }
 
 function applyTemplate(name, origin = getTemplateOrigin()) {
-    const template = getTemplateLibrary().find(t => t.id === name);
+    const template = loadTemplate(name) || getTemplateLibrary().find(t => t.id === name);
     if (!template) return;
     placeTemplate(template, origin);
 }
@@ -2149,7 +2095,7 @@ function renderTemplateButtons() {
     templates.forEach(t => {
         const btn = document.createElement('button');
         btn.className = 'tool-btn p-3 rounded flex flex-col items-center justify-center gap-2 text-center';
-        btn.onclick = () => queueTemplatePlacement(t);
+        btn.onclick = () => queueTemplatePlacement(loadTemplate(t.id) || t);
 
         const icon = document.createElement('i');
         icon.className = t.icon || 'fas fa-microchip text-blue-200';

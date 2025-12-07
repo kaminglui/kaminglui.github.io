@@ -8,7 +8,7 @@ import {
   makeLED,
   wire,
   simulateCircuit
-} from './helpers';
+} from '../helpers';
 
 describe('DC resistive networks', () => {
   [1e3, 1e4, 1e5].forEach((R) => {

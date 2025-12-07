@@ -8,7 +8,7 @@ import {
   runTransient,
   runDC,
   wire
-} from './testHarness';
+} from '../testHarness';
 
 describe('MOSFET switching', () => {
   it('drives an NMOS low-side switch', () => {

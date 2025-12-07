@@ -9,7 +9,7 @@ import {
   runSimulation,
   parseUnit,
   simulateCircuit
-} from './helpers';
+} from '../helpers';
 
 const FUNCGEN_RS = 2; // FUNCGEN_REF_RES + FUNCGEN_SERIES_RES
 

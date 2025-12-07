@@ -6,7 +6,7 @@ import {
   makeCapacitor,
   wire,
   simulateCircuit
-} from './helpers';
+} from '../helpers';
 
 describe('RC transient response', () => {
   it('charges a capacitor with the expected exponential', () => {

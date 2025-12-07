@@ -1,4 +1,11 @@
-import engine from '../../../assets/js/sim/engine.js';
+import engine from '../engine.js';
+import {
+  COMPONENT_ID_PREFIXES,
+  defaultIdRegistry,
+  reserveComponentId as reserveComponentIdWithRegistry,
+  resetIdRegistry as resetIdRegistryState
+} from '../utils/idGenerator.js';
+import { peakToPeak, rms, singleToneAmplitude } from '../utils/waveform.js';
 
 const { runSimulation, parseUnit } = engine;
 
@@ -6,73 +13,16 @@ const { runSimulation, parseUnit } = engine;
 const FUNCGEN_REF_RES = 1;
 const FUNCGEN_SERIES_RES = 1;
 
-const PREFIX_MAP = {
-  ground: 'GND',
-  voltagesource: 'V',
-  functiongenerator: 'FG',
-  resistor: 'R',
-  capacitor: 'C',
-  potentiometer: 'POT',
-  led: 'LED',
-  mosfet: 'M',
-  lf412: 'U',
-  switch: 'SW',
-  oscilloscope: 'SCOPE',
-  junction: 'J'
-};
-
-const idPools = new Map();
-const usedIds = new Set();
+function reserveId(kind, providedId) {
+  const prefix = COMPONENT_ID_PREFIXES[kind] || 'X';
+  return reserveComponentIdWithRegistry(prefix, defaultIdRegistry, providedId);
+}
 
 function resetIdRegistry() {
-  idPools.clear();
-  usedIds.clear();
+  resetIdRegistryState(defaultIdRegistry);
 }
 
-function getIdState(prefix) {
-  let state = idPools.get(prefix);
-  if (!state) {
-    state = { used: new Set(), free: new Set(), next: 1 };
-    idPools.set(prefix, state);
-  }
-  return state;
-}
-
-function reserveId(kind, providedId) {
-  if (providedId && !usedIds.has(providedId)) {
-    usedIds.add(providedId);
-    const parsed = String(providedId).match(/^([A-Za-z]+)(\d+)$/);
-    if (parsed) {
-      const prefix = parsed[1];
-      const num = parseInt(parsed[2], 10);
-      const state = getIdState(prefix);
-      state.used.add(num);
-      state.free.delete(num);
-      if (state.next <= num) state.next = num + 1;
-    }
-    return providedId;
-  }
-  const prefix = PREFIX_MAP[kind] || 'X';
-  const state = getIdState(prefix);
-  let num;
-  if (state.free.size) {
-    num = Math.min(...state.free);
-    state.free.delete(num);
-  } else {
-    num = state.next;
-    state.next += 1;
-  }
-  let id = `${prefix}${num}`;
-  while (usedIds.has(id)) {
-    num = state.next;
-    state.next += 1;
-    id = `${prefix}${num}`;
-  }
-  state.used.add(num);
-  usedIds.add(id);
-  return id;
-}
-
+// Component factories
 function makeComponent(kind, pinCount, props = {}, id) {
   return {
     id: reserveId(kind, id),
@@ -171,6 +121,7 @@ function makeMosfet(type = 'NMOS', props = {}, id) {
   }, id);
 }
 
+// Circuit assembly helpers
 function wire(c1, p1, c2, p2) {
   return { from: { c: c1, p: p1 }, to: { c: c2, p: p2 } };
 }
@@ -197,6 +148,7 @@ function makeVoltageReader(result) {
   };
 }
 
+// Simulation runners
 function simulateCircuit({ components, wires, time = 0, dt = 1e-7, updateState = true, ...rest }) {
   const res = runSimulation({
     components,
@@ -257,34 +209,7 @@ function runTransient(circuit, {
   return { samples };
 }
 
-function peakToPeak(values) {
-  if (!values.length) return 0;
-  return Math.max(...values) - Math.min(...values);
-}
-
-function rms(values) {
-  if (!values.length) return 0;
-  const meanSq = values.reduce((acc, v) => acc + v * v, 0) / values.length;
-  return Math.sqrt(meanSq);
-}
-
-function singleToneAmplitude(samples, freq) {
-  if (!samples.length) return 0;
-  const dt = samples[1] ? (samples[1].t - samples[0].t) : 0;
-  if (dt <= 0) return 0;
-  let sumSin = 0;
-  let sumCos = 0;
-  samples.forEach(({ t, v }) => {
-    const ph = 2 * Math.PI * freq * t;
-    sumCos += v * Math.cos(ph);
-    sumSin += v * Math.sin(ph);
-  });
-  const n = samples.length;
-  const aCos = (2 / n) * sumCos;
-  const aSin = (2 / n) * sumSin;
-  return Math.sqrt(aCos * aCos + aSin * aSin);
-}
-
+// Circuit import/export helpers
 function normalizeKind(entry) {
   const raw = (entry.kind || entry.type || '').toLowerCase();
   if (raw === 'funcgen') return 'functiongenerator';
@@ -347,6 +272,7 @@ function resistorCurrent(resistor, voltage) {
   return (voltage(resistor, 0) - voltage(resistor, 1)) / R;
 }
 
+// Waveform primitives used across tests
 function sineAt(Vpp, freq, t, offset = 0, phaseDeg = 0) {
   const amp = Vpp / 2;
   const phase = 2 * Math.PI * freq * t + (phaseDeg * Math.PI) / 180;

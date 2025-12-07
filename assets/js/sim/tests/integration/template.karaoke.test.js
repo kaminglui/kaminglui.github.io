@@ -1,25 +1,26 @@
 import { describe, it, expect } from 'vitest';
-import fs from 'fs';
-import path from 'path';
 import {
   importCircuit,
   runTransient,
   peakToPeak,
   singleToneAmplitude,
   resetIdRegistry
-} from './testHarness';
+} from '../testHarness';
+import { loadTemplate } from '../../../circuit-lab/templateRegistry.js';
 
 function loadMixerKaraoke() {
-  const file = path.join(process.cwd(), 'pages/circuit-lab/tests/fixtures/mixer-karaoke.json');
-  const raw = fs.readFileSync(file, 'utf8');
-  const data = JSON.parse(raw);
+  const data = loadTemplate('mixer-karaoke');
+  if (!data) throw new Error('Karaoke template not found');
   const normalized = {
     components: (data.components || []).map((c) => ({
       id: c.id,
       kind: (c.type || c.kind || '').toLowerCase(),
       props: c.props || {}
     })),
-    wires: data.wires || []
+    wires: (data.wires || []).map((w) => ({
+      from: { id: w.from?.id, p: w.from?.p ?? w.from?.pin ?? 0 },
+      to: { id: w.to?.id, p: w.to?.p ?? w.to?.pin ?? 0 }
+    }))
   };
   resetIdRegistry();
   return importCircuit(normalized, { resetIds: false });

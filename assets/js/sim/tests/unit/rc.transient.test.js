@@ -7,7 +7,7 @@ import {
   makeCapacitor,
   makeFunctionGenerator,
   runTransient
-} from './testHarness';
+} from '../testHarness';
 
 function amplitude(arr) {
   return (Math.max(...arr) - Math.min(...arr)) / 2;

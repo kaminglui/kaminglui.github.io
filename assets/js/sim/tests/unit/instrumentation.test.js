@@ -6,7 +6,7 @@ import {
   makeResistor,
   makeOscilloscope,
   runDC
-} from './testHarness';
+} from '../testHarness';
 
 describe('Oscilloscope connections', () => {
   it('does not disturb a divider even with multiple probes attached', () => {

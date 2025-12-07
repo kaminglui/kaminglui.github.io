@@ -8,7 +8,7 @@ import {
   importCircuit,
   runDC,
   resetIdRegistry
-} from './testHarness';
+} from '../testHarness';
 
 describe('Circuit export/import and IDs', () => {
   it('allocates readable, sequential component IDs', () => {
