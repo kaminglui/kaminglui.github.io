@@ -1568,53 +1568,44 @@ function drawScope() {
 /* ---------- UI HELPERS / MODES ---------- */
 function resize() {
     if (!canvas) return;
-
-    // 1. Calculate CSS Variables for 100dvh layout
-    syncViewportCssVars();
-    syncSidebarOverlayState();
-
-    // 2. Get the container size (The .canvas-shell element)
-    // We trust CSS to handle the layout (flex-grow).
-    // We just need to know how big it resulted in.
-    const parent = canvas.parentElement;
     
-    // Safety check: if parent is hidden or 0, fallback to window
-    const cw = parent ? parent.clientWidth : window.innerWidth;
-    const ch = parent ? parent.clientHeight : window.innerHeight;
+    // 1. Get the PARENT container dimensions
+    // The CSS flexbox rules determine how big this shell is.
+    const container = canvas.parentElement; 
+    const w = container ? container.clientWidth : 0;
+    const h = container ? container.clientHeight : 0;
 
-    // 3. Set Canvas Resolution (Physical pixels)
+    // 2. Update Canvas Memory (Resolution)
+    // Use devicePixelRatio for sharp text on Retinas
     const dpr = window.devicePixelRatio || 1;
-    
-    // Set display size (CSS)
-    canvas.style.width = `${cw}px`;
-    canvas.style.height = `${ch}px`;
-    
-    // Set memory size (Buffer)
-    canvas.width = Math.floor(cw * dpr);
-    canvas.height = Math.floor(ch * dpr);
+    canvas.width = Math.floor(w * dpr);
+    canvas.height = Math.floor(h * dpr);
 
-    // Update Global Globals for rendering
+    // 3. Update Canvas Display Size (CSS)
+    // CRITICAL: Explicitly set style to match container
+    canvas.style.width = `${w}px`;
+    canvas.style.height = `${h}px`;
+
+    // 4. Update Globals
     canvasDisplayWidth = canvas.width;
     canvasDisplayHeight = canvas.height;
-    canvasCssWidth = cw;
-    canvasCssHeight = ch;
+    canvasCssWidth = w;
+    canvasCssHeight = h;
 
-    // 4. Center View on first load
-    if (viewOffsetX === 0 && viewOffsetY === 0) {
-        viewOffsetX = (canvas.width  / (2 * zoom) - BOARD_W / 2);
-        viewOffsetY = (canvas.height / (2 * zoom) - BOARD_H / 2);
+    // 5. Handle Scope
+    if (scopeCanvas && document.getElementById('scope-container')) {
+        const sw = document.getElementById('scope-container').clientWidth;
+        const sh = document.getElementById('scope-container').clientHeight;
+        scopeCanvas.width = sw; // * dpr if you want high res scope
+        scopeCanvas.height = sh;
     }
-    clampView();
 
-    // 5. Handle Scope Overlay
+    // Keep layout helpers in sync after size changes
+    syncSidebarOverlayState();
     if (scopeMode) {
         setScopeOverlayLayout(scopeDisplayMode);
-        if (scopeCanvas && document.getElementById('scope-container')) {
-            const scContainer = document.getElementById('scope-container');
-            scopeCanvas.width = scContainer.clientWidth * dpr;
-            scopeCanvas.height = scContainer.clientHeight * dpr;
-        }
     }
+    clampView();
 }
 
 function createToolIcon(selector, ComponentClass, setupFn, offsetY = 0) {

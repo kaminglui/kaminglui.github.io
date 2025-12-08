@@ -21,84 +21,98 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet" />
 
-    <style>
+        <style>
         :root {
-            /* --- CORE PALETTE --- */
-            --bg-app: #09090b;
-            --bg-panel: #18181b;
-            --border-color: #27272a;
-            --text-primary: #f8fafc;
-            --text-secondary: #94a3b8;
-            --accent: #3b82f6;
-            --accent-hover: #2563eb;
+            /* --- CORE PALETTE (Modern Engineering Dark) --- */
+            --bg-app: #09090b;       /* Zinc-950 */
+            --bg-panel: #18181b;     /* Zinc-900 */
+            --bg-surface: #27272a;   /* Zinc-800 */
+            
+            --border-subtle: #27272a;
+            --border-focus: #3f3f46;
+            
+            --text-primary: #e4e4e7; /* Zinc-200 */
+            --text-secondary: #a1a1aa; /* Zinc-400 */
+            --text-muted: #52525b;   /* Zinc-600 */
+            
+            --accent: #3b82f6;       /* Blue-500 */
+            --accent-glow: rgba(59, 130, 246, 0.15);
+            --danger: #ef4444;
+            --success: #10b981;
             
             /* Layout Dimensions */
-            --header-h: 0px; /* Will be set by JS if site-header exists */
-            --simbar-h: 56px;
-            --sidebar-w: 280px;
+            --header-h: 0px; 
+            --simbar-h: 52px; /* Slightly more compact */
+            --sidebar-w: 260px;
         }
 
-        /* Light Mode Overrides */
         .theme-light {
-            --bg-app: #f2f4f8;
-            --bg-panel: #f8fafc;
-            --border-color: #e0e7ef;
+            --bg-app: #f8fafc;
+            --bg-panel: #ffffff;
+            --bg-surface: #f1f5f9;
+            --border-subtle: #e2e8f0;
+            --border-focus: #cbd5e1;
             --text-primary: #0f172a;
-            --text-secondary: #475569;
+            --text-secondary: #64748b;
+            --text-muted: #94a3b8;
         }
 
-        /* --- LAYOUT STRUCTURE --- */
+        /* --- BASE RESET --- */
         html, body { height: 100%; width: 100%; overflow: hidden; margin: 0; }
         
         body {
             background-color: var(--bg-app);
             color: var(--text-primary);
-            font-family: 'Inter', sans-serif;
+            font-family: 'Inter', -apple-system, system-ui, sans-serif;
             display: flex;
             flex-direction: column;
-            box-sizing: border-box;
-            overflow: hidden;
+            user-select: none; /* Prevents text highlighting while dragging components */
         }
 
-        /* Main Workspace: Sidebar + Canvas Side-by-Side */
+        /* --- LAYOUT CONTAINER --- */
         .circuit-lab-root {
             flex: 1;
             display: flex;
-            flex-direction: row; /* CRITICAL: Side by Side */
+            flex-direction: row;
             overflow: hidden;
-            min-height: calc(100vh - var(--simbar-h));
-            height: auto;
             position: relative;
+            /* Force height calculation */
+            height: calc(100vh - var(--simbar-h));
         }
 
         /* --- SIDEBAR --- */
         .sidebar {
             width: var(--sidebar-w);
             background: var(--bg-panel);
-            border-right: 1px solid var(--border-color);
+            border-right: 1px solid var(--border-subtle);
             display: flex;
             flex-direction: column;
-            z-index: 20;
-            transition: transform 0.3s ease, width 0.3s ease;
+            z-index: 30;
+            transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            flex-shrink: 0; /* Prevents sidebar from being crushed */
+        }
+
+        .sidebar.collapsed {
+            margin-left: calc(var(--sidebar-w) * -1); /* Slide out left */
         }
 
         .sidebar-header {
-            height: 60px;
+            height: 56px;
             display: flex;
             align-items: center;
             padding: 0 16px;
-            border-bottom: 1px solid var(--border-color);
+            border-bottom: 1px solid var(--border-subtle);
+            background: var(--bg-panel);
         }
 
-        .sidebar.collapsed { width: 0; border: none; overflow: hidden; }
-
-        /* --- CANVAS SHELL --- */
+        /* --- CANVAS AREA --- */
         .canvas-shell {
             flex: 1;
             position: relative;
             background-color: var(--bg-app);
-            overflow: hidden; /* Prevents scrollbars on the shell itself */
-            box-sizing: border-box;
+            overflow: hidden;
+            min-width: 0; /* Flexbox hack to allow shrinking */
+            cursor: crosshair;
         }
 
         #circuitCanvas {
@@ -108,87 +122,70 @@
             outline: none;
         }
 
-        /* --- COMPONENT BUTTONS (Grid) --- */
+        /* --- COMPONENT GRID BUTTONS --- */
         .tool-btn {
             background: var(--bg-panel);
-            border: 1px solid var(--border-color);
-            border-radius: 8px;
+            border: 1px solid var(--border-subtle);
+            border-radius: 6px;
             color: var(--text-primary);
-            transition: all 0.2s;
+            transition: all 0.15s ease;
+            position: relative;
+            overflow: hidden;
         }
         .tool-btn:hover {
-            border-color: var(--accent);
-            background: rgba(59, 130, 246, 0.05);
+            background: var(--bg-surface);
+            border-color: var(--border-focus);
+            transform: translateY(-1px);
         }
         .tool-btn.active {
-            background: rgba(59, 130, 246, 0.1);
+            background: var(--accent-glow);
             border-color: var(--accent);
+            color: var(--accent);
             box-shadow: 0 0 0 1px var(--accent);
         }
 
-        /* --- SIMULATION BAR (Bottom) --- */
+        /* --- BOTTOM SIMULATION BAR --- */
         #sim-bar {
-            min-height: var(--simbar-h);
+            height: var(--simbar-h);
             background: var(--bg-panel);
-            border-top: 1px solid var(--border-color);
+            border-top: 1px solid var(--border-subtle);
             display: flex;
             align-items: center;
             justify-content: space-between;
-            padding: 8px 16px;
+            padding: 0 16px;
             z-index: 50;
-            flex-wrap: wrap;
-            gap: 8px;
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            right: 0;
-        }
-        #sim-bar .sim-info {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-        #sim-bar .sim-actions {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            flex-wrap: wrap;
+            box-shadow: 0 -4px 20px rgba(0,0,0,0.1);
         }
 
-        /* Light theme tweaks */
-        .theme-light .tool-btn {
-            background: #f3f4f6;
-            border-color: #d4d4d8;
-            color: #0f172a;
-        }
-
-        /* --- DROPDOWN MENUS --- */
+        /* --- ROBUST DROPDOWNS --- */
         .menu-wrapper { position: relative; }
-        
+
         .menu-list {
             position: absolute;
-            bottom: 120%; /* Opens UPWARDS because bar is at bottom */
+            bottom: calc(100% + 8px); /* Pop UPWARDS */
             left: 0;
-            min-width: 160px;
+            min-width: 180px;
             background: var(--bg-panel);
-            border: 1px solid var(--border-color);
+            border: 1px solid var(--border-focus);
             border-radius: 8px;
-            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
-            padding: 4px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+            padding: 6px;
             display: flex;
             flex-direction: column;
             gap: 2px;
-            z-index: 100;
+            z-index: 1000;
+            
+            /* Animation State */
             opacity: 0;
-            transform: translateY(10px);
+            transform: translateY(10px) scale(0.95);
             pointer-events: none;
-            transition: all 0.15s ease;
+            transition: opacity 0.15s ease, transform 0.15s ease;
         }
 
-        /* Active state for menu */
+        /* Open State */
         .menu-list.active {
             opacity: 1;
-            transform: translateY(0);
+            transform: translateY(0) scale(1);
             pointer-events: auto;
         }
 
@@ -196,145 +193,104 @@
             text-align: left;
             padding: 8px 12px;
             border-radius: 4px;
-            font-size: 13px;
+            font-size: 12px;
+            font-weight: 500;
             color: var(--text-primary);
             background: transparent;
             border: none;
             cursor: pointer;
         }
-        .menu-list button:hover { background: rgba(255, 255, 255, 0.05); }
-        .theme-light .menu-list button:hover { background: rgba(0,0,0,0.05); }
+        .menu-list button i { width: 16px; text-align: center; opacity: 0.7; }
+        .menu-list button:hover { background: var(--bg-surface); }
 
-        /* --- OSCILLOSCOPE OVERLAY --- */
+        /* --- OSCILLOSCOPE OVERLAY (Hardware Look) --- */
         #scope-overlay {
             position: absolute;
-            /* Default to centering for "Window" mode */
-            top: 100px; 
-            left: 100px;
-            width: 600px;
-            height: 400px;
-            background: #000; /* Always black scope */
+            top: 20px; left: 20px;
+            width: 640px; height: 400px;
+            background: #111; /* Hardware chassis color */
             border: 1px solid #333;
-            border-radius: 8px;
-            box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+            border-radius: 12px;
+            box-shadow: 0 25px 50px -12px rgba(0,0,0,0.6);
             display: flex;
             flex-direction: column;
             z-index: 1000;
             overflow: hidden;
+            transition: width 0.2s, height 0.2s, top 0.2s, left 0.2s;
         }
 
-        /* Fullscreen mode override */
         #scope-overlay.fullscreen {
-            top: 0 !important;
-            left: 0 !important;
-            width: 100% !important;
-            height: calc(100vh - var(--simbar-h)) !important;
-            border-radius: 0;
-            border: none;
+            top: 0 !important; left: 0 !important;
+            width: 100% !important; height: 100% !important;
+            border-radius: 0; border: none;
+            z-index: 2000; /* On top of sidebar */
         }
 
-        /* Cursor Lines (Absolute inside scope canvas container) */
+        .scope-topbar {
+            background: #1a1a1a;
+            border-bottom: 1px solid #333;
+            padding: 10px 16px;
+            cursor: grab;
+        }
+        .scope-topbar:active { cursor: grabbing; }
+
+        #scope-container {
+            position: relative;
+            background: #000; /* Screen black */
+            flex: 1;
+            border: 2px solid #333;
+            border-radius: 4px;
+            margin: 0 16px;
+            overflow: hidden;
+        }
+        
+        /* Cursor Lines */
         .cursor-line {
-            position: absolute;
-            top: 0;
-            bottom: 0;
-            width: 2px;
-            border-left: 1px dashed;
-            pointer-events: none; /* Let drag events pass to handle */
-            z-index: 10;
+            position: absolute; top: 0; bottom: 0;
+            width: 0; border-left: 1px dashed;
+            pointer-events: none;
+            z-index: 20;
         }
         .cursor-handle {
-            position: absolute;
-            top: 0;
-            left: -8px; /* Center over line */
-            width: 16px;
-            height: 16px;
-            line-height: 16px;
-            text-align: center;
-            border-radius: 50%;
-            cursor: ew-resize;
-            pointer-events: auto;
+            position: absolute; top: 0; left: -10px;
+            width: 20px; height: 20px;
+            display: flex; justify-content: center; align-items: center;
+            background: inherit; color: #000;
+            font-size: 10px; font-weight: bold;
+            border-radius: 0 0 4px 4px;
+            cursor: ew-resize; pointer-events: auto;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.5);
         }
 
-        /* Mobile sidebar overlay support */
-        @media (max-width: 768px) {
-            html, body { overflow: auto; }
-            .sidebar {
-                position: absolute;
-                top: 0;
-                left: 0;
-                height: calc(100vh - var(--simbar-h));
-                max-width: 100%;
-                width: 100%;
-                transform: translateX(-100%);
-                transition: transform 0.3s ease;
-                border-right: none;
-            }
-            .circuit-lab-root.sidebar-open .sidebar {
-                transform: translateX(0);
-                box-shadow: 0 10px 30px rgba(0,0,0,0.35);
-            }
-            .canvas-shell {
-                width: 100%;
-            }
-            #sim-bar {
-                flex-direction: column;
-                align-items: flex-start;
-            }
-            #sim-bar .sim-info {
-                width: 100%;
-                order: 0;
-            }
-            #sim-bar .sim-actions {
-                width: 100%;
-                order: 1;
-                flex-wrap: wrap;
-            }
-            #sim-bar .sim-actions > * {
-                flex: 0 0 auto;
-            }
-        }
-        @media (max-width: 1024px) {
-            #sim-bar {
-                flex-direction: column;
-                align-items: flex-start;
-            }
-            #sim-bar .sim-info,
-            #sim-bar .sim-actions {
-                width: 100%;
-            }
-            body { padding-bottom: var(--simbar-h); }
-        }
-        @media (min-width: 769px) {
-            #mobile-tools-toggle { display: none; }
-        }
-
-        /* Utilities */
+        /* --- UTILITIES --- */
         .hidden { display: none !important; }
-        .sidebar-toggle {
-            position: absolute;
-            left: var(--sidebar-w);
-            top: 50%;
-            transform: translateY(-50%);
-            width: 28px;
-            height: 56px;
-            border: 1px solid var(--border-color);
-            border-left: none;
-            background: var(--bg-panel);
-            border-radius: 0 10px 10px 0;
-            display: grid;
-            place-items: center;
-            box-shadow: 4px 0 12px rgba(0,0,0,0.3);
-            transition: left 0.3s ease, background 0.2s ease;
-            z-index: 30;
-        }
-        .sidebar.collapsed + .sidebar-toggle {
-            left: 0;
-        }
+        
+        /* Scrollbars */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: var(--border-focus); border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+
+        /* Mobile Responsive Logic */
         @media (max-width: 768px) {
-            .sidebar-toggle { display: none; }
+            .sidebar {
+                position: absolute; top: 0; left: 0; bottom: 0;
+                margin-left: 0;
+                transform: translateX(-100%);
+                border-right: none;
+                box-shadow: 10px 0 25px rgba(0,0,0,0.5);
+            }
+            .circuit-lab-root.sidebar-open .sidebar { transform: translateX(0); }
+            .sidebar.collapsed { transform: translateX(-100%); margin-left: 0; }
+            
+            #sim-bar {
+                padding: 8px;
+                justify-content: center;
+            }
+            #sim-bar .sim-info { display: none; } /* Hide time on small screens */
         }
     </style>
+
 </head>
 <body class="theme-dark">
 
@@ -638,7 +594,7 @@
                     <i class="fas fa-save"></i> Save
                     <i class="fas fa-chevron-up text-[10px]"></i>
                 </button>
-                <div id="save-menu" class="menu-list hidden">
+                <div id="save-menu" class="menu-list">
                     <button onclick="runSaveOption('circuit')"><i class="fas fa-file-circuit"></i> Save Circuit</button>
                     <button onclick="runSaveOption('template')"><i class="fas fa-cubes"></i> Save Template</button>
                 </div>
@@ -650,7 +606,7 @@
                     <i class="fas fa-folder-open"></i> Load
                     <i class="fas fa-chevron-up text-[10px]"></i>
                 </button>
-                <div id="load-menu" class="menu-list hidden">
+                <div id="load-menu" class="menu-list">
                     <button onclick="runLoadOption('circuit')"><i class="fas fa-upload"></i> Load File...</button>
                     <button onclick="runLoadOption('template')"><i class="fas fa-puzzle-piece"></i> Load Template</button>
                 </div>
@@ -683,21 +639,16 @@
 
     <script type="module" src="../../assets/js/circuitforge.js"></script>
     <script>
-        const openMenus = new Set();
         function closeMenus() {
-            document.querySelectorAll('.menu-list').forEach(m => m.classList.remove('active', 'open'));
-            document.querySelectorAll('.menu-list').forEach(m => m.classList.add('hidden'));
-            openMenus.clear();
+            document.querySelectorAll('.menu-list').forEach(m => m.classList.remove('active'));
         }
         function toggleMenu(id) {
             const menu = document.getElementById(id);
             if (!menu) return;
-            const willOpen = menu.classList.contains('hidden');
+            const isOpening = !menu.classList.contains('active');
             closeMenus();
-            if (willOpen) {
-                menu.classList.remove('hidden');
-                menu.classList.add('active', 'open');
-                openMenus.add(id);
+            if (isOpening) {
+                menu.classList.add('active');
             }
         }
         function runSaveOption(type) {
