@@ -1,4 +1,5 @@
 import mixerKaraoke from './templates/mixer-karaoke.js';
+import baxandallTone from './templates/baxandall-tone.js';
 
 /**
  * @typedef {Object} CircuitTemplate
@@ -16,7 +17,7 @@ function cloneTemplate(template) {
 }
 
 /** @type {CircuitTemplate[]} */
-const templates = [mixerKaraoke].filter(Boolean);
+const templates = [mixerKaraoke, baxandallTone].filter(Boolean);
 let warnedEmptyTemplates = false;
 
 function warnEmptyTemplates() {
