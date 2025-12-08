@@ -45,6 +45,9 @@
             --sidebar-width: 22rem;
             --sidebar-width-collapsed: 0px;
         }
+        @media (max-width: 1024px) {
+            .sidebar-toggle { display: none; }
+        }
         .theme-dark {
             color-scheme: dark;
             --body-bg: #0f0f0f;
@@ -209,7 +212,7 @@
         .menu-list {
             position: absolute;
             right: 0;
-            top: calc(100% + 6px);
+            bottom: calc(100% + 6px);
             min-width: 180px;
             background: #0b1221;
             border: 1px solid #1f2937;
@@ -457,25 +460,78 @@
             box-shadow: 0 4px 6px rgba(0,0,0,0.5);
             border: 2px solid white;
         }
+        /* Layout + responsiveness */
+        .circuit-lab-root {
+            display: grid;
+            grid-template-columns: var(--sidebar-width-current, 320px) minmax(0, 1fr);
+            gap: 0;
+            height: calc(100vh - var(--header-h, 0px) - var(--simbar-height, 0px));
+            min-height: calc(100vh - var(--header-h, 0px) - var(--simbar-height, 0px));
+            overflow: hidden;
+            margin-top: 0;
+        }
+        .sidebar-panel {
+            height: 100%;
+            max-height: 100%;
+            min-height: 0;
+            position: relative;
+        }
+        .sidebar.sidebar-panel {
+            top: 0;
+            height: 100%;
+            max-height: 100%;
+            min-height: 0;
+        }
+        .canvas-panel {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            min-height: 0;
+            background: #111;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        .canvas-panel .canvas-shell {
+            flex: 1 1 auto;
+            min-height: 0;
+        }
+        .canvas-panel canvas {
+            height: 100%;
+        }
+        #sim-bar { overflow: visible; }
+        #circuit-forge-toggle {
+            width: 100%;
+            text-align: left;
+        }
+        @media (max-width: 1024px) {
+            .circuit-lab-root {
+                display: flex;
+                flex-direction: column;
+                height: auto;
+                min-height: calc(100vh - var(--header-h, 0px) - var(--simbar-height, 0px));
+            }
+            .sidebar-panel { height: auto; max-height: none; }
+            .circuit-lab-root:not(.sidebar-open) .sidebar-content { display: none; }
+            .circuit-lab-root:not(.sidebar-open) .canvas-panel {
+                display: flex;
+                height: calc(100vh - var(--header-h, 0px) - var(--simbar-height, 0px));
+            }
+            .circuit-lab-root.sidebar-open .sidebar-content { display: flex; }
+            .circuit-lab-root.sidebar-open .canvas-panel { display: none; }
+        }
     </style>
 </head>
 <body class="theme-dark flex flex-col min-h-screen text-sm">
 
-    <header
-        class="site-header"
-        id="top"
-        data-site-header
-        data-nav-root="../.."
-        data-current-lab="circuit-lab"
-    ></header>
+    <div id="site-header"></div>
 
-    <script type="module" src="../../assets/js/site-header-init.js"></script>
-
-    <main class="flex-1 flex overflow-hidden lab-main">
+    <main id="circuit-lab-root" class="circuit-lab-root sidebar-open">
     <!-- Sidebar -->
-    <div id="sidebar" class="sidebar w-80 flex flex-col flex-shrink-0 shadow-2xl z-20 relative" aria-expanded="true">
+    <aside id="sidebar" class="sidebar sidebar-panel w-80 flex flex-col flex-shrink-0 shadow-2xl z-20 relative" aria-expanded="true">
         <div class="sidebar-header px-4 pt-3 pb-1 pr-10 border-b border-gray-700 bg-gray-800/50 backdrop-blur flex items-center gap-2">
-            <div class="flex items-center gap-2 sidebar-label">
+            <button id="circuit-forge-toggle" type="button" aria-pressed="true" onclick="toggleSidebar()"
+                    class="flex items-center gap-2 sidebar-label w-full text-left">
                 <i class="fas fa-microchip text-blue-400"></i>
                 <div class="flex items-center gap-2">
                     <span class="text-xl font-bold text-blue-400 tracking-tight">Circuit Forge</span>
@@ -483,7 +539,7 @@
                         BETA
                     </span>
                 </div>
-            </div>
+            </button>
         </div>
 
         <div class="flex-1 flex flex-col overflow-hidden min-h-0 sidebar-content">
@@ -680,14 +736,14 @@
             </div>
 
         </div>
-    </div>
+    </aside>
     <button class="sidebar-toggle text-gray-400 hover:text-white" onclick="toggleSidebar()" aria-label="Toggle sidebar">
         <i id="sidebar-toggle-icon" class="fas fa-chevron-left"></i>
         <span class="sr-only">Toggle sidebar</span>
     </button>
 
     <!-- Main Canvas Area -->
-    <div class="flex-1 flex flex-col relative bg-[#111] min-w-0 overflow-hidden canvas-shell">
+    <section class="canvas-panel flex-1 flex flex-col relative bg-[#111] min-w-0 overflow-hidden canvas-shell">
         <div class="absolute top-4 right-4 z-10 flex flex-col gap-2 items-end">
             <div class="flex bg-gray-800/90 text-gray-200 rounded shadow-lg border border-gray-600 overflow-hidden backdrop-blur">
                 <button onclick="zoomOutButton()"
@@ -711,7 +767,7 @@
         </div>
 
         <canvas id="circuitCanvas" class="w-full h-full block"></canvas>
-    </div>
+    </section>
 
     <!-- Full Screen Oscilloscope Overlay -->
     <div id="scope-overlay" class="fixed inset-0 bg-black/95 z-[1200] hidden flex flex-col p-6">
@@ -867,6 +923,11 @@
     </div>
 
     </main>
+
+    <script type="module">
+        import { initSiteShell } from '../../assets/js/layout/siteShell.js';
+        initSiteShell('circuit-lab');
+    </script>
 
     <script type="module" src="../../assets/js/nav.js"></script>
 

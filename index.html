@@ -17,14 +17,7 @@
     <link rel="stylesheet" href="assets/css/style.css" />
   </head>
   <body class="theme-light">
-    <header
-      class="site-header"
-      id="top"
-      data-site-header
-      data-use-local-anchors="true"
-      data-show-edit-toggle="true"
-    ></header>
-    <script type="module" src="assets/js/site-header-init.js"></script>
+    <div id="site-header"></div>
 
     <div class="edit-toolbar" hidden>
       <div class="container edit-toolbar__inner" role="region" aria-live="polite">
@@ -138,13 +131,7 @@
       </div>
     </main>
 
-    <footer
-      class="site-footer"
-      id="contact"
-      data-site-footer
-      data-footer-id="home"
-    ></footer>
-    <script type="module" src="assets/js/site-footer-init.js"></script>
+    <div id="site-footer"></div>
 
     <dialog class="editor-dialog" id="manage-dialog">
       <form method="dialog" class="editor-form" data-form="manage">
@@ -377,6 +364,10 @@
     </dialog>
 
     <script src="https://platform.linkedin.com/badges/js/profile.js" async defer></script>
+    <script type="module">
+      import { initSiteShell } from './assets/js/layout/siteShell.js';
+      initSiteShell('home', { showEditToggle: true, useLocalAnchors: true });
+    </script>
     <script type="module" src="assets/js/nav.js"></script>
     <script type="module" src="assets/js/main.js"></script>
   </body>

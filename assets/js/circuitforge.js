@@ -141,6 +141,9 @@ const BOARD_MARGIN= 400;  // extra pan room at edges
 
 // Simulation state
 let components = [];
+// Wires are stored as { from: {c, p}, to: {c, p}, vertices: [{x,y}] } where vertices are
+// user waypoints between the pins. getWirePolyline() renders an orthogonal path through
+// those waypoints; we try hard not to discard bends unless a vertex is truly redundant.
 let wires      = [];
 let time       = 0;
 let isPaused   = true;
@@ -843,17 +846,20 @@ function distToSegment(p, v, w) {
     );
 }
 
-function mergeCollinear(pts) {
-    if (pts.length < 2) return pts.slice();
+function mergeCollinear(pts = []) {
+    // Keep user bends intact; only drop true duplicates/zero-length segments.
+    if (!Array.isArray(pts) || pts.length < 2) return Array.isArray(pts) ? pts.slice() : [];
     const out = [pts[0]];
     for (let i = 1; i < pts.length - 1; i++) {
         const prev = out[out.length - 1];
         const curr = pts[i];
         const next = pts[i + 1];
 
-        const isDuplicate = (curr.x === prev.x && curr.y === prev.y) ||
-            (curr.x === next.x && curr.y === next.y);
-        if (!isDuplicate) out.push(curr);
+        const duplicatePrev = (curr.x === prev.x && curr.y === prev.y);
+        const duplicateNext = (curr.x === next.x && curr.y === next.y);
+        if (duplicatePrev || duplicateNext) continue;
+
+        out.push(curr);
     }
     const last = pts[pts.length - 1];
     const tail = out[out.length - 1];
@@ -904,6 +910,8 @@ function getPinDirection(comp, pinIdx) {
     return { x: 0, y: Math.sign(py || 1) };
 }
 
+// Build an orthogonal path that honours user-provided midpoints in sequence and
+// uses pin directions to bias stub placement near endpoints.
 function routeManhattan(start, midPoints, end, startDir = null, endDir = null) {
     const targets = [...(midPoints || []), end].map(p => snapToBoardPoint(p.x, p.y));
 
@@ -985,6 +993,51 @@ function buildWireVertices(fromPin, midPoints, toPin) {
     const path  = routeManhattan(start, midPoints || [], end, dir, endDir);
     const verts = path.slice(1, Math.max(1, path.length - 1));
     return mergeCollinear(verts);
+}
+
+// When an endpoint moves, only adjust the segments touching that endpoint to keep
+// the wire orthogonal; leave interior vertices untouched so user-defined bends stay put.
+function adjustWireAnchors(wire, { start, end, startDir = null, endDir = null } = {}) {
+    const snap = (p = {}) => snapToBoardPoint(p.x ?? 0, p.y ?? 0);
+    const poly = [
+        snap(start),
+        ...(Array.isArray(wire?.vertices) ? wire.vertices.map(v => snap(v)) : []),
+        snap(end)
+    ];
+
+    function insertElbow(anchorIdx, neighborIdx, dirHint = null) {
+        const anchor = poly[anchorIdx];
+        const neighbor = poly[neighborIdx];
+        if (!anchor || !neighbor) return;
+        if (anchor.x === neighbor.x || anchor.y === neighbor.y) return; // already orthogonal
+
+        const preferX = !!(dirHint && dirHint.x);
+        const preferY = !!(dirHint && dirHint.y);
+        let elbow;
+        if (preferX && !preferY) {
+            elbow = { x: neighbor.x, y: anchor.y };
+        } else if (preferY && !preferX) {
+            elbow = { x: anchor.x, y: neighbor.y };
+        } else {
+            const dx = Math.abs(neighbor.x - anchor.x);
+            const dy = Math.abs(neighbor.y - anchor.y);
+            elbow = (dx >= dy) ? { x: neighbor.x, y: anchor.y } : { x: anchor.x, y: neighbor.y };
+        }
+        const snapped = snap(elbow);
+        if ((snapped.x === anchor.x && snapped.y === anchor.y) ||
+            (snapped.x === neighbor.x && snapped.y === neighbor.y)) {
+            return;
+        }
+        // Place the elbow between anchor and neighbor; index choice keeps vertex order stable.
+        const insertIdx = anchorIdx < neighborIdx ? neighborIdx : anchorIdx;
+        poly.splice(insertIdx, 0, snapped);
+    }
+
+    if (startDir) insertElbow(0, 1, startDir);
+    if (endDir) insertElbow(poly.length - 1, poly.length - 2, endDir);
+
+    const cleaned = mergeCollinear(poly);
+    return cleaned.slice(1, Math.max(1, cleaned.length - 1));
 }
 
 // Insert a junction on a wire at a point, returning the new junction and replacing the wire with two segments
@@ -1110,7 +1163,8 @@ function cleanupJunctions() {
                     (d1.x !== 0 && d2.x !== 0 && d1.y === 0 && d2.y === 0) ||
                     (d1.y !== 0 && d2.y !== 0 && d1.x === 0 && d2.x === 0)
                 );
-                if (!collinear) continue; // keep L-shaped junctions
+                // Keep intentional corners (90deg) intact; only remove straight-through links.
+                if (!collinear) continue;
                 const mergedVerts = mergeCollinear(buildWireVertices(a, [], b) || []);
                 const newWire = {
                     from: a,
@@ -1382,6 +1436,8 @@ function drawScope() {
 function resize() {
     if (!canvas) return;
 
+    syncSidebarOverlayState();
+
     syncViewportCssVars();
 
     const { width: viewportW, height: viewportH } = getViewportSize();
@@ -1554,12 +1610,13 @@ function ensureSidebarExpanded() {
 
     function syncSidebarOverlayState(forceCollapsed = null) {
         const sidebar = document.getElementById('sidebar');
+        const root = document.getElementById('circuit-lab-root');
         const isCollapsed = (forceCollapsed != null)
             ? forceCollapsed
             : (sidebar ? sidebar.classList.contains('collapsed') : true);
-        const shouldOverlay = isMobileViewport() && !isCollapsed;
-        document.body.classList.toggle('sidebar-open-mobile', shouldOverlay);
-        const canvasShell = document.querySelector('.canvas-shell');
+        const sidebarOpen = root ? root.classList.contains('sidebar-open') : !isCollapsed;
+        const shouldOverlay = isMobileViewport() && sidebarOpen && !isCollapsed;
+        const canvasShell = document.querySelector('.canvas-panel, .canvas-shell');
         if (canvasShell) {
             canvasShell.setAttribute('aria-hidden', shouldOverlay ? 'true' : 'false');
         }
@@ -1663,46 +1720,15 @@ function rerouteWiresForComponent(c) {
 
         const startPos = w.from.c.getPinPos(w.from.p);
         const endPos   = w.to.c.getPinPos(w.to.p);
-        const mids     = (w.vertices || []).map(v => snapToBoardPoint(v.x, v.y));
         const startDir = (w.from.c === c) ? getPinDirection(w.from.c, w.from.p) : null;
         const endDir   = (w.to.c === c) ? getPinDirection(w.to.c, w.to.p) : null;
-
-        const bridge = (a, b, dirHint) => {
-            const pts = [];
-            if (a.x !== b.x && a.y !== b.y) {
-                let elbow;
-                if (dirHint && dirHint.x) elbow = { x: b.x, y: a.y };
-                else if (dirHint && dirHint.y) elbow = { x: a.x, y: b.y };
-                else {
-                    elbow = (Math.abs(b.x - a.x) >= Math.abs(b.y - a.y))
-                        ? { x: b.x, y: a.y }
-                        : { x: a.x, y: b.y };
-                }
-                pts.push(snapToBoardPoint(elbow.x, elbow.y));
-            }
-            pts.push(snapToBoardPoint(b.x, b.y));
-            return pts;
-        };
-
-        let poly = [startPos];
-        if (mids.length) {
-            poly.push(...bridge(startPos, mids[0], startDir));
-            for (let i = 1; i < mids.length; i++) {
-                const prev = mids[i - 1];
-                const curr = mids[i];
-                if (prev.x !== curr.x && prev.y !== curr.y) {
-                    poly.push(snapToBoardPoint(curr.x, prev.y));
-                }
-                poly.push(curr);
-            }
-            poly.push(...bridge(mids[mids.length - 1], endPos, endDir));
-        } else {
-            poly.push(...bridge(startPos, endPos, startDir || endDir));
-        }
-
-        poly = ensureOrthogonalPath(poly);
-        poly = mergeCollinear(poly);
-        w.vertices = poly.slice(1, Math.max(1, poly.length - 1));
+        const updated = adjustWireAnchors(w, {
+            start: startPos,
+            end: endPos,
+            startDir,
+            endDir
+        });
+        w.vertices = updated;
         orthogonalizeWire(w);
     });
 }
@@ -2869,7 +2895,8 @@ function onDown(e) {
         const pt = snapToBoardPoint(m.x, m.y);
         const last = activeWire.vertices[activeWire.vertices.length - 1];
         if (!last || last.x !== pt.x || last.y !== pt.y) {
-            activeWire.vertices.push(pt);
+            // Remember user-placed bend explicitly so later cleanup won't drop it.
+            activeWire.vertices.push({ ...pt, userPlaced: true });
             activeWire.currentPoint = pt;
         }
         return;
@@ -3483,12 +3510,27 @@ function toggleView() {
 
 function toggleSidebar() {
     const sidebar = document.getElementById('sidebar');
+    const root = document.getElementById('circuit-lab-root');
     if (!sidebar) return;
+
+    if (isMobileViewport() && root) {
+        const open = root.classList.toggle('sidebar-open');
+        sidebar.setAttribute('aria-expanded', open ? 'true' : 'false');
+        const toggleBtn = document.getElementById('circuit-forge-toggle');
+        if (toggleBtn) toggleBtn.setAttribute('aria-pressed', open ? 'true' : 'false');
+        syncSidebarOverlayState(sidebar.classList.contains('collapsed'));
+        resize();
+        requestAnimationFrame(resize);
+        return;
+    }
+
     const collapsed = sidebar.classList.toggle('collapsed');
     document.body.classList.toggle('sidebar-collapsed', collapsed);
     const icon = document.getElementById('sidebar-toggle-icon');
     if (icon) icon.className = collapsed ? 'fas fa-chevron-right' : 'fas fa-chevron-left';
     if (sidebar) sidebar.setAttribute('aria-expanded', (!collapsed).toString());
+    const toggleBtn = document.getElementById('circuit-forge-toggle');
+    if (toggleBtn) toggleBtn.setAttribute('aria-pressed', (!collapsed).toString());
     syncSidebarOverlayState(collapsed);
     resize();
     requestAnimationFrame(resize);
@@ -3679,21 +3721,33 @@ const circuitForgeApi = {
     draw
 };
 
-Object.assign(window, circuitForgeApi, {
-    Component,
-    Resistor,
-    Potentiometer,
-    Capacitor,
-    LED,
-    Switch,
-    Junction,
-    MOSFET,
-    LF412,
-    VoltageSource,
-    FunctionGenerator,
-    Ground,
-    Oscilloscope
-});
+if (typeof window !== 'undefined') {
+    Object.assign(window, circuitForgeApi, {
+        Component,
+        Resistor,
+        Potentiometer,
+        Capacitor,
+        LED,
+        Switch,
+        Junction,
+        MOSFET,
+        LF412,
+        VoltageSource,
+        FunctionGenerator,
+        Ground,
+        Oscilloscope
+    });
+}
+
+// Expose a few helpers for tests and tooling without altering runtime behaviour.
+export {
+    adjustWireAnchors,
+    ensureOrthogonalPath,
+    mergeCollinear,
+    routeManhattan,
+    snapToBoardPoint,
+    getPinDirection
+};
 
 function startCircuitForge() {
     try {
@@ -3705,8 +3759,10 @@ function startCircuitForge() {
 }
 
 // Start it
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', startCircuitForge);
-} else {
-    startCircuitForge();
+if (typeof document !== 'undefined') {
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', startCircuitForge);
+    } else {
+        startCircuitForge();
+    }
 }

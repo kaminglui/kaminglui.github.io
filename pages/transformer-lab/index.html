@@ -17,14 +17,7 @@
     <link rel="stylesheet" href="../../assets/css/style.css" />
   </head>
   <body class="theme-light">
-    <header
-      class="site-header"
-      id="top"
-      data-site-header
-      data-nav-root="../.."
-      data-current-lab="transformer-lab"
-    ></header>
-    <script type="module" src="../../assets/js/site-header-init.js"></script>
+    <div id="site-header"></div>
 
     <main class="lab-main">
       <section class="lab-hero">
@@ -245,15 +238,13 @@
       </section>
     </main>
 
-    <footer
-      class="site-footer"
-      data-site-footer
-      data-footer-id="transformer-lab"
-      data-nav-root="../.."
-    ></footer>
+    <div id="site-footer"></div>
 
+    <script type="module">
+      import { initSiteShell } from '../../assets/js/layout/siteShell.js';
+      initSiteShell('transformer-lab');
+    </script>
     <script type="module" src="../../assets/js/nav.js"></script>
-    <script type="module" src="../../assets/js/site-footer-init.js"></script>
     <script>
       window.TRANSFORMER_LAB_CONFIG = {
         // No backend is required for the static deployment; provide an API base to enable remote sync.

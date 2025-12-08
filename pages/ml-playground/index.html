@@ -17,13 +17,7 @@
     <link rel="stylesheet" href="../../assets/css/style.css" />
   </head>
   <body class="theme-light">
-    <header
-      class="site-header"
-      id="top"
-      data-site-header
-      data-nav-root="../.."
-      data-current-lab="ml-playground"
-    ></header>
+    <div id="site-header"></div>
 
     <main class="container ml-playground-page">
       <div class="ml-playground-shell">
@@ -254,16 +248,13 @@
       </div>
     </main>
 
-    <footer
-      class="site-footer"
-      data-site-footer
-      data-footer-id="ml-playground"
-      data-nav-root="../.."
-    ></footer>
+    <div id="site-footer"></div>
 
-    <script type="module" src="../../assets/js/site-header-init.js"></script>
+    <script type="module">
+      import { initSiteShell } from '../../assets/js/layout/siteShell.js';
+      initSiteShell('ml-playground');
+    </script>
     <script type="module" src="../../assets/js/nav.js"></script>
-    <script type="module" src="../../assets/js/site-footer-init.js"></script>
     <script type="module" src="../../assets/js/main.js"></script>
     <script type="module" src="../../assets/js/ml-playground.js"></script>
   </body>
