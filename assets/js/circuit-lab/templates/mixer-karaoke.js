@@ -91,7 +91,7 @@ const mixerKaraoke = {
       rotation: 0,
       mirrorX: false,
       props: {
-        Vpp: "0.25",
+        Vpp: "1",
         Freq: "880",
         Offset: "0",
         Phase: "0",
@@ -106,7 +106,7 @@ const mixerKaraoke = {
       rotation: 0,
       mirrorX: false,
       props: {
-        Vpp: "0.25",
+        Vpp: "0.5",
         Freq: "110",
         Offset: "0",
         Phase: "0",
@@ -192,7 +192,7 @@ const mixerKaraoke = {
       rotation: 0,
       mirrorX: false,
       props: {
-        Vpp: "0.25",
+        Vpp: "0.5",
         Freq: "3520",
         Offset: "0",
         Phase: "0",
@@ -207,7 +207,7 @@ const mixerKaraoke = {
       rotation: 0,
       mirrorX: false,
       props: {
-        Vpp: "0.25",
+        Vpp: "1",
         Freq: "880",
         Offset: "0",
         Phase: "0",
@@ -494,7 +494,7 @@ const mixerKaraoke = {
         pin: 0
       },
       to: {
-        id: "junction2",
+        id: "op_amp",
         pin: 0
       },
       vertices: []

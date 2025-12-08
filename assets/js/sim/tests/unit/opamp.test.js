@@ -320,7 +320,7 @@ describe('Op-amp nonlinear/temporal uses', () => {
     const railsNeg = makeVoltageSource(-15);
 
     const freqs = [880, 110, 3520, 880];
-    const gens = freqs.map((f) => makeFunctionGenerator({ Vpp: '0.25', Freq: String(f), Offset: '0', Phase: '0', Wave: 'sine' }));
+    const gens = freqs.map((f) => makeFunctionGenerator({ Vpp: '0.5', Freq: String(f), Offset: '0', Phase: '0', Wave: 'sine' }));
     const resistors = gens.map(() => makeResistor(7.5e3));
     const rf = makeResistor(7.5e3);
     const load = makeResistor(10e3);
@@ -349,7 +349,7 @@ describe('Op-amp nonlinear/temporal uses', () => {
     times.forEach((t) => {
       const { voltage } = simulateCircuit({ components, wires, time: t, dt: 1e-5 });
       const expected = -gens.reduce((acc, fg, i) => {
-        const amp = 0.25 / 2;
+        const amp = 0.5 / 2;
         return acc + amp * Math.sin(2 * Math.PI * freqs[i] * t);
       }, 0);
       expect(voltage(op, 0)).toBeCloseTo(expected, 2);

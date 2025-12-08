@@ -15,7 +15,7 @@ import {
   wire,
   resistorCurrent,
   peakToPeak,
-  singleToneAmplitude
+  toneProjection
 } from '../testHarness';
 
 function measureAmplitude(trace) {
@@ -158,10 +158,10 @@ describe('Integrated behaviour', () => {
 
   it('switches an op-amp between summing and difference modes to cancel common tones', () => {
     const freqsA = [110, 880];
-    const freqsB = [35300, 880];
+    const freqsB = [3520, 880];
     const buildChannel = (f1, f2) => {
-      const fg1 = makeFunctionGenerator({ Vpp: '0.25', Freq: String(f1), Offset: '0' });
-      const fg2 = makeFunctionGenerator({ Vpp: '0.25', Freq: String(f2), Offset: '0' });
+      const fg1 = makeFunctionGenerator({ Vpp: '0.5', Freq: String(f1), Offset: '0' });
+      const fg2 = makeFunctionGenerator({ Vpp: '0.5', Freq: String(f2), Offset: '0' });
       return { fg1, fg2 };
     };
 
@@ -170,14 +170,15 @@ describe('Integrated behaviour', () => {
       const gnd = makeGround();
       const op = makeOpAmp();
       const spdt = makeSwitch('SPDT', position);
-      const ra = makeResistor(10e3);
-      const rbInv = makeResistor(10e3);
-      const rNon = makeResistor(10e3);
-      const rBias = makeResistor(10e3);
-      const rf = makeResistor(10e3);
+      const R = 7.5e3;
+      const ra = makeResistor(R);
+      const rbInv = makeResistor(R);
+      const rNon = makeResistor(R);
+      const rBias = makeResistor(R);
+      const rf = makeResistor(R);
       const load = makeResistor(10e3);
-      const railsPos = makeVoltageSource(12);
-      const railsNeg = makeVoltageSource(-12);
+      const railsPos = makeVoltageSource(15);
+      const railsNeg = makeVoltageSource(-15);
       const chanA = buildChannel(freqsA[0], freqsA[1]);
       const chanB = buildChannel(freqsB[0], freqsB[1]);
 
@@ -211,31 +212,84 @@ describe('Integrated behaviour', () => {
       circuit.connect(spdt, 1, rbInv, 0); circuit.connect(rbInv, 1, op, 1);
       circuit.connect(spdt, 2, rNon, 0); circuit.connect(rNon, 1, op, 2);
 
-      return { circuit, op };
+      return { circuit, op, ra, spdt };
     };
 
     const collect = (pos) => {
-      const { circuit, op } = buildCircuitFor(pos);
+      const { circuit, op, ra, spdt } = buildCircuitFor(pos);
       const samples = [];
+      const leftSamples = [];
+      const rightSamples = [];
       runTransient(circuit, {
-        duration: 0.02,
-        dt: 4e-6,
-        sampleInterval: 4e-5,
+        duration: 0.05,
+        dt: 2e-6,
+        sampleInterval: 2e-5,
         measure: ({ t, sim }) => {
-          if (t > 0.004) samples.push({ t, v: sim.voltage(op, 0) });
+          if (t >= 0.01) {
+            samples.push({ t, v: sim.voltage(op, 0) });
+            leftSamples.push({ t, v: sim.voltage(ra, 0) });
+            rightSamples.push({ t, v: sim.voltage(spdt, 0) });
+          }
         }
       });
-      return samples;
+      return { samples, leftSamples, rightSamples };
     };
 
-    const sumSamples = collect('A');
-    const diffSamples = collect('B');
-    const ampSum = peakToPeak(sumSamples.map((s) => s.v)) / 2;
-    const ampDiff = peakToPeak(diffSamples.map((s) => s.v)) / 2;
-    expect(ampDiff).toBeLessThan(ampSum * 0.8);
+    const analyze = ({ samples, leftSamples, rightSamples }) => {
+      const values = samples.map((s) => s.v);
+      const toneSet = (series) => ({
+        110: toneProjection(series, 110),
+        880: toneProjection(series, 880),
+        3520: toneProjection(series, 3520)
+      });
+      const absMax = values.length ? Math.max(...values.map((v) => Math.abs(v))) : 0;
+      return {
+        p2p: peakToPeak(values),
+        absMax,
+        tones: toneSet(samples),
+        inputs: {
+          left: toneSet(leftSamples),
+          right: toneSet(rightSamples)
+        }
+      };
+    };
 
-    const tone880Sum = singleToneAmplitude(sumSamples, 880);
-    const tone880Diff = singleToneAmplitude(diffSamples, 880);
-    expect(tone880Diff).toBeLessThan(tone880Sum * 0.5);
+    const sum = analyze(collect('A'));
+    const diff = analyze(collect('B'));
+
+    expect(sum.p2p).toBeGreaterThan(0.6);
+    expect(sum.absMax).toBeLessThan(5);
+    expect(diff.p2p).toBeGreaterThan(0.3);
+    expect(diff.absMax).toBeLessThan(5);
+    expect(sum.inputs.left[110].amplitude).toBeGreaterThan(0.23);
+    expect(sum.inputs.left[110].amplitude).toBeLessThan(0.27);
+    expect(sum.inputs.left[880].amplitude).toBeGreaterThan(0.23);
+    expect(sum.inputs.left[880].amplitude).toBeLessThan(0.27);
+    expect(sum.inputs.right[3520].amplitude).toBeGreaterThan(0.23);
+    expect(sum.inputs.right[3520].amplitude).toBeLessThan(0.27);
+    expect(sum.inputs.right[880].amplitude).toBeGreaterThan(0.23);
+    expect(sum.inputs.right[880].amplitude).toBeLessThan(0.27);
+    expect(sum.inputs.left[3520].amplitude).toBeLessThan(0.02);
+    expect(sum.inputs.right[110].amplitude).toBeLessThan(0.02);
+
+    expect(sum.tones[880].amplitude).toBeGreaterThan(0.45);
+    expect(sum.tones[880].amplitude).toBeLessThan(0.55);
+    expect(sum.tones[880].sin).toBeLessThan(0);
+    expect(diff.tones[880].amplitude).toBeLessThan(sum.tones[880].amplitude * 0.1);
+    expect(diff.tones[880].amplitude).toBeLessThan(0.05);
+
+    expect(sum.tones[110].amplitude).toBeGreaterThan(0.2);
+    expect(sum.tones[110].amplitude).toBeLessThan(0.3);
+    expect(sum.tones[110].sin).toBeLessThan(0);
+    expect(diff.tones[110].amplitude).toBeGreaterThan(0.2);
+    expect(diff.tones[110].amplitude).toBeLessThan(0.3);
+    expect(diff.tones[110].sin).toBeLessThan(0);
+
+    expect(sum.tones[3520].amplitude).toBeGreaterThan(0.2);
+    expect(sum.tones[3520].amplitude).toBeLessThan(0.3);
+    expect(sum.tones[3520].sin).toBeLessThan(0);
+    expect(diff.tones[3520].amplitude).toBeGreaterThan(0.2);
+    expect(diff.tones[3520].amplitude).toBeLessThan(0.3);
+    expect(diff.tones[3520].sin).toBeGreaterThan(0);
   });
 });

@@ -5,7 +5,7 @@ import {
   reserveComponentId as reserveComponentIdWithRegistry,
   resetIdRegistry as resetIdRegistryState
 } from '../utils/idGenerator.js';
-import { peakToPeak, rms, singleToneAmplitude } from '../utils/waveform.js';
+import { peakToPeak, rms, singleToneAmplitude, toneProjection } from '../utils/waveform.js';
 
 const { runSimulation, parseUnit } = engine;
 
@@ -314,6 +314,7 @@ export {
   peakToPeak,
   rms,
   singleToneAmplitude,
+  toneProjection,
   exportCircuit,
   importCircuit,
   resetIdRegistry
