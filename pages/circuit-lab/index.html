@@ -263,16 +263,16 @@
             .sidebar {
                 width: 100%;
                 max-width: 100%;
-                height: var(--workspace-h);
+                height: auto;
                 min-height: var(--workspace-h);
-                max-height: var(--workspace-h);
+                max-height: none;
                 position: static;
                 top: auto;
             }
             .canvas-shell {
                 min-height: var(--workspace-h);
-                height: var(--workspace-h);
-                max-height: var(--workspace-h);
+                height: auto;
+                max-height: none;
                 padding-bottom: 0;
             }
             #tool-scroll {
@@ -320,7 +320,7 @@
             .circuit-lab-root {
                 display: flex;
                 flex-direction: column;
-                height: var(--workspace-h);
+                height: auto;
                 min-height: var(--workspace-h);
             }
             .sidebar-panel { height: auto; max-height: none; }
@@ -330,8 +330,8 @@
             .circuit-lab-root:not(.sidebar-open) .canvas-panel {
                 display: flex;
                 min-height: var(--workspace-h);
-                height: var(--workspace-h);
-                max-height: var(--workspace-h);
+                height: auto;
+                max-height: none;
                 padding-bottom: 0;
             }
             #tool-scroll {
@@ -873,10 +873,10 @@
                     Hide Tools
                 </button>
                 <button id="play-pause-btn"
-                        class="sim-btn px-4 py-2 bg-gray-800 text-white rounded border border-gray-700 hover:bg-gray-700 flex items-center gap-2"
-                        onclick="toggleSim()">
+                        class="sim-btn px-3 py-2 bg-gray-800 text-white rounded border border-gray-700 hover:bg-gray-700 flex items-center"
+                        onclick="toggleSim()" aria-label="Play or pause simulation">
                     <i class="fas fa-play"></i>
-                    <span>Play</span>
+                    <span class="sr-only">Play</span>
                 </button>
                 <div class="menu-wrapper">
                     <button id="save-menu-button" type="button"
@@ -905,9 +905,10 @@
                     </div>
                 </div>
                 <button onclick="clearCanvas()"
-                        class="sim-btn px-4 py-2 bg-red-800 text-white rounded border border-red-900 hover:bg-red-700 flex items-center gap-2">
+                        class="sim-btn px-3 py-2 bg-red-800 text-white rounded border border-red-900 hover:bg-red-700 flex items-center"
+                        aria-label="Clear workspace">
                     <i class="fas fa-broom"></i>
-                    <span>Clear</span>
+                    <span class="sr-only">Clear</span>
                 </button>
             </div>
         </div>

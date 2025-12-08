@@ -3486,8 +3486,8 @@ function updatePlayPauseButton() {
     const btn = document.getElementById('play-pause-btn');
     if (!btn) return;
     btn.innerHTML = isPaused
-        ? '<i class="fas fa-play"></i> Play'
-        : '<i class="fas fa-pause"></i> Pause';
+        ? '<i class="fas fa-play"></i><span class="sr-only">Play</span>'
+        : '<i class="fas fa-pause"></i><span class="sr-only">Pause</span>';
 }
 
 function updateViewLabel() {
