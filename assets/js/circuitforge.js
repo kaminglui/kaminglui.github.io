@@ -75,7 +75,6 @@ const OPAMP_GAIN            = 1e9;
 const OPAMP_INPUT_LEAK      = 1e-15;
 const OPAMP_OUTPUT_LEAK     = 1e-12;
 const OPAMP_RAIL_HEADROOM   = 0.1;
-const OPAMP_COMPARATOR_HYSTERESIS = 1e-3;
 // A bench function generator normally references its output to chassis/ground.
 // Keep COM near ground with a low impedance so “floating” hookups (COM not
 // explicitly wired) still deliver the configured amplitude instead of letting
@@ -176,7 +175,6 @@ let scopeDisplayMode = null; // 'window' | 'fullscreen'
 let scopeWindowPos = { ...DEFAULT_SCOPE_WINDOW_POS };
 let scopeDragOffset = { x: 0, y: 0 };
 let isDraggingScope = false;
-const scopeCursorVisibility = { 'cursor-1': true, 'cursor-2': true };
 let autosaveTimer = null;
 let isRestoringState = false;
 let currentSwitchType = DEFAULT_SWITCH_TYPE;
@@ -227,48 +225,6 @@ function isMobileViewport() {
     return width <= MOBILE_BREAKPOINT;
 }
 
-function calculateWorkspaceMetrics({ viewportH, headerH, simbarH }) {
-    const safeViewport = Math.max(0, Math.round(viewportH || 0));
-    const safeHeader = Math.max(0, Math.round(headerH || 0));
-    const safeSim = Math.max(0, Math.round(simbarH || 0));
-    const workspace = Math.max(0, safeViewport - safeHeader - safeSim);
-    return {
-        viewportH: safeViewport,
-        headerH: safeHeader,
-        simbarH: safeSim,
-        workspaceH: workspace
-    };
-}
-
-function measureLayoutHeights() {
-    const { height: viewportH } = getViewportSize();
-    const headerRect = document.querySelector('.site-header')?.getBoundingClientRect();
-    const simRect = document.getElementById('sim-bar')?.getBoundingClientRect();
-    const metrics = calculateWorkspaceMetrics({
-        viewportH,
-        headerH: headerRect?.height || 0,
-        simbarH: simRect?.height || 0
-    });
-    const root = document.querySelector('.circuit-lab-root');
-    const workspaceRect = root?.getBoundingClientRect();
-    return {
-        ...metrics,
-        workspaceClientH: workspaceRect?.height || 0
-    };
-}
-
-function validateWorkspaceFit(tolerancePx = 3) {
-    const { viewportH, headerH, simbarH, workspaceClientH } = measureLayoutHeights();
-    const expected = Math.max(0, viewportH - headerH - simbarH);
-    const delta = Math.abs(expected - workspaceClientH);
-    return {
-        expected,
-        workspaceClientH,
-        delta,
-        withinTolerance: delta <= tolerancePx
-    };
-}
-
 function syncViewportCssVars() {
     const root = document.documentElement;
     const { width, height } = getViewportSize();
@@ -276,16 +232,14 @@ function syncViewportCssVars() {
     if (height) root.style.setProperty('--viewport-h', `${height}px`);
 
     const header = document.querySelector('.site-header');
-    const simBar = document.getElementById('sim-bar');
-    const metrics = calculateWorkspaceMetrics({
-        viewportH: height,
-        headerH: header?.getBoundingClientRect()?.height || header?.offsetHeight || 0,
-        simbarH: simBar?.getBoundingClientRect()?.height || simBar?.offsetHeight || 0
-    });
+    if (header) {
+        root.style.setProperty('--header-h', `${header.offsetHeight}px`);
+    }
 
-    root.style.setProperty('--header-h', `${metrics.headerH}px`);
-    root.style.setProperty('--simbar-height', `${metrics.simbarH}px`);
-    root.style.setProperty('--workspace-h', `${metrics.workspaceH}px`);
+    const simBar = document.getElementById('sim-bar');
+    if (simBar) {
+        root.style.setProperty('--simbar-height', `${simBar.offsetHeight}px`);
+    }
 }
 
 function snapToGrid(v) {
@@ -764,7 +718,6 @@ function simulate(t) {
         opAmpInputLeak: OPAMP_INPUT_LEAK,
         opAmpOutputLeak: OPAMP_OUTPUT_LEAK,
         opAmpHeadroom: OPAMP_RAIL_HEADROOM,
-        opAmpComparatorHysteresis: OPAMP_COMPARATOR_HYSTERESIS,
         funcGenRefRes: FUNCGEN_REF_RES,
         funcGenSeriesRes: FUNCGEN_SERIES_RES,
         updateState: false
@@ -931,20 +884,6 @@ function ensureOrthogonalPath(points) {
     return out;
 }
 
-function inferPreferredAxis(points = []) {
-    for (let i = 1; i < points.length; i++) {
-        const prev = points[i - 1];
-        const curr = points[i];
-        if (!prev || !curr) continue;
-        const dx = Math.abs(curr.x - prev.x);
-        const dy = Math.abs(curr.y - prev.y);
-        if (dx === 0 && dy === 0) continue;
-        if (dx > dy) return 'x';
-        if (dy > dx) return 'y';
-    }
-    return null;
-}
-
 function orthogonalizeWire(wire) {
     if (!wire || !wire.from?.c || !wire.to?.c) return;
     const start = wire.from.c.getPinPos(wire.from.p);
@@ -1066,8 +1005,6 @@ function adjustWireAnchors(wire, { start, end, startDir = null, endDir = null } 
         snap(end)
     ];
 
-    const preferredAxis = wire?.preferredAxis || inferPreferredAxis(poly);
-
     function insertElbow(anchorIdx, neighborIdx, dirHint = null) {
         const anchor = poly[anchorIdx];
         const neighbor = poly[neighborIdx];
@@ -1084,10 +1021,7 @@ function adjustWireAnchors(wire, { start, end, startDir = null, endDir = null } 
         } else {
             const dx = Math.abs(neighbor.x - anchor.x);
             const dy = Math.abs(neighbor.y - anchor.y);
-            const axisBias = preferredAxis || (dx >= dy ? 'x' : 'y');
-            elbow = axisBias === 'x'
-                ? { x: neighbor.x, y: anchor.y }
-                : { x: anchor.x, y: neighbor.y };
+            elbow = (dx >= dy) ? { x: neighbor.x, y: anchor.y } : { x: anchor.x, y: neighbor.y };
         }
         const snapped = snap(elbow);
         if ((snapped.x === anchor.x && snapped.y === anchor.y) ||
@@ -1103,7 +1037,6 @@ function adjustWireAnchors(wire, { start, end, startDir = null, endDir = null } 
     if (endDir) insertElbow(poly.length - 1, poly.length - 2, endDir);
 
     const cleaned = mergeCollinear(poly);
-    if (wire) wire.preferredAxis = inferPreferredAxis(cleaned);
     return cleaned.slice(1, Math.max(1, cleaned.length - 1));
 }
 
@@ -1440,8 +1373,12 @@ function drawScope() {
         { key: 'ch2', color: '#22d3ee', scale: scaleCh2, data: scope.data.ch2 }
     ];
 
-    const showCursor1 = syncCursorVisibilityToDom('cursor-1');
-    const showCursor2 = syncCursorVisibilityToDom('cursor-2');
+    const cursorIsVisible = (id) => {
+        const el = document.getElementById(id);
+        return !!(el && !el.classList.contains('hidden'));
+    };
+    const showCursor1 = cursorIsVisible('cursor-1');
+    const showCursor2 = cursorIsVisible('cursor-2');
 
     function renderChannel(ch) {
         scopeCtx.strokeStyle = ch.color;
@@ -1550,13 +1487,6 @@ function resize() {
     }
 
     syncSidebarOverlayState();
-
-    if (document?.body?.dataset?.debugLayout === 'true') {
-        const sanity = validateWorkspaceFit(6);
-        if (!sanity.withinTolerance) {
-            console.warn('Workspace height sanity check failed:', sanity);
-        }
-    }
 }
 
 function createToolIcon(selector, ComponentClass, setupFn, offsetY = 0) {
@@ -3284,28 +3214,6 @@ function getCursorPercents() {
     return { a: pctA, b: pctB };
 }
 
-function getCursorVisibility(id) {
-    return scopeCursorVisibility[id] !== false;
-}
-
-function syncCursorVisibilityToDom(id) {
-    const visible = getCursorVisibility(id);
-    if (typeof document !== 'undefined') {
-        const el = document.getElementById(id);
-        if (el) el.classList.toggle('hidden', !visible);
-    }
-    return visible;
-}
-
-function setCursorVisibility(id, visible) {
-    scopeCursorVisibility[id] = !!visible;
-    return syncCursorVisibilityToDom(id);
-}
-
-function toggleCursorVisibility(id) {
-    return setCursorVisibility(id, !getCursorVisibility(id));
-}
-
 function sampleChannelAt(arr, startIdx, pct) {
     const pos = (pct / 100) * HISTORY_SIZE;
     const idx = Math.floor(pos);
@@ -3381,8 +3289,6 @@ function openScope(targetScope = null) {
         activeScopeComponent = components.find(c => c instanceof Oscilloscope) || null;
     }
 
-    ['cursor-1', 'cursor-2'].forEach(syncCursorVisibilityToDom);
-
     if (!scopeCanvas) scopeCanvas = document.getElementById('scopeCanvas');
     if (!scopeCtx && scopeCanvas) scopeCtx = scopeCanvas.getContext('2d');
 
@@ -3408,9 +3314,11 @@ function closeScope() {
 }
 
 function toggleCursors() {
-    toggleCursorVisibility('cursor-1');
-    toggleCursorVisibility('cursor-2');
-    if (scopeMode) drawScope();
+    const c1 = document.getElementById('cursor-1');
+    const c2 = document.getElementById('cursor-2');
+    if (!c1 || !c2) return;
+    c1.classList.toggle('hidden');
+    c2.classList.toggle('hidden');
     updateCursors();
 }
 
@@ -3855,13 +3763,7 @@ export {
     mergeCollinear,
     routeManhattan,
     snapToBoardPoint,
-    getPinDirection,
-    calculateWorkspaceMetrics,
-    measureLayoutHeights,
-    validateWorkspaceFit,
-    getCursorVisibility,
-    setCursorVisibility,
-    toggleCursorVisibility
+    getPinDirection
 };
 
 function startCircuitForge() {
