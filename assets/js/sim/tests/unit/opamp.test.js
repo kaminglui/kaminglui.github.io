@@ -1,3 +1,5 @@
+// Unit-level op-amp behaviours validated against textbook gains, slope limits,
+// and phase relationships; measurements come from simulated node voltages, not internal matrices.
 import { describe, it, expect } from 'vitest';
 import {
   makeGround,

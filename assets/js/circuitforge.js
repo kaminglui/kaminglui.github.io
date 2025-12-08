@@ -178,6 +178,7 @@ let currentSwitchType = DEFAULT_SWITCH_TYPE;
 let templatePlacementCount = 0;
 let activeTemplatePlacement = null; // { template, origin }
 let templatePreviewOrigin = null;
+let clipboardTemplate = null;
 let lastMouseWorld = { x: 0, y: 0 };
 let touchSelectionTimer = null;
 let touchDeleteTimer = null;
@@ -850,23 +851,41 @@ function mergeCollinear(pts) {
         const curr = pts[i];
         const next = pts[i + 1];
 
-        if ((curr.x === prev.x && curr.y === prev.y) ||
-            (curr.x === next.x && curr.y === next.y)) {
-            continue;
-        }
-
-        const dx1 = curr.x - prev.x;
-        const dy1 = curr.y - prev.y;
-        const dx2 = next.x - curr.x;
-        const dy2 = next.y - curr.y;
-        const cross = dx1 * dy2 - dy1 * dx2;
-
-        if (cross !== 0) out.push(curr);
+        const isDuplicate = (curr.x === prev.x && curr.y === prev.y) ||
+            (curr.x === next.x && curr.y === next.y);
+        if (!isDuplicate) out.push(curr);
     }
     const last = pts[pts.length - 1];
     const tail = out[out.length - 1];
     if (last.x !== tail.x || last.y !== tail.y) out.push(last);
     return out;
+}
+
+function ensureOrthogonalPath(points) {
+    if (points.length < 2) return points.slice();
+    const out = [points[0]];
+    for (let i = 1; i < points.length; i++) {
+        const prev = out[out.length - 1];
+        const curr = points[i];
+        if (prev.x !== curr.x && prev.y !== curr.y) {
+            const elbow = (Math.abs(curr.x - prev.x) >= Math.abs(curr.y - prev.y))
+                ? { x: curr.x, y: prev.y }
+                : { x: prev.x, y: curr.y };
+            out.push(snapToBoardPoint(elbow.x, elbow.y));
+        }
+        out.push(curr);
+    }
+    return out;
+}
+
+function orthogonalizeWire(wire) {
+    if (!wire || !wire.from?.c || !wire.to?.c) return;
+    const start = wire.from.c.getPinPos(wire.from.p);
+    const end = wire.to.c.getPinPos(wire.to.p);
+    const mids = (wire.vertices || []).map(v => snapToBoardPoint(v.x, v.y));
+    const path = ensureOrthogonalPath([start, ...mids, end]);
+    const verts = path.slice(1, Math.max(1, path.length - 1));
+    wire.vertices = mergeCollinear(verts);
 }
 
 function getPinDirection(comp, pinIdx) {
@@ -1078,6 +1097,20 @@ function cleanupJunctions() {
                 const [w1, w2] = conn;
                 const a = otherEnd(w1, j);
                 const b = otherEnd(w2, j);
+                const dirFromJ = (wire) => {
+                    const poly = getWirePolyline(wire);
+                    const start = (wire.from.c === j) ? poly[0] : poly[poly.length - 1];
+                    const next = (wire.from.c === j) ? poly[1] : poly[poly.length - 2];
+                    if (!start || !next) return null;
+                    return { x: Math.sign(next.x - start.x), y: Math.sign(next.y - start.y) };
+                };
+                const d1 = dirFromJ(w1);
+                const d2 = dirFromJ(w2);
+                const collinear = d1 && d2 && (
+                    (d1.x !== 0 && d2.x !== 0 && d1.y === 0 && d2.y === 0) ||
+                    (d1.y !== 0 && d2.y !== 0 && d1.x === 0 && d2.x === 0)
+                );
+                if (!collinear) continue; // keep L-shaped junctions
                 const mergedVerts = mergeCollinear(buildWireVertices(a, [], b) || []);
                 const newWire = {
                     from: a,
@@ -1111,6 +1144,12 @@ function drawWirePolyline(pts, color, width, dashed) {
     // draw small dots at corners
     ctx.fillStyle = '#777777';
     for (let i = 1; i < pts.length - 1; i++) {
+        const prev = pts[i - 1];
+        const curr = pts[i];
+        const next = pts[i + 1];
+        if ((prev.x === curr.x && curr.x === next.x) || (prev.y === curr.y && curr.y === next.y)) {
+            continue;
+        }
         ctx.beginPath();
         ctx.arc(pts[i].x, pts[i].y, WIRE_CORNER_RADIUS, 0, Math.PI * 2);
         ctx.fill();
@@ -1150,31 +1189,19 @@ function drawTemplatePreview() {
     if (!activeTemplatePlacement || !templatePreviewOrigin) return;
     const template = activeTemplatePlacement.template;
     const origin = templatePreviewOrigin;
-    const center = getTemplateCenter(template);
-    const idMap = new Map();
-
-    const tempComponents = (template.components || []).map((def) => {
-        const Ctor = TOOL_COMPONENTS[def.type];
-        if (!Ctor) return null;
-        const c = new Ctor(origin.x + ((def.x || 0) - center.x), origin.y + ((def.y || 0) - center.y));
-        c.props = { ...c.props, ...(def.props || {}) };
-        c.rotation = def.rotation ?? 0;
-        c.mirrorX = !!def.mirrorX;
-        if (def.id) idMap.set(def.id, c);
-        return c;
-    }).filter(Boolean);
+    const { created: tempComponents, center, idMap, indexMap } = instantiateTemplateComponents(template, origin);
 
     const tempWires = (template.wires || []).map((wire) => {
-        const fromComp = idMap.get(wire?.from?.id);
-        const toComp = idMap.get(wire?.to?.id);
-        if (!fromComp || !toComp) return null;
+        const from = mapTemplateEndpoint(wire?.from, idMap, indexMap);
+        const to = mapTemplateEndpoint(wire?.to, idMap, indexMap);
+        if (!from.comp || !to.comp || typeof from.pin !== 'number' || typeof to.pin !== 'number') return null;
         const mid = (wire.vertices || []).map(v => ({
             x: origin.x + ((v?.x || 0) - center.x),
             y: origin.y + ((v?.y || 0) - center.y)
         }));
         return {
-            from: { c: fromComp, p: wire.from?.pin },
-            to: { c: toComp, p: wire.to?.pin },
+            from: { c: from.comp, p: from.pin },
+            to: { c: to.comp, p: to.pin },
             vertices: mid
         };
     }).filter(Boolean);
@@ -1608,6 +1635,28 @@ function mirrorSelected() {
     markStateDirty();
 }
 
+function copySelection() {
+    const targets = selectionGroup.length
+        ? selectionGroup.slice()
+        : (selectedComponent ? [selectedComponent] : []);
+    if (!targets.length) return null;
+    clipboardTemplate = serializeTemplate(targets);
+    return clipboardTemplate;
+}
+
+function cutSelection() {
+    const copied = copySelection();
+    if (copied) deleteSelected();
+}
+
+function pasteClipboard() {
+    if (!clipboardTemplate) return;
+    const payload = (typeof structuredClone === 'function')
+        ? structuredClone(clipboardTemplate)
+        : JSON.parse(JSON.stringify(clipboardTemplate));
+    queueTemplatePlacement(payload);
+}
+
 function rerouteWiresForComponent(c) {
     wires.forEach(w => {
         if (w.from.c !== c && w.to.c !== c) return;
@@ -1651,8 +1700,10 @@ function rerouteWiresForComponent(c) {
             poly.push(...bridge(startPos, endPos, startDir || endDir));
         }
 
+        poly = ensureOrthogonalPath(poly);
         poly = mergeCollinear(poly);
         w.vertices = poly.slice(1, Math.max(1, poly.length - 1));
+        orthogonalizeWire(w);
     });
 }
 
@@ -2034,40 +2085,120 @@ function getTemplateOrigin() {
     return origin;
 }
 
-function placeTemplate(template, origin) {
-    if (!canvas || !template) return [];
+function normalizeTemplateComponent(def = {}) {
+    return {
+        type: def.type || def.kind,
+        id: def.id,
+        x: def.x || 0,
+        y: def.y || 0,
+        rotation: def.rotation ?? 0,
+        mirrorX: !!def.mirrorX,
+        props: def.props || {}
+    };
+}
+
+function instantiateTemplateComponents(template, origin) {
     const center = getTemplateCenter(template);
     const created = [];
     const idMap = new Map();
+    const indexMap = new Map();
+    const base = origin || { x: 0, y: 0 };
 
-    (template.components || []).forEach(def => {
+    (template.components || []).forEach((raw, idx) => {
+        const def = normalizeTemplateComponent(raw || {});
         const Ctor = TOOL_COMPONENTS[def.type];
         if (!Ctor) return;
-        const c = new Ctor(origin.x + ((def.x || 0) - center.x), origin.y + ((def.y || 0) - center.y));
-        c.props = { ...c.props, ...(def.props || {}) };
+        const c = new Ctor(base.x + (def.x - center.x), base.y + (def.y - center.y));
+        c.props = { ...c.props, ...def.props };
         c.rotation = def.rotation ?? 0;
         c.mirrorX = !!def.mirrorX;
         if (c instanceof Switch) {
-            c.applyType(currentSwitchType, true);
+            const explicitType = SWITCH_TYPES.includes(c.props.Type) ? c.props.Type : null;
+            const switchType = explicitType
+                || (SWITCH_TYPES.includes(currentSwitchType) ? currentSwitchType : DEFAULT_SWITCH_TYPE);
+            c.applyType(switchType, true);
+            if (!c.props.Position) c.props.Position = 'A';
         }
-        components.push(c);
         created.push(c);
         if (def.id) idMap.set(def.id, c);
+        indexMap.set(idx, c);
     });
 
+    return { created, center, idMap, indexMap };
+}
+
+function mapTemplateEndpoint(endpoint, idMap, indexMap) {
+    if (!endpoint) return { comp: null, pin: null };
+    const idx = endpoint.index ?? endpoint.i;
+    const comp = (idx != null) ? indexMap.get(idx) : idMap.get(endpoint.id);
+    const pin = endpoint.pin ?? endpoint.p ?? 0;
+    return { comp, pin };
+}
+
+function serializeTemplate(selection = null) {
+    const selected = Array.isArray(selection) && selection.length
+        ? selection.slice()
+        : components.slice();
+    if (!selected.length) return { components: [], wires: [] };
+
+    const minX = Math.min(...selected.map(c => c.x || 0));
+    const minY = Math.min(...selected.map(c => c.y || 0));
+
+    const compEntries = [];
+    const compIndexMap = new Map();
+    selected.forEach((c) => {
+        const type = getComponentTypeId(c);
+        if (!type) return;
+        const idx = compEntries.length;
+        compEntries.push({
+            type,
+            x: (c.x || 0) - minX,
+            y: (c.y || 0) - minY,
+            rotation: c.rotation ?? 0,
+            mirrorX: !!c.mirrorX,
+            props: { ...c.props }
+        });
+        compIndexMap.set(c, idx);
+    });
+
+    const normalizeVertex = (v = {}) => snapToBoardPoint((v.x || 0) - minX, (v.y || 0) - minY);
+    const serialWires = wires
+        .filter(w => compIndexMap.has(w.from.c) && compIndexMap.has(w.to.c))
+        .map(w => ({
+            from: { index: compIndexMap.get(w.from.c), pin: w.from.p },
+            to: { index: compIndexMap.get(w.to.c), pin: w.to.p },
+            vertices: (w.vertices || []).map(normalizeVertex)
+        }));
+
+    return { components: compEntries, wires: serialWires };
+}
+
+function deserializeTemplate(templateObj) {
+    if (!templateObj || typeof templateObj !== 'object') throw new Error('Invalid template data');
+    const clone = (typeof structuredClone === 'function')
+        ? structuredClone(templateObj)
+        : JSON.parse(JSON.stringify(templateObj));
+    queueTemplatePlacement(clone);
+}
+
+function placeTemplate(template, origin) {
+    if (!canvas || !template) return [];
+    const placementOrigin = origin || { x: 0, y: 0 };
+    const { created, center, idMap, indexMap } = instantiateTemplateComponents(template, placementOrigin);
+
+    created.forEach(c => components.push(c));
+
     (template.wires || []).forEach(wire => {
-        const fromComp = idMap.get(wire?.from?.id);
-        const toComp = idMap.get(wire?.to?.id);
-        const fromPin = wire?.from?.pin;
-        const toPin = wire?.to?.pin;
-        if (!fromComp || !toComp || typeof fromPin !== 'number' || typeof toPin !== 'number') return;
+        const from = mapTemplateEndpoint(wire?.from, idMap, indexMap);
+        const to = mapTemplateEndpoint(wire?.to, idMap, indexMap);
+        if (!from.comp || !to.comp || typeof from.pin !== 'number' || typeof to.pin !== 'number') return;
 
         const mid = (wire.vertices || []).map(v => ({
-            x: origin.x + ((v?.x || 0) - center.x),
-            y: origin.y + ((v?.y || 0) - center.y)
+            x: placementOrigin.x + ((v?.x || 0) - center.x),
+            y: placementOrigin.y + ((v?.y || 0) - center.y)
         }));
-        const verts = buildWireVertices({ c: fromComp, p: fromPin }, mid, { c: toComp, p: toPin }) || [];
-        wires.push({ from: { c: fromComp, p: fromPin }, to: { c: toComp, p: toPin }, vertices: verts, v: 0 });
+        const verts = buildWireVertices({ c: from.comp, p: from.pin }, mid, { c: to.comp, p: to.pin }) || [];
+        wires.push({ from: { c: from.comp, p: from.pin }, to: { c: to.comp, p: to.pin }, vertices: verts, v: 0 });
     });
 
     selectionGroup = created;
@@ -2323,6 +2454,49 @@ function handleImportJSON(file) {
 
 function triggerImportDialog() {
     const input = document.getElementById('import-json-input');
+    if (!input) return;
+    input.value = '';
+    input.click();
+}
+
+function fileTimestamp() {
+    const pad = (n) => String(n).padStart(2, '0');
+    const now = new Date();
+    return `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}`;
+}
+
+function downloadTemplateJSON() {
+    const target = selectionGroup.length ? selectionGroup : null;
+    const payload = serializeTemplate(target);
+    if (!payload.components.length) {
+        alert('Select at least one component or build a circuit before saving a template.');
+        return;
+    }
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `template-${fileTimestamp()}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+}
+
+function handleImportTemplate(file) {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = e => {
+        try {
+            const data = JSON.parse(e.target.result);
+            deserializeTemplate(data);
+        } catch (err) {
+            alert('Could not import template: ' + err.message);
+        }
+    };
+    reader.readAsText(file);
+}
+
+function triggerImportTemplateDialog() {
+    const input = document.getElementById('import-template-input');
     if (!input) return;
     input.value = '';
     input.click();
@@ -2887,7 +3061,7 @@ function onUp(e) {
 
     if (draggingWire) {
         const w = draggingWire.wire;
-        w.vertices = mergeCollinear(w.vertices || []);
+        orthogonalizeWire(w);
         if (!wireDragMoved) {
             if (draggingWire.wasSelected && !activeWire) {
                 const pts = getWirePolyline(w);
@@ -2947,6 +3121,13 @@ function onDblClick(e) {
 function onKey(e) {
     const activeEl = document.activeElement;
     const isEditable = isEditableElement(activeEl);
+
+    if ((e.metaKey || e.ctrlKey) && !isEditable) {
+        const key = e.key?.toLowerCase?.() || '';
+        if (key === 'c') { e.preventDefault(); copySelection(); return; }
+        if (key === 'x') { e.preventDefault(); cutSelection(); return; }
+        if (key === 'v') { e.preventDefault(); pasteClipboard(); return; }
+    }
 
     if ((e.key === 'Delete' || e.key === 'Backspace') && !isEditable) {
         e.preventDefault();
@@ -3472,10 +3653,18 @@ const circuitForgeApi = {
     rotateSelected,
     mirrorSelected,
     deleteSelected,
+    copySelection,
+    cutSelection,
+    pasteClipboard,
     toggleSim,
     downloadCircuitJSON,
+    downloadTemplateJSON,
     triggerImportDialog,
+    triggerImportTemplateDialog,
     handleImportJSON,
+    handleImportTemplate,
+    serializeTemplate,
+    deserializeTemplate,
     clearCanvas,
     toggleSidebar,
     zoomOutButton,

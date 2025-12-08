@@ -1,3 +1,5 @@
+// General transient simulation sanity checks using analytic waveforms (sine/square)
+// and expected clipping/offset behaviour; never inspects solver state directly.
 import { describe, it, expect } from 'vitest';
 import {
   makeGround,

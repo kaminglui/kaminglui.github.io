@@ -1,3 +1,5 @@
+// Function generator outputs are validated by sampling waveforms and comparing to
+// analytic sine/triangle values; thresholds come from waveform math, not internals.
 import { describe, it, expect } from 'vitest';
 import {
   buildCircuit,

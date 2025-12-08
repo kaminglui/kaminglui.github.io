@@ -1,3 +1,6 @@
+// Integration-style checks covering filters, op-amp stages, and MOSFET drive
+// paths. Expectations come from standard circuit math (RC transfer, op-amp
+// gain/saturation, tone projection) rather than reading solver internals.
 import { describe, it, expect } from 'vitest';
 import {
   buildCircuit,

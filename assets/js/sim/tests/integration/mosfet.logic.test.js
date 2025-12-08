@@ -1,3 +1,6 @@
+// Exercises MOSFET switching/logic behaviours using measured voltages and
+// currents; assertions rely on qualitative transistor behaviour (on/off,
+// monotonic gain) rather than solver state.
 import { describe, it, expect } from 'vitest';
 import {
   buildCircuit,

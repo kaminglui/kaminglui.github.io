@@ -1,3 +1,5 @@
+// Passive device dynamics (capacitor energy, RC maths, LED forward drop) are
+// checked against physical formulas and numeric measurements, not internal state.
 import { describe, it, expect } from 'vitest';
 import {
   buildCircuit,

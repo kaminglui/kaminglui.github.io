@@ -1,3 +1,6 @@
+// Validates the karaoke mixer template by projecting outputs onto known tone
+// frequencies and comparing summed vs differential behaviour derived from op-amp
+// summing/difference equations (no simulator internals are used as oracles).
 import { describe, it, expect } from 'vitest';
 import {
   importCircuit,

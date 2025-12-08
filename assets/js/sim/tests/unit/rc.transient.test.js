@@ -1,3 +1,6 @@
+// RC transient and AC filter behaviour validated against exponential charging
+// curves and standard first-order transfer functions; measurements use sampled
+// voltages, not solver internals.
 import { describe, it, expect, test } from 'vitest';
 import {
   buildCircuit,

@@ -1,3 +1,5 @@
+// Ensures the solver handles floating/open nodes gracefully by asserting
+// qualitative behaviours (no NaN, reasonable biases) rather than peeking at internals.
 import { describe, it, expect } from 'vitest';
 import {
   buildCircuit,

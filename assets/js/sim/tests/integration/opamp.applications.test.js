@@ -1,3 +1,6 @@
+// Validates classic op-amp application circuits against textbook equations
+// (inverting/non-inverting gain, difference amp, integrator slope, saturation),
+// using measured voltages rather than any internal solver data.
 import { describe, it, expect, test } from 'vitest';
 import {
   buildCircuit,

@@ -1,3 +1,5 @@
+// Instrumentation components (oscilloscope, voltage probes) are checked through
+// measured node voltages to ensure they stay high-impedance and report expected values.
 import { describe, it, expect } from 'vitest';
 import {
   buildCircuit,

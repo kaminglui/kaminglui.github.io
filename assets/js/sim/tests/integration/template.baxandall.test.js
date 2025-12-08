@@ -1,3 +1,6 @@
+// Validates the Baxandall tone control template by driving low/high sine sources
+// and projecting the output onto those tones; expectations rely on relative gain
+// changes (boost/cut) rather than any simulator internals.
 import { describe, it, expect } from 'vitest';
 import {
   importCircuit,
@@ -68,14 +71,22 @@ describe('Baxandall Tone Control template', () => {
     const highMax = Math.max(trebleHigh.tones.high.amplitude, trebleLow.tones.high.amplitude);
     const highMin = Math.min(trebleHigh.tones.high.amplitude, trebleLow.tones.high.amplitude);
     expect(highMax).toBeGreaterThan(highMin * 1.5);
-    expect(highMax).toBeGreaterThan(flat.tones.high.amplitude * 0.8);
-    expect(highMin).toBeLessThan(flat.tones.high.amplitude * 1.2);
+    expect(highMax).toBeGreaterThan(flat.tones.high.amplitude * 0.9);
+    expect(highMin).toBeLessThan(flat.tones.high.amplitude * 1.15);
+    // Treble pot should affect the high band more than it disturbs the low band.
+    const trebleLowSpan = Math.abs(trebleHigh.tones.low.amplitude - trebleLow.tones.low.amplitude);
+    const trebleHighSpan = Math.abs(trebleHigh.tones.high.amplitude - trebleLow.tones.high.amplitude);
+    expect(trebleHighSpan).toBeGreaterThan(trebleLowSpan * 1.2);
 
     const lowMax = Math.max(bassHigh.tones.low.amplitude, bassLow.tones.low.amplitude);
     const lowMin = Math.min(bassHigh.tones.low.amplitude, bassLow.tones.low.amplitude);
     expect(lowMax).toBeGreaterThan(lowMin * 1.5);
-    expect(lowMax).toBeGreaterThan(flat.tones.low.amplitude * 0.8);
-    expect(lowMin).toBeLessThan(flat.tones.low.amplitude * 1.2);
+    expect(lowMax).toBeGreaterThan(flat.tones.low.amplitude * 0.9);
+    expect(lowMin).toBeLessThan(flat.tones.low.amplitude * 1.15);
+    // Bass pot should primarily shape the low band.
+    const bassHighSpan = Math.abs(bassHigh.tones.high.amplitude - bassLow.tones.high.amplitude);
+    const bassLowSpan = Math.abs(bassHigh.tones.low.amplitude - bassLow.tones.low.amplitude);
+    expect(bassLowSpan).toBeGreaterThan(bassHighSpan * 1.2);
 
     // Controls do not wipe out the opposite band.
     expect(trebleHigh.tones.low.amplitude).toBeGreaterThan(0.05);

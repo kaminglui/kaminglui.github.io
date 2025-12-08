@@ -1,3 +1,5 @@
+// Ensures circuits survive export/import round-trips with stable IDs by comparing
+// measured voltages after reloading; expectations come from Ohm's law, not solver state.
 import { describe, it, expect } from 'vitest';
 import {
   buildCircuit,

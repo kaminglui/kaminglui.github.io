@@ -4,6 +4,7 @@
 - **UI / editor**: `assets/js/circuitforge.js` (components, wiring UI, scope rendering).
 - **Component renderers**: one file per component under `assets/js/circuit-lab/components/`, imported by the UI entry point.
 - **Templates and loader**: Template data now ships as JS modules under `assets/js/circuit-lab/templates/` (e.g. `mixer-karaoke.js`) and is cloned via `assets/js/circuit-lab/templateRegistry.js` (which also hydrates `window.CIRCUIT_TEMPLATES` through `circuitforge.templates.js`). Missing templates emit a console warning but no longer break the page load.
+- **Template format**: `serializeTemplate`/`deserializeTemplate` expose a compact, ID-free template shape using component indices and relative coordinates (normalized to the selection bounding box) for clipboard and template save/load. Full saves remain unchanged.
 - **Headless simulation core**: `assets/js/sim/engine.js` exports `CircuitSim.runSimulation`, `updateComponentState`, and utilities.
 - **Simulation interface**: `assets/js/sim/wasmInterface.js` wraps the JS solver today and leaves hooks for a future WASM backend.
 - **Shared sim utilities**: `assets/js/sim/utils/` holds reusable helpers (ID registry, waveform analysis) shared by the UI and tests.

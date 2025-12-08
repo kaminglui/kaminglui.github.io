@@ -1,3 +1,5 @@
+// DC-only resistive networks validated via Ohm's law and divider/bridge
+// equations; checks ensure solver outputs match closed-form expectations.
 import { describe, it, expect } from 'vitest';
 import {
   buildCircuit,

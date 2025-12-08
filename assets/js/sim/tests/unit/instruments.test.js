@@ -1,3 +1,5 @@
+// Instrument components (oscilloscope channels, waveforms) are evaluated by
+// sampling voltages/current against analytic source values, never against solver state.
 import { describe, it, expect } from 'vitest';
 import {
   makeGround,

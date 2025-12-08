@@ -1,3 +1,6 @@
+// DC component behaviours derived from basic circuit analysis: resistors, switches,
+// LEDs, and potentiometers are measured against expected currents/voltages instead
+// of consulting solver internals.
 import { describe, it, expect } from 'vitest';
 import {
   makeGround,
