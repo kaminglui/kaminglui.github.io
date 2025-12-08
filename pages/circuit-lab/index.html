@@ -255,24 +255,27 @@
             #mobile-tools-toggle { display: inline-flex; }
             .lab-main {
                 flex-direction: column;
-                height: auto;
+                height: var(--workspace-h);
                 min-height: var(--workspace-h);
-                max-height: none;
+                max-height: var(--workspace-h);
                 padding-bottom: 0;
             }
             .sidebar {
                 width: 100%;
                 max-width: 100%;
-                height: auto;
+                height: var(--workspace-h);
                 min-height: var(--workspace-h);
-                max-height: none;
+                max-height: var(--workspace-h);
                 position: static;
                 top: auto;
+                display: flex;
+                flex-direction: column;
+                overflow: hidden;
             }
             .canvas-shell {
                 min-height: var(--workspace-h);
-                height: auto;
-                max-height: none;
+                height: var(--workspace-h);
+                max-height: var(--workspace-h);
                 padding-bottom: 0;
             }
             #tool-scroll {
@@ -320,18 +323,21 @@
             .circuit-lab-root {
                 display: flex;
                 flex-direction: column;
-                height: auto;
+                height: var(--workspace-h);
                 min-height: var(--workspace-h);
             }
-            .sidebar-panel { height: auto; max-height: none; }
+            .sidebar-panel {
+                height: var(--workspace-h);
+                max-height: var(--workspace-h);
+            }
             .circuit-lab-root:not(.sidebar-open) .sidebar-panel { display: none; }
             .circuit-lab-root.sidebar-open .sidebar-panel { display: flex; }
             .circuit-lab-root.sidebar-open .canvas-panel { display: none; }
             .circuit-lab-root:not(.sidebar-open) .canvas-panel {
                 display: flex;
                 min-height: var(--workspace-h);
-                height: auto;
-                max-height: none;
+                height: var(--workspace-h);
+                max-height: var(--workspace-h);
                 padding-bottom: 0;
             }
             #tool-scroll {

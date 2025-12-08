@@ -1373,6 +1373,13 @@ function drawScope() {
         { key: 'ch2', color: '#22d3ee', scale: scaleCh2, data: scope.data.ch2 }
     ];
 
+    const cursorIsVisible = (id) => {
+        const el = document.getElementById(id);
+        return !!(el && !el.classList.contains('hidden'));
+    };
+    const showCursor1 = cursorIsVisible('cursor-1');
+    const showCursor2 = cursorIsVisible('cursor-2');
+
     function renderChannel(ch) {
         scopeCtx.strokeStyle = ch.color;
         scopeCtx.lineWidth   = 2;
@@ -1392,7 +1399,7 @@ function drawScope() {
     channels.forEach(renderChannel);
 
     const cursorMetrics = buildCursorMetrics(scope);
-    if (cursorMetrics) {
+    if (cursorMetrics && (showCursor1 || showCursor2)) {
         const drawCursorMarker = (pct, color, values) => {
             const x = (pct / 100) * w;
             scopeCtx.save();
@@ -1424,8 +1431,8 @@ function drawScope() {
             value: cursorMetrics.channels.find(row => row.key === ch.key)?.vb || 0
         }));
 
-        drawCursorMarker(cursorMetrics.pctA, '#fcd34d', valuesA);
-        drawCursorMarker(cursorMetrics.pctB, '#06b6d4', valuesB);
+        if (showCursor1) drawCursorMarker(cursorMetrics.pctA, '#fcd34d', valuesA);
+        if (showCursor2) drawCursorMarker(cursorMetrics.pctB, '#06b6d4', valuesB);
     }
 
     // keep cursor Δt / ΔV working even when the sim is paused
