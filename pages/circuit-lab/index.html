@@ -128,10 +128,23 @@
             background: var(--bg-panel);
             border-top: 1px solid var(--border-color);
             display: flex;
-            align-items: center;
+            align-items: flex-start;
             justify-content: space-between;
-            padding: 0 16px;
+            padding: 6px 16px;
             z-index: 50;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        #sim-bar .sim-info {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        #sim-bar .sim-actions {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
         }
 
         /* --- DROPDOWN MENUS --- */
@@ -248,10 +261,49 @@
             .canvas-shell {
                 width: 100%;
             }
+            #sim-bar {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            #sim-bar .sim-info {
+                width: 100%;
+                order: 0;
+            }
+            #sim-bar .sim-actions {
+                width: 100%;
+                order: 1;
+                flex-wrap: wrap;
+            }
+            #sim-bar .sim-actions > * {
+                flex: 0 0 auto;
+            }
         }
 
         /* Utilities */
         .hidden { display: none !important; }
+        .sidebar-toggle {
+            position: absolute;
+            left: var(--sidebar-w);
+            top: 50%;
+            transform: translateY(-50%);
+            width: 28px;
+            height: 56px;
+            border: 1px solid var(--border-color);
+            border-left: none;
+            background: var(--bg-panel);
+            border-radius: 0 10px 10px 0;
+            display: grid;
+            place-items: center;
+            box-shadow: 4px 0 12px rgba(0,0,0,0.3);
+            transition: left 0.3s ease, background 0.2s ease;
+            z-index: 30;
+        }
+        .sidebar.collapsed + .sidebar-toggle {
+            left: 0;
+        }
+        @media (max-width: 768px) {
+            .sidebar-toggle { display: none; }
+        }
     </style>
 </head>
 <body class="theme-dark">
@@ -261,10 +313,10 @@
     <main id="circuit-lab-root" class="circuit-lab-root flex-row sidebar-open">
         <aside id="sidebar" class="sidebar">
             <div class="sidebar-header">
-            <div class="flex items-center gap-3 w-full">
-                <div class="w-8 h-8 rounded bg-blue-600 flex items-center justify-center text-white shrink-0">
-                    <i class="fas fa-microchip"></i>
-                </div>
+                <div class="flex items-center gap-3 w-full">
+                    <div class="w-8 h-8 rounded bg-blue-600 flex items-center justify-center text-white shrink-0">
+                        <i class="fas fa-microchip"></i>
+                    </div>
                 <div class="flex flex-col">
                     <span class="text-sm font-bold leading-tight tracking-tight">Circuit Forge</span>
                     <span class="text-[10px] text-gray-500 font-semibold tracking-wider">SIMULATOR v1.0</span>
@@ -352,6 +404,10 @@
                 </div>
             </div>
         </aside>
+        <button class="sidebar-toggle text-gray-400 hover:text-white" onclick="toggleSidebar()" aria-label="Toggle sidebar">
+            <i id="sidebar-toggle-icon" class="fas fa-chevron-left"></i>
+            <span class="sr-only">Toggle sidebar</span>
+        </button>
 
         <div class="canvas-shell">
             <div class="absolute top-4 right-4 z-10 flex flex-col gap-2 items-end">
@@ -533,13 +589,13 @@
     </main>
 
     <div id="sim-bar">
-        <div class="flex items-center gap-4 text-xs font-mono">
+        <div class="sim-info text-xs font-mono">
             <span class="text-green-500 font-bold" id="sim-time">0.00s</span>
             <span class="text-gray-500">|</span>
             <span class="text-gray-400" id="sim-status">STOPPED</span>
         </div>
 
-        <div class="flex items-center gap-2">
+        <div class="sim-actions">
             <button id="mobile-tools-toggle" type="button"
                     class="sim-btn bg-gray-800 hover:bg-gray-700 border border-gray-700 text-white px-3 py-1 rounded text-xs flex items-center gap-2"
                     aria-pressed="true" onclick="toggleSidebar()">
@@ -552,7 +608,7 @@
                     <i class="fas fa-save"></i> Save
                     <i class="fas fa-chevron-up text-[10px]"></i>
                 </button>
-                <div id="save-menu" class="menu-list">
+                <div id="save-menu" class="menu-list hidden">
                     <button onclick="runSaveOption('circuit')"><i class="fas fa-file-circuit"></i> Save Circuit</button>
                     <button onclick="runSaveOption('template')"><i class="fas fa-cubes"></i> Save Template</button>
                 </div>
@@ -564,17 +620,16 @@
                     <i class="fas fa-folder-open"></i> Load
                     <i class="fas fa-chevron-up text-[10px]"></i>
                 </button>
-                <div id="load-menu" class="menu-list">
+                <div id="load-menu" class="menu-list hidden">
                     <button onclick="runLoadOption('circuit')"><i class="fas fa-upload"></i> Load File...</button>
                     <button onclick="runLoadOption('template')"><i class="fas fa-puzzle-piece"></i> Load Template</button>
                 </div>
             </div>
 
             <button onclick="clearCanvas()"
-                    class="sim-btn bg-red-700 hover:bg-red-600 border border-red-800 text-white px-3 py-1 rounded text-xs flex items-center gap-2"
+                    class="w-8 h-8 rounded bg-red-700 hover:bg-red-600 text-white flex items-center justify-center border border-red-800"
                     aria-label="Clear workspace">
                 <i class="fas fa-broom"></i>
-                <span>Clean All</span>
             </button>
 
             <div class="h-4 w-px bg-gray-700 mx-1"></div>
@@ -598,43 +653,49 @@
 
     <script type="module" src="../../assets/js/circuitforge.js"></script>
     <script>
-        // Robust Menu Toggling
+        const openMenus = new Set();
+        function closeMenus() {
+            document.querySelectorAll('.menu-list').forEach(m => m.classList.remove('active', 'open'));
+            document.querySelectorAll('.menu-list').forEach(m => m.classList.add('hidden'));
+            openMenus.clear();
+        }
         function toggleMenu(id) {
             const menu = document.getElementById(id);
-            const allMenus = document.querySelectorAll('.menu-list');
-            
-            allMenus.forEach(m => {
-                if (m.id !== id) m.classList.remove('active');
-            });
-
-            if (menu) menu.classList.toggle('active');
-        }
-
-        document.addEventListener('click', (e) => {
-            if (!e.target.closest('.menu-wrapper')) {
-                document.querySelectorAll('.menu-list').forEach(m => m.classList.remove('active'));
+            if (!menu) return;
+            const willOpen = menu.classList.contains('hidden');
+            closeMenus();
+            if (willOpen) {
+                menu.classList.remove('hidden');
+                menu.classList.add('active', 'open');
+                openMenus.add(id);
             }
-        });
-
+        }
         function runSaveOption(type) {
-            if (window.circuitForgeApi) {
-                 if (type === 'circuit') window.circuitForgeApi.downloadCircuitJSON();
-                 else window.circuitForgeApi.downloadTemplateJSON();
-            }
-            document.querySelectorAll('.menu-list').forEach(m => m.classList.remove('active'));
+            closeMenus();
+            if (type === 'circuit') downloadCircuitJSON();
+            else downloadTemplateJSON();
         }
-        
         function runLoadOption(type) {
-            if (window.circuitForgeApi) {
-                 if (type === 'circuit') window.circuitForgeApi.triggerImportDialog();
-                 else window.circuitForgeApi.triggerImportTemplateDialog();
-            }
-            document.querySelectorAll('.menu-list').forEach(m => m.classList.remove('active'));
+            closeMenus();
+            if (type === 'circuit') triggerImportDialog();
+            else triggerImportTemplateDialog();
         }
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.menu-wrapper')) closeMenus();
+        });
+        window.addEventListener('resize', closeMenus);
     </script>
     <script>
-        const themeToggle = document.querySelector('#site-header .theme-toggle') || document.querySelector('.theme-toggle');
         const THEME_KEY = 'circuitforge-theme';
+        let themeToggle = null;
+
+        function updateThemeToggle(theme) {
+            if (!themeToggle) return;
+            themeToggle.setAttribute('aria-pressed', theme === 'dark' ? 'true' : 'false');
+            themeToggle.innerHTML = theme === 'dark'
+                ? '<span aria-hidden="true">🌙</span>'
+                : '<span aria-hidden="true">☀️</span>';
+        }
 
         function applyTheme(theme) {
             document.body.classList.toggle('theme-dark', theme === 'dark');
@@ -642,9 +703,7 @@
             document.documentElement.classList.toggle('dark', theme === 'dark');
             localStorage.setItem(THEME_KEY, theme);
             localStorage.setItem('theme', theme);
-            if (themeToggle) {
-                themeToggle.setAttribute('aria-pressed', theme === 'dark' ? 'true' : 'false');
-            }
+            updateThemeToggle(theme);
 
             if (typeof updateBoardThemeColors === 'function') {
                 updateBoardThemeColors();
@@ -657,17 +716,28 @@
             }
         }
 
+        function wireThemeToggle() {
+            themeToggle = document.querySelector('#site-header .theme-toggle') || document.querySelector('.theme-toggle');
+            if (!themeToggle) return;
+            themeToggle.addEventListener('click', () => {
+                const currentTheme = document.body.classList.contains('theme-dark') ? 'dark' : 'light';
+                const nextTheme = currentTheme === 'dark' ? 'light' : 'dark';
+                applyTheme(nextTheme);
+                setTimeout(() => {
+                    if (window.circuitForgeApi) window.circuitForgeApi.renderToolIcons();
+                }, 50);
+            });
+            updateThemeToggle(document.body.classList.contains('theme-dark') ? 'dark' : 'light');
+        }
+
         const savedTheme = localStorage.getItem(THEME_KEY) ?? localStorage.getItem('theme');
         applyTheme(savedTheme === 'light' ? 'light' : 'dark');
 
-        themeToggle?.addEventListener('click', () => {
-            const currentTheme = document.body.classList.contains('theme-dark') ? 'dark' : 'light';
-            const nextTheme = currentTheme === 'dark' ? 'light' : 'dark';
-            applyTheme(nextTheme);
-            setTimeout(() => {
-                if (window.circuitForgeApi) window.circuitForgeApi.renderToolIcons();
-            }, 50);
-        });
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', wireThemeToggle, { once: true });
+        } else {
+            wireThemeToggle();
+        }
     </script>
 </body>
 </html>
