@@ -70,7 +70,7 @@ describe('op-amp comparator mode', () => {
 
     const { samples } = runTransient(circuit, {
       duration,
-      dt: 5e-4,
+      dt: 1e-4,
       onStep: ({ t }) => { circuit.vin.props.Vdc = sweep(t); },
       measure: ({ sim }) => ({ vout: sim.voltage(circuit.op, 0) })
     });
@@ -84,7 +84,58 @@ describe('op-amp comparator mode', () => {
 
     expect(outputs[0]).toBeLessThan(-RAIL + 1);
     expect(outputs[outputs.length - 1]).toBeGreaterThan(RAIL - 1);
-    expect(transitions).toBeLessThanOrEqual(2);
+    expect(transitions).toBeLessThanOrEqual(1);
+  });
+
+  it('holds its state when inputs sit exactly at the threshold', () => {
+    const circuit = buildComparator();
+    circuit.vin.props.Vdc = 3; // drive high first
+    runTransient(circuit, { duration: 0.001, dt: 1e-4 });
+
+    circuit.vin.props.Vdc = 2.5; // equal to Vref
+    const { samples } = runTransient(circuit, {
+      duration: 0.002,
+      dt: 1e-4,
+      measure: ({ sim }) => sim.voltage(circuit.op, 0)
+    });
+
+    const swings = Math.max(...samples) - Math.min(...samples);
+    const transitions = samples.reduce((count, v, idx, arr) => {
+      if (idx === 0) return 0;
+      const prev = arr[idx - 1];
+      return (Math.sign(prev) !== Math.sign(v)) ? count + 1 : count;
+    }, 0);
+
+    expect(transitions).toBeLessThanOrEqual(1);
+    expect(swings).toBeLessThan(RAIL * 0.25);
+  });
+
+  it('switches cleanly for a slow sine input around the threshold', () => {
+    const circuit = buildComparator();
+    const freq = 200;
+    const duration = 0.01;
+    const amplitude = 0.6;
+    const offset = 2.5;
+
+    const { samples } = runTransient(circuit, {
+      duration,
+      dt: 1e-4,
+      onStep: ({ t }) => {
+        circuit.vin.props.Vdc = offset + amplitude * Math.sin(2 * Math.PI * freq * t);
+      },
+      measure: ({ sim }) => sim.voltage(circuit.op, 0)
+    });
+
+    const transitions = samples.reduce((count, v, idx, arr) => {
+      if (idx === 0) return 0;
+      const prev = arr[idx - 1];
+      return (Math.sign(prev) !== Math.sign(v)) ? count + 1 : count;
+    }, 0);
+
+    // Two transitions per cycle (one rising, one falling) with a little tolerance.
+    const expectedTransitions = Math.round(duration * freq * 2);
+    expect(transitions).toBeLessThanOrEqual(expectedTransitions + 1);
+    expect(transitions).toBeGreaterThanOrEqual(expectedTransitions - 1);
   });
 
   it('flips polarity when wired as an inverting comparator', () => {
