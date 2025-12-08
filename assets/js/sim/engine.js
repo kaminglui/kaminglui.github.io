@@ -18,6 +18,8 @@ const DEFAULTS = {
   opAmpInputLeak: 1e-15,
   opAmpOutputLeak: 1e-12,
   opAmpHeadroom: 0.1,
+  opAmpHysteresis: 1e-3,
+  opAmpSaturationWindow: 0.02,
   funcGenRefRes: 1,
   funcGenSeriesRes: 1,
   maxOutputClamp: 100,
@@ -319,6 +321,8 @@ function buildSimulationComponents({
   opAmpInputLeak,
   opAmpOutputLeak,
   opAmpHeadroom,
+  opAmpHysteresis,
+  opAmpSaturationWindow,
   maxOutputClamp,
   mapNode,
   registerSource = () => {}
@@ -448,8 +452,9 @@ function buildSimulationComponents({
           nVPlus: getNodeIndex(c, 7)
         }
       ];
-      halves.forEach((h) => {
+      halves.forEach((h, idx) => {
         if (h.nOut === -1 && h.nInv === -1 && h.nNon === -1) return;
+        const opState = c._opAmpState || (c._opAmpState = {});
         const opAmp = new IdealOpAmp({
           ...h,
           gain: opAmpGain,
@@ -457,7 +462,11 @@ function buildSimulationComponents({
           outputLeak: opAmpOutputLeak,
           headroom: opAmpHeadroom,
           maxOutputClamp,
-          mapNode
+          mapNode,
+          state: opState,
+          stateKey: `half-${idx}`,
+          hysteresis: opAmpHysteresis,
+          saturationWindow: opAmpSaturationWindow
         });
         opAmpComponents.push(opAmp);
         simComponents.push(opAmp);
@@ -479,6 +488,8 @@ function runSimulation(opts = {}) {
   const opAmpInputLeak = opts.opAmpInputLeak ?? DEFAULTS.opAmpInputLeak;
   const opAmpOutputLeak = opts.opAmpOutputLeak ?? DEFAULTS.opAmpOutputLeak;
   const opAmpHeadroom = opts.opAmpHeadroom ?? DEFAULTS.opAmpHeadroom;
+  const opAmpHysteresis = opts.opAmpHysteresis ?? DEFAULTS.opAmpHysteresis;
+  const opAmpSaturationWindow = opts.opAmpSaturationWindow ?? DEFAULTS.opAmpSaturationWindow;
   const funcGenRefRes = opts.funcGenRefRes ?? DEFAULTS.funcGenRefRes;
   const funcGenSeriesRes = opts.funcGenSeriesRes ?? DEFAULTS.funcGenSeriesRes;
   const maxOutputClamp = opts.maxOutputClamp ?? DEFAULTS.maxOutputClamp;
@@ -552,6 +563,8 @@ function runSimulation(opts = {}) {
     opAmpInputLeak,
     opAmpOutputLeak,
     opAmpHeadroom,
+    opAmpHysteresis,
+    opAmpSaturationWindow,
     maxOutputClamp,
     mapNode,
     registerSource

@@ -187,6 +187,7 @@ let touchSelectionTimer = null;
 let touchDeleteTimer = null;
 let touchHoldStart = null;
 let touchMovedSinceDown = false;
+const cursorVisibility = { 1: true, 2: true };
 
 // Canvas handles (set after DOM exists)
 let canvas = null;
@@ -220,6 +221,13 @@ function getViewportSize() {
     return { width, height };
 }
 
+function computeWorkspaceHeight({ viewportH = 0, headerH = 0, simBarH = 0 } = {}) {
+    const safeViewport = Number.isFinite(viewportH) ? viewportH : 0;
+    const safeHeader   = Number.isFinite(headerH) ? headerH : 0;
+    const safeSimbar   = Number.isFinite(simBarH) ? simBarH : 0;
+    return Math.max(0, safeViewport - safeHeader - safeSimbar);
+}
+
 function isMobileViewport() {
     const { width } = getViewportSize();
     return width <= MOBILE_BREAKPOINT;
@@ -232,14 +240,52 @@ function syncViewportCssVars() {
     if (height) root.style.setProperty('--viewport-h', `${height}px`);
 
     const header = document.querySelector('.site-header');
-    if (header) {
-        root.style.setProperty('--header-h', `${header.offsetHeight}px`);
-    }
+    const headerH = header?.getBoundingClientRect?.().height ?? header?.offsetHeight ?? 0;
+    root.style.setProperty('--header-h', `${Math.max(0, headerH || 0)}px`);
 
     const simBar = document.getElementById('sim-bar');
-    if (simBar) {
-        root.style.setProperty('--simbar-height', `${simBar.offsetHeight}px`);
+    const simBarH = simBar?.getBoundingClientRect?.().height ?? simBar?.offsetHeight ?? 0;
+    root.style.setProperty('--simbar-height', `${Math.max(0, simBarH || 0)}px`);
+
+    const workspaceH = computeWorkspaceHeight({ viewportH: height, headerH, simBarH });
+    if (workspaceH || workspaceH === 0) {
+        root.style.setProperty('--workspace-h', `${workspaceH}px`);
     }
+
+    if (isLayoutDebuggingEnabled()) {
+        const check = validateLayoutHeights();
+        if (!check.ok) {
+            console.warn('Circuit Lab layout check: height mismatch', check);
+        }
+    }
+}
+
+function validateLayoutHeights(tolerance = 3) {
+    if (typeof document === 'undefined') return { ok: true, delta: 0, parts: {} };
+    const { height: viewportH } = getViewportSize();
+    const headerEl = document.querySelector('.site-header');
+    const simBarEl = document.getElementById('sim-bar');
+    const workspaceEl = document.getElementById('circuit-lab-root')
+        || document.querySelector('.lab-main')
+        || document.querySelector('.canvas-shell');
+
+    const headerH = headerEl?.getBoundingClientRect?.().height ?? headerEl?.offsetHeight ?? 0;
+    const simBarH = simBarEl?.getBoundingClientRect?.().height ?? simBarEl?.offsetHeight ?? 0;
+    const workspaceH = workspaceEl?.getBoundingClientRect?.().height ?? workspaceEl?.offsetHeight ?? 0;
+    const expectedWorkspace = computeWorkspaceHeight({ viewportH, headerH, simBarH });
+    const delta = Math.abs((headerH + simBarH + workspaceH) - viewportH);
+    return {
+        ok: delta <= tolerance,
+        delta,
+        parts: { viewportH, headerH, simBarH, workspaceH, expectedWorkspace }
+    };
+}
+
+function isLayoutDebuggingEnabled() {
+    if (typeof document === 'undefined') return false;
+    const body = document.body;
+    if (!body) return false;
+    return body.dataset.debugLayout === 'true' || body.hasAttribute('data-debug-layout');
 }
 
 function snapToGrid(v) {
@@ -892,6 +938,7 @@ function orthogonalizeWire(wire) {
     const path = ensureOrthogonalPath([start, ...mids, end]);
     const verts = path.slice(1, Math.max(1, path.length - 1));
     wire.vertices = mergeCollinear(verts);
+    tagWireRoutePreference(wire);
 }
 
 function getPinDirection(comp, pinIdx) {
@@ -910,9 +957,44 @@ function getPinDirection(comp, pinIdx) {
     return { x: 0, y: Math.sign(py || 1) };
 }
 
+const ROUTE_ORIENTATION = {
+    H_FIRST: 'h-first',
+    V_FIRST: 'v-first'
+};
+
+function firstSegmentOrientation(points = []) {
+    if (!Array.isArray(points)) return null;
+    for (let i = 1; i < points.length; i++) {
+        const prev = points[i - 1];
+        const curr = points[i];
+        if (!prev || !curr) continue;
+        const dx = curr.x - prev.x;
+        const dy = curr.y - prev.y;
+        if (dx === 0 && dy === 0) continue;
+        return (Math.abs(dx) >= Math.abs(dy)) ? ROUTE_ORIENTATION.H_FIRST : ROUTE_ORIENTATION.V_FIRST;
+    }
+    return null;
+}
+
+function inferRoutePreference(start, verts = [], end) {
+    const poly = [start, ...(verts || []), end].filter(Boolean);
+    return firstSegmentOrientation(poly);
+}
+
+function tagWireRoutePreference(wire) {
+    if (!wire?.from?.c || !wire?.to?.c) return wire;
+    const start = wire.from.c.getPinPos(wire.from.p);
+    const end = wire.to.c.getPinPos(wire.to.p);
+    wire.routePref = inferRoutePreference(start, wire.vertices || [], end);
+    return wire;
+}
+
 // Build an orthogonal path that honours user-provided midpoints in sequence and
 // uses pin directions to bias stub placement near endpoints.
-function routeManhattan(start, midPoints, end, startDir = null, endDir = null) {
+function routeManhattan(start, midPoints, end, startDir = null, endDir = null, opts = {}) {
+    const preferredOrientation = opts.preferredOrientation || null;
+    const stickiness = Number.isFinite(opts.stickiness) ? opts.stickiness : 0.6;
+    let orientationHint = preferredOrientation;
     const targets = [...(midPoints || []), end].map(p => snapToBoardPoint(p.x, p.y));
 
     function stubFrom(p, dir, toward) {
@@ -944,8 +1026,10 @@ function routeManhattan(start, midPoints, end, startDir = null, endDir = null) {
         // propose two L paths; pick one that aligns with dir hints
         const pathA = [snapToBoardPoint(snapT.x, last.y), snapT];
         const pathB = [snapToBoardPoint(last.x, snapT.y), snapT];
+        const orientA = ROUTE_ORIENTATION.H_FIRST;
+        const orientB = ROUTE_ORIENTATION.V_FIRST;
 
-        function score(path) {
+        function score(path, orientation) {
             let s = path.length;
             if (dirOut) {
                 const first = path[0];
@@ -957,10 +1041,19 @@ function routeManhattan(start, midPoints, end, startDir = null, endDir = null) {
                 if (dirIn.x && prev.x === snapT.x) s += 1;
                 if (dirIn.y && prev.y === snapT.y) s += 1;
             }
+            if (orientationHint && orientation) {
+                if (orientation === orientationHint) s -= stickiness;
+                else s += stickiness * 0.25;
+            }
             return s;
         }
 
-        const best = (score(pathA) <= score(pathB)) ? pathA : pathB;
+        const scoreA = score(pathA, orientA);
+        const scoreB = score(pathB, orientB);
+        const pickA = scoreA <= scoreB;
+        const best = pickA ? pathA : pathB;
+        const chosenOrientation = pickA ? orientA : orientB;
+        if (!orientationHint) orientationHint = chosenOrientation;
 
         // ensure stubs honoring dirOut
         if (dirOut) {
@@ -1093,6 +1186,9 @@ function splitWireAtPoint(wire, pt) {
         v: wire.v || 0
     };
 
+    tagWireRoutePreference(wireA);
+    tagWireRoutePreference(wireB);
+
     wires = wires.filter(w => w !== wire);
     wires.push(wireA, wireB);
     return junction;
@@ -1104,7 +1200,14 @@ function getWirePolyline(w) {
     const pEnd   = w.to.c.getPinPos(w.to.p);
     const dir    = getPinDirection(w.from.c, w.from.p);
     const endDir = getPinDirection(w.to.c, w.to.p);
-    return routeManhattan(pStart, w.vertices || [], pEnd, dir, endDir);
+    return routeManhattan(
+        pStart,
+        w.vertices || [],
+        pEnd,
+        dir,
+        endDir,
+        { preferredOrientation: w.routePref || null }
+    );
 }
 
 function pruneFloatingJunctions() {
@@ -1172,6 +1275,7 @@ function cleanupJunctions() {
                     vertices: mergedVerts,
                     v: (w1.v || 0)
                 };
+                tagWireRoutePreference(newWire);
                 wires = wires.filter(w => w !== w1 && w !== w2);
                 wires.push(newWire);
                 releaseComponentId(j.id);
@@ -1234,7 +1338,16 @@ function drawWires() {
         const fromPos = activeWire.fromPin.c.getPinPos(activeWire.fromPin.p);
         const mousePt = activeWire.currentPoint || fromPos;
         const dir = getPinDirection(activeWire.fromPin.c, activeWire.fromPin.p);
-        const pts = routeManhattan(fromPos, activeWire.vertices || [], mousePt, dir);
+        const pts = routeManhattan(
+            fromPos,
+            activeWire.vertices || [],
+            mousePt,
+            dir,
+            null,
+            { preferredOrientation: activeWire.routePref || null }
+        );
+        const previewOrientation = firstSegmentOrientation(pts);
+        if (!activeWire.routePref && previewOrientation) activeWire.routePref = previewOrientation;
         drawWirePolyline(pts, '#ffffff', ACTIVE_WIRE_WIDTH, true);
     }
 }
@@ -1373,12 +1486,8 @@ function drawScope() {
         { key: 'ch2', color: '#22d3ee', scale: scaleCh2, data: scope.data.ch2 }
     ];
 
-    const cursorIsVisible = (id) => {
-        const el = document.getElementById(id);
-        return !!(el && !el.classList.contains('hidden'));
-    };
-    const showCursor1 = cursorIsVisible('cursor-1');
-    const showCursor2 = cursorIsVisible('cursor-2');
+    const showCursor1 = cursorIsVisible(1);
+    const showCursor2 = cursorIsVisible(2);
 
     function renderChannel(ch) {
         scopeCtx.strokeStyle = ch.color;
@@ -2231,7 +2340,9 @@ function placeTemplate(template, origin) {
             y: placementOrigin.y + ((v?.y || 0) - center.y)
         }));
         const verts = buildWireVertices({ c: from.comp, p: from.pin }, mid, { c: to.comp, p: to.pin }) || [];
-        wires.push({ from: { c: from.comp, p: from.pin }, to: { c: to.comp, p: to.pin }, vertices: verts, v: 0 });
+        const newWire = { from: { c: from.comp, p: from.pin }, to: { c: to.comp, p: to.pin }, vertices: verts, v: 0 };
+        tagWireRoutePreference(newWire);
+        wires.push(newWire);
     });
 
     selectionGroup = created;
@@ -2388,14 +2499,16 @@ function applySerializedState(data) {
             const fromComp = idMap.get(w.from?.id);
             const toComp   = idMap.get(w.to?.id);
             if (!fromComp || !toComp) return;
-            restoredWires.push({
+            const restoredWire = {
                 from: { c: fromComp, p: w.from.p ?? 0 },
                 to:   { c: toComp,   p: w.to.p   ?? 0 },
                 vertices: Array.isArray(w.vertices)
                     ? w.vertices.map(v => snapToBoardPoint(v.x ?? 0, v.y ?? 0))
                     : [],
                 v: 0
-            });
+            };
+            tagWireRoutePreference(restoredWire);
+            restoredWires.push(restoredWire);
         });
 
         components = created;
@@ -2680,12 +2793,14 @@ function autoConnectPins(component) {
                          w.from.c === other     && w.from.p === j)
                     );
                     if (!exists) {
-                        wires.push({
+                        const newWire = {
                             from: { c: component, p: i },
                             to:   { c: other,     p: j },
                             vertices: [],
                             v:    0
-                        });
+                        };
+                        tagWireRoutePreference(newWire);
+                        wires.push(newWire);
                         markStateDirty();
                     }
                 }
@@ -2788,12 +2903,14 @@ function onDown(e) {
                 );
 
                 if (!exists) {
-                    wires.push({
+                    const newWire = {
                         from,
                         to,
                         vertices,
                         v: 0
-                    });
+                    };
+                    tagWireRoutePreference(newWire);
+                    wires.push(newWire);
                     markStateDirty();
                 }
             }
@@ -2825,7 +2942,9 @@ function onDown(e) {
             const to   = { c: junction, p: 0 };
             const vertices = buildWireVertices(from, activeWire.vertices, to);
             if (vertices.length || from.c !== to.c || from.p !== to.p) {
-                wires.push({ from, to, vertices, v: 0 });
+                const newWire = { from, to, vertices, v: 0 };
+                tagWireRoutePreference(newWire);
+                wires.push(newWire);
                 markStateDirty();
             }
             activeWire = null;
@@ -3248,6 +3367,32 @@ function buildCursorMetrics(scope) {
     return { pctA, pctB, tA, tB, deltaT, freq, channels };
 }
 
+function cursorIsVisible(id) {
+    if (id !== 1 && id !== 2) return false;
+    const state = cursorVisibility[id];
+    if (typeof state === 'boolean') return state;
+    if (typeof document === 'undefined') return false;
+    const el = document.getElementById(`cursor-${id}`);
+    return !!(el && !el.classList.contains('hidden'));
+}
+
+function setCursorVisibility(id, visible) {
+    if (id !== 1 && id !== 2) return;
+    cursorVisibility[id] = !!visible;
+    if (typeof document === 'undefined') return;
+    const el = document.getElementById(`cursor-${id}`);
+    if (el) el.classList.toggle('hidden', !visible);
+}
+
+function syncCursorVisibilityFromDom() {
+    if (typeof document === 'undefined') return;
+    [1, 2].forEach((id) => {
+        const el = document.getElementById(`cursor-${id}`);
+        const visible = !(el && el.classList.contains('hidden'));
+        cursorVisibility[id] = visible;
+    });
+}
+
 function setScopeOverlayLayout(mode = scopeDisplayMode || getDefaultScopeMode()) {
     const overlay = document.getElementById('scope-overlay');
     if (!overlay) return;
@@ -3296,6 +3441,7 @@ function openScope(targetScope = null) {
     setScopeOverlayLayout(scopeDisplayMode || getDefaultScopeMode());
     const overlay = document.getElementById('scope-overlay');
     if (overlay) overlay.classList.remove('hidden');
+    syncCursorVisibilityFromDom();
     resize();
     attachScopeControlHandlers();
     syncScopeControls();
@@ -3314,12 +3460,13 @@ function closeScope() {
 }
 
 function toggleCursors() {
-    const c1 = document.getElementById('cursor-1');
-    const c2 = document.getElementById('cursor-2');
-    if (!c1 || !c2) return;
-    c1.classList.toggle('hidden');
-    c2.classList.toggle('hidden');
+    syncCursorVisibilityFromDom();
+    const next1 = !cursorIsVisible(1);
+    const next2 = !cursorIsVisible(2);
+    setCursorVisibility(1, next1);
+    setCursorVisibility(2, next2);
     updateCursors();
+    if (scopeMode) drawScope();
 }
 
 function startDragCursor(id, e) {
@@ -3762,8 +3909,12 @@ export {
     ensureOrthogonalPath,
     mergeCollinear,
     routeManhattan,
+    computeWorkspaceHeight,
+    validateLayoutHeights,
     snapToBoardPoint,
-    getPinDirection
+    getPinDirection,
+    cursorIsVisible,
+    setCursorVisibility
 };
 
 function startCircuitForge() {

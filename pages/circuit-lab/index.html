@@ -251,7 +251,6 @@
         }
         @media (max-width: 768px) {
             :root { --sidebar-width: 100vw; }
-            body { overflow-y: auto; }
             #mobile-tools-toggle { display: inline-flex; }
             .lab-main {
                 flex-direction: column;
@@ -509,14 +508,21 @@
             .circuit-lab-root {
                 display: flex;
                 flex-direction: column;
-                height: auto;
-                min-height: calc(100vh - var(--header-h, 0px));
+                height: var(--workspace-h);
+                min-height: var(--workspace-h);
+                max-height: var(--workspace-h);
             }
-            .sidebar-panel { height: auto; max-height: none; }
+            .sidebar-panel {
+                height: var(--workspace-h);
+                max-height: var(--workspace-h);
+                min-height: 0;
+            }
             .circuit-lab-root:not(.sidebar-open) .sidebar-content { display: none; }
             .circuit-lab-root:not(.sidebar-open) .canvas-panel {
                 display: flex;
-                height: calc(100vh - var(--header-h, 0px));
+                height: var(--workspace-h);
+                min-height: var(--workspace-h);
+                max-height: var(--workspace-h);
             }
             .circuit-lab-root.sidebar-open .sidebar-content { display: flex; }
             .circuit-lab-root.sidebar-open .canvas-panel { display: none; }

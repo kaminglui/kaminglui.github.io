@@ -13,7 +13,11 @@ class IdealOpAmp {
         outputLeak = 0,
         headroom = 0,
         maxOutputClamp = 100,
-        mapNode
+        mapNode,
+        state = null,
+        stateKey = null,
+        hysteresis = 0,
+        saturationWindow = 0.02
     }) {
         this.nOut = nOut;
         this.nInv = nInv;
@@ -26,6 +30,10 @@ class IdealOpAmp {
         this.headroom = headroom;
         this.maxOutputClamp = maxOutputClamp;
         this.mapNode = mapNode;
+        this.state = state;
+        this.stateKey = stateKey;
+        this.hysteresis = hysteresis;
+        this.saturationWindow = saturationWindow;
     }
 
     stamp(stamps) {
@@ -56,8 +64,31 @@ class IdealOpAmp {
         const vmin = Math.max(railMin + this.headroom, -this.maxOutputClamp);
         const safeMin = Math.min(vmin, vmax);
         const safeMax = Math.max(vmin, vmax);
-        const clamped = Math.max(safeMin, Math.min(safeMax, systemSolution[outIdx] ?? 0));
-        systemSolution[outIdx] = clamped;
+        const raw = systemSolution?.[outIdx] ?? 0;
+        const clamped = Math.max(safeMin, Math.min(safeMax, raw));
+
+        const bucket = (this.stateKey != null && this.state)
+            ? (this.state[this.stateKey] || (this.state[this.stateKey] = {}))
+            : null;
+        const diff = nodeVoltage(this.nNon) - nodeVoltage(this.nInv);
+        const hysteresis = Math.abs(this.hysteresis || 0);
+        const prevSign = bucket?.lastSign || 0;
+        const sign = (Math.abs(diff) <= hysteresis) ? (prevSign || 0) : (Math.sign(diff) || prevSign || 0);
+        const railSpan = Math.max(Math.abs(safeMax), Math.abs(safeMin));
+        const railWindow = railSpan * (Number.isFinite(this.saturationWindow) ? this.saturationWindow : 0.02);
+        const nearHigh = clamped >= safeMax - railWindow;
+        const nearLow  = clamped <= safeMin + railWindow;
+        const nearRail = nearHigh || nearLow;
+
+        let finalVal = clamped;
+        if (bucket) {
+            if (nearRail && sign !== 0) {
+                finalVal = sign > 0 ? safeMax : safeMin;
+            }
+            bucket.lastSign = sign || prevSign || 0;
+            bucket.lastOut = finalVal;
+        }
+        systemSolution[outIdx] = finalVal;
     }
 }
 

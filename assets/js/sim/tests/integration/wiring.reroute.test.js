@@ -3,7 +3,8 @@ import {
   adjustWireAnchors,
   getPinDirection,
   mergeCollinear,
-  snapToBoardPoint
+  snapToBoardPoint,
+  routeManhattan
 } from '../../../circuitforge.js';
 
 class StubComponent {
@@ -69,5 +70,22 @@ describe('wiring anchors', () => {
     const lastSeg = [poly[poly.length - 2], poly[poly.length - 1]];
     expect(firstSeg[0].x === firstSeg[1].x || firstSeg[0].y === firstSeg[1].y).toBe(true);
     expect(lastSeg[0].x === lastSeg[1].x || lastSeg[0].y === lastSeg[1].y).toBe(true);
+  });
+
+  it('prefers a stable route orientation while endpoints move slightly', () => {
+    const start = snapToBoardPoint(0, 0);
+    const endA = snapToBoardPoint(100, 60);
+    const endB = snapToBoardPoint(100, 70);
+    const startDir = { x: 1, y: 0 };
+    const endDir = { x: 0, y: 1 };
+
+    const pathA = routeManhattan(start, [], endA, startDir, endDir, { preferredOrientation: 'h-first' });
+    const pathB = routeManhattan(start, [], endB, startDir, endDir, { preferredOrientation: 'h-first' });
+
+    const isHorizFirst = (pts) => pts.length > 1 && pts[0].y === pts[1].y;
+    expect(isHorizFirst(pathA)).toBe(true);
+    expect(isHorizFirst(pathB)).toBe(true);
+    expect(pathA.length).toBeGreaterThanOrEqual(3);
+    expect(pathB.length).toBe(pathA.length);
   });
 });
