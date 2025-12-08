@@ -2,15 +2,6 @@
   "id": "baxandall-tone",
   "label": "Baxandall Tone Control",
   "icon": "fas fa-sliders",
-  "metadata": {
-    "savedAt": "2025-12-08T01:44:32.061Z",
-    "viewMode": "physical",
-    "zoom": 1.3591317553250837,
-    "viewOffset": {
-      "x": -759.4255851496519,
-      "y": -1921.1469357516173
-    }
-  },
   "components": [
     {
       "id": "U24",
@@ -109,7 +100,7 @@
       "mirrorX": false,
       "props": {
         "R": "100k",
-        "Turn": "50"
+        "Turn": "100"
       }
     },
     {
@@ -118,10 +109,10 @@
       "x": 1550,
       "y": 2590,
       "rotation": 2,
-      "mirrorX": false,
+      "mirrorX": true,
       "props": {
         "R": "100k",
-        "Turn": "50"
+        "Turn": "0"
       }
     },
     {
@@ -358,45 +349,12 @@
     },
     {
       "from": {
-        "id": "POT2",
-        "pin": 1
-      },
-      "to": {
-        "id": "C2",
-        "pin": 1
-      },
-      "vertices": []
-    },
-    {
-      "from": {
         "id": "R97",
         "pin": 0
       },
       "to": {
         "id": "POT1",
         "pin": 1
-      },
-      "vertices": []
-    },
-    {
-      "from": {
-        "id": "R101",
-        "pin": 0
-      },
-      "to": {
-        "id": "POT2",
-        "pin": 0
-      },
-      "vertices": []
-    },
-    {
-      "from": {
-        "id": "R100",
-        "pin": 1
-      },
-      "to": {
-        "id": "POT2",
-        "pin": 2
       },
       "vertices": []
     },
@@ -700,6 +658,39 @@
           "y": 2170
         }
       ]
+    },
+    {
+      "from": {
+        "id": "POT2",
+        "pin": 0
+      },
+      "to": {
+        "id": "R100",
+        "pin": 1
+      },
+      "vertices": []
+    },
+    {
+      "from": {
+        "id": "POT2",
+        "pin": 2
+      },
+      "to": {
+        "id": "R101",
+        "pin": 0
+      },
+      "vertices": []
+    },
+    {
+      "from": {
+        "id": "C2",
+        "pin": 1
+      },
+      "to": {
+        "id": "POT2",
+        "pin": 1
+      },
+      "vertices": []
     }
   ]
 }
