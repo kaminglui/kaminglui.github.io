@@ -248,7 +248,8 @@ function syncViewportCssVars() {
     const simBarH = simBar?.getBoundingClientRect?.().height ?? simBar?.offsetHeight ?? 0;
     root.style.setProperty('--simbar-height', `${Math.max(0, simBarH || 0)}px`);
 
-    const subtractSimBar = !isMobileViewport();
+    // Always reserve space for the sim bar so the sidebar/canvas stop above it.
+    const subtractSimBar = true;
     const workspaceH = computeWorkspaceHeight({
         viewportH: height,
         headerH,

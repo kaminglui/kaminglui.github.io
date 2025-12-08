@@ -159,8 +159,8 @@
             overflow-y: auto;
             flex: 1 1 auto;
             min-height: 0;
-            max-height: calc(var(--workspace-h) - 120px);
-            padding-bottom: calc(var(--simbar-height) + 16px);
+            max-height: none;
+            padding-bottom: calc(var(--simbar-height) + 12px);
             padding-top: 12px;
         }
         .sidebar.collapsed .sidebar-label,
@@ -519,7 +519,8 @@
                 min-height: 0;
             }
             #tool-scroll {
-                max-height: calc(var(--workspace-h) - 12px);
+                max-height: none;
+                padding-bottom: calc(var(--simbar-height) + 12px);
             }
             .circuit-lab-root:not(.sidebar-open) .sidebar-content { display: none; }
             .circuit-lab-root:not(.sidebar-open) .canvas-panel {
