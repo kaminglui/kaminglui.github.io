@@ -41,7 +41,7 @@
             --input-bg: #111;
             --input-border: #444;
             --input-text: #0f0;
-            --header-h: var(--nav-height, 64px);
+            --header-h: var(--nav-height, 0px);
             --sidebar-width: 22rem;
             --sidebar-width-collapsed: 0px;
         }
@@ -204,6 +204,33 @@
             width: min(1120px, 92vw);
             max-width: min(1120px, 92vw);
             margin: 0 auto;
+        }
+        .menu-wrapper { position: relative; }
+        .menu-list {
+            position: absolute;
+            right: 0;
+            top: calc(100% + 6px);
+            min-width: 180px;
+            background: #0b1221;
+            border: 1px solid #1f2937;
+            border-radius: 10px;
+            box-shadow: 0 18px 32px rgba(0,0,0,0.45);
+            z-index: 80;
+            padding: 6px;
+        }
+        .menu-list button {
+            width: 100%;
+            text-align: left;
+            padding: 8px 10px;
+            border-radius: 8px;
+            border: 1px solid transparent;
+            background: transparent;
+            color: #e5e7eb;
+            font-size: 12px;
+        }
+        .menu-list button:hover {
+            background: #1f2937;
+            border-color: #374151;
         }
         .sim-btn {
             height: 40px;
@@ -608,30 +635,32 @@
                             <i class="fas fa-play"></i>
                             <span class="font-semibold">Play</span>
                         </button>
-                        <button onclick="downloadCircuitJSON()"
-                                class="sim-btn bg-green-900/70 hover:bg-green-800 text-xs px-3 rounded border border-green-700 flex items-center justify-center gap-2 has-tooltip"
-                                data-tooltip="Save Circuit" aria-label="Save Circuit">
-                            <i class="fas fa-file-export"></i>
-                            <span class="hidden md:inline font-semibold">Save</span>
-                        </button>
-                        <button onclick="triggerImportDialog()"
-                                class="sim-btn bg-blue-900/70 hover:bg-blue-800 text-xs px-3 rounded border border-blue-700 flex items-center justify-center gap-2 has-tooltip"
-                                data-tooltip="Load Circuit" aria-label="Load Circuit">
-                            <i class="fas fa-file-import"></i>
-                            <span class="hidden md:inline font-semibold">Load</span>
-                        </button>
-                        <button onclick="downloadTemplateJSON()"
-                                class="sim-btn bg-amber-900/70 hover:bg-amber-800 text-xs px-3 rounded border border-amber-700 flex items-center justify-center gap-2 has-tooltip"
-                                data-tooltip="Save Template (selection preferred)" aria-label="Save Template">
-                            <i class="fas fa-clone"></i>
-                            <span class="hidden md:inline font-semibold">Tpl</span>
-                        </button>
-                        <button onclick="triggerImportTemplateDialog()"
-                                class="sim-btn bg-teal-900/70 hover:bg-teal-800 text-xs px-3 rounded border border-teal-700 flex items-center justify-center gap-2 has-tooltip"
-                                data-tooltip="Load Template" aria-label="Load Template">
-                            <i class="fas fa-paste"></i>
-                            <span class="hidden md:inline font-semibold">Tpl</span>
-                        </button>
+                        <div class="menu-wrapper">
+                            <button onclick="toggleMenu('save-menu')"
+                                    class="sim-btn bg-green-900/70 hover:bg-green-800 text-xs px-3 rounded border border-green-700 flex items-center justify-center gap-2 has-tooltip"
+                                    data-tooltip="Save" aria-label="Save">
+                                <i class="fas fa-file-export"></i>
+                                <span class="hidden md:inline font-semibold">Save</span>
+                                <i class="fas fa-caret-down text-[10px]"></i>
+                            </button>
+                            <div id="save-menu" class="menu-list hidden">
+                                <button onclick="runSaveOption('circuit')"><i class="fas fa-microchip mr-2"></i>Save Circuit</button>
+                                <button onclick="runSaveOption('template')"><i class="fas fa-clone mr-2"></i>Save Template</button>
+                            </div>
+                        </div>
+                        <div class="menu-wrapper">
+                            <button onclick="toggleMenu('load-menu')"
+                                    class="sim-btn bg-blue-900/70 hover:bg-blue-800 text-xs px-3 rounded border border-blue-700 flex items-center justify-center gap-2 has-tooltip"
+                                    data-tooltip="Load" aria-label="Load">
+                                <i class="fas fa-file-import"></i>
+                                <span class="hidden md:inline font-semibold">Load</span>
+                                <i class="fas fa-caret-down text-[10px]"></i>
+                            </button>
+                            <div id="load-menu" class="menu-list hidden">
+                                <button onclick="runLoadOption('circuit')"><i class="fas fa-microchip mr-2"></i>Load Circuit</button>
+                                <button onclick="runLoadOption('template')"><i class="fas fa-paste mr-2"></i>Load Template</button>
+                            </div>
+                        </div>
                         <button onclick="clearCanvas()"
                                 class="sim-btn bg-red-900/70 hover:bg-red-800 text-xs px-3 rounded border border-red-800 flex items-center justify-center has-tooltip"
                                 data-tooltip="Clear All" aria-label="Clear All">
@@ -846,6 +875,37 @@
 
     <!-- Main simulation / editor logic -->
     <script type="module" src="../../assets/js/circuitforge.js"></script>
+    <script>
+        const openMenus = new Set();
+        function closeMenus() {
+            document.querySelectorAll('.menu-list').forEach(m => m.classList.add('hidden'));
+            openMenus.clear();
+        }
+        function toggleMenu(id) {
+            const menu = document.getElementById(id);
+            if (!menu) return;
+            const willOpen = menu.classList.contains('hidden');
+            closeMenus();
+            if (willOpen) {
+                menu.classList.remove('hidden');
+                openMenus.add(id);
+            }
+        }
+        function runSaveOption(type) {
+            closeMenus();
+            if (type === 'circuit') downloadCircuitJSON();
+            else downloadTemplateJSON();
+        }
+        function runLoadOption(type) {
+            closeMenus();
+            if (type === 'circuit') triggerImportDialog();
+            else triggerImportTemplateDialog();
+        }
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.menu-wrapper')) closeMenus();
+        });
+        window.addEventListener('resize', closeMenus);
+    </script>
     <script type="module">
         const themeToggle = document.querySelector('.theme-toggle');
         const THEME_KEY = 'circuitforge-theme';
