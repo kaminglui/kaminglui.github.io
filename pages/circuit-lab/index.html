@@ -102,7 +102,7 @@
             scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
             scrollbar-width: thin;
             --sidebar-width-current: var(--sidebar-width);
-            padding-bottom: var(--simbar-height);
+            padding-bottom: 0;
         }
         body.sidebar-collapsed { --sidebar-width-current: var(--sidebar-width-collapsed); }
         body::-webkit-scrollbar,
@@ -132,9 +132,9 @@
         .sidebar {
             background-color: var(--sidebar-bg);
             border-right: 1px solid var(--sidebar-border);
-            height: calc(var(--viewport-h) - var(--header-h) - var(--simbar-height));
-            min-height: calc(var(--viewport-h) - var(--header-h) - var(--simbar-height));
-            max-height: calc(var(--viewport-h) - var(--header-h) - var(--simbar-height));
+            height: calc(var(--viewport-h) - var(--header-h));
+            min-height: calc(var(--viewport-h) - var(--header-h));
+            max-height: calc(var(--viewport-h) - var(--header-h));
             width: var(--sidebar-width-current);
             min-width: var(--sidebar-width-current);
             max-width: var(--sidebar-width-current);
@@ -158,7 +158,7 @@
             overflow-y: auto;
             flex: 1 1 auto;
             min-height: 0;
-            max-height: calc(var(--viewport-h) - var(--header-h) - var(--simbar-height) - 160px);
+            max-height: calc(var(--viewport-h) - var(--header-h) - 160px);
             padding-bottom: calc(var(--simbar-height) + 32px);
         }
         .sidebar.collapsed .sidebar-label,
@@ -192,16 +192,15 @@
         .lab-main {
             position: sticky;
             top: var(--header-h);
-            min-height: calc(var(--viewport-h) - var(--header-h) - var(--simbar-height));
-            height: calc(var(--viewport-h) - var(--header-h) - var(--simbar-height));
-            max-height: calc(var(--viewport-h) - var(--header-h) - var(--simbar-height));
-            padding-bottom: var(--simbar-height);
+            min-height: calc(var(--viewport-h) - var(--header-h));
+            height: calc(var(--viewport-h) - var(--header-h));
+            max-height: calc(var(--viewport-h) - var(--header-h));
             align-items: stretch;
         }
         .canvas-shell {
-            min-height: calc(var(--viewport-h) - var(--header-h) - var(--simbar-height));
-            height: calc(var(--viewport-h) - var(--header-h) - var(--simbar-height));
-            max-height: calc(var(--viewport-h) - var(--header-h) - var(--simbar-height));
+            min-height: calc(var(--viewport-h) - var(--header-h));
+            height: calc(var(--viewport-h) - var(--header-h));
+            max-height: calc(var(--viewport-h) - var(--header-h));
         }
         .site-header .container {
             width: min(1120px, 92vw);
@@ -256,7 +255,7 @@
                 height: auto;
                 min-height: calc(100vh - var(--header-h));
                 max-height: none;
-                padding-bottom: var(--simbar-height);
+                padding-bottom: 0;
             }
             .sidebar {
                 width: 100%;
@@ -268,12 +267,12 @@
                 top: auto;
             }
             .canvas-shell {
-                min-height: calc(var(--viewport-h) - var(--header-h) - var(--simbar-height));
+                min-height: calc(var(--viewport-h) - var(--header-h));
                 height: auto;
                 max-height: none;
             }
             #tool-scroll {
-                max-height: calc(var(--viewport-h) - var(--header-h) - var(--simbar-height) - 72px);
+                max-height: calc(var(--viewport-h) - var(--header-h) - 72px);
             }
             .sidebar-toggle { display: none; }
             #sim-bar {
@@ -321,7 +320,7 @@
                 display: none;
             }
             body.sidebar-open-mobile #tool-scroll {
-                max-height: calc(var(--viewport-h) - var(--header-h) - var(--simbar-height) - 48px);
+                max-height: calc(var(--viewport-h) - var(--header-h) - 48px);
             }
             body.sidebar-open-mobile #sidebar {
                 position: fixed;
@@ -465,8 +464,8 @@
             display: grid;
             grid-template-columns: var(--sidebar-width-current, 320px) minmax(0, 1fr);
             gap: 0;
-            height: calc(100vh - var(--header-h, 0px) - var(--simbar-height, 0px));
-            min-height: calc(100vh - var(--header-h, 0px) - var(--simbar-height, 0px));
+            height: calc(100vh - var(--header-h, 0px));
+            min-height: calc(100vh - var(--header-h, 0px));
             overflow: hidden;
             margin-top: 0;
         }
@@ -491,6 +490,7 @@
             display: flex;
             flex-direction: column;
             overflow: hidden;
+            padding-bottom: var(--simbar-height);
         }
         .canvas-panel .canvas-shell {
             flex: 1 1 auto;
@@ -509,13 +509,13 @@
                 display: flex;
                 flex-direction: column;
                 height: auto;
-                min-height: calc(100vh - var(--header-h, 0px) - var(--simbar-height, 0px));
+                min-height: calc(100vh - var(--header-h, 0px));
             }
             .sidebar-panel { height: auto; max-height: none; }
             .circuit-lab-root:not(.sidebar-open) .sidebar-content { display: none; }
             .circuit-lab-root:not(.sidebar-open) .canvas-panel {
                 display: flex;
-                height: calc(100vh - var(--header-h, 0px) - var(--simbar-height, 0px));
+                height: calc(100vh - var(--header-h, 0px));
             }
             .circuit-lab-root.sidebar-open .sidebar-content { display: flex; }
             .circuit-lab-root.sidebar-open .canvas-panel { display: none; }
