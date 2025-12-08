@@ -228,6 +228,28 @@
             pointer-events: auto;
         }
 
+        /* Mobile sidebar overlay support */
+        @media (max-width: 768px) {
+            .sidebar {
+                position: absolute;
+                top: 0;
+                left: 0;
+                height: calc(100vh - var(--simbar-h));
+                max-width: 100%;
+                width: 100%;
+                transform: translateX(-100%);
+                transition: transform 0.3s ease;
+                border-right: none;
+            }
+            .circuit-lab-root.sidebar-open .sidebar {
+                transform: translateX(0);
+                box-shadow: 0 10px 30px rgba(0,0,0,0.35);
+            }
+            .canvas-shell {
+                width: 100%;
+            }
+        }
+
         /* Utilities */
         .hidden { display: none !important; }
     </style>
@@ -236,22 +258,19 @@
 
     <div id="site-header"></div>
 
-    <main id="circuit-lab-root" class="circuit-lab-root flex-row">
+    <main id="circuit-lab-root" class="circuit-lab-root flex-row sidebar-open">
         <aside id="sidebar" class="sidebar">
             <div class="sidebar-header">
-                <div class="flex items-center gap-3 w-full">
-                    <div class="w-8 h-8 rounded bg-blue-600 flex items-center justify-center text-white shrink-0">
-                        <i class="fas fa-microchip"></i>
-                    </div>
-                    <div class="flex flex-col">
-                        <span class="text-sm font-bold leading-tight tracking-tight">Circuit Forge</span>
-                        <span class="text-[10px] text-gray-500 font-semibold tracking-wider">SIMULATOR v1.0</span>
-                    </div>
-                    <button class="theme-toggle ml-auto text-gray-400 hover:text-white transition-colors">
-                        <i class="fas fa-moon"></i>
-                    </button>
+            <div class="flex items-center gap-3 w-full">
+                <div class="w-8 h-8 rounded bg-blue-600 flex items-center justify-center text-white shrink-0">
+                    <i class="fas fa-microchip"></i>
+                </div>
+                <div class="flex flex-col">
+                    <span class="text-sm font-bold leading-tight tracking-tight">Circuit Forge</span>
+                    <span class="text-[10px] text-gray-500 font-semibold tracking-wider">SIMULATOR v1.0</span>
                 </div>
             </div>
+        </div>
 
             <div id="tool-scroll" class="flex-1 overflow-y-auto p-4 space-y-6">
                 <div>
@@ -521,6 +540,11 @@
         </div>
 
         <div class="flex items-center gap-2">
+            <button id="mobile-tools-toggle" type="button"
+                    class="sim-btn bg-gray-800 hover:bg-gray-700 border border-gray-700 text-white px-3 py-1 rounded text-xs flex items-center gap-2"
+                    aria-pressed="true" onclick="toggleSidebar()">
+                Hide Tools
+            </button>
             
             <div class="menu-wrapper">
                 <button class="sim-btn bg-gray-800 hover:bg-gray-700 border-gray-700 text-white px-3 py-1 rounded text-xs flex items-center gap-2"
@@ -545,6 +569,13 @@
                     <button onclick="runLoadOption('template')"><i class="fas fa-puzzle-piece"></i> Load Template</button>
                 </div>
             </div>
+
+            <button onclick="clearCanvas()"
+                    class="sim-btn bg-red-700 hover:bg-red-600 border border-red-800 text-white px-3 py-1 rounded text-xs flex items-center gap-2"
+                    aria-label="Clear workspace">
+                <i class="fas fa-broom"></i>
+                <span>Clean All</span>
+            </button>
 
             <div class="h-4 w-px bg-gray-700 mx-1"></div>
 
@@ -602,7 +633,7 @@
         }
     </script>
     <script>
-        const themeToggle = document.querySelector('.theme-toggle');
+        const themeToggle = document.querySelector('#site-header .theme-toggle') || document.querySelector('.theme-toggle');
         const THEME_KEY = 'circuitforge-theme';
 
         function applyTheme(theme) {
@@ -610,6 +641,10 @@
             document.body.classList.toggle('theme-light', theme === 'light');
             document.documentElement.classList.toggle('dark', theme === 'dark');
             localStorage.setItem(THEME_KEY, theme);
+            localStorage.setItem('theme', theme);
+            if (themeToggle) {
+                themeToggle.setAttribute('aria-pressed', theme === 'dark' ? 'true' : 'false');
+            }
 
             if (typeof updateBoardThemeColors === 'function') {
                 updateBoardThemeColors();
@@ -622,7 +657,7 @@
             }
         }
 
-        const savedTheme = localStorage.getItem(THEME_KEY);
+        const savedTheme = localStorage.getItem(THEME_KEY) ?? localStorage.getItem('theme');
         applyTheme(savedTheme === 'light' ? 'light' : 'dark');
 
         themeToggle?.addEventListener('click', () => {
