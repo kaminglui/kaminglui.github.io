@@ -18,6 +18,7 @@ const DEFAULTS = {
   opAmpInputLeak: 1e-15,
   opAmpOutputLeak: 1e-12,
   opAmpHeadroom: 0.1,
+  opAmpComparatorHysteresis: 0,
   funcGenRefRes: 1,
   funcGenSeriesRes: 1,
   maxOutputClamp: 100,
@@ -319,6 +320,7 @@ function buildSimulationComponents({
   opAmpInputLeak,
   opAmpOutputLeak,
   opAmpHeadroom,
+  opAmpComparatorHysteresis,
   maxOutputClamp,
   mapNode,
   registerSource = () => {}
@@ -456,6 +458,7 @@ function buildSimulationComponents({
           inputLeak: opAmpInputLeak,
           outputLeak: opAmpOutputLeak,
           headroom: opAmpHeadroom,
+          comparatorHysteresis: opAmpComparatorHysteresis,
           maxOutputClamp,
           mapNode
         });
@@ -479,6 +482,7 @@ function runSimulation(opts = {}) {
   const opAmpInputLeak = opts.opAmpInputLeak ?? DEFAULTS.opAmpInputLeak;
   const opAmpOutputLeak = opts.opAmpOutputLeak ?? DEFAULTS.opAmpOutputLeak;
   const opAmpHeadroom = opts.opAmpHeadroom ?? DEFAULTS.opAmpHeadroom;
+  const opAmpComparatorHysteresis = opts.opAmpComparatorHysteresis ?? DEFAULTS.opAmpComparatorHysteresis;
   const funcGenRefRes = opts.funcGenRefRes ?? DEFAULTS.funcGenRefRes;
   const funcGenSeriesRes = opts.funcGenSeriesRes ?? DEFAULTS.funcGenSeriesRes;
   const maxOutputClamp = opts.maxOutputClamp ?? DEFAULTS.maxOutputClamp;
@@ -552,6 +556,7 @@ function runSimulation(opts = {}) {
     opAmpInputLeak,
     opAmpOutputLeak,
     opAmpHeadroom,
+    opAmpComparatorHysteresis,
     maxOutputClamp,
     mapNode,
     registerSource

@@ -13,7 +13,8 @@ class IdealOpAmp {
         outputLeak = 0,
         headroom = 0,
         maxOutputClamp = 100,
-        mapNode
+        mapNode,
+        comparatorHysteresis = 0
     }) {
         this.nOut = nOut;
         this.nInv = nInv;
@@ -26,6 +27,8 @@ class IdealOpAmp {
         this.headroom = headroom;
         this.maxOutputClamp = maxOutputClamp;
         this.mapNode = mapNode;
+        this.comparatorHysteresis = comparatorHysteresis;
+        this.lastClamped = null;
     }
 
     stamp(stamps) {
@@ -56,7 +59,17 @@ class IdealOpAmp {
         const vmin = Math.max(railMin + this.headroom, -this.maxOutputClamp);
         const safeMin = Math.min(vmin, vmax);
         const safeMax = Math.max(vmin, vmax);
-        const clamped = Math.max(safeMin, Math.min(safeMax, systemSolution[outIdx] ?? 0));
+        let clamped = Math.max(safeMin, Math.min(safeMax, systemSolution[outIdx] ?? 0));
+
+        const vDiff = nodeVoltage(this.nNon) - nodeVoltage(this.nInv);
+        const isSaturated = (clamped >= safeMax - 1e-12) || (clamped <= safeMin + 1e-12);
+        if (isSaturated && this.comparatorHysteresis > 0 && Math.abs(vDiff) < this.comparatorHysteresis) {
+            if (Number.isFinite(this.lastClamped) && this.lastClamped !== 0) {
+                clamped = this.lastClamped > 0 ? safeMax : safeMin;
+            }
+        }
+
+        this.lastClamped = clamped;
         systemSolution[outIdx] = clamped;
     }
 }
