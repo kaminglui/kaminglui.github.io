@@ -8,12 +8,11 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-            href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fira+Code:wght@400;500&display=swap"
-            rel="stylesheet"
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fira+Code:wght@400;500&display=swap"
+        rel="stylesheet"
     />
     <link rel="stylesheet" href="../../assets/css/style.css" />
 
-    <!-- Tailwind + Icons -->
     <script>
         tailwind.config = {
             darkMode: 'class'
@@ -23,363 +22,240 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet" />
 
     <style>
-        /* --- MODERN LAB THEME --- */
         :root {
-            /* Core Colors - Deeper, richer darks */
-            --body-bg: #09090b;       /* Very dark charcoal, almost black */
-            --body-text: #e2e8f0;     /* Soft white for readability */
-            --accent-primary: #3b82f6; /* Bright Tech Blue */
-            --accent-glow: rgba(59, 130, 246, 0.5);
+            /* --- CORE PALETTE --- */
+            --bg-app: #09090b;
+            --bg-panel: #18181b;
+            --border-color: #27272a;
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            --accent: #3b82f6;
+            --accent-hover: #2563eb;
             
-            /* Layout Variables (Preserved) */
-            --viewport-h: 100vh;      /* Fallback */
-            --viewport-w: 100vw;
-            --header-h: var(--nav-height, 0px);
-            --simbar-height: 56px;    /* Slightly taller for better touch targets */
-            --sidebar-width: 22rem;
-            --sidebar-width-collapsed: 0px;
-            --workspace-h: calc(100dvh - var(--header-h) - var(--simbar-height)); /* Use dvh for mobile stability */
-
-            /* Panel Backgrounds */
-            --sidebar-bg: rgba(18, 18, 23, 0.95);
-            --sidebar-border: #27272a;
-            --controls-bg: #18181b;
-            --controls-border: #27272a;
-            --controls-hover-bg: #27272a;
-            --controls-hover-border: #52525b;
-
-            /* Canvas & Board */
-            --canvas-bg: #09090b;
-            --board-bg: #09090b;
-            --board-hole: #27272a;
-
-            /* Simulation Bar */
-            --simbar-bg: rgba(9, 9, 11, 0.85); /* Transparent */
-            --simbar-border: #27272a;
-
-            /* UI Elements */
-            --input-bg: #121215;
-            --input-border: #3f3f46;
-            --input-text: #4ade80;    /* Terminal Green */
-            --scrollbar-track: transparent;
-            --scrollbar-thumb: #3f3f46;
-            --scrollbar-thumb-hover: #52525b;
+            /* Layout Dimensions */
+            --header-h: 0px; /* Will be set by JS if site-header exists */
+            --simbar-h: 56px;
+            --sidebar-w: 280px;
         }
 
-        /* Light Theme Overrides (Optional refinement) */
+        /* Light Mode Overrides */
         .theme-light {
-            --body-bg: #f8fafc;
-            --body-text: #0f172a;
-            --sidebar-bg: rgba(255, 255, 255, 0.95);
-            --sidebar-border: #e2e8f0;
-            --controls-bg: #ffffff;
-            --controls-border: #cbd5e1;
-            --controls-hover-bg: #f1f5f9;
-            --controls-hover-border: #94a3b8;
-            --canvas-bg: #f8fafc; /* Slate-50 */
-            --board-bg: #f1f5f9;  /* Slate-100 */
-            --board-hole: #cbd5e1; /* Slate-300 */
-            --simbar-bg: rgba(255, 255, 255, 0.85);
-            --simbar-border: #cbd5e1;
-            --input-bg: #ffffff;
-            --input-border: #cbd5e1;
-            --input-text: #0f172a;
+            --bg-app: #f1f5f9;
+            --bg-panel: #ffffff;
+            --border-color: #e2e8f0;
+            --text-primary: #0f172a;
+            --text-secondary: #64748b;
         }
 
-        .circuit-lab-root {
-            display: flex;
-            flex-direction: row;
-            height: var(--workspace-h);
-            position: relative;
-            overflow: hidden;
-        }
-
-        .canvas-shell {
-            flex: 1;
-            position: relative;
-            height: 100%;
-            min-width: 0;
-        }
-
-        /* --- GLOBAL LAYOUT --- */
-        html, body { 
-            height: 100%; 
-            width: 100%;
-            overflow: hidden; 
-        }
+        /* --- LAYOUT STRUCTURE --- */
+        html, body { height: 100%; width: 100%; overflow: hidden; margin: 0; }
         
         body {
-            background-color: var(--body-bg);
-            color: var(--body-text);
-            user-select: none;
-            font-family: 'Inter', system-ui, -apple-system, sans-serif;
-            /* Custom scrollbar styling */
-            scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
-            scrollbar-width: thin;
-            --sidebar-width-current: var(--sidebar-width);
+            background-color: var(--bg-app);
+            color: var(--text-primary);
+            font-family: 'Inter', sans-serif;
+            display: flex;
+            flex-direction: column;
         }
 
-        body.sidebar-collapsed { --sidebar-width-current: var(--sidebar-width-collapsed); }
-
-        /* Webkit Scrollbars */
-        ::-webkit-scrollbar { width: 8px; height: 8px; }
-        ::-webkit-scrollbar-track { background: var(--scrollbar-track); }
-        ::-webkit-scrollbar-thumb { 
-            background: var(--scrollbar-thumb); 
-            border-radius: 4px; 
+        /* Main Workspace: Sidebar + Canvas Side-by-Side */
+        .circuit-lab-root {
+            flex: 1;
+            display: flex;
+            flex-direction: row; /* CRITICAL: Side by Side */
+            overflow: hidden;
+            height: calc(100vh - var(--simbar-h)); /* Strict height */
+            position: relative;
         }
-        ::-webkit-scrollbar-thumb:hover { background: var(--scrollbar-thumb-hover); }
-
-        /* --- CANVAS AREA --- */
-        canvas { 
-            display: block; 
-            outline: none;
-            cursor: crosshair; 
-            touch-action: none; 
-        }
-        #circuitCanvas { background-color: var(--board-bg); }
 
         /* --- SIDEBAR --- */
         .sidebar {
-            background-color: var(--sidebar-bg);
-            border-right: 1px solid var(--sidebar-border);
-            /* Modern backdrop blur for "glass" feel */
-            backdrop-filter: blur(12px); 
-            -webkit-backdrop-filter: blur(12px);
-            
-            height: var(--workspace-h);
-            min-height: var(--workspace-h);
-            max-height: var(--workspace-h);
-            width: var(--sidebar-width-current);
-            min-width: var(--sidebar-width-current);
-            flex: 0 0 var(--sidebar-width-current);
-            
-            transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            position: relative;
-            z-index: 40;
-        }
-
-        .sidebar.collapsed {
-            width: 0;
-            min-width: 0;
-            flex-basis: 0;
-            overflow: hidden;
-            border-right: none;
-        }
-        
-        .sidebar-header {
-            position: sticky;
-            top: 0;
-            z-index: 30;
-            background-color: inherit; /* Matches sidebar glass bg */
-            border-bottom: 1px solid var(--sidebar-border);
-            padding: 0.75rem 1rem;
-            backdrop-filter: blur(12px);
-        }
-
-        /* Sidebar Toggle Button (Desktop) */
-        .sidebar-toggle {
-            background: var(--controls-bg);
-            border: 1px solid var(--controls-border);
-            color: var(--body-text);
-            width: 24px; 
-            height: 48px; /* Taller, pill shape handle */
-            border-radius: 0 8px 8px 0;
-            border-left: none;
-            display: grid;
-            place-items: center;
-            position: absolute;
-            left: var(--sidebar-width-current);
-            top: 50%; /* Center vertically */
-            transform: translateY(-50%);
-            z-index: 50;
-            cursor: pointer;
-            transition: left 0.3s ease, background-color 0.2s;
-            box-shadow: 4px 0 12px rgba(0,0,0,0.3);
-        }
-        .sidebar-toggle:hover {
-            background: var(--accent-primary);
-            color: white;
-            box-shadow: 0 0 15px var(--accent-glow);
-        }
-        .sidebar.collapsed + .sidebar-toggle {
-            left: 0;
-        }
-
-        /* --- TOOLS & BUTTONS --- */
-        #tool-scroll {
-            overflow-y: auto;
-            padding: 1rem;
-            padding-bottom: 6rem; /* Space for mobile nav overlap */
-        }
-
-        h3 {
-            font-family: 'Fira Code', monospace;
-            letter-spacing: 0.05em;
-            opacity: 0.7;
-        }
-
-        .tool-btn {
-            transition: all 0.2s ease;
-            background: var(--controls-bg);
-            border: 1px solid var(--controls-border);
-            border-radius: 6px;
-            position: relative;
+            width: var(--sidebar-w);
+            background: var(--bg-panel);
+            border-right: 1px solid var(--border-color);
             display: flex;
             flex-direction: column;
+            z-index: 20;
+            transition: transform 0.3s ease, width 0.3s ease;
+        }
+
+        .sidebar-header {
+            height: 60px;
+            display: flex;
             align-items: center;
-            justify-content: center;
-            min-height: 72px;
-            color: var(--body-text);
+            padding: 0 16px;
+            border-bottom: 1px solid var(--border-color);
         }
 
+        .sidebar.collapsed { width: 0; border: none; overflow: hidden; }
+
+        /* --- CANVAS SHELL --- */
+        .canvas-shell {
+            flex: 1;
+            position: relative;
+            background-color: var(--bg-app);
+            overflow: hidden; /* Prevents scrollbars on the shell itself */
+        }
+
+        #circuitCanvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+            outline: none;
+        }
+
+        /* --- COMPONENT BUTTONS (Grid) --- */
+        .tool-btn {
+            background: var(--bg-panel);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            color: var(--text-primary);
+            transition: all 0.2s;
+        }
         .tool-btn:hover {
-            background-color: var(--controls-hover-bg);
-            border-color: var(--controls-hover-border);
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            border-color: var(--accent);
+            background: rgba(59, 130, 246, 0.05);
         }
-
         .tool-btn.active {
-            background-color: rgba(59, 130, 246, 0.15); /* Transparent blue */
-            border-color: var(--accent-primary);
-            color: white;
-            box-shadow: 0 0 0 1px var(--accent-primary), 0 0 15px var(--accent-glow);
-        }
-
-        .tool-icon {
-            width: 48px;
-            height: 36px;
-            margin-bottom: 6px;
-            opacity: 0.9;
+            background: rgba(59, 130, 246, 0.1);
+            border-color: var(--accent);
+            box-shadow: 0 0 0 1px var(--accent);
         }
 
         /* --- SIMULATION BAR (Bottom) --- */
         #sim-bar {
-            height: var(--simbar-height);
-            background: var(--simbar-bg);
-            border-top: 1px solid var(--simbar-border);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-            
+            height: var(--simbar-h);
+            background: var(--bg-panel);
+            border-top: 1px solid var(--border-color);
             display: flex;
             align-items: center;
-            width: 100%;
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            z-index: 100;
-            box-shadow: 0 -4px 20px rgba(0,0,0,0.2);
-        }
-
-        .sim-btn {
-            height: 36px;
+            justify-content: space-between;
             padding: 0 16px;
-            border-radius: 6px;
+            z-index: 50;
+        }
+
+        /* --- DROPDOWN MENUS --- */
+        .menu-wrapper { position: relative; }
+        
+        .menu-list {
+            position: absolute;
+            bottom: 120%; /* Opens UPWARDS because bar is at bottom */
+            left: 0;
+            min-width: 160px;
+            background: var(--bg-panel);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+            padding: 4px;
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            z-index: 100;
+            opacity: 0;
+            transform: translateY(10px);
+            pointer-events: none;
+            transition: all 0.15s ease;
+        }
+
+        /* Active state for menu */
+        .menu-list.active {
+            opacity: 1;
+            transform: translateY(0);
+            pointer-events: auto;
+        }
+
+        .menu-list button {
+            text-align: left;
+            padding: 8px 12px;
+            border-radius: 4px;
             font-size: 13px;
-            font-weight: 500;
-            transition: all 0.2s;
-            border: 1px solid transparent;
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
+            color: var(--text-primary);
+            background: transparent;
+            border: none;
+            cursor: pointer;
         }
-        
-        .sim-btn:hover { transform: translateY(-1px); }
-        
-        .sim-btn-primary {
-            background: var(--accent-primary);
-            color: white;
-            box-shadow: 0 2px 8px var(--accent-glow);
-        }
-        .sim-btn-primary:hover { background: #2563eb; }
+        .menu-list button:hover { background: rgba(255, 255, 255, 0.05); }
+        .theme-light .menu-list button:hover { background: rgba(0,0,0,0.05); }
 
-        /* --- RESPONSIVE LAYOUT (MOBILE/TABLET) --- */
-        @media (max-width: 768px) {
-            /* Sidebar becomes an overlay drawer */
-            .sidebar {
-                position: absolute;
-                top: 0;
-                left: 0;
-                height: var(--workspace-h);
-                width: 100%;
-                max-width: 100%;
-                border-right: none;
-                transform: translateX(-100%);
-                transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-                z-index: 200;
-            }
-            
-            .circuit-lab-root.sidebar-open .sidebar {
-                transform: translateX(0);
-            }
-
-            /* Hide desktop toggle */
-            .sidebar-toggle { display: none; }
-
-            /* Sim bar adjustments */
-            #sim-bar {
-                padding-bottom: env(safe-area-inset-bottom);
-                height: auto;
-                min-height: var(--simbar-height);
-                flex-wrap: wrap;
-            }
-            
-            .sim-info { 
-                width: 100%; 
-                text-align: center; 
-                margin-bottom: 8px;
-                font-size: 10px;
-            }
-            
-            /* Ensure canvas takes full space */
-            .canvas-shell {
-                width: 100vw;
-                height: var(--workspace-h);
-            }
-        }
-
-        /* --- UTILITIES --- */
-        .hidden { display: none !important; }
-        
-        /* Overlay Scope Style Tweaks */
+        /* --- OSCILLOSCOPE OVERLAY --- */
         #scope-overlay {
-            border-radius: 12px;
-            border: 1px solid var(--controls-border);
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            position: absolute;
+            /* Default to centering for "Window" mode */
+            top: 100px; 
+            left: 100px;
+            width: 600px;
+            height: 400px;
+            background: #000; /* Always black scope */
+            border: 1px solid #333;
+            border-radius: 8px;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+            display: flex;
+            flex-direction: column;
+            z-index: 1000;
+            overflow: hidden;
         }
+
+        /* Fullscreen mode override */
+        #scope-overlay.fullscreen {
+            top: 0 !important;
+            left: 0 !important;
+            width: 100% !important;
+            height: calc(100vh - var(--simbar-h)) !important;
+            border-radius: 0;
+            border: none;
+        }
+
+        /* Cursor Lines (Absolute inside scope canvas container) */
+        .cursor-line {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            border-left: 1px dashed;
+            pointer-events: none; /* Let drag events pass to handle */
+            z-index: 10;
+        }
+        .cursor-handle {
+            position: absolute;
+            top: 0;
+            left: -8px; /* Center over line */
+            width: 16px;
+            height: 16px;
+            line-height: 16px;
+            text-align: center;
+            border-radius: 50%;
+            cursor: ew-resize;
+            pointer-events: auto;
+        }
+
+        /* Utilities */
+        .hidden { display: none !important; }
     </style>
 </head>
-<body class="theme-dark flex flex-col min-h-screen text-sm">
+<body class="theme-dark">
 
     <div id="site-header"></div>
 
-    <main id="circuit-lab-root" class="circuit-lab-root sidebar-open">
-    <!-- Sidebar -->
-    <aside id="sidebar" class="sidebar sidebar-panel flex flex-col flex-shrink-0 shadow-2xl z-20 relative" aria-expanded="true">
-        
-        <div class="sidebar-header h-14 flex items-center px-4 border-b border-gray-200 dark:border-gray-700 bg-white/80 dark:bg-gray-800/50 backdrop-blur">
-            <div class="flex items-center gap-3 w-full select-none">
-                <i class="fas fa-microchip text-2xl text-blue-600 dark:text-blue-400"></i>
-                <div class="flex flex-col justify-center">
-                    <span class="text-lg font-bold tracking-tight text-gray-900 dark:text-gray-100 leading-none">
-                        Circuit Forge
-                    </span>
-                    <span class="text-[10px] uppercase tracking-wider font-semibold text-gray-500 dark:text-gray-400 mt-0.5">
-                        Simulator
-                    </span>
+    <main id="circuit-lab-root" class="circuit-lab-root flex-row">
+        <aside id="sidebar" class="sidebar">
+            <div class="sidebar-header">
+                <div class="flex items-center gap-3 w-full">
+                    <div class="w-8 h-8 rounded bg-blue-600 flex items-center justify-center text-white shrink-0">
+                        <i class="fas fa-microchip"></i>
+                    </div>
+                    <div class="flex flex-col">
+                        <span class="text-sm font-bold leading-tight tracking-tight">Circuit Forge</span>
+                        <span class="text-[10px] text-gray-500 font-semibold tracking-wider">SIMULATOR v1.0</span>
+                    </div>
+                    <button class="theme-toggle ml-auto text-gray-400 hover:text-white transition-colors">
+                        <i class="fas fa-moon"></i>
+                    </button>
                 </div>
-                <span class="ml-auto text-[10px] font-bold px-1.5 py-0.5 rounded border border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-800 dark:bg-blue-900/50 dark:text-blue-200">
-                    BETA
-                </span>
             </div>
-        </div>
 
-        <div class="flex-1 flex flex-col overflow-hidden min-h-0 sidebar-content">
-            <div id="tool-scroll" class="flex-1 px-4 py-4 space-y-6 overflow-y-auto">
-                
+            <div id="tool-scroll" class="flex-1 overflow-y-auto p-4 space-y-6">
                 <div>
-                    <h3 class="text-[11px] font-bold text-gray-900 dark:text-gray-400 uppercase mb-3 tracking-widest flex items-center gap-2">
+                    <h3 class="text-[11px] font-bold text-gray-400 uppercase mb-3 tracking-widest flex items-center gap-2">
                         <i class="fas fa-bolt text-xs opacity-50"></i> Power
                     </h3>
                     <div class="grid grid-cols-3 gap-2">
@@ -399,7 +275,7 @@
                 </div>
 
                 <div>
-                    <h3 class="text-[11px] font-bold text-gray-900 dark:text-gray-400 uppercase mb-3 tracking-widest flex items-center gap-2">
+                    <h3 class="text-[11px] font-bold text-gray-400 uppercase mb-3 tracking-widest flex items-center gap-2">
                         <i class="fas fa-cubes text-xs opacity-50"></i> Parts
                     </h3>
                     <div class="grid grid-cols-2 gap-2">
@@ -428,279 +304,254 @@
                 </div>
 
                 <div>
-                    <h3 class="text-[11px] font-bold text-gray-900 dark:text-gray-400 uppercase mb-3 tracking-widest flex items-center gap-2">
+                    <h3 class="text-[11px] font-bold text-gray-400 uppercase mb-3 tracking-widest flex items-center gap-2">
                         <i class="fas fa-chart-line text-xs opacity-50"></i> Analysis
                     </h3>
                     <div class="grid grid-cols-1 gap-2">
                         <button class="tool-btn p-3 flex items-center justify-center gap-3"
                                 onclick="selectTool('oscilloscope', this)">
-                            <i class="fas fa-wave-square text-yellow-600 dark:text-yellow-400"></i>
+                            <i class="fas fa-wave-square text-yellow-400"></i>
                             <span class="text-[11px] font-bold">Oscilloscope</span>
                         </button>
                     </div>
                 </div>
 
                 <div>
-                    <h3 class="text-[11px] font-bold text-gray-900 dark:text-gray-400 uppercase mb-3 tracking-widest">Templates</h3>
+                    <h3 class="text-[11px] font-bold text-gray-400 uppercase mb-3 tracking-widest">Templates</h3>
                     <div id="template-grid" class="grid grid-cols-2 gap-2"></div>
                 </div>
-                
-                <div id="properties-panel" class="hidden bg-gray-100 dark:bg-gray-800/80 p-4 rounded-lg border border-gray-300 dark:border-gray-600 shadow-lg backdrop-blur-sm mt-4">
-                    <div class="flex justify-between items-center mb-3 pb-2 border-b border-gray-300 dark:border-gray-600">
-                        <h3 class="text-xs font-bold text-blue-600 dark:text-blue-400 uppercase">
-                            Edit <span id="prop-title">Object</span>
-                        </h3>
-                        <div class="flex gap-2">
-                            <button onclick="rotateSelected()" id="btn-rotate" title="Rotate (R)" class="text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"><i class="fas fa-redo"></i></button>
-                            <button onclick="mirrorSelected()" id="btn-flip" title="Flip (F)" class="text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"><i class="fas fa-arrows-left-right"></i></button>
-                            <button onclick="deleteSelected()" title="Delete (Del)" class="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-200"><i class="fas fa-trash"></i></button>
+
+                <div id="properties-panel" class="hidden bg-gray-800/50 p-3 rounded border border-gray-700">
+                    <div class="flex justify-between items-center mb-2 pb-2 border-b border-gray-700">
+                        <span class="text-xs font-bold text-blue-400 uppercase" id="prop-title">Props</span>
+                        <div class="flex gap-2 text-xs">
+                             <button onclick="rotateSelected()"><i class="fas fa-redo"></i></button>
+                             <button onclick="deleteSelected()" class="text-red-400"><i class="fas fa-trash"></i></button>
                         </div>
                     </div>
-                    <div id="dynamic-props" class="space-y-3"></div>
+                    <div id="dynamic-props" class="space-y-2"></div>
                 </div>
-
             </div>
-        </div>
-</aside>
-    <button class="sidebar-toggle text-gray-400 hover:text-white" onclick="toggleSidebar()" aria-label="Toggle sidebar">
-        <i id="sidebar-toggle-icon" class="fas fa-chevron-left"></i>
-        <span class="sr-only">Toggle sidebar</span>
-    </button>
+        </aside>
 
-    <!-- Main Canvas Area -->
-    <section class="canvas-panel flex-1 flex flex-col relative bg-[#111] min-w-0 overflow-hidden canvas-shell">
-        <div class="absolute top-4 right-4 z-10 flex flex-col gap-2 items-end">
-            <div class="flex bg-gray-800/90 text-gray-200 rounded shadow-lg border border-gray-600 overflow-hidden backdrop-blur">
-                <button onclick="zoomOutButton()"
-                        class="px-3 py-2 text-xs hover:bg-gray-700 border-r border-gray-700 has-tooltip"
-                        data-tooltip="Zoom Out" aria-label="Zoom Out">
-                    <i class="fas fa-search-minus"></i>
-                </button>
-                <button onclick="zoomInButton()"
-                        class="px-3 py-2 text-xs hover:bg-gray-700 has-tooltip"
-                        data-tooltip="Zoom In" aria-label="Zoom In">
-                    <i class="fas fa-search-plus"></i>
+        <div class="canvas-shell">
+            <div class="absolute top-4 right-4 z-10 flex flex-col gap-2 items-end">
+                <div class="flex bg-gray-800 text-gray-200 rounded shadow-lg border border-gray-700 overflow-hidden">
+                    <button onclick="zoomOutButton()"
+                            class="px-3 py-2 text-xs hover:bg-gray-700 border-r border-gray-700 has-tooltip"
+                            data-tooltip="Zoom Out" aria-label="Zoom Out">
+                        <i class="fas fa-search-minus"></i>
+                    </button>
+                    <button onclick="zoomInButton()"
+                            class="px-3 py-2 text-xs hover:bg-gray-700 has-tooltip"
+                            data-tooltip="Zoom In" aria-label="Zoom In">
+                        <i class="fas fa-search-plus"></i>
+                    </button>
+                </div>
+                <button onclick="toggleView()" id="view-btn"
+                        class="bg-gray-800 hover:bg-gray-700 text-gray-200 px-4 py-2 rounded shadow-lg
+                               border border-gray-700 text-xs flex items-center gap-2 has-tooltip"
+                        data-tooltip="Toggle View" aria-label="Toggle View">
+                    <i class="fas fa-layer-group"></i>
+                    <span id="view-label">Schematic View</span>
                 </button>
             </div>
-            <button onclick="toggleView()" id="view-btn"
-                    class="bg-gray-800/90 hover:bg-gray-700 text-gray-200 px-4 py-2 rounded shadow-lg
-                           border border-gray-600 text-xs flex items-center gap-2 backdrop-blur has-tooltip"
-                    data-tooltip="Toggle View" aria-label="Toggle View">
-                <i class="fas fa-layer-group"></i>
-                <span id="view-label">Schematic View</span>
-            </button>
-        </div>
 
-        <canvas id="circuitCanvas" class="w-full h-full block"></canvas>
-    </section>
+            <canvas id="circuitCanvas"></canvas>
 
-    <!-- Full Screen Oscilloscope Overlay -->
-    <div id="scope-overlay" class="fixed inset-0 bg-black/95 z-[1200] hidden flex flex-col p-6">
-        <div class="scope-topbar flex justify-between items-center mb-4 flex-wrap gap-3">
-            <h2 class="text-2xl font-bold text-yellow-400 font-mono scope-drag-handle"
-                onmousedown="startScopeWindowDrag(event)" ontouchstart="startScopeWindowDrag(event)">
-                <i class="fas fa-wave-square"></i>
-                OSCILLOSCOPE <span class="text-gray-500 text-sm">Dual Channel X-Y</span>
-            </h2>
-            <div class="flex gap-6 text-sm font-mono items-center flex-wrap">
-                <div class="text-yellow-400 border-l-2 border-yellow-400 pl-2">
-                    CH1: <span id="scope-ch1-val">0.00V</span>
-                </div>
-                <div class="text-cyan-400 border-l-2 border-cyan-400 pl-2">
-                    CH2: <span id="scope-ch2-val">0.00V</span>
-                </div>
-                <div class="bg-gray-800 px-3 py-1 rounded border border-gray-600 flex gap-4">
-                    <div class="text-gray-300">
-                        ΔT: <span id="scope-dt" class="text-white font-bold">0.00µs</span>
+            <div id="scope-overlay" class="hidden">
+                <div class="scope-topbar flex justify-between items-center mb-4 px-4 pt-4 flex-wrap gap-3 text-white">
+                    <h2 class="text-2xl font-bold text-yellow-400 font-mono scope-drag-handle"
+                        onmousedown="startScopeWindowDrag(event)" ontouchstart="startScopeWindowDrag(event)">
+                        <i class="fas fa-wave-square"></i>
+                        OSCILLOSCOPE <span class="text-gray-400 text-sm">Dual Channel X-Y</span>
+                    </h2>
+                    <div class="flex gap-6 text-sm font-mono items-center flex-wrap">
+                        <div class="text-yellow-400 border-l-2 border-yellow-400 pl-2">
+                            CH1: <span id="scope-ch1-val">0.00V</span>
+                        </div>
+                        <div class="text-cyan-400 border-l-2 border-cyan-400 pl-2">
+                            CH2: <span id="scope-ch2-val">0.00V</span>
+                        </div>
+                        <div class="bg-gray-800 px-3 py-1 rounded border border-gray-700 flex gap-4">
+                            <div class="text-gray-300">
+                                ΔT: <span id="scope-dt" class="text-white font-bold">0.00µs</span>
+                            </div>
+                            <div class="text-gray-300">
+                                ΔV (CH1): <span id="scope-dv1" class="text-yellow-200 font-bold">0.00V</span>
+                            </div>
+                            <div class="text-gray-300">
+                                f: <span id="scope-freq" class="text-green-200 font-bold">--</span>
+                            </div>
+                        </div>
+                        <button id="scope-mode-btn" onclick="toggleScopeDisplayMode()"
+                                class="text-white bg-gray-800 px-3 py-2 rounded border border-gray-700 hover:bg-gray-700 flex items-center gap-2">
+                            <i class="fas fa-clone"></i>
+                            <span>Window</span>
+                        </button>
+                        <button onclick="closeScope()"
+                                class="text-white hover:text-red-500 bg-gray-800 p-2 rounded-full w-8 h-8
+                                       flex items-center justify-center">
+                            <i class="fas fa-times"></i>
+                        </button>
                     </div>
-                    <div class="text-gray-300">
-                        ΔV (CH1): <span id="scope-dv1" class="text-yellow-200 font-bold">0.00V</span>
+                </div>
+
+                <div id="scope-control-bar"
+                     class="mb-3 px-4 flex flex-wrap gap-3 text-[11px] font-mono items-center text-white">
+                    <label class="flex items-center gap-2 bg-gray-800 px-3 py-2 rounded border border-gray-700">
+                        <span class="text-gray-300">Xs/div</span>
+                        <select id="scope-time-div"
+                                class="bg-gray-900 border border-gray-700 rounded px-2 py-1 text-xs text-right">
+                            <option value="10u">10u</option>
+                            <option value="100u">100u</option>
+                            <option value="1m">1m</option>
+                            <option value="10m">10m</option>
+                            <option value="100m">100m</option>
+                        </select>
+                    </label>
+                    <label class="flex items-center gap-2 bg-gray-800 px-3 py-2 rounded border border-gray-700">
+                        <span class="text-yellow-300">CH1 V/div</span>
+                        <select id="scope-vdiv1"
+                                class="bg-gray-900 border border-gray-700 rounded px-2 py-1 text-xs text-right">
+                            <option value="50m">50m</option>
+                            <option value="100m">100m</option>
+                            <option value="200m">200m</option>
+                            <option value="500m">500m</option>
+                            <option value="1">1</option>
+                            <option value="2">2</option>
+                            <option value="5">5</option>
+                            <option value="10">10</option>
+                        </select>
+                    </label>
+                    <label class="flex items-center gap-2 bg-gray-800 px-3 py-2 rounded border border-gray-700">
+                        <span class="text-cyan-300">CH2 V/div</span>
+                        <select id="scope-vdiv2"
+                                class="bg-gray-900 border border-gray-700 rounded px-2 py-1 text-xs text-right">
+                            <option value="50m">50m</option>
+                            <option value="100m">100m</option>
+                            <option value="200m">200m</option>
+                            <option value="500m">500m</option>
+                            <option value="1">1</option>
+                            <option value="2">2</option>
+                            <option value="5">5</option>
+                            <option value="10">10</option>
+                        </select>
+                    </label>
+                </div>
+
+                <div id="scope-container"
+                     class="flex-1 relative bg-gray-900 border border-gray-700 rounded overflow-hidden
+                            cursor-crosshair shadow-inner mx-4">
+                    <canvas id="scopeCanvas" class="w-full h-full block"></canvas>
+                    <div id="cursor-1" class="cursor-line border-yellow-500/80 left-[30%]">
+                        <div class="cursor-handle bg-yellow-500 text-black font-bold text-[10px]"
+                             onmousedown="startDragCursor(1, event)" ontouchstart="startDragCursor(1, event)">1</div>
                     </div>
-                    <div class="text-gray-300">
-                        f: <span id="scope-freq" class="text-green-200 font-bold">--</span>
+                    <div id="cursor-2" class="cursor-line border-cyan-500/80 left-[70%]">
+                        <div class="cursor-handle bg-cyan-500 text-black font-bold text-[10px]"
+                             onmousedown="startDragCursor(2, event)" ontouchstart="startDragCursor(2, event)">2</div>
                     </div>
                 </div>
-                <button id="scope-mode-btn" onclick="toggleScopeDisplayMode()"
-                        class="text-white bg-gray-800 px-3 py-2 rounded border border-gray-700 hover:bg-gray-700 flex items-center gap-2">
-                    <i class="fas fa-clone"></i>
-                    <span>Window</span>
-                </button>
-                <button onclick="closeScope()"
-                        class="text-white hover:text-red-500 bg-gray-800 p-2 rounded-full w-8 h-8
-                               flex items-center justify-center">
-                    <i class="fas fa-times"></i>
-                </button>
-            </div>
-        </div>
 
-        <div id="scope-control-bar"
-             class="mb-3 flex flex-wrap gap-3 text-[11px] font-mono items-center">
-            <label class="flex items-center gap-2 bg-gray-800 px-3 py-2 rounded border border-gray-700">
-                <span class="text-gray-300">Xs/div</span>
-                <select id="scope-time-div"
-                        class="bg-gray-900 border border-gray-700 rounded px-2 py-1 text-xs text-right">
-                    <option value="10u">10u</option>
-                    <option value="100u">100u</option>
-                    <option value="1m">1m</option>
-                    <option value="10m">10m</option>
-                    <option value="100m">100m</option>
-                </select>
-            </label>
-            <label class="flex items-center gap-2 bg-gray-800 px-3 py-2 rounded border border-gray-700">
-                <span class="text-yellow-300">CH1 V/div</span>
-                <select id="scope-vdiv1"
-                        class="bg-gray-900 border border-gray-700 rounded px-2 py-1 text-xs text-right">
-                    <option value="50m">50m</option>
-                    <option value="100m">100m</option>
-                    <option value="200m">200m</option>
-                    <option value="500m">500m</option>
-                    <option value="1">1</option>
-                    <option value="2">2</option>
-                    <option value="5">5</option>
-                    <option value="10">10</option>
-                </select>
-            </label>
-            <label class="flex items-center gap-2 bg-gray-800 px-3 py-2 rounded border border-gray-700">
-                <span class="text-cyan-300">CH2 V/div</span>
-                <select id="scope-vdiv2"
-                        class="bg-gray-900 border border-gray-700 rounded px-2 py-1 text-xs text-right">
-                    <option value="50m">50m</option>
-                    <option value="100m">100m</option>
-                    <option value="200m">200m</option>
-                    <option value="500m">500m</option>
-                    <option value="1">1</option>
-                    <option value="2">2</option>
-                    <option value="5">5</option>
-                    <option value="10">10</option>
-                </select>
-            </label>
-        </div>
-
-        <div id="scope-container"
-             class="flex-1 relative bg-gray-900 border border-gray-700 rounded overflow-hidden
-                    cursor-crosshair shadow-inner">
-            <canvas id="scopeCanvas" class="w-full h-full block"></canvas>
-            <div id="cursor-1" class="cursor-line border-yellow-500/80 left-[30%]">
-                <div class="cursor-handle bg-yellow-500 text-black font-bold text-[10px]"
-                     onmousedown="startDragCursor(1, event)" ontouchstart="startDragCursor(1, event)">1</div>
-            </div>
-            <div id="cursor-2" class="cursor-line border-cyan-500/80 left-[70%]">
-                <div class="cursor-handle bg-cyan-500 text-black font-bold text-[10px]"
-                     onmousedown="startDragCursor(2, event)" ontouchstart="startDragCursor(2, event)">2</div>
-            </div>
-        </div>
-
-        <div class="mt-4 grid gap-4 text-[11px] font-mono md:grid-cols-2">
-            <div class="bg-gray-800/70 border border-gray-700 rounded p-3">
-                <div class="flex items-center gap-2 text-gray-200 mb-2">
-                    <i class="fas fa-arrows-alt-h text-yellow-300"></i>
-                    <span class="uppercase tracking-wider text-xs">Time Cursors</span>
+                <div class="mt-4 grid gap-4 text-[11px] font-mono md:grid-cols-2 px-4 pb-4 text-white">
+                    <div class="bg-gray-800/70 border border-gray-700 rounded p-3">
+                        <div class="flex items-center gap-2 text-gray-200 mb-2">
+                            <i class="fas fa-arrows-alt-h text-yellow-300"></i>
+                            <span class="uppercase tracking-wider text-xs">Time Cursors</span>
+                        </div>
+                        <div class="grid grid-cols-2 gap-2 text-gray-300">
+                            <div class="flex justify-between"><span>t<sub>A</sub></span><span id="cursor-ta" class="text-white">0s</span></div>
+                            <div class="flex justify-between"><span>t<sub>B</sub></span><span id="cursor-tb" class="text-white">0s</span></div>
+                            <div class="flex justify-between"><span>Δt</span><span id="cursor-dt" class="text-white">0s</span></div>
+                            <div class="flex justify-between"><span>frequency</span><span id="cursor-freq" class="text-green-200">--</span></div>
+                        </div>
+                    </div>
+                    <div class="bg-gray-800/70 border border-gray-700 rounded p-3 overflow-x-auto">
+                        <div class="flex items-center gap-2 text-gray-200 mb-2">
+                            <i class="fas fa-bolt text-cyan-300"></i>
+                            <span class="uppercase tracking-wider text-xs">Voltage difference</span>
+                        </div>
+                        <table class="w-full text-left text-gray-200 border-collapse">
+                            <thead class="text-[10px] text-gray-400">
+                                <tr>
+                                    <th class="pb-1">Channel</th>
+                                    <th class="pb-1">V(A)</th>
+                                    <th class="pb-1">V(B)</th>
+                                    <th class="pb-1">ΔV</th>
+                                </tr>
+                            </thead>
+                            <tbody class="text-[11px]">
+                                <tr>
+                                    <td class="py-1">CH1</td>
+                                    <td class="py-1" id="ch1-va">0V</td>
+                                    <td class="py-1" id="ch1-vb">0V</td>
+                                    <td class="py-1" id="ch1-dv">0V</td>
+                                </tr>
+                                <tr>
+                                    <td class="py-1">CH2</td>
+                                    <td class="py-1" id="ch2-va">0V</td>
+                                    <td class="py-1" id="ch2-vb">0V</td>
+                                    <td class="py-1" id="ch2-dv">0V</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
-                <div class="grid grid-cols-2 gap-2 text-gray-300">
-                    <div class="flex justify-between"><span>t<sub>A</sub></span><span id="cursor-ta" class="text-white">0s</span></div>
-                    <div class="flex justify-between"><span>t<sub>B</sub></span><span id="cursor-tb" class="text-white">0s</span></div>
-                    <div class="flex justify-between"><span>Δt</span><span id="cursor-dt" class="text-white">0s</span></div>
-                    <div class="flex justify-between"><span>frequency</span><span id="cursor-freq" class="text-green-200">--</span></div>
+
+                <div class="mt-2 flex gap-4 justify-center pb-4 text-white">
+                    <button onclick="toggleCursors()"
+                            class="bg-gray-800 px-6 py-2 rounded text-xs hover:bg-gray-700 uppercase tracking-wider font-bold">
+                        Toggle Cursors
+                    </button>
+                    <button onclick="toggleSim()"
+                            class="bg-blue-800 px-6 py-2 rounded text-xs hover:bg-blue-700 uppercase tracking-wider font-bold">
+                        <i class="fas fa-pause mr-2"></i> Play/Pause Sim
+                    </button>
                 </div>
             </div>
-            <div class="bg-gray-800/70 border border-gray-700 rounded p-3 overflow-x-auto">
-                <div class="flex items-center gap-2 text-gray-200 mb-2">
-                    <i class="fas fa-bolt text-cyan-300"></i>
-                    <span class="uppercase tracking-wider text-xs">Voltage difference</span>
-                </div>
-                <table class="w-full text-left text-gray-200 border-collapse">
-                    <thead class="text-[10px] text-gray-400">
-                        <tr>
-                            <th class="pb-1">Channel</th>
-                            <th class="pb-1">V(A)</th>
-                            <th class="pb-1">V(B)</th>
-                            <th class="pb-1">ΔV</th>
-                        </tr>
-                    </thead>
-                    <tbody class="text-[11px]">
-                        <tr>
-                            <td class="py-1">CH1</td>
-                            <td class="py-1" id="ch1-va">0V</td>
-                            <td class="py-1" id="ch1-vb">0V</td>
-                            <td class="py-1" id="ch1-dv">0V</td>
-                        </tr>
-                        <tr>
-                            <td class="py-1">CH2</td>
-                            <td class="py-1" id="ch2-va">0V</td>
-                            <td class="py-1" id="ch2-vb">0V</td>
-                            <td class="py-1" id="ch2-dv">0V</td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
         </div>
-
-        <div class="mt-4 flex gap-4 justify-center">
-            <button onclick="toggleCursors()"
-                    class="bg-gray-800 px-6 py-2 rounded text-xs hover:bg-gray-700 uppercase tracking-wider font-bold">
-                Toggle Cursors
-            </button>
-            <button onclick="toggleSim()"
-                    class="bg-blue-800 px-6 py-2 rounded text-xs hover:bg-blue-700 uppercase tracking-wider font-bold">
-                <i class="fas fa-pause mr-2"></i> Play/Pause Sim
-            </button>
-        </div>
-    </div>
-
     </main>
 
-    <div id="sim-bar" class="bg-[#0b0d12] border-t border-gray-800/80 text-gray-100 shadow-inner">
-        <div class="max-w-7xl mx-auto px-3 sm:px-4 py-2 flex flex-wrap items-center justify-between gap-3">
-            <div class="sim-info flex items-center gap-3 text-[11px] font-mono uppercase tracking-tight">
-                <span>SIM TIME: <span id="sim-time" class="text-green-400">0s</span></span>
-                <span class="text-gray-500">|</span>
-                <span>STATUS: <span id="sim-status" class="text-gray-200">PAUSED</span></span>
-            </div>
-            <div class="flex items-center gap-2 flex-wrap justify-end">
-                <button id="mobile-tools-toggle" type="button"
-                        class="items-center gap-2 px-4 py-2 rounded-md bg-gray-800 border border-gray-700 text-sm font-semibold hover:bg-gray-700"
-                        aria-pressed="true" onclick="toggleSidebar()">
-                    Hide Tools
+    <div id="sim-bar">
+        <div class="flex items-center gap-4 text-xs font-mono">
+            <span class="text-green-500 font-bold" id="sim-time">0.00s</span>
+            <span class="text-gray-500">|</span>
+            <span class="text-gray-400" id="sim-status">STOPPED</span>
+        </div>
+
+        <div class="flex items-center gap-2">
+            
+            <div class="menu-wrapper">
+                <button class="sim-btn bg-gray-800 hover:bg-gray-700 border-gray-700 text-white px-3 py-1 rounded text-xs flex items-center gap-2"
+                        onclick="toggleMenu('save-menu')">
+                    <i class="fas fa-save"></i> Save
+                    <i class="fas fa-chevron-up text-[10px]"></i>
                 </button>
-                <button id="play-pause-btn"
-                        class="sim-btn px-3 py-2 bg-gray-800 text-white rounded border border-gray-700 hover:bg-gray-700 flex items-center"
-                        onclick="toggleSim()" aria-label="Play or pause simulation">
-                    <i class="fas fa-play"></i>
-                    <span class="sr-only">Play</span>
-                </button>
-                <div class="menu-wrapper">
-                    <button id="save-menu-button" type="button"
-                            class="sim-btn px-4 py-2 bg-green-700 text-white rounded border border-green-800 hover:bg-green-600 flex items-center gap-2"
-                            onclick="toggleMenu('save-menu')">
-                        <i class="fas fa-save"></i>
-                        <span>Save</span>
-                        <i class="fas fa-chevron-up text-xs"></i>
-                    </button>
-                    <div id="save-menu" class="menu-list hidden">
-                        <button onclick="runSaveOption('circuit')">Save Circuit</button>
-                        <button onclick="runSaveOption('template')">Save Template</button>
-                    </div>
+                <div id="save-menu" class="menu-list">
+                    <button onclick="runSaveOption('circuit')"><i class="fas fa-file-circuit"></i> Save Circuit</button>
+                    <button onclick="runSaveOption('template')"><i class="fas fa-cubes"></i> Save Template</button>
                 </div>
-                <div class="menu-wrapper">
-                    <button id="load-menu-button" type="button"
-                            class="sim-btn px-4 py-2 bg-blue-800 text-white rounded border border-blue-900 hover:bg-blue-700 flex items-center gap-2"
-                            onclick="toggleMenu('load-menu')">
-                        <i class="fas fa-folder-open"></i>
-                        <span>Load</span>
-                        <i class="fas fa-chevron-up text-xs"></i>
-                    </button>
-                    <div id="load-menu" class="menu-list hidden">
-                        <button onclick="runLoadOption('circuit')">Load Circuit</button>
-                        <button onclick="runLoadOption('template')">Load Template</button>
-                    </div>
-                </div>
-                <button onclick="clearCanvas()"
-                        class="sim-btn px-3 py-2 bg-red-800 text-white rounded border border-red-900 hover:bg-red-700 flex items-center"
-                        aria-label="Clear workspace">
-                    <i class="fas fa-broom"></i>
-                    <span class="sr-only">Clear</span>
-                </button>
             </div>
+
+            <div class="menu-wrapper">
+                <button class="sim-btn bg-gray-800 hover:bg-gray-700 border-gray-700 text-white px-3 py-1 rounded text-xs flex items-center gap-2"
+                        onclick="toggleMenu('load-menu')">
+                    <i class="fas fa-folder-open"></i> Load
+                    <i class="fas fa-chevron-up text-[10px]"></i>
+                </button>
+                <div id="load-menu" class="menu-list">
+                    <button onclick="runLoadOption('circuit')"><i class="fas fa-upload"></i> Load File...</button>
+                    <button onclick="runLoadOption('template')"><i class="fas fa-puzzle-piece"></i> Load Template</button>
+                </div>
+            </div>
+
+            <div class="h-4 w-px bg-gray-700 mx-1"></div>
+
+            <button id="play-pause-btn" onclick="toggleSim()" 
+                    class="w-8 h-8 rounded bg-blue-600 hover:bg-blue-500 text-white flex items-center justify-center">
+                <i class="fas fa-play"></i>
+            </button>
         </div>
     </div>
 
@@ -714,40 +565,43 @@
     <script type="module" src="../../assets/js/sim/engine.js"></script>
     <script type="module" src="../../assets/js/circuitforge.templates.js"></script>
 
-    <!-- Main simulation / editor logic -->
     <script type="module" src="../../assets/js/circuitforge.js"></script>
     <script>
-        const openMenus = new Set();
-        function closeMenus() {
-            document.querySelectorAll('.menu-list').forEach(m => m.classList.add('hidden'));
-            openMenus.clear();
-        }
+        // Robust Menu Toggling
         function toggleMenu(id) {
             const menu = document.getElementById(id);
-            if (!menu) return;
-            const willOpen = menu.classList.contains('hidden');
-            closeMenus();
-            if (willOpen) {
-                menu.classList.remove('hidden');
-                openMenus.add(id);
-            }
+            const allMenus = document.querySelectorAll('.menu-list');
+            
+            allMenus.forEach(m => {
+                if (m.id !== id) m.classList.remove('active');
+            });
+
+            if (menu) menu.classList.toggle('active');
         }
-        function runSaveOption(type) {
-            closeMenus();
-            if (type === 'circuit') downloadCircuitJSON();
-            else downloadTemplateJSON();
-        }
-        function runLoadOption(type) {
-            closeMenus();
-            if (type === 'circuit') triggerImportDialog();
-            else triggerImportTemplateDialog();
-        }
+
         document.addEventListener('click', (e) => {
-            if (!e.target.closest('.menu-wrapper')) closeMenus();
+            if (!e.target.closest('.menu-wrapper')) {
+                document.querySelectorAll('.menu-list').forEach(m => m.classList.remove('active'));
+            }
         });
-        window.addEventListener('resize', closeMenus);
+
+        function runSaveOption(type) {
+            if (window.circuitForgeApi) {
+                 if (type === 'circuit') window.circuitForgeApi.downloadCircuitJSON();
+                 else window.circuitForgeApi.downloadTemplateJSON();
+            }
+            document.querySelectorAll('.menu-list').forEach(m => m.classList.remove('active'));
+        }
+        
+        function runLoadOption(type) {
+            if (window.circuitForgeApi) {
+                 if (type === 'circuit') window.circuitForgeApi.triggerImportDialog();
+                 else window.circuitForgeApi.triggerImportTemplateDialog();
+            }
+            document.querySelectorAll('.menu-list').forEach(m => m.classList.remove('active'));
+        }
     </script>
-    <script type="module">
+    <script>
         const themeToggle = document.querySelector('.theme-toggle');
         const THEME_KEY = 'circuitforge-theme';
 
@@ -775,6 +629,9 @@
             const currentTheme = document.body.classList.contains('theme-dark') ? 'dark' : 'light';
             const nextTheme = currentTheme === 'dark' ? 'light' : 'dark';
             applyTheme(nextTheme);
+            setTimeout(() => {
+                if (window.circuitForgeApi) window.circuitForgeApi.renderToolIcons();
+            }, 50);
         });
     </script>
 </body>

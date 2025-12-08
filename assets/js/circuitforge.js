@@ -1460,9 +1460,12 @@ function drawScope() {
 
     const w = scopeCanvas.width;
     const h = scopeCanvas.height;
-    scopeCtx.clearRect(0, 0, w, h);
+    
+    // 1. Clear with BLACK (Hardware look)
+    scopeCtx.fillStyle = '#000000';
+    scopeCtx.fillRect(0, 0, w, h);
 
-    // grid
+    // 2. Draw Grid (Dark Gray)
     scopeCtx.strokeStyle = '#333333';
     scopeCtx.lineWidth   = 1;
     scopeCtx.beginPath();
@@ -1474,18 +1477,18 @@ function drawScope() {
     }
     scopeCtx.stroke();
 
-    // 0 V reference line
+    // 3. Draw Axis (Lighter Gray)
     const midY = h / 2;
-    scopeCtx.strokeStyle = '#888888';
-    scopeCtx.lineWidth   = 1.5;
+    scopeCtx.strokeStyle = '#666666';
     scopeCtx.beginPath();
-    scopeCtx.moveTo(0, midY);
-    scopeCtx.lineTo(w, midY);
+    scopeCtx.moveTo(0, midY); scopeCtx.lineTo(w, midY);
     scopeCtx.stroke();
-    scopeCtx.fillStyle = '#9ca3af';
-    scopeCtx.font      = '10px monospace';
+
+    // 4. Draw Text (WHITE - CRITICAL FIX)
+    scopeCtx.fillStyle = '#ffffff';
+    scopeCtx.font      = 'bold 12px monospace';
     scopeCtx.textAlign = 'left';
-    scopeCtx.fillText('0 V', 4, midY - 4);
+    scopeCtx.fillText('0 V', 6, midY - 6);
 
     const pixelsPerDiv = h / 10;
     const vDiv1 = parseUnit(scope.props.VDiv1 || '1');
@@ -1646,14 +1649,20 @@ function createToolIcon(selector, ComponentClass, setupFn, offsetY = 0) {
     const targetH = (c.h || 40) + pad;
     const scale = Math.min((canvas.width - 6) / targetW, (canvas.height - 6) / targetH, 1);
 
+    // Determine ink color based on computed background/theme
+    const btnStyle = getComputedStyle(btn);
+    const bg = btnStyle.backgroundColor || '';
+    const match = bg.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/i);
+    const luminance = match ? (0.299 * +match[1] + 0.587 * +match[2] + 0.114 * +match[3]) / 255 : null;
+    const isLight = document.body.classList.contains('theme-light') || (luminance !== null && luminance > 0.5);
+    const strokeColor = isLight ? '#1e293b' : '#f1f5f9';
+
     ictx.save();
     ictx.translate(canvas.width / 2, canvas.height / 2 + offsetY);
     ictx.scale(scale, scale);
 
-    // Check current theme so icons stay visible in both modes
-    const isLight = document.body.classList.contains('theme-light');
-    const strokeColor = isLight ? '#334155' : '#e2e8f0';
-
+    ictx.strokeStyle = strokeColor;
+    ictx.fillStyle = strokeColor;
     c.drawPhys(ictx);
 
     const skipPins = (c instanceof MOSFET);
@@ -1666,7 +1675,7 @@ function createToolIcon(selector, ComponentClass, setupFn, offsetY = 0) {
             ictx.moveTo(pos.x, pos.y);
             ictx.lineTo(pos.x, pos.y + GRID * 0.25);
             ictx.stroke();
-            ictx.fillStyle = '#e5e7eb';
+            ictx.fillStyle = strokeColor;
             ictx.beginPath();
             ictx.arc(pos.x, pos.y, 2.1, 0, Math.PI * 2);
             ictx.fill();
