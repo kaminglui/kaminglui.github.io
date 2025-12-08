@@ -69,7 +69,7 @@ const TOUCH_SELECTION_HOLD_MS = 280;
 const COMPONENT_DELETE_HOLD_MS = 650;
 const SWITCH_TYPES          = ['SPST', 'SPDT', 'DPDT'];
 const DEFAULT_SWITCH_TYPE   = 'SPDT';
-const MOBILE_BREAKPOINT     = 900;
+const MOBILE_BREAKPOINT     = 768;
 const BASELINE_NODE_LEAK    = 1e-11;
 const OPAMP_GAIN            = 1e9;
 const OPAMP_INPUT_LEAK      = 1e-15;
@@ -3496,6 +3496,17 @@ function updateViewLabel() {
     label.innerText = (viewMode === 'physical') ? 'Breadboard View' : 'Schematic View';
 }
 
+function updateToolsToggleLabel(forceState = null) {
+    const btn = document.getElementById('mobile-tools-toggle');
+    const root = document.getElementById('circuit-lab-root');
+    if (!btn || !root) return;
+    const isOpen = (forceState != null)
+        ? forceState
+        : root.classList.contains('sidebar-open');
+    btn.textContent = isOpen ? 'Hide Tools' : 'Show Tools';
+    btn.setAttribute('aria-pressed', isOpen ? 'true' : 'false');
+}
+
 function toggleView() {
     viewMode = (viewMode === 'physical') ? 'schematic' : 'physical';
     updateViewLabel();
@@ -3516,8 +3527,7 @@ function toggleSidebar() {
     if (isMobileViewport() && root) {
         const open = root.classList.toggle('sidebar-open');
         sidebar.setAttribute('aria-expanded', open ? 'true' : 'false');
-        const toggleBtn = document.getElementById('circuit-forge-toggle');
-        if (toggleBtn) toggleBtn.setAttribute('aria-pressed', open ? 'true' : 'false');
+        updateToolsToggleLabel(open);
         syncSidebarOverlayState(sidebar.classList.contains('collapsed'));
         resize();
         requestAnimationFrame(resize);
@@ -3529,8 +3539,7 @@ function toggleSidebar() {
     const icon = document.getElementById('sidebar-toggle-icon');
     if (icon) icon.className = collapsed ? 'fas fa-chevron-right' : 'fas fa-chevron-left';
     if (sidebar) sidebar.setAttribute('aria-expanded', (!collapsed).toString());
-    const toggleBtn = document.getElementById('circuit-forge-toggle');
-    if (toggleBtn) toggleBtn.setAttribute('aria-pressed', (!collapsed).toString());
+    updateToolsToggleLabel(!collapsed);
     syncSidebarOverlayState(collapsed);
     resize();
     requestAnimationFrame(resize);
@@ -3668,6 +3677,7 @@ function reportInitError(message) {
     syncScopeControls();
     updatePlayPauseButton();
     updateViewLabel();
+    updateToolsToggleLabel();
     ensureSidebarExpanded();
     syncSidebarOverlayState();
     if (canvas && canvas.parentElement && typeof ResizeObserver !== 'undefined') {

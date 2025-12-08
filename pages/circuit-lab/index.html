@@ -38,6 +38,7 @@
             --simbar-bg: #0b0d12;
             --simbar-border: #1f2937;
             --simbar-height: 92px;
+            --workspace-h: calc(var(--viewport-h) - var(--header-h) - var(--simbar-height));
             --input-bg: #111;
             --input-border: #444;
             --input-text: #0f0;
@@ -45,7 +46,7 @@
             --sidebar-width: 22rem;
             --sidebar-width-collapsed: 0px;
         }
-        @media (max-width: 900px) {
+        @media (max-width: 768px) {
             .sidebar-toggle { display: none; }
         }
         .theme-dark {
@@ -132,9 +133,9 @@
         .sidebar {
             background-color: var(--sidebar-bg);
             border-right: 1px solid var(--sidebar-border);
-            height: calc(var(--viewport-h) - var(--header-h));
-            min-height: calc(var(--viewport-h) - var(--header-h));
-            max-height: calc(var(--viewport-h) - var(--header-h));
+            height: var(--workspace-h);
+            min-height: var(--workspace-h);
+            max-height: var(--workspace-h);
             width: var(--sidebar-width-current);
             min-width: var(--sidebar-width-current);
             max-width: var(--sidebar-width-current);
@@ -158,8 +159,8 @@
             overflow-y: auto;
             flex: 1 1 auto;
             min-height: 0;
-            max-height: calc(var(--viewport-h) - var(--header-h) - 160px);
-            padding-bottom: calc(var(--simbar-height) + 32px);
+            max-height: calc(var(--workspace-h) - 120px);
+            padding-bottom: 16px;
         }
         .sidebar.collapsed .sidebar-label,
         .sidebar.collapsed .component-title,
@@ -192,15 +193,15 @@
         .lab-main {
             position: sticky;
             top: var(--header-h);
-            min-height: calc(var(--viewport-h) - var(--header-h));
-            height: calc(var(--viewport-h) - var(--header-h));
-            max-height: calc(var(--viewport-h) - var(--header-h));
+            min-height: var(--workspace-h);
+            height: var(--workspace-h);
+            max-height: var(--workspace-h);
             align-items: stretch;
         }
         .canvas-shell {
-            min-height: calc(var(--viewport-h) - var(--header-h));
-            height: calc(var(--viewport-h) - var(--header-h));
-            max-height: calc(var(--viewport-h) - var(--header-h));
+            min-height: var(--workspace-h);
+            height: var(--workspace-h);
+            max-height: var(--workspace-h);
         }
         .site-header .container {
             width: min(1120px, 92vw);
@@ -244,37 +245,39 @@
         }
         .sim-info { min-width: 230px; }
         .mobile-sidebar-toggle { display: none; }
+        #mobile-tools-toggle { display: none; }
         @media (max-width: 900px) {
             :root { --sidebar-width: min(22rem, 90vw); }
         }
-@media (max-width: 768px) {
-    :root { --sidebar-width: 100vw; }
-    body { overflow-y: auto; }
-    .lab-main {
-        flex-direction: column;
-        height: auto;
-        min-height: calc(100vh - var(--header-h));
-        max-height: none;
-        padding-bottom: 0;
-    }
-    .sidebar {
-        width: 100%;
-        max-width: 100%;
-        height: calc(var(--viewport-h) - var(--header-h));
-        min-height: calc(var(--viewport-h) - var(--header-h));
-        max-height: calc(var(--viewport-h) - var(--header-h));
-        position: static;
-        top: auto;
-    }
-    .canvas-shell {
-        min-height: calc(var(--viewport-h) - var(--header-h) - var(--simbar-height));
-        height: calc(var(--viewport-h) - var(--header-h) - var(--simbar-height));
-        max-height: calc(var(--viewport-h) - var(--header-h) - var(--simbar-height));
-        padding-bottom: var(--simbar-height);
-    }
-    #tool-scroll {
-        max-height: calc(var(--viewport-h) - var(--header-h) - var(--simbar-height) - 24px);
-    }
+        @media (max-width: 768px) {
+            :root { --sidebar-width: 100vw; }
+            body { overflow-y: auto; }
+            #mobile-tools-toggle { display: inline-flex; }
+            .lab-main {
+                flex-direction: column;
+                height: auto;
+                min-height: var(--workspace-h);
+                max-height: none;
+                padding-bottom: 0;
+            }
+            .sidebar {
+                width: 100%;
+                max-width: 100%;
+                height: var(--workspace-h);
+                min-height: var(--workspace-h);
+                max-height: var(--workspace-h);
+                position: static;
+                top: auto;
+            }
+            .canvas-shell {
+                min-height: var(--workspace-h);
+                height: var(--workspace-h);
+                max-height: var(--workspace-h);
+                padding-bottom: 0;
+            }
+            #tool-scroll {
+                max-height: calc(var(--workspace-h) - 24px);
+            }
             .sidebar-toggle { display: none; }
             #sim-bar {
                 position: fixed;
@@ -312,42 +315,27 @@
                 min-height: 240px;
                 max-height: 60vh;
             }
-}
-@media (max-width: 900px) {
-    body.sidebar-open-mobile {
-        overflow: hidden;
-    }
-    .circuit-lab-root:not(.sidebar-open) .sidebar-panel { display: none; }
-    .circuit-lab-root.sidebar-open .sidebar-panel { display: flex; }
-    .circuit-lab-root.sidebar-open .canvas-panel { display: none; }
-    .circuit-lab-root:not(.sidebar-open) .canvas-panel {
-        display: flex;
-        min-height: calc(var(--viewport-h) - var(--header-h) - var(--simbar-height));
-        height: calc(var(--viewport-h) - var(--header-h) - var(--simbar-height));
-        max-height: calc(var(--viewport-h) - var(--header-h) - var(--simbar-height));
-        padding-bottom: var(--simbar-height);
-    }
-    #tool-scroll {
-        max-height: calc(var(--viewport-h) - var(--header-h) - var(--simbar-height) - 24px);
-    }
-    body.sidebar-open-mobile #tool-scroll {
-        max-height: calc(var(--viewport-h) - var(--header-h) - var(--simbar-height) - 24px);
-    }
-    body.sidebar-open-mobile #sidebar {
-        position: fixed;
-        inset: var(--header-h) 0 0 0;
-        height: calc(var(--viewport-h) - var(--header-h));
-        max-height: calc(var(--viewport-h) - var(--header-h));
-        min-height: calc(var(--viewport-h) - var(--header-h));
-        box-shadow: 0 18px 36px rgba(0, 0, 0, 0.55);
-        z-index: 80;
-        background: var(--sidebar-bg);
-    }
-    body.sidebar-open-mobile .sidebar-header {
-        top: 0;
-    }
-    body.sidebar-open-mobile main.lab-main {
-        align-items: stretch;
+        }
+        @media (max-width: 768px) {
+            .circuit-lab-root {
+                display: flex;
+                flex-direction: column;
+                height: var(--workspace-h);
+                min-height: var(--workspace-h);
+            }
+            .sidebar-panel { height: auto; max-height: none; }
+            .circuit-lab-root:not(.sidebar-open) .sidebar-panel { display: none; }
+            .circuit-lab-root.sidebar-open .sidebar-panel { display: flex; }
+            .circuit-lab-root.sidebar-open .canvas-panel { display: none; }
+            .circuit-lab-root:not(.sidebar-open) .canvas-panel {
+                display: flex;
+                min-height: var(--workspace-h);
+                height: var(--workspace-h);
+                max-height: var(--workspace-h);
+                padding-bottom: 0;
+            }
+            #tool-scroll {
+                max-height: calc(var(--workspace-h) - 24px);
             }
         }
         .tool-btn {
@@ -475,8 +463,8 @@
             display: grid;
             grid-template-columns: var(--sidebar-width-current, 320px) minmax(0, 1fr);
             gap: 0;
-            height: calc(100vh - var(--header-h, 0px));
-            min-height: calc(100vh - var(--header-h, 0px));
+            height: var(--workspace-h);
+            min-height: var(--workspace-h);
             overflow: hidden;
             margin-top: 0;
         }
@@ -501,7 +489,7 @@
             display: flex;
             flex-direction: column;
             overflow: hidden;
-            padding-bottom: var(--simbar-height);
+            padding-bottom: 0;
         }
         .canvas-panel .canvas-shell {
             flex: 1 1 auto;
@@ -511,10 +499,6 @@
             height: 100%;
         }
         #sim-bar { overflow: visible; }
-        #circuit-forge-toggle {
-            width: 100%;
-            text-align: left;
-        }
         @media (max-width: 900px) {
             .circuit-lab-root {
                 display: flex;
@@ -541,8 +525,7 @@
     <!-- Sidebar -->
     <aside id="sidebar" class="sidebar sidebar-panel w-80 flex flex-col flex-shrink-0 shadow-2xl z-20 relative" aria-expanded="true">
         <div class="sidebar-header px-4 pt-3 pb-1 pr-10 border-b border-gray-700 bg-gray-800/50 backdrop-blur flex items-center gap-2">
-            <button id="circuit-forge-toggle" type="button" aria-pressed="true" onclick="toggleSidebar()"
-                    class="flex items-center gap-2 sidebar-label w-full text-left">
+            <div class="flex items-center gap-2 sidebar-label w-full text-left select-none">
                 <i class="fas fa-microchip text-blue-400"></i>
                 <div class="flex items-center gap-2">
                     <span class="text-xl font-bold text-blue-400 tracking-tight">Circuit Forge</span>
@@ -550,7 +533,7 @@
                         BETA
                     </span>
                 </div>
-            </button>
+            </div>
         </div>
 
         <div class="flex-1 flex flex-col overflow-hidden min-h-0 sidebar-content">
@@ -686,65 +669,6 @@
                 <div id="dynamic-props" class="space-y-3"></div>
             </div>
         </div>
-
-            <!-- Simulation Bar -->
-            <div id="sim-bar" class="p-2 text-[11px] text-gray-300 mt-auto flex-shrink-0">
-                <div class="flex flex-wrap items-center justify-between gap-3">
-                    <div class="sim-info flex items-center gap-3 font-mono">
-                        <span>SIM TIME: <span id="sim-time" class="text-green-400">0.00µs</span></span>
-                        <span class="text-gray-600">|</span>
-                        <span>STATUS: <span id="sim-status">RUNNING</span></span>
-                    </div>
-                    <div class="flex items-center gap-2 flex-wrap justify-end">
-                        <button onclick="toggleSim()" id="play-pause-btn"
-                                class="sim-btn bg-gray-800 hover:bg-gray-700 text-xs px-4 rounded border border-gray-600 flex items-center justify-center gap-2 has-tooltip"
-                                data-tooltip="Play/Pause" aria-label="Play or Pause">
-                            <i class="fas fa-play"></i>
-                            <span class="font-semibold">Play</span>
-                        </button>
-                        <div class="menu-wrapper">
-                            <button onclick="toggleMenu('save-menu')"
-                                    class="sim-btn bg-green-900/70 hover:bg-green-800 text-xs px-3 rounded border border-green-700 flex items-center justify-center gap-2 has-tooltip"
-                                    data-tooltip="Save" aria-label="Save">
-                                <i class="fas fa-file-export"></i>
-                                <span class="hidden md:inline font-semibold">Save</span>
-                                <i class="fas fa-caret-down text-[10px]"></i>
-                            </button>
-                            <div id="save-menu" class="menu-list hidden">
-                                <button onclick="runSaveOption('circuit')"><i class="fas fa-microchip mr-2"></i>Save Circuit</button>
-                                <button onclick="runSaveOption('template')"><i class="fas fa-clone mr-2"></i>Save Template</button>
-                            </div>
-                        </div>
-                        <div class="menu-wrapper">
-                            <button onclick="toggleMenu('load-menu')"
-                                    class="sim-btn bg-blue-900/70 hover:bg-blue-800 text-xs px-3 rounded border border-blue-700 flex items-center justify-center gap-2 has-tooltip"
-                                    data-tooltip="Load" aria-label="Load">
-                                <i class="fas fa-file-import"></i>
-                                <span class="hidden md:inline font-semibold">Load</span>
-                                <i class="fas fa-caret-down text-[10px]"></i>
-                            </button>
-                            <div id="load-menu" class="menu-list hidden">
-                                <button onclick="runLoadOption('circuit')"><i class="fas fa-microchip mr-2"></i>Load Circuit</button>
-                                <button onclick="runLoadOption('template')"><i class="fas fa-paste mr-2"></i>Load Template</button>
-                            </div>
-                        </div>
-                        <button onclick="clearCanvas()"
-                                class="sim-btn bg-red-900/70 hover:bg-red-800 text-xs px-3 rounded border border-red-800 flex items-center justify-center has-tooltip"
-                                data-tooltip="Clear All" aria-label="Clear All">
-                            <i class="fas fa-bomb"></i>
-                        </button>
-                        <input id="import-json-input" type="file" accept="application/json" class="hidden" onchange="handleImportJSON(this.files[0])" />
-                        <input id="import-template-input" type="file" accept="application/json" class="hidden" onchange="handleImportTemplate(this.files[0])" />
-                    </div>
-                </div>
-                <div class="mt-2">
-                    <button class="mobile-sidebar-toggle sim-btn bg-gray-800 hover:bg-gray-700 text-xs px-4 rounded border border-gray-600"
-                            onclick="toggleSidebar()" aria-label="Toggle sidebar on mobile">
-                        <i class="fas fa-sliders-h"></i>
-                        <span class="font-semibold">Tools</span>
-                    </button>
-                </div>
-            </div>
 
         </div>
     </aside>
@@ -934,6 +858,60 @@
     </div>
 
     </main>
+
+    <div id="sim-bar" class="bg-[#0b0d12] border-t border-gray-800/80 text-gray-100 shadow-inner">
+        <div class="max-w-7xl mx-auto px-3 sm:px-4 py-2 flex flex-wrap items-center justify-between gap-3">
+            <div class="sim-info flex items-center gap-3 text-[11px] font-mono uppercase tracking-tight">
+                <span>SIM TIME: <span id="sim-time" class="text-green-400">0s</span></span>
+                <span class="text-gray-500">|</span>
+                <span>STATUS: <span id="sim-status" class="text-gray-200">PAUSED</span></span>
+            </div>
+            <div class="flex items-center gap-2 flex-wrap justify-end">
+                <button id="mobile-tools-toggle" type="button"
+                        class="items-center gap-2 px-4 py-2 rounded-md bg-gray-800 border border-gray-700 text-sm font-semibold hover:bg-gray-700"
+                        aria-pressed="true" onclick="toggleSidebar()">
+                    Hide Tools
+                </button>
+                <button id="play-pause-btn"
+                        class="sim-btn px-4 py-2 bg-gray-800 text-white rounded border border-gray-700 hover:bg-gray-700 flex items-center gap-2"
+                        onclick="toggleSim()">
+                    <i class="fas fa-play"></i>
+                    <span>Play</span>
+                </button>
+                <div class="menu-wrapper">
+                    <button id="save-menu-button" type="button"
+                            class="sim-btn px-4 py-2 bg-green-700 text-white rounded border border-green-800 hover:bg-green-600 flex items-center gap-2"
+                            onclick="toggleMenu('save-menu')">
+                        <i class="fas fa-save"></i>
+                        <span>Save</span>
+                        <i class="fas fa-chevron-up text-xs"></i>
+                    </button>
+                    <div id="save-menu" class="menu-list hidden">
+                        <button onclick="runSaveOption('circuit')">Save Circuit</button>
+                        <button onclick="runSaveOption('template')">Save Template</button>
+                    </div>
+                </div>
+                <div class="menu-wrapper">
+                    <button id="load-menu-button" type="button"
+                            class="sim-btn px-4 py-2 bg-blue-800 text-white rounded border border-blue-900 hover:bg-blue-700 flex items-center gap-2"
+                            onclick="toggleMenu('load-menu')">
+                        <i class="fas fa-folder-open"></i>
+                        <span>Load</span>
+                        <i class="fas fa-chevron-up text-xs"></i>
+                    </button>
+                    <div id="load-menu" class="menu-list hidden">
+                        <button onclick="runLoadOption('circuit')">Load Circuit</button>
+                        <button onclick="runLoadOption('template')">Load Template</button>
+                    </div>
+                </div>
+                <button onclick="clearCanvas()"
+                        class="sim-btn px-4 py-2 bg-red-800 text-white rounded border border-red-900 hover:bg-red-700 flex items-center gap-2">
+                    <i class="fas fa-broom"></i>
+                    <span>Clear</span>
+                </button>
+            </div>
+        </div>
+    </div>
 
     <script type="module">
         import { initSiteShell } from '../../assets/js/layout/siteShell.js';
