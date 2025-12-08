@@ -40,11 +40,11 @@
 
         /* Light Mode Overrides */
         .theme-light {
-            --bg-app: #f1f5f9;
-            --bg-panel: #ffffff;
-            --border-color: #e2e8f0;
+            --bg-app: #f7f8fb;
+            --bg-panel: #fdfdfd;
+            --border-color: #e5e7eb;
             --text-primary: #0f172a;
-            --text-secondary: #64748b;
+            --text-secondary: #475569;
         }
 
         /* --- LAYOUT STRUCTURE --- */
@@ -56,6 +56,8 @@
             font-family: 'Inter', sans-serif;
             display: flex;
             flex-direction: column;
+            padding-bottom: var(--simbar-h);
+            box-sizing: border-box;
         }
 
         /* Main Workspace: Sidebar + Canvas Side-by-Side */
@@ -96,6 +98,8 @@
             position: relative;
             background-color: var(--bg-app);
             overflow: hidden; /* Prevents scrollbars on the shell itself */
+            padding-bottom: var(--simbar-h);
+            box-sizing: border-box;
         }
 
         #circuitCanvas {
@@ -291,6 +295,16 @@
                 flex: 0 0 auto;
             }
         }
+        @media (max-width: 1024px) {
+            #sim-bar {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            #sim-bar .sim-info,
+            #sim-bar .sim-actions {
+                width: 100%;
+            }
+        }
         @media (min-width: 769px) {
             #mobile-tools-toggle { display: none; }
         }
@@ -340,7 +354,7 @@
             </div>
         </div>
 
-            <div id="tool-scroll" class="flex-1 overflow-y-auto p-4 space-y-6">
+            <div id="tool-scroll" class="flex-1 overflow-y-auto p-4 space-y-6" style="padding-bottom: calc(var(--simbar-h) + 48px);">
                 <div>
                     <h3 class="text-[11px] font-bold text-gray-400 uppercase mb-3 tracking-widest flex items-center gap-2">
                         <i class="fas fa-bolt text-xs opacity-50"></i> Power
