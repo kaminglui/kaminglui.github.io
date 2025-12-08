@@ -45,7 +45,7 @@
             --sidebar-width: 22rem;
             --sidebar-width-collapsed: 0px;
         }
-        @media (max-width: 1024px) {
+        @media (max-width: 900px) {
             .sidebar-toggle { display: none; }
         }
         .theme-dark {
@@ -244,7 +244,7 @@
         }
         .sim-info { min-width: 230px; }
         .mobile-sidebar-toggle { display: none; }
-        @media (max-width: 1024px) {
+        @media (max-width: 900px) {
             :root { --sidebar-width: min(22rem, 90vw); }
         }
         @media (max-width: 768px) {
@@ -260,16 +260,16 @@
             .sidebar {
                 width: 100%;
                 max-width: 100%;
-                height: auto;
-                min-height: auto;
-                max-height: none;
+                height: calc(var(--viewport-h) - var(--header-h));
+                min-height: calc(var(--viewport-h) - var(--header-h));
+                max-height: calc(var(--viewport-h) - var(--header-h));
                 position: static;
                 top: auto;
             }
             .canvas-shell {
                 min-height: calc(var(--viewport-h) - var(--header-h));
-                height: auto;
-                max-height: none;
+                height: calc(var(--viewport-h) - var(--header-h));
+                max-height: calc(var(--viewport-h) - var(--header-h));
             }
             #tool-scroll {
                 max-height: calc(var(--viewport-h) - var(--header-h) - 72px);
@@ -312,7 +312,7 @@
                 max-height: 60vh;
             }
         }
-        @media (max-width: 1024px) {
+        @media (max-width: 900px) {
             body.sidebar-open-mobile {
                 overflow: hidden;
             }
@@ -504,7 +504,7 @@
             width: 100%;
             text-align: left;
         }
-        @media (max-width: 1024px) {
+        @media (max-width: 900px) {
             .circuit-lab-root {
                 display: flex;
                 flex-direction: column;
