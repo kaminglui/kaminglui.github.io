@@ -40,9 +40,9 @@
 
         /* Light Mode Overrides */
         .theme-light {
-            --bg-app: #f7f8fb;
-            --bg-panel: #fdfdfd;
-            --border-color: #e5e7eb;
+            --bg-app: #f2f4f8;
+            --bg-panel: #f8fafc;
+            --border-color: #e0e7ef;
             --text-primary: #0f172a;
             --text-secondary: #475569;
         }
@@ -56,8 +56,8 @@
             font-family: 'Inter', sans-serif;
             display: flex;
             flex-direction: column;
-            padding-bottom: var(--simbar-h);
             box-sizing: border-box;
+            overflow: hidden;
         }
 
         /* Main Workspace: Sidebar + Canvas Side-by-Side */
@@ -98,7 +98,6 @@
             position: relative;
             background-color: var(--bg-app);
             overflow: hidden; /* Prevents scrollbars on the shell itself */
-            padding-bottom: var(--simbar-h);
             box-sizing: border-box;
         }
 
@@ -133,13 +132,13 @@
             background: var(--bg-panel);
             border-top: 1px solid var(--border-color);
             display: flex;
-            align-items: flex-start;
+            align-items: center;
             justify-content: space-between;
-            padding: 6px 16px;
+            padding: 8px 16px;
             z-index: 50;
             flex-wrap: wrap;
             gap: 8px;
-            position: sticky;
+            position: fixed;
             bottom: 0;
             left: 0;
             right: 0;
@@ -304,6 +303,7 @@
             #sim-bar .sim-actions {
                 width: 100%;
             }
+            body { padding-bottom: var(--simbar-h); }
         }
         @media (min-width: 769px) {
             #mobile-tools-toggle { display: none; }
@@ -354,7 +354,7 @@
             </div>
         </div>
 
-            <div id="tool-scroll" class="flex-1 overflow-y-auto p-4 space-y-6" style="padding-bottom: calc(var(--simbar-h) + 48px);">
+            <div id="tool-scroll" class="flex-1 overflow-y-auto p-4 space-y-6" style="padding-bottom: calc(var(--simbar-h) + 24px);">
                 <div>
                     <h3 class="text-[11px] font-bold text-gray-400 uppercase mb-3 tracking-widest flex items-center gap-2">
                         <i class="fas fa-bolt text-xs opacity-50"></i> Power
