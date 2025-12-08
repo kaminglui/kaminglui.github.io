@@ -248,16 +248,22 @@ function syncViewportCssVars() {
     const simBarH = simBar?.getBoundingClientRect?.().height ?? simBar?.offsetHeight ?? 0;
     root.style.setProperty('--simbar-height', `${Math.max(0, simBarH || 0)}px`);
 
-    // Always reserve space for the sim bar so the sidebar/canvas stop above it.
-    const subtractSimBar = true;
-    const workspaceH = computeWorkspaceHeight({
-        viewportH: height,
-        headerH,
-        simBarH,
-        subtractSimBar
-    });
-    if (workspaceH || workspaceH === 0) {
-        root.style.setProperty('--workspace-h', `${workspaceH}px`);
+    const supportsDvh = (typeof CSS !== 'undefined') && CSS.supports?.('height: 100dvh');
+    if (!supportsDvh) {
+        // Fallback for older browsers: calculate workspace height manually.
+        const subtractSimBar = true;
+        const workspaceH = computeWorkspaceHeight({
+            viewportH: height,
+            headerH,
+            simBarH,
+            subtractSimBar
+        });
+        if (workspaceH || workspaceH === 0) {
+            root.style.setProperty('--workspace-h', `${workspaceH}px`);
+        }
+    } else {
+        // Allow CSS 100dvh rule to drive the layout.
+        root.style.removeProperty('--workspace-h');
     }
 
     if (isLayoutDebuggingEnabled()) {
@@ -1646,7 +1652,7 @@ function createToolIcon(selector, ComponentClass, setupFn, offsetY = 0) {
 
     const skipPins = (c instanceof MOSFET);
     if (!skipPins && Array.isArray(c.pins)) {
-        ictx.strokeStyle = '#9ca3af';
+        ictx.strokeStyle = '#e2e8f0';
         ictx.lineWidth = 1.2;
         c.pins.forEach(p => {
             const pos = c.localToWorld(p.x, p.y);
@@ -3686,13 +3692,19 @@ function toggleSidebar() {
     const root = document.getElementById('circuit-lab-root');
     if (!sidebar) return;
 
-    if (isMobileViewport() && root) {
+    const mobileView = isMobileViewport();
+
+    if (mobileView && root) {
+        if (sidebar.classList.contains('collapsed')) {
+            sidebar.classList.remove('collapsed');
+            document.body.classList.remove('sidebar-collapsed');
+            const icon = document.getElementById('sidebar-toggle-icon');
+            if (icon) icon.className = 'fas fa-chevron-left';
+        }
         const open = root.classList.toggle('sidebar-open');
         sidebar.setAttribute('aria-expanded', open ? 'true' : 'false');
         updateToolsToggleLabel(open);
-        syncSidebarOverlayState(sidebar.classList.contains('collapsed'));
-        resize();
-        requestAnimationFrame(resize);
+        syncSidebarOverlayState(false);
         return;
     }
 
