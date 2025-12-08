@@ -221,11 +221,12 @@ function getViewportSize() {
     return { width, height };
 }
 
-function computeWorkspaceHeight({ viewportH = 0, headerH = 0, simBarH = 0 } = {}) {
+function computeWorkspaceHeight({ viewportH = 0, headerH = 0, simBarH = 0, subtractSimBar = true } = {}) {
     const safeViewport = Number.isFinite(viewportH) ? viewportH : 0;
     const safeHeader   = Number.isFinite(headerH) ? headerH : 0;
     const safeSimbar   = Number.isFinite(simBarH) ? simBarH : 0;
-    return Math.max(0, safeViewport - safeHeader - safeSimbar);
+    const simDeduct = subtractSimBar ? safeSimbar : 0;
+    return Math.max(0, safeViewport - safeHeader - simDeduct);
 }
 
 function isMobileViewport() {
@@ -247,7 +248,13 @@ function syncViewportCssVars() {
     const simBarH = simBar?.getBoundingClientRect?.().height ?? simBar?.offsetHeight ?? 0;
     root.style.setProperty('--simbar-height', `${Math.max(0, simBarH || 0)}px`);
 
-    const workspaceH = computeWorkspaceHeight({ viewportH: height, headerH, simBarH });
+    const subtractSimBar = !isMobileViewport();
+    const workspaceH = computeWorkspaceHeight({
+        viewportH: height,
+        headerH,
+        simBarH,
+        subtractSimBar
+    });
     if (workspaceH || workspaceH === 0) {
         root.style.setProperty('--workspace-h', `${workspaceH}px`);
     }

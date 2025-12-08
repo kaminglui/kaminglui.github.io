@@ -160,7 +160,8 @@
             flex: 1 1 auto;
             min-height: 0;
             max-height: calc(var(--workspace-h) - 120px);
-            padding-bottom: 16px;
+            padding-bottom: calc(var(--simbar-height) + 16px);
+            padding-top: 12px;
         }
         .sidebar.collapsed .sidebar-label,
         .sidebar.collapsed .component-title,
@@ -516,6 +517,9 @@
                 height: var(--workspace-h);
                 max-height: var(--workspace-h);
                 min-height: 0;
+            }
+            #tool-scroll {
+                max-height: calc(var(--workspace-h) - 12px);
             }
             .circuit-lab-root:not(.sidebar-open) .sidebar-content { display: none; }
             .circuit-lab-root:not(.sidebar-open) .canvas-panel {
