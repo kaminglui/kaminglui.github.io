@@ -14,6 +14,11 @@
     <link rel="stylesheet" href="../../assets/css/style.css" />
 
     <!-- Tailwind + Icons -->
+    <script>
+        tailwind.config = {
+            darkMode: 'class'
+        };
+    </script>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet" />
 
@@ -45,8 +50,8 @@
 
             /* Canvas & Board */
             --canvas-bg: #09090b;
-            --board-bg: #050505;      /* Darker board for contrast */
-            --board-hole: #1e1e24;
+            --board-bg: #09090b;
+            --board-hole: #27272a;
 
             /* Simulation Bar */
             --simbar-bg: rgba(9, 9, 11, 0.85); /* Transparent */
@@ -71,14 +76,29 @@
             --controls-border: #cbd5e1;
             --controls-hover-bg: #f1f5f9;
             --controls-hover-border: #94a3b8;
-            --canvas-bg: #f1f5f9;
-            --board-bg: #ffffff;
-            --board-hole: #e2e8f0;
+            --canvas-bg: #f8fafc; /* Slate-50 */
+            --board-bg: #f1f5f9;  /* Slate-100 */
+            --board-hole: #cbd5e1; /* Slate-300 */
             --simbar-bg: rgba(255, 255, 255, 0.85);
             --simbar-border: #cbd5e1;
             --input-bg: #ffffff;
             --input-border: #cbd5e1;
             --input-text: #0f172a;
+        }
+
+        .circuit-lab-root {
+            display: flex;
+            flex-direction: row;
+            height: var(--workspace-h);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .canvas-shell {
+            flex: 1;
+            position: relative;
+            height: 100%;
+            min-width: 0;
         }
 
         /* --- GLOBAL LAYOUT --- */
@@ -336,155 +356,112 @@
 
     <main id="circuit-lab-root" class="circuit-lab-root sidebar-open">
     <!-- Sidebar -->
-    <aside id="sidebar" class="sidebar sidebar-panel w-80 flex flex-col flex-shrink-0 shadow-2xl z-20 relative" aria-expanded="true">
-        <div class="sidebar-header px-4 pt-3 pb-1 pr-10 border-b border-gray-700 bg-gray-800/50 backdrop-blur flex items-center gap-2">
-            <div class="flex items-center gap-2 sidebar-label w-full text-left select-none">
-                <i class="fas fa-microchip text-blue-400"></i>
-                <div class="flex items-center gap-2">
-                    <span class="text-xl font-bold text-blue-400 tracking-tight">Circuit Forge</span>
-                    <span class="text-[10px] bg-blue-900/50 text-blue-200 px-1.5 py-0.5 rounded border border-blue-800">
-                        BETA
+    <aside id="sidebar" class="sidebar sidebar-panel flex flex-col flex-shrink-0 shadow-2xl z-20 relative" aria-expanded="true">
+        
+        <div class="sidebar-header h-14 flex items-center px-4 border-b border-gray-200 dark:border-gray-700 bg-white/80 dark:bg-gray-800/50 backdrop-blur">
+            <div class="flex items-center gap-3 w-full select-none">
+                <i class="fas fa-microchip text-2xl text-blue-600 dark:text-blue-400"></i>
+                <div class="flex flex-col justify-center">
+                    <span class="text-lg font-bold tracking-tight text-gray-900 dark:text-gray-100 leading-none">
+                        Circuit Forge
+                    </span>
+                    <span class="text-[10px] uppercase tracking-wider font-semibold text-gray-500 dark:text-gray-400 mt-0.5">
+                        Simulator
                     </span>
                 </div>
+                <span class="ml-auto text-[10px] font-bold px-1.5 py-0.5 rounded border border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-800 dark:bg-blue-900/50 dark:text-blue-200">
+                    BETA
+                </span>
             </div>
         </div>
 
         <div class="flex-1 flex flex-col overflow-hidden min-h-0 sidebar-content">
-            <div id="tool-scroll" class="flex-1 px-4 pb-4 pt-0 space-y-4 overflow-y-auto">
-
-            <!-- Power Sources -->
-            <div>
-                <h3 class="text-[10px] font-bold text-gray-500 uppercase mb-3 tracking-widest">Power Sources</h3>
-                <div class="grid grid-cols-3 gap-2">
-                    <!-- DC source -->
-                    <button class="tool-btn p-2 rounded flex flex-col items-center gap-1"
-                            data-tooltip="DC" aria-label="DC"
-                            onclick="selectTool('voltageSource', this)">
-                        <i class="fas fa-car-battery text-green-400"></i>
-                        <span class="text-[10px]">DC</span>
-                    </button>
-
-                    <!-- Function generator (AC) -->
-                    <button class="tool-btn p-2 rounded flex flex-col items-center gap-1"
-                            data-tooltip="Func Gen" aria-label="Function Generator"
-                            onclick="selectTool('funcGen', this)">
-                        <i class="fas fa-wave-square text-green-300"></i>
-                        <span class="text-[10px]">FUNC GEN</span>
-                    </button>
-
-                    <!-- Ground -->
-                    <button class="tool-btn p-2 rounded flex flex-col items-center gap-1"
-                            data-tooltip="Ground" aria-label="Ground"
-                            onclick="selectTool('ground', this)">
-                        <i class="fas fa-arrow-down text-gray-400"></i>
-                        <span class="text-[10px]">GND</span>
-                    </button>
-                </div>
-            </div>
-
-            <!-- Components -->
-            <div>
-                <h3 class="text-[10px] font-bold text-gray-500 uppercase mb-3 tracking-widest component-title">Components</h3>
-                <div class="grid grid-cols-2 gap-2">
-                    <button class="tool-btn p-3 rounded flex flex-col items-center justify-center gap-2 text-center"
-                            data-tooltip="Resistor"
-                            aria-label="Resistor"
-                            onclick="selectTool('resistor', this)">
-                        <span class="text-[11px] font-medium">Resistor</span>
-                    </button>
-
-                    <button class="tool-btn p-3 rounded flex flex-col items-center justify-center gap-2 text-center"
-                            data-tooltip="Capacitor"
-                            aria-label="Capacitor"
-                            onclick="selectTool('capacitor', this)">
-                        <span class="text-[11px] font-medium">Capacitor</span>
-                    </button>
-
-                    <button class="tool-btn p-3 rounded flex flex-col items-center justify-center gap-2 text-center"
-                            data-tooltip="Potentiometer"
-                            aria-label="Potentiometer"
-                            onclick="selectTool('potentiometer', this)">
-                        <span class="text-[11px] font-medium">Potentiometer</span>
-                    </button>
-
-                    <button class="tool-btn p-3 rounded flex flex-col items-center justify-center gap-2 text-center"
-                            data-tooltip="LED"
-                            aria-label="LED"
-                            onclick="selectTool('led', this)">
-                        <span class="text-[11px] font-medium">LED</span>
-                    </button>
-
-                    <button class="tool-btn p-3 rounded flex flex-col items-center justify-center gap-2 text-center"
-                            data-tooltip="MOSFET"
-                            aria-label="MOSFET (N/P)"
-                            onclick="selectTool('mosfet', this)">
-                        <span class="text-[11px] font-medium">MOSFET (N/P)</span>
-                    </button>
-
-                    <button class="tool-btn p-3 rounded flex flex-col items-center justify-center gap-1 text-center"
-                            data-tooltip="Switch"
-                            aria-label="Switch"
-                            onclick="selectTool('switch', this)">
-                        <span class="text-[11px] font-medium">Switch</span>
-                    </button>
-
-                    <button class="tool-btn p-3 rounded flex flex-col items-center justify-center gap-2 text-center"
-                            data-tooltip="Op Amp"
-                            aria-label="Op Amp"
-                            onclick="selectTool('lf412', this)">
-                        <span class="text-[11px] font-medium">Ideal Op-Amp (LF412)</span>
-                    </button>
-                </div>
-            </div>
-
-            <!-- Templates -->
-            <div>
-                <h3 class="text-[10px] font-bold text-gray-500 uppercase mb-3 tracking-widest templates-title">Templates</h3>
-                <div id="template-grid" class="grid grid-cols-2 gap-2"></div>
-            </div>
-
-            <!-- Analysis -->
-            <div>
-                <h3 class="text-[10px] font-bold text-gray-500 uppercase mb-3 tracking-widest">Analysis</h3>
-                <div class="grid grid-cols-1 gap-2">
-                    <button class="tool-btn p-3 rounded flex flex-col items-center justify-center gap-2 text-center"
-                            data-tooltip="Oscilloscope"
-                            aria-label="Dual Channel Scope"
-                            onclick="selectTool('oscilloscope', this)">
-                        <i class="fas fa-chart-line text-yellow-400"></i>
-                        <span class="text-[11px] font-medium">Dual Channel Scope</span>
-                    </button>
-                </div>
-            </div>
-
-            <!-- Properties Panel -->
-            <div id="properties-panel"
-                 class="hidden bg-gray-800/80 p-4 rounded-lg border border-gray-600 shadow-xl backdrop-blur-sm">
-                <div class="flex justify-between items-center mb-3 pb-2 border-b border-gray-600">
-                    <h3 class="text-xs font-bold text-blue-400 uppercase">
-                        Edit <span id="prop-title">Object</span>
+            <div id="tool-scroll" class="flex-1 px-4 py-4 space-y-6 overflow-y-auto">
+                
+                <div>
+                    <h3 class="text-[11px] font-bold text-gray-900 dark:text-gray-400 uppercase mb-3 tracking-widest flex items-center gap-2">
+                        <i class="fas fa-bolt text-xs opacity-50"></i> Power
                     </h3>
-                    <div class="flex gap-2">
-                        <button onclick="rotateSelected()" id="btn-rotate" title="Rotate (R)"
-                                class="text-gray-400 hover:text-white">
-                            <i class="fas fa-redo"></i>
+                    <div class="grid grid-cols-3 gap-2">
+                        <button class="tool-btn p-2 rounded flex flex-col items-center gap-1"
+                                onclick="selectTool('voltageSource', this)">
+                            <span class="text-[10px] font-semibold mt-1">DC</span>
                         </button>
-                        <button onclick="mirrorSelected()" id="btn-flip" title="Flip (F)"
-                                class="text-gray-400 hover:text-white">
-                            <i class="fas fa-arrows-left-right"></i>
+                        <button class="tool-btn p-2 rounded flex flex-col items-center gap-1"
+                                onclick="selectTool('funcGen', this)">
+                            <span class="text-[10px] font-semibold mt-1">AC</span>
                         </button>
-                        <button onclick="deleteSelected()" title="Delete (Del)"
-                                class="text-red-400 hover:text-red-200">
-                            <i class="fas fa-trash"></i>
+                        <button class="tool-btn p-2 rounded flex flex-col items-center gap-1"
+                                onclick="selectTool('ground', this)">
+                            <span class="text-[10px] font-semibold mt-1">GND</span>
                         </button>
                     </div>
                 </div>
-                <div id="dynamic-props" class="space-y-3"></div>
+
+                <div>
+                    <h3 class="text-[11px] font-bold text-gray-900 dark:text-gray-400 uppercase mb-3 tracking-widest flex items-center gap-2">
+                        <i class="fas fa-cubes text-xs opacity-50"></i> Parts
+                    </h3>
+                    <div class="grid grid-cols-2 gap-2">
+                        <button class="tool-btn p-2" onclick="selectTool('resistor', this)">
+                            <span class="text-[11px] font-medium">Resistor</span>
+                        </button>
+                        <button class="tool-btn p-2" onclick="selectTool('capacitor', this)">
+                            <span class="text-[11px] font-medium">Capacitor</span>
+                        </button>
+                        <button class="tool-btn p-2" onclick="selectTool('led', this)">
+                            <span class="text-[11px] font-medium">LED</span>
+                        </button>
+                        <button class="tool-btn p-2" onclick="selectTool('switch', this)">
+                            <span class="text-[11px] font-medium">Switch</span>
+                        </button>
+                        <button class="tool-btn p-2" onclick="selectTool('potentiometer', this)">
+                            <span class="text-[11px] font-medium">Potentiometer</span>
+                        </button>
+                        <button class="tool-btn p-2" onclick="selectTool('mosfet', this)">
+                            <span class="text-[11px] font-medium">MOSFET</span>
+                        </button>
+                        <button class="tool-btn p-2 col-span-2" onclick="selectTool('lf412', this)">
+                            <span class="text-[11px] font-medium">Op-Amp (LF412)</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div>
+                    <h3 class="text-[11px] font-bold text-gray-900 dark:text-gray-400 uppercase mb-3 tracking-widest flex items-center gap-2">
+                        <i class="fas fa-chart-line text-xs opacity-50"></i> Analysis
+                    </h3>
+                    <div class="grid grid-cols-1 gap-2">
+                        <button class="tool-btn p-3 flex items-center justify-center gap-3"
+                                onclick="selectTool('oscilloscope', this)">
+                            <i class="fas fa-wave-square text-yellow-600 dark:text-yellow-400"></i>
+                            <span class="text-[11px] font-bold">Oscilloscope</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div>
+                    <h3 class="text-[11px] font-bold text-gray-900 dark:text-gray-400 uppercase mb-3 tracking-widest">Templates</h3>
+                    <div id="template-grid" class="grid grid-cols-2 gap-2"></div>
+                </div>
+                
+                <div id="properties-panel" class="hidden bg-gray-100 dark:bg-gray-800/80 p-4 rounded-lg border border-gray-300 dark:border-gray-600 shadow-lg backdrop-blur-sm mt-4">
+                    <div class="flex justify-between items-center mb-3 pb-2 border-b border-gray-300 dark:border-gray-600">
+                        <h3 class="text-xs font-bold text-blue-600 dark:text-blue-400 uppercase">
+                            Edit <span id="prop-title">Object</span>
+                        </h3>
+                        <div class="flex gap-2">
+                            <button onclick="rotateSelected()" id="btn-rotate" title="Rotate (R)" class="text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"><i class="fas fa-redo"></i></button>
+                            <button onclick="mirrorSelected()" id="btn-flip" title="Flip (F)" class="text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"><i class="fas fa-arrows-left-right"></i></button>
+                            <button onclick="deleteSelected()" title="Delete (Del)" class="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-200"><i class="fas fa-trash"></i></button>
+                        </div>
+                    </div>
+                    <div id="dynamic-props" class="space-y-3"></div>
+                </div>
+
             </div>
         </div>
-
-        </div>
-    </aside>
+</aside>
     <button class="sidebar-toggle text-gray-400 hover:text-white" onclick="toggleSidebar()" aria-label="Toggle sidebar">
         <i id="sidebar-toggle-icon" class="fas fa-chevron-left"></i>
         <span class="sr-only">Toggle sidebar</span>
@@ -777,6 +754,7 @@
         function applyTheme(theme) {
             document.body.classList.toggle('theme-dark', theme === 'dark');
             document.body.classList.toggle('theme-light', theme === 'light');
+            document.documentElement.classList.toggle('dark', theme === 'dark');
             localStorage.setItem(THEME_KEY, theme);
 
             if (typeof updateBoardThemeColors === 'function') {
@@ -784,6 +762,9 @@
             }
             if (typeof draw === 'function') {
                 draw();
+            }
+            if (typeof renderToolIcons === 'function') {
+                renderToolIcons();
             }
         }
 

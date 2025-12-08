@@ -1566,50 +1566,52 @@ function drawScope() {
 function resize() {
     if (!canvas) return;
 
+    // 1. Calculate CSS Variables for 100dvh layout
+    syncViewportCssVars();
     syncSidebarOverlayState();
 
-    syncViewportCssVars();
+    // 2. Get the container size (The .canvas-shell element)
+    // We trust CSS to handle the layout (flex-grow).
+    // We just need to know how big it resulted in.
+    const parent = canvas.parentElement;
+    
+    // Safety check: if parent is hidden or 0, fallback to window
+    const cw = parent ? parent.clientWidth : window.innerWidth;
+    const ch = parent ? parent.clientHeight : window.innerHeight;
 
-    const { width: viewportW, height: viewportH } = getViewportSize();
-    const headerH = document.querySelector('.site-header')?.offsetHeight || 0;
-    const parent = canvas.parentElement || canvas;
-    const fallbackH = Math.max(1, viewportH - headerH);
-    const cssW = Math.max(1, parent.clientWidth  || parent.offsetWidth  || viewportW);
-    const cssH = Math.max(1, parent.clientHeight || parent.offsetHeight || fallbackH);
+    // 3. Set Canvas Resolution (Physical pixels)
     const dpr = window.devicePixelRatio || 1;
+    
+    // Set display size (CSS)
+    canvas.style.width = `${cw}px`;
+    canvas.style.height = `${ch}px`;
+    
+    // Set memory size (Buffer)
+    canvas.width = Math.floor(cw * dpr);
+    canvas.height = Math.floor(ch * dpr);
 
-    canvas.style.width  = `${cssW}px`;
-    canvas.style.height = `${cssH}px`;
-    canvas.width  = Math.floor(cssW * dpr);
-    canvas.height = Math.floor(cssH * dpr);
-
-    canvasCssWidth = cssW;
-    canvasCssHeight = cssH;
-    canvasDisplayWidth  = canvas.width;
+    // Update Global Globals for rendering
+    canvasDisplayWidth = canvas.width;
     canvasDisplayHeight = canvas.height;
+    canvasCssWidth = cw;
+    canvasCssHeight = ch;
 
-    // keep initial view centered
+    // 4. Center View on first load
     if (viewOffsetX === 0 && viewOffsetY === 0) {
         viewOffsetX = (canvas.width  / (2 * zoom) - BOARD_W / 2);
         viewOffsetY = (canvas.height / (2 * zoom) - BOARD_H / 2);
     }
     clampView();
 
-    const scopeContainer = document.getElementById('scope-container');
-    if (scopeContainer && scopeCanvas) {
-        const scopeW = Math.max(1, scopeContainer.clientWidth);
-        const scopeH = Math.max(1, scopeContainer.clientHeight);
-        scopeCanvas.style.width  = `${scopeW}px`;
-        scopeCanvas.style.height = `${scopeH}px`;
-        scopeCanvas.width  = Math.floor(scopeW * dpr);
-        scopeCanvas.height = Math.floor(scopeH * dpr);
-    }
-
+    // 5. Handle Scope Overlay
     if (scopeMode) {
         setScopeOverlayLayout(scopeDisplayMode);
+        if (scopeCanvas && document.getElementById('scope-container')) {
+            const scContainer = document.getElementById('scope-container');
+            scopeCanvas.width = scContainer.clientWidth * dpr;
+            scopeCanvas.height = scContainer.clientHeight * dpr;
+        }
     }
-
-    syncSidebarOverlayState();
 }
 
 function createToolIcon(selector, ComponentClass, setupFn, offsetY = 0) {
@@ -1648,11 +1650,15 @@ function createToolIcon(selector, ComponentClass, setupFn, offsetY = 0) {
     ictx.translate(canvas.width / 2, canvas.height / 2 + offsetY);
     ictx.scale(scale, scale);
 
+    // Check current theme so icons stay visible in both modes
+    const isLight = document.body.classList.contains('theme-light');
+    const strokeColor = isLight ? '#334155' : '#e2e8f0';
+
     c.drawPhys(ictx);
 
     const skipPins = (c instanceof MOSFET);
     if (!skipPins && Array.isArray(c.pins)) {
-        ictx.strokeStyle = '#e2e8f0';
+        ictx.strokeStyle = strokeColor;
         ictx.lineWidth = 1.2;
         c.pins.forEach(p => {
             const pos = c.localToWorld(p.x, p.y);
@@ -3901,6 +3907,7 @@ const circuitForgeApi = {
     toggleCursors,
     startScopeWindowDrag,
     startDragCursor,
+    renderToolIcons,
     updateBoardThemeColors,
     draw
 };
