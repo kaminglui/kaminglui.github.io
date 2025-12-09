@@ -3926,6 +3926,7 @@ function setScopeOverlayLayout(mode = scopeDisplayMode || getDefaultScopeMode())
 
     overlay.classList.toggle('scope-window', layout.windowed);
     overlay.classList.toggle('fullscreen', !layout.windowed);
+    overlay.style.overflowY = layout.windowed ? 'auto' : 'hidden';
     if (layout.windowed) {
         overlay.style.left = `${layout.left}px`;
         overlay.style.top = `${layout.top}px`;
@@ -3948,7 +3949,7 @@ function setScopeOverlayLayout(mode = scopeDisplayMode || getDefaultScopeMode())
     requestAnimationFrame(() => {
         if (overlay && layout.windowed) {
             const contentH = overlay.scrollHeight;
-            const boundedH = Math.min(layout.height, contentH);
+            const boundedH = Math.min(layout.height || contentH, contentH);
             overlay.style.height = `${boundedH}px`;
             scopeWindowSize = { width: layout.width, height: boundedH };
         }

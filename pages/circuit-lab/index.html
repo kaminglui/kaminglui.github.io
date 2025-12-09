@@ -282,6 +282,7 @@
         }
 
         #scope-overlay.scope-window {
+            inset: auto;
             width: 640px;
             height: auto;
             min-height: 360px;
@@ -290,7 +291,7 @@
             right: auto;
             bottom: auto;
             max-height: calc(100vh - 12px);
-            overflow: hidden !important;
+            overflow: auto;
             max-width: min(90vw, 760px);
         }
 
@@ -371,6 +372,13 @@
         }
         #scope-overlay th, #scope-overlay td {
             white-space: nowrap;
+        }
+        .scope-metrics-table {
+            width: auto;
+        }
+        .scope-metrics-table th,
+        .scope-metrics-table td {
+            padding: 2px 6px;
         }
 
         /* --- UTILITIES --- */
@@ -527,12 +535,12 @@
 
         <div class="canvas-shell">
             <div class="absolute top-4 right-4 z-10 flex flex-col gap-2 items-end">
-                <div class="flex bg-gray-800 text-gray-200 rounded shadow-lg border border-gray-700 overflow-hidden">
-                    <button onclick="zoomOutButton()"
-                            class="px-3 py-2 text-xs hover:bg-gray-700 border-r border-gray-700 has-tooltip"
-                            data-tooltip="Zoom Out" aria-label="Zoom Out">
-                        <i class="fas fa-search-minus"></i>
-                    </button>
+                    <div class="flex bg-gray-800 text-gray-200 rounded shadow-lg border border-gray-700 overflow-hidden">
+                        <button onclick="zoomOutButton()"
+                                class="px-3 py-2 text-xs hover:bg-gray-700 border-r border-gray-700 has-tooltip"
+                                data-tooltip="Zoom Out" aria-label="Zoom Out">
+                            <i class="fas fa-search-minus"></i>
+                        </button>
                     <button onclick="zoomInButton()"
                             class="px-3 py-2 text-xs hover:bg-gray-700 has-tooltip"
                             data-tooltip="Zoom In" aria-label="Zoom In">
@@ -563,16 +571,23 @@
                         <div class="text-cyan-400 border-l-2 border-cyan-400 pl-2">
                             CH2: <span id="scope-ch2-val">0.00V</span>
                         </div>
-                        <div class="bg-gray-800 px-3 py-1 rounded border border-gray-700 flex gap-4">
-                            <div class="text-gray-300">
-                                ΔT: <span id="scope-dt" class="text-white font-bold">0.00µs</span>
-                            </div>
-                            <div class="text-gray-300">
-                                ΔV (CH1): <span id="scope-dv1" class="text-yellow-200 font-bold">0.00V</span>
-                            </div>
-                            <div class="text-gray-300">
-                                f: <span id="scope-freq" class="text-green-200 font-bold">--</span>
-                            </div>
+                        <div class="bg-gray-800 px-3 py-1 rounded border border-gray-700">
+                            <table class="scope-metrics-table text-gray-300 text-xs">
+                                <tbody>
+                                    <tr>
+                                        <th class="text-left">ΔT</th>
+                                        <td class="text-white font-bold" id="scope-dt">0.00µs</td>
+                                        <th class="text-left">f</th>
+                                        <td class="text-green-200 font-bold" id="scope-freq">--</td>
+                                    </tr>
+                                    <tr>
+                                        <th class="text-left">ΔV CH1</th>
+                                        <td class="text-yellow-200 font-bold" id="scope-dv1">0.00V</td>
+                                        <th class="text-left">ΔV CH2</th>
+                                        <td class="text-cyan-200 font-bold" id="scope-dv2">0.00V</td>
+                                    </tr>
+                                </tbody>
+                            </table>
                         </div>
                         <button id="scope-mode-btn" onclick="toggleScopeDisplayMode()"
                                 class="text-white bg-gray-800 px-3 py-2 rounded border border-gray-700 hover:bg-gray-700 flex items-center gap-2">
