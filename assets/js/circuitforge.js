@@ -52,7 +52,7 @@ const LOCAL_STORAGE_KEY     = 'circuitforge-save';
 const AUTOSAVE_DELAY_MS     = 450;
 const ZOOM_IN_STEP          = 1.1;
 const ZOOM_OUT_STEP         = 0.9;
-const DEFAULT_SCOPE_WINDOW_POS = { x: 24, y: 24 };
+const DEFAULT_SCOPE_WINDOW_POS = { x: 8, y: 8 };
 const EDITABLE_TAGS         = new Set(['INPUT', 'SELECT', 'TEXTAREA']);
 const LABEL_FONT_SMALL      = '8px monospace';
 const LABEL_FONT_MEDIUM     = '10px monospace';
@@ -175,7 +175,7 @@ let dragListenersAttached = false;
 let scopeDisplayMode = null; // 'window' | 'fullscreen'
 let scopeWindowPos = { ...DEFAULT_SCOPE_WINDOW_POS };
 let scopeWindowSize = { width: 720, height: 440 };
-let scopeDragOffset = { x: 0, y: 0 };
+let scopeDragStart = null;
 let isDraggingScope = false;
 let autosaveTimer = null;
 let isRestoringState = false;
@@ -1704,6 +1704,7 @@ function resize() {
     if (scopeMode) {
         setScopeOverlayLayout(scopeDisplayMode);
     }
+    updateToolsToggleLabel();
     clampView();
 }
 
@@ -1833,7 +1834,16 @@ function setMode(mode) {
 
 function ensureSidebarExpanded() {
     const sidebar = document.getElementById('sidebar');
+    const root = document.getElementById('circuit-lab-root');
     if (!sidebar) return;
+    if (isMobileViewport()) {
+        sidebar.classList.remove('collapsed');
+        document.body.classList.remove('sidebar-collapsed');
+        const open = root?.classList.contains('sidebar-open') || false;
+        sidebar.setAttribute('aria-expanded', open ? 'true' : 'false');
+        updateToolsToggleLabel(open);
+        return;
+    }
     if (sidebar.classList.contains('collapsed')) {
         sidebar.classList.remove('collapsed');
         document.body.classList.remove('sidebar-collapsed');
@@ -1849,11 +1859,14 @@ function ensureSidebarExpanded() {
         const isCollapsed = (forceCollapsed != null)
             ? forceCollapsed
             : (sidebar ? sidebar.classList.contains('collapsed') : true);
-        const sidebarOpen = root ? root.classList.contains('sidebar-open') : !isCollapsed;
+        const sidebarOpen = isMobileViewport()
+            ? (root ? root.classList.contains('sidebar-open') : false)
+            : !isCollapsed;
         const shouldOverlay = isMobileViewport() && sidebarOpen && !isCollapsed;
         const canvasShell = document.querySelector('.canvas-panel, .canvas-shell');
         if (canvasShell) {
             canvasShell.setAttribute('aria-hidden', shouldOverlay ? 'true' : 'false');
+            canvasShell.classList.toggle('sidebar-obscured', !!shouldOverlay);
         }
     }
 
@@ -3942,10 +3955,14 @@ function startScopeWindowDrag(e) {
     if (scopeDisplayMode !== 'window') return;
     if (e.target && (e.target.tagName === 'BUTTON' || e.target.closest('button'))) return;
     const overlay = document.getElementById('scope-overlay');
-    if (!overlay) return;
+    const shellRect = overlay?.parentElement?.getBoundingClientRect?.();
+    if (!overlay || !shellRect) return;
     const rect = overlay.getBoundingClientRect();
     const { clientX, clientY } = getPointerXY(e);
-    scopeDragOffset = { x: clientX - rect.left, y: clientY - rect.top };
+    scopeDragStart = {
+        pointer: { x: clientX, y: clientY },
+        pos: { left: rect.left - shellRect.left, top: rect.top - shellRect.top }
+    };
     isDraggingScope = true;
     window.addEventListener('mousemove', dragScopeWindow);
     window.addEventListener('mouseup', stopScopeWindowDrag);
@@ -3955,7 +3972,7 @@ function startScopeWindowDrag(e) {
 }
 
 function dragScopeWindow(e) {
-    if (!isDraggingScope) return;
+    if (!isDraggingScope || !scopeDragStart) return;
     if (e && e.touches && e.cancelable !== false) e.preventDefault();
     const overlay = document.getElementById('scope-overlay');
     const shellRect = overlay?.parentElement?.getBoundingClientRect?.();
@@ -3965,8 +3982,10 @@ function dragScopeWindow(e) {
     const h = overlay.offsetHeight;
     const pad = 8;
     const { clientX, clientY } = getPointerXY(e);
-    let x = clientX - shellRect.left - scopeDragOffset.x;
-    let y = clientY - shellRect.top - scopeDragOffset.y;
+    const dx = clientX - scopeDragStart.pointer.x;
+    const dy = clientY - scopeDragStart.pointer.y;
+    let x = scopeDragStart.pos.left + dx;
+    let y = scopeDragStart.pos.top + dy;
     const maxX = Math.max(pad, shellRect.width - w - pad);
     const maxY = Math.max(pad, shellRect.height - h - pad);
     x = Math.min(Math.max(x, pad), maxX);
@@ -3981,6 +4000,7 @@ function dragScopeWindow(e) {
 
 function stopScopeWindowDrag() {
     isDraggingScope = false;
+    scopeDragStart = null;
     window.removeEventListener('mousemove', dragScopeWindow);
     window.removeEventListener('mouseup', stopScopeWindowDrag);
     window.removeEventListener('touchmove', dragScopeWindow);
@@ -4041,9 +4061,11 @@ function attachScopeControlHandlers() {
 function updatePlayPauseButton() {
     const btn = document.getElementById('play-pause-btn');
     if (!btn) return;
-    btn.innerHTML = isPaused
-        ? '<i class="fas fa-play"></i><span class="sr-only">Play</span>'
-        : '<i class="fas fa-pause"></i><span class="sr-only">Pause</span>';
+    const icon = isPaused ? 'fa-play' : 'fa-pause';
+    const label = isPaused ? 'Play' : 'Pause';
+    btn.innerHTML = `<i class="fas ${icon}"></i><span class="font-semibold text-sm">${label}</span>`;
+    btn.setAttribute('aria-pressed', (!isPaused).toString());
+    btn.title = label;
 }
 
 function updateViewLabel() {
@@ -4055,10 +4077,12 @@ function updateViewLabel() {
 function updateToolsToggleLabel(forceState = null) {
     const btn = document.getElementById('mobile-tools-toggle');
     const root = document.getElementById('circuit-lab-root');
+    const sidebar = document.getElementById('sidebar');
     if (!btn || !root) return;
-    const isOpen = (forceState != null)
-        ? forceState
-        : root.classList.contains('sidebar-open');
+    const computedOpen = isMobileViewport()
+        ? root.classList.contains('sidebar-open')
+        : !(sidebar && sidebar.classList.contains('collapsed'));
+    const isOpen = (forceState != null) ? forceState : computedOpen;
     btn.textContent = isOpen ? 'Hide Tools' : 'Show Tools';
     btn.setAttribute('aria-pressed', isOpen ? 'true' : 'false');
 }
@@ -4239,8 +4263,8 @@ function reportInitError(message) {
     syncScopeControls();
     updatePlayPauseButton();
     updateViewLabel();
-    updateToolsToggleLabel();
     ensureSidebarExpanded();
+    updateToolsToggleLabel();
     syncSidebarOverlayState();
     if (canvas && canvas.parentElement && typeof ResizeObserver !== 'undefined') {
         const ro = new ResizeObserver(() => resize());

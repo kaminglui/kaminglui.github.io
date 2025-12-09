@@ -26,6 +26,71 @@ function createWiringApi({
     Math.abs((a.dy || 0) - (b.dy || 0)) <= tol
   );
 
+  const segmentKey = (a = {}, b = {}) => {
+    if (!a || !b) return null;
+    const x1 = Math.min(a.x, b.x);
+    const x2 = Math.max(a.x, b.x);
+    const y1 = Math.min(a.y, b.y);
+    const y2 = Math.max(a.y, b.y);
+    if (x1 === x2 && y1 === y2) return null;
+    return `${x1},${y1}-${x2},${y2}`;
+  };
+
+  const segmentsOverlap = (a = {}, b = {}, c = {}, d = {}) => {
+    const ax = a.x; const ay = a.y;
+    const bx = b.x; const by = b.y;
+    const cx = c.x; const cy = c.y;
+    const dx = d.x; const dy = d.y;
+    if (ax === bx && cx === dx && ax === cx) {
+      const minA = Math.min(ay, by);
+      const maxA = Math.max(ay, by);
+      const minB = Math.min(cy, dy);
+      const maxB = Math.max(cy, dy);
+      return Math.max(minA, minB) <= Math.min(maxA, maxB);
+    }
+    if (ay === by && cy === dy && ay === cy) {
+      const minA = Math.min(ax, bx);
+      const maxA = Math.max(ax, bx);
+      const minB = Math.min(cx, dx);
+      const maxB = Math.max(cx, dx);
+      return Math.max(minA, minB) <= Math.min(maxA, maxB);
+    }
+    return false;
+  };
+
+  function buildOccupancyMap(excludeWire = null) {
+    const keys = new Set();
+    const segments = [];
+    getWires().forEach((w) => {
+      if (excludeWire && w === excludeWire) return;
+      const poly = getWirePolyline(w);
+      for (let i = 0; i < poly.length - 1; i++) {
+        const key = segmentKey(poly[i], poly[i + 1]);
+        if (key) {
+          keys.add(key);
+          segments.push({ a: poly[i], b: poly[i + 1] });
+        }
+      }
+    });
+    return { keys, segments };
+  }
+
+  function countPathOverlaps(path = [], occupancy = null) {
+    if (!occupancy) return 0;
+    const keys = occupancy.keys || occupancy;
+    const segs = occupancy.segments || [];
+    let overlaps = 0;
+    for (let i = 0; i < path.length - 1; i++) {
+      const a = path[i];
+      const b = path[i + 1];
+      const key = segmentKey(a, b);
+      const exact = key && keys && keys.has(key);
+      const partial = !exact && segs && segs.some((seg) => segmentsOverlap(a, b, seg.a, seg.b));
+      if (exact || partial) overlaps += 1;
+    }
+    return overlaps;
+  }
+
   function mergeCollinear(pts = []) {
     if (!Array.isArray(pts) || pts.length < 2) return Array.isArray(pts) ? pts.slice() : [];
     const out = [pts[0]];
@@ -186,6 +251,11 @@ function createWiringApi({
   function routeManhattan(start, midPoints, end, startDir = null, endDir = null, opts = {}) {
     const preferredOrientation = opts.preferredOrientation || null;
     const stickiness = Number.isFinite(opts.stickiness) ? opts.stickiness : 0.6;
+    const occupancy = opts.occupancy || null;
+    const occKeys = occupancy?.keys || occupancy;
+    const occSegments = occupancy?.segments || [];
+    const overlapPenalty = Number.isFinite(opts.overlapPenalty) ? opts.overlapPenalty : 3;
+    const allowOffset = opts.allowOffset !== false;
     let orientationHint = preferredOrientation;
     const targets = [...(midPoints || []), end].map((p) => ({
       ...snapWithMeta(p),
@@ -222,15 +292,64 @@ function createWiringApi({
       const orientA = ROUTE_ORIENTATION.H_FIRST;
       const orientB = ROUTE_ORIENTATION.V_FIRST;
 
-      function score(path, orientation) {
+      function buildSegments(path, startPoint, orientation) {
+        const segs = [];
+        let prev = startPoint;
+        const stub = dirOut ? stubFrom(startPoint, dirOut, path[0]) : null;
+        if (stub && (stub.x !== prev.x || stub.y !== prev.y)) {
+          segs.push([prev, stub]);
+          prev = stub;
+        }
+        const pathCopy = [...path];
+        if (stub && pathCopy.length) {
+          const first = pathCopy[0];
+          if (stub.x !== first.x && stub.y !== first.y) {
+            const elbow = (orientation === ROUTE_ORIENTATION.H_FIRST)
+              ? snapToBoardPoint(first.x, stub.y)
+              : snapToBoardPoint(stub.x, first.y);
+            pathCopy.unshift(elbow);
+          }
+        }
+        pathCopy.forEach((pt) => {
+          segs.push([prev, pt]);
+          prev = pt;
+        });
+        const needsArrivalStub = dirIn && (
+          (dirIn.x && (path[path.length - 2] || startPoint).x !== snapT.x) ||
+          (dirIn.y && (path[path.length - 2] || startPoint).y !== snapT.y)
+        );
+        if (needsArrivalStub) {
+          const prevLeg = path[path.length - 2] || startPoint;
+          const arr = stubFrom(snapT, { x: -dirIn.x, y: -dirIn.y }, prevLeg);
+          if (arr && (arr.x !== snapT.x || arr.y !== snapT.y)) {
+            if (segs.length) segs.pop();
+            segs.push([prevLeg, arr], [arr, snapT]);
+          }
+        }
+        return segs;
+      }
+
+      function nudgePath(path, orientation, startPoint, sign = 1) {
+        const offset = GRID * (sign || 1);
+        if (orientation === ROUTE_ORIENTATION.H_FIRST) {
+          const mid1 = snapToBoardPoint(startPoint.x, startPoint.y + offset);
+          const mid2 = snapToBoardPoint(snapT.x, startPoint.y + offset);
+          return [mid1, mid2, snapT];
+        }
+        const mid1 = snapToBoardPoint(startPoint.x + offset, startPoint.y);
+        const mid2 = snapToBoardPoint(startPoint.x + offset, snapT.y);
+        return [mid1, mid2, snapT];
+      }
+
+      function score(path, orientation, startPoint) {
         let sScore = path.length;
         if (dirOut) {
           const first = path[0];
-          if (dirOut.x && first.x === last.x) sScore += 1;
-          if (dirOut.y && first.y === last.y) sScore += 1;
+          if (dirOut.x && first.x === startPoint.x) sScore += 1;
+          if (dirOut.y && first.y === startPoint.y) sScore += 1;
         }
         if (dirIn) {
-          const prev = path[path.length - 2] || last;
+          const prev = path[path.length - 2] || startPoint;
           if (dirIn.x && prev.x === snapT.x) sScore += 1;
           if (dirIn.y && prev.y === snapT.y) sScore += 1;
         }
@@ -238,22 +357,63 @@ function createWiringApi({
           if (orientation === orientationHint) sScore -= stickiness;
           else sScore += stickiness * 0.25;
         }
-        return sScore;
+        let overlaps = 0;
+        if (occKeys || (occSegments && occSegments.length)) {
+          const segs = buildSegments(path, startPoint, orientation);
+          segs.forEach(([a, b]) => {
+            const key = segmentKey(a, b);
+            const exactHit = key && occKeys && occKeys.has(key);
+            const partialHit = !exactHit && occSegments && occSegments.some((seg) => segmentsOverlap(a, b, seg.a, seg.b));
+            if (exactHit || partialHit) {
+              overlaps += 1;
+              sScore += overlapPenalty;
+            }
+          });
+        }
+        return { score: sScore, overlaps };
       }
 
-      const scoreA = score(pathA, orientA);
-      const scoreB = score(pathB, orientB);
-      const pickA = scoreA <= scoreB;
-      const best = pickA ? pathA : pathB;
-      const chosenOrientation = pickA ? orientA : orientB;
+      const baseA = score(pathA, orientA, last);
+      const baseB = score(pathB, orientB, last);
+      const candidates = [
+        { path: pathA, orientation: orientA, meta: baseA },
+        { path: pathB, orientation: orientB, meta: baseB }
+      ];
+
+      if (allowOffset && occupancy && (baseA.overlaps > 0 || baseB.overlaps > 0)) {
+        [1, -1].forEach((sign) => {
+          candidates.push({
+            path: nudgePath(pathA, orientA, last, sign),
+            orientation: orientA,
+            meta: score(nudgePath(pathA, orientA, last, sign), orientA, last)
+          });
+          candidates.push({
+            path: nudgePath(pathB, orientB, last, sign),
+            orientation: orientB,
+            meta: score(nudgePath(pathB, orientB, last, sign), orientB, last)
+          });
+        });
+      }
+
+      candidates.sort((a, b) => a.meta.score - b.meta.score);
+      const best = candidates[0];
+      const chosenOrientation = best.orientation;
       if (!orientationHint) orientationHint = chosenOrientation;
 
+      const pathPoints = [...best.path];
+      let stub = null;
       if (dirOut) {
-        const stub = stubFrom(last, dirOut, best[0]);
+        stub = stubFrom(last, dirOut, pathPoints[0]);
         if (stub.x !== last.x || stub.y !== last.y) pts.push(stub);
+        if (stub && pathPoints.length && stub.x !== pathPoints[0].x && stub.y !== pathPoints[0].y) {
+          const elbow = (chosenOrientation === ROUTE_ORIENTATION.H_FIRST)
+            ? snapToBoardPoint(pathPoints[0].x, stub.y)
+            : snapToBoardPoint(stub.x, pathPoints[0].y);
+          pathPoints.unshift(elbow);
+        }
       }
 
-      best.forEach((p) => pts.push(p));
+      pathPoints.forEach((p) => pts.push(p));
       last = snapT;
 
       if (dirIn) {
@@ -269,12 +429,41 @@ function createWiringApi({
     return pts;
   }
 
-  function buildWireVertices(fromPin, midPoints, toPin) {
+  function buildWireVertices(fromPin, midPoints, toPin, opts = {}) {
     const start = fromPin.c.getPinPos(fromPin.p);
     const end = toPin.c.getPinPos(toPin.p);
     const dir = getPinDirection(fromPin.c, fromPin.p);
     const endDir = getPinDirection(toPin.c, toPin.p);
-    const path = routeManhattan(start, midPoints || [], end, dir, endDir);
+    const occupancy = opts.occupancy || buildOccupancyMap(opts.excludeWire || null);
+    let path = routeManhattan(
+      start,
+      midPoints || [],
+      end,
+      dir,
+      endDir,
+      { occupancy, allowOffset: false }
+    );
+    if (occupancy && (!midPoints || midPoints.length === 0)) {
+      const baseOverlap = countPathOverlaps(path, occupancy);
+      const baseOrientation = firstSegmentOrientation(path);
+      const altPref = baseOrientation === ROUTE_ORIENTATION.H_FIRST
+        ? ROUTE_ORIENTATION.V_FIRST
+        : ROUTE_ORIENTATION.H_FIRST;
+      const altPath = buildAnchoredPath(
+        start,
+        [],
+        end,
+        {
+          routePref: altPref,
+          startOrientation: directionToOrientation(dir) || altPref,
+          endOrientation: directionToOrientation(endDir) || altPref
+        }
+      );
+      const altOverlap = countPathOverlaps(altPath, occupancy);
+      const preferAlt = (altOverlap < baseOverlap) ||
+        (altOverlap === baseOverlap && altPath.length < path.length);
+      if (preferAlt) path = altPath;
+    }
     const verts = path.slice(1, Math.max(1, path.length - 1)).map((p) => ({ ...p }));
     return mergeCollinear(verts);
   }
@@ -425,6 +614,7 @@ function createWiringApi({
     const snaps = [];
     getWires().forEach((w) => {
       if (!movingSet.has(w.from.c) && !movingSet.has(w.to.c)) return;
+      if (!w.routePref) tagWireRoutePreference(w);
       const poly = getWirePolyline(w);
       const start = poly[0];
       const end = poly[poly.length - 1];
@@ -442,6 +632,45 @@ function createWiringApi({
     return snaps;
   }
 
+  function buildAnchoredPath(start, midPoints, end, { routePref = null, startOrientation = null, endOrientation = null } = {}) {
+    const s = snapWithMeta(start);
+    const e = snapWithMeta(end);
+    const mids = Array.isArray(midPoints) ? midPoints.map((p) => snapWithMeta(p)) : [];
+    const preferH = endOrientation === ROUTE_ORIENTATION.H_FIRST || (!endOrientation && routePref === ROUTE_ORIENTATION.H_FIRST);
+    const preferV = endOrientation === ROUTE_ORIENTATION.V_FIRST || (!endOrientation && routePref === ROUTE_ORIENTATION.V_FIRST);
+
+    if (!mids.length) {
+      const path = buildTwoPointPath(s, e, routePref);
+      if (path.length > 1) {
+        alignEndpoint(path, 'start', startOrientation || routePref);
+        alignEndpoint(path, 'end', endOrientation || routePref);
+      }
+      return mergeCollinear(path);
+    }
+
+    const lastIdx = mids.length - 1;
+    const lastMid = mids[lastIdx];
+    if (lastMid && lastMid.x !== e.x && lastMid.y !== e.y) {
+      const updated = { ...lastMid };
+      if (preferH && !preferV) {
+        updated.y = e.y;
+      } else if (preferV && !preferH) {
+        updated.x = e.x;
+      } else {
+        const dx = Math.abs(e.x - updated.x);
+        const dy = Math.abs(e.y - updated.y);
+        if (dx >= dy) updated.y = e.y;
+        else updated.x = e.x;
+      }
+      mids[lastIdx] = snapWithMeta(updated);
+    }
+
+    const path = [s, ...mids, e];
+    if (!mids[0]?.userPlaced) alignEndpoint(path, 'start', startOrientation || routePref);
+    if (!mids[lastIdx]?.userPlaced) alignEndpoint(path, 'end', endOrientation || routePref);
+    return mergeCollinear(path);
+  }
+
   function updateWireFromSnapshot(snapshot, deltaMap) {
     if (!snapshot || !snapshot.wire) return;
     const { wire } = snapshot;
@@ -450,15 +679,28 @@ function createWiringApi({
     const basePolyline = snapshot.polyline || [];
     const snapStart = basePolyline[0] || start;
     const snapEnd = basePolyline[basePolyline.length - 1] || end;
-    const startDelta = { dx: start.x - snapStart.x, dy: start.y - snapStart.y };
-    const endDelta = { dx: end.x - snapEnd.x, dy: end.y - snapEnd.y };
+    const measuredStartDelta = { dx: start.x - snapStart.x, dy: start.y - snapStart.y };
+    const measuredEndDelta = { dx: end.x - snapEnd.x, dy: end.y - snapEnd.y };
+    const mapStart = deltaMap?.get?.(wire.from.c);
+    const mapEnd = deltaMap?.get?.(wire.to.c);
+    const startDelta = mapStart || measuredStartDelta;
+    const endDelta = mapEnd || measuredEndDelta;
+    const routePref = snapshot.routePref || wire.routePref || inferRoutePreference(snapStart, midsSource, snapEnd);
+    const startOrientation = snapshot.startOrientation || routePref;
+    const endOrientation = snapshot.endOrientation || routePref;
     const movedTogether = snapshot.fromMoved && snapshot.toMoved && deltasMatch(startDelta, endDelta);
-    const midsSource = (basePolyline.length > 2)
+    const polyMids = (basePolyline.length > 2)
       ? basePolyline.slice(1, Math.max(1, basePolyline.length - 1)).map((p, idx) => ({
           ...p,
           userPlaced: snapshot.vertices?.[idx]?.userPlaced || p.userPlaced
         }))
-      : (snapshot.vertices && snapshot.vertices.length ? snapshot.vertices : []);
+      : [];
+    const vertexMids = (snapshot.vertices && snapshot.vertices.length)
+      ? snapshot.vertices.map((p) => snapWithMeta(p))
+      : [];
+    const midsSource = movedTogether
+      ? (polyMids.length ? polyMids : vertexMids)
+      : (vertexMids.length ? vertexMids : polyMids);
     const adjusted = midsSource.map((p, idx, arr) => {
       const v = { ...p };
       if (movedTogether) {
@@ -478,23 +720,14 @@ function createWiringApi({
     });
 
     if (movedTogether) {
-      wire.vertices = mergeCollinear(adjusted);
-      wire.routePref = snapshot.routePref || wire.routePref || inferRoutePreference(start, wire.vertices, end);
+      wire.vertices = adjusted;
+      wire.routePref = routePref || inferRoutePreference(start, wire.vertices, end);
       return;
     }
 
-    const path = buildStableWirePath(
-      start,
-      adjusted,
-      end,
-      {
-        routePref: snapshot.routePref,
-        startOrientation: snapshot.startOrientation,
-        endOrientation: snapshot.endOrientation
-      }
-    );
+    const path = buildAnchoredPath(start, adjusted, end, { routePref, startOrientation, endOrientation });
     wire.vertices = path.slice(1, Math.max(1, path.length - 1));
-    wire.routePref = snapshot.routePref || wire.routePref || inferRoutePreference(start, wire.vertices, end);
+    wire.routePref = routePref || inferRoutePreference(start, wire.vertices, end);
   }
 
   function normalizeWireFromSnapshot(snapshot) {
@@ -505,15 +738,24 @@ function createWiringApi({
     const basePolyline = snapshot.polyline || [];
     const snapStart = basePolyline[0] || start;
     const snapEnd = basePolyline[basePolyline.length - 1] || end;
-    const startDelta = { dx: start.x - snapStart.x, dy: start.y - snapStart.y };
-    const endDelta = { dx: end.x - snapEnd.x, dy: end.y - snapEnd.y };
+    const measuredStartDelta = { dx: start.x - snapStart.x, dy: start.y - snapStart.y };
+    const measuredEndDelta = { dx: end.x - snapEnd.x, dy: end.y - snapEnd.y };
+    const startDelta = measuredStartDelta;
+    const endDelta = measuredEndDelta;
+    const routePref = wire.routePref || snapshot.routePref || inferRoutePreference(snapStart, midsSource, snapEnd);
+    const startOrientation = snapshot.startOrientation || routePref;
+    const endOrientation = snapshot.endOrientation || routePref;
     const movedTogether = snapshot.fromMoved && snapshot.toMoved && deltasMatch(startDelta, endDelta);
-    const midsSource = (basePolyline.length > 2)
+    const polyMids = (basePolyline.length > 2)
       ? basePolyline.slice(1, Math.max(1, basePolyline.length - 1)).map((p, idx) => ({
           ...p,
           userPlaced: snapshot.vertices?.[idx]?.userPlaced || p.userPlaced
         }))
-      : (snapshot.vertices && snapshot.vertices.length ? snapshot.vertices : []);
+      : [];
+    const vertexMids = (snapshot.vertices && snapshot.vertices.length)
+      ? snapshot.vertices.map((p) => snapWithMeta(p))
+      : [];
+    const midsSource = (vertexMids.length ? vertexMids : polyMids);
 
     if (movedTogether) {
       const shifted = midsSource.map((p) => snapWithMeta({
@@ -521,24 +763,15 @@ function createWiringApi({
         x: p.x + startDelta.dx,
         y: p.y + startDelta.dy
       }));
-      wire.vertices = mergeCollinear(shifted);
-      wire.routePref = snapshot.routePref || wire.routePref || inferRoutePreference(start, wire.vertices, end);
+      wire.vertices = shifted;
+      wire.routePref = routePref || inferRoutePreference(start, wire.vertices, end);
       return;
     }
 
-    const workingVerts = wire.vertices && wire.vertices.length ? wire.vertices : midsSource;
-    const path = buildStableWirePath(
-      start,
-      workingVerts,
-      end,
-      {
-        routePref: wire.routePref || snapshot.routePref,
-        startOrientation: snapshot.startOrientation,
-        endOrientation: snapshot.endOrientation
-      }
-    );
+    const workingVerts = wire.vertices && wire.vertices.length ? wire.vertices.map((v) => snapWithMeta(v)) : midsSource;
+    const path = buildAnchoredPath(start, workingVerts, end, { routePref, startOrientation, endOrientation });
     wire.vertices = path.slice(1, Math.max(1, path.length - 1));
-    wire.routePref = wire.routePref || snapshot.routePref || inferRoutePreference(start, wire.vertices, end);
+    wire.routePref = routePref || inferRoutePreference(start, wire.vertices, end);
   }
 
   function rerouteWiresForComponent(c) {

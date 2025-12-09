@@ -126,6 +126,37 @@ describe('wiring drag stability', () => {
       expect(poly.length).toBeGreaterThanOrEqual(2);
     });
   });
+
+  it('keeps interior user-placed vertices fixed when only one endpoint moves', () => {
+    const ctx = createApi();
+    const { api } = ctx;
+    const a = new StubComponent(0, 0);
+    const b = new StubComponent(120, 80);
+    ctx.components.push(a, b);
+    const verts = [
+      { ...snapToBoardPoint(40, 0), userPlaced: true },
+      { ...snapToBoardPoint(40, 60), userPlaced: true },
+      { ...snapToBoardPoint(80, 60), userPlaced: true }
+    ];
+    ctx.wires.push({
+      from: { c: a, p: 0 },
+      to: { c: b, p: 0 },
+      vertices: verts
+    });
+    api.tagWireRoutePreference(ctx.wires[0]);
+
+    const snap = api.captureWireSnapshots([b])[0];
+    const interiorBefore = ctx.wires[0].vertices.slice(1, -1).map((v) => ({ ...v }));
+
+    const dx = 20;
+    b.x += dx;
+    api.updateWireFromSnapshot(snap, new Map([[b, { dx, dy: 0 }]]));
+
+    const after = ctx.wires[0].vertices;
+    const interiorAfter = after.slice(1, -1);
+    expect(interiorAfter).toEqual(interiorBefore);
+    interiorAfter.forEach((v) => expect(v.userPlaced).toBe(true));
+  });
 });
 
 describe('junction insertion', () => {
@@ -149,5 +180,29 @@ describe('junction insertion', () => {
       (w) => w.from.c === junction || w.to.c === junction
     );
     expect(junctionConnections.length).toBe(2);
+  });
+});
+
+describe('overlap avoidance', () => {
+  it('picks an alternate orientation to avoid overlapping existing segments', () => {
+    const ctx = createApi();
+    const { api } = ctx;
+    const baseA = new StubComponent(0, 0);
+    const baseB = new StubComponent(40, 0);
+    ctx.components.push(baseA, baseB);
+    ctx.wires.push({
+      from: { c: baseA, p: 0 },
+      to: { c: baseB, p: 0 },
+      vertices: []
+    });
+    api.tagWireRoutePreference(ctx.wires[0]);
+
+    const a = new StubComponent(0, 0);
+    const b = new StubComponent(40, 40);
+    ctx.components.push(a, b);
+    const verts = api.buildWireVertices({ c: a, p: 0 }, [], { c: b, p: 0 });
+    const poly = [a.getPinPos(0), ...verts, b.getPinPos(0)];
+    expect(api.firstSegmentOrientation(poly)).toBe(ROUTE_ORIENTATION.V_FIRST);
+    expect(verts.every((v) => v.y !== 0 || v.x === 0)).toBe(true);
   });
 });

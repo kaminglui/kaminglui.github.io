@@ -33,4 +33,16 @@ describe('scope layout helper', () => {
     expect(layout.left).toBeLessThanOrEqual(320);
     expect(layout.top).toBeLessThanOrEqual(100);
   });
+
+  it('keeps the window pinned under the header without extra offset', () => {
+    const layout = computeScopeLayout('window', {
+      shellRect: { width: 800, height: 500 },
+      viewport: { width: 800, height: 600 },
+      windowPos: { x: 0, y: -20 },
+      windowSize: { width: 720, height: 440 }
+    });
+
+    expect(layout.top).toBe(0);
+    expect(layout.left).toBe(0);
+  });
 });

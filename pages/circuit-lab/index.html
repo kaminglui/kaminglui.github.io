@@ -275,8 +275,8 @@
         #scope-overlay.scope-window {
             width: 720px;
             height: 440px;
-            top: 24px;
-            left: 24px;
+            top: 0px;
+            left: 0px;
             right: auto;
             bottom: auto;
         }
@@ -343,14 +343,16 @@
                 border-right: none;
                 box-shadow: 10px 0 25px rgba(0,0,0,0.5);
             }
+            .circuit-lab-root:not(.sidebar-open) .sidebar { transform: translateX(-100%); }
             .circuit-lab-root.sidebar-open .sidebar { transform: translateX(0); }
             .sidebar.collapsed { transform: translateX(-100%); margin-left: 0; }
+            .canvas-shell.sidebar-obscured { pointer-events: none; filter: brightness(0.85); }
             
             #sim-bar {
                 padding: 8px;
                 justify-content: center;
             }
-            #sim-bar .sim-info { display: none; } /* Hide time on small screens */
+            #sim-bar .sim-info { display: flex; gap: 4px; font-size: 11px; position: static; }
         }
     </style>
 
@@ -359,7 +361,7 @@
 
     <div id="site-header"></div>
 
-    <main id="circuit-lab-root" class="circuit-lab-root flex-row sidebar-open">
+    <main id="circuit-lab-root" class="circuit-lab-root flex-row">
         <aside id="sidebar" class="sidebar">
             <div class="sidebar-header">
                 <div class="flex items-center gap-3 w-full">
@@ -646,12 +648,12 @@
         <div class="sim-actions">
             <button id="mobile-tools-toggle" type="button"
                     class="sim-btn"
-                    aria-pressed="true" onclick="toggleSidebar()">
-                Hide Tools
+                    aria-pressed="false" onclick="toggleSidebar()">
+                Show Tools
             </button>
             
             <div class="menu-wrapper">
-                <button class="sim-btn"
+                <button class="sim-btn primary"
                         onclick="toggleMenu('save-menu')">
                     <i class="fas fa-save"></i> Save
                     <i class="fas fa-chevron-up text-[10px]"></i>
@@ -663,7 +665,7 @@
             </div>
 
             <div class="menu-wrapper">
-                <button class="sim-btn"
+                <button class="sim-btn primary"
                         onclick="toggleMenu('load-menu')">
                     <i class="fas fa-folder-open"></i> Load
                     <i class="fas fa-chevron-up text-[10px]"></i>
@@ -683,8 +685,9 @@
             <div class="h-4 w-px bg-gray-700 mx-1"></div>
 
             <button id="play-pause-btn" onclick="toggleSim()" 
-                    class="sim-btn primary icon">
+                    class="sim-btn primary">
                 <i class="fas fa-play"></i>
+                <span class="font-semibold text-sm">Play</span>
             </button>
         </div>
     </div>
