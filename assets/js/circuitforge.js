@@ -3940,6 +3940,11 @@ function setScopeOverlayLayout(mode = scopeDisplayMode || getDefaultScopeMode())
         overlay.style.maxHeight = 'none';
     }
     updateScopeModeButton();
+    // Ensure canvas sizes update after layout writes
+    requestAnimationFrame(() => {
+        resize();
+        if (scopeMode) drawScope();
+    });
 }
 
 function toggleScopeDisplayMode() {
