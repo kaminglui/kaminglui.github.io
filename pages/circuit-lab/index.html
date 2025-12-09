@@ -411,6 +411,7 @@
             .mobile-icon-only { width: 40px; padding: 0 10px; gap: 0; justify-content: center; }
             .mobile-icon-only .btn-text,
             .mobile-icon-only .btn-chevron { display: none; }
+            #mobile-tools-toggle { display: none; }
             #scope-overlay {
                 max-height: calc(100vh - 12px);
                 overflow-y: auto !important;
@@ -706,24 +707,17 @@
     </main>
 
     <div id="sim-bar">
-        <div class="sim-info text-xs font-mono">
-            <span class="text-green-500 font-bold" id="sim-time">0.00s</span>
-            <span class="text-gray-500">|</span>
-            <span class="text-gray-400" id="sim-status">STOPPED</span>
-        </div>
+            <div class="sim-info text-xs font-mono">
+                <span class="text-green-500 font-bold" id="sim-time">0.00s</span>
+                <span class="text-gray-500">|</span>
+                <span class="text-gray-400" id="sim-status">STOPPED</span>
+            </div>
 
         <div class="sim-actions">
-            <button id="mobile-tools-toggle" type="button"
-                    class="sim-btn mobile-icon-only"
-                    aria-pressed="false" onclick="toggleSidebar()">
-                <i class="fas fa-bars"></i>
-                <span class="btn-text">Show Tools</span>
-            </button>
-            
             <div class="menu-wrapper">
                 <button class="sim-btn success mobile-icon-only"
                         onclick="toggleMenu('save-menu')">
-                    <i class="fas fa-save"></i> <span class="btn-text">Save</span>
+                    <i class="fas fa-arrow-down"></i> <span class="btn-text">Save</span>
                     <i class="fas fa-chevron-up text-[10px] btn-chevron"></i>
                 </button>
                 <div id="save-menu" class="menu-list">
@@ -735,7 +729,7 @@
             <div class="menu-wrapper">
                 <button class="sim-btn primary mobile-icon-only"
                         onclick="toggleMenu('load-menu')">
-                    <i class="fas fa-folder-open"></i> <span class="btn-text">Load</span>
+                    <i class="fas fa-upload"></i> <span class="btn-text">Load</span>
                     <i class="fas fa-chevron-up text-[10px] btn-chevron"></i>
                 </button>
                 <div id="load-menu" class="menu-list">
