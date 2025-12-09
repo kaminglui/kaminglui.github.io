@@ -161,11 +161,52 @@
         #sim-bar .sim-info {
             position: absolute;
             left: 16px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
         }
         #sim-bar .sim-actions {
             display: flex;
             align-items: center;
+            justify-content: center;
             gap: 10px;
+            flex-wrap: nowrap;
+        }
+        .sim-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            height: 36px;
+            padding: 0 12px;
+            border-radius: 8px;
+            border: 1px solid var(--border-subtle);
+            background: var(--bg-surface);
+            color: var(--text-primary);
+            font-size: 12px;
+            font-weight: 600;
+            line-height: 1;
+            transition: background 0.12s ease, border-color 0.12s ease, transform 0.12s ease;
+        }
+        .sim-btn:hover {
+            background: var(--bg-surface);
+            border-color: var(--border-focus);
+            transform: translateY(-1px);
+        }
+        .sim-btn.primary {
+            background: var(--accent);
+            border-color: var(--accent);
+            color: #fff;
+        }
+        .sim-btn.primary:hover { filter: brightness(1.05); }
+        .sim-btn.danger {
+            background: var(--danger);
+            border-color: var(--danger);
+            color: #fff;
+        }
+        .sim-btn.icon {
+            width: 36px;
+            padding: 0;
         }
 
         /* --- ROBUST DROPDOWNS --- */
@@ -217,8 +258,9 @@
         /* --- OSCILLOSCOPE OVERLAY (Hardware Look) --- */
         #scope-overlay {
             position: absolute;
-            top: 20px; left: 20px;
-            width: 640px; height: 400px;
+            inset: 0;
+            width: 100%;
+            height: 100%;
             background: #111; /* Hardware chassis color */
             border: 1px solid #333;
             border-radius: 12px;
@@ -230,9 +272,19 @@
             transition: width 0.2s, height 0.2s, top 0.2s, left 0.2s;
         }
 
+        #scope-overlay.scope-window {
+            width: 720px;
+            height: 440px;
+            top: 24px;
+            left: 24px;
+            right: auto;
+            bottom: auto;
+        }
+
         #scope-overlay.fullscreen {
             top: 0 !important; left: 0 !important;
             width: 100% !important; height: 100% !important;
+            right: 0 !important; bottom: 0 !important;
             border-radius: 0; border: none;
             z-index: 2000; /* On top of sidebar */
         }
@@ -593,13 +645,13 @@
 
         <div class="sim-actions">
             <button id="mobile-tools-toggle" type="button"
-                    class="sim-btn bg-gray-800 hover:bg-gray-700 border border-gray-700 text-white px-3 py-1 rounded text-xs flex items-center gap-2"
+                    class="sim-btn"
                     aria-pressed="true" onclick="toggleSidebar()">
                 Hide Tools
             </button>
             
             <div class="menu-wrapper">
-                <button class="sim-btn bg-gray-800 hover:bg-gray-700 border-gray-700 text-white px-3 py-1 rounded text-xs flex items-center gap-2"
+                <button class="sim-btn"
                         onclick="toggleMenu('save-menu')">
                     <i class="fas fa-save"></i> Save
                     <i class="fas fa-chevron-up text-[10px]"></i>
@@ -611,7 +663,7 @@
             </div>
 
             <div class="menu-wrapper">
-                <button class="sim-btn bg-gray-800 hover:bg-gray-700 border-gray-700 text-white px-3 py-1 rounded text-xs flex items-center gap-2"
+                <button class="sim-btn"
                         onclick="toggleMenu('load-menu')">
                     <i class="fas fa-folder-open"></i> Load
                     <i class="fas fa-chevron-up text-[10px]"></i>
@@ -623,7 +675,7 @@
             </div>
 
             <button onclick="clearCanvas()"
-                    class="w-8 h-8 rounded bg-red-700 hover:bg-red-600 text-white flex items-center justify-center border border-red-800"
+                    class="sim-btn danger icon"
                     aria-label="Clear workspace">
                 <i class="fas fa-broom"></i>
             </button>
@@ -631,7 +683,7 @@
             <div class="h-4 w-px bg-gray-700 mx-1"></div>
 
             <button id="play-pause-btn" onclick="toggleSim()" 
-                    class="w-8 h-8 rounded bg-blue-600 hover:bg-blue-500 text-white flex items-center justify-center">
+                    class="sim-btn primary icon">
                 <i class="fas fa-play"></i>
             </button>
         </div>

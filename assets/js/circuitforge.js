@@ -174,6 +174,7 @@ let activeScopeComponent = null;
 let dragListenersAttached = false;
 let scopeDisplayMode = null; // 'window' | 'fullscreen'
 let scopeWindowPos = { ...DEFAULT_SCOPE_WINDOW_POS };
+let scopeWindowSize = { width: 720, height: 440 };
 let scopeDragOffset = { x: 0, y: 0 };
 let isDraggingScope = false;
 let autosaveTimer = null;
@@ -3234,12 +3235,44 @@ function onDown(e) {
         draggingWire = {
             wire: wireHit,
             start: m,
-            verts: (wireHit.vertices || []).map(v => ({ ...v })),
+            verts: [],
+            origVerts: (wireHit.vertices || []).map(v => ({ ...v })),
             wasSelected: (selectedWire === wireHit),
             startOrientation: firstSegmentOrientation(getWirePolyline(wireHit)),
-            endOrientation: lastSegmentOrientation(getWirePolyline(wireHit))
+            endOrientation: lastSegmentOrientation(getWirePolyline(wireHit)),
+            movingIdx: -1,
+            insertedIdx: null
         };
-        wireDragStart = m;
+
+        // Insert or grab a bend near the click point to make body dragging predictable.
+        const polyline = getWirePolyline(wireHit);
+        let best = { idx: 0, dist: Infinity, proj: polyline[0] };
+        for (let i = 0; i < polyline.length - 1; i++) {
+            const a = polyline[i];
+            const b = polyline[i + 1];
+            const l2 = Math.pow(b.x - a.x, 2) + Math.pow(b.y - a.y, 2);
+            let t = 0;
+            if (l2 > 0) {
+                t = ((m.x - a.x) * (b.x - a.x) + (m.y - a.y) * (b.y - a.y)) / l2;
+                t = Math.max(0, Math.min(1, t));
+            }
+            const proj = { x: a.x + t * (b.x - a.x), y: a.y + t * (b.y - a.y) };
+            const d = Math.hypot(m.x - proj.x, m.y - proj.y);
+            if (d < best.dist) best = { idx: i, dist: d, proj };
+        }
+        const snap = snapToBoardPoint(best.proj.x, best.proj.y);
+        const verts = draggingWire.origVerts.map(v => ({ ...v }));
+        let movingIdx = verts.findIndex(v => Math.hypot(v.x - snap.x, v.y - snap.y) <= GRID * 0.25);
+        if (movingIdx === -1) {
+            const insertAt = Math.min(best.idx, verts.length);
+            verts.splice(insertAt, 0, { ...snap, userPlaced: true });
+            movingIdx = insertAt;
+            draggingWire.insertedIdx = insertAt;
+        }
+        draggingWire.verts = verts;
+        draggingWire.movingIdx = movingIdx;
+        wireHit.vertices = verts;
+        wireDragStart = snap;
         wireDragMoved = false;
         selectedWire      = wireHit;
         setSelectedComponent(null);
@@ -3413,9 +3446,11 @@ function onMove(e) {
         const moved = Math.hypot(dx, dy) > 0;
         wireDragMoved = wireDragMoved || moved;
 
-        const newVerts = draggingWire.verts.map(v =>
-            snapToBoardPoint(v.x + dx, v.y + dy)
-        );
+        const newVerts = draggingWire.verts.map((v, idx) => {
+            if (idx !== draggingWire.movingIdx) return { ...v };
+            const snapped = snapToBoardPoint(v.x + dx, v.y + dy);
+            return { ...snapped, userPlaced: v.userPlaced };
+        });
         draggingWire.wire.vertices = newVerts;
     }
 
@@ -3503,20 +3538,25 @@ function onUp(e) {
     }
 
     if (draggingWire) {
+        if (!wireDragMoved && draggingWire.insertedIdx != null) {
+            draggingWire.wire.vertices = draggingWire.origVerts;
+        }
         const w = draggingWire.wire;
         const start = w.from.c.getPinPos(w.from.p);
         const end = w.to.c.getPinPos(w.to.p);
-        const path = buildStableWirePath(
-            start,
-            w.vertices || [],
-            end,
-            {
-                routePref: w.routePref || inferRoutePreference(start, w.vertices || [], end),
-                startOrientation: draggingWire.startOrientation || w.routePref || null,
-                endOrientation: draggingWire.endOrientation || w.routePref || null
-            }
-        );
-        w.vertices = path.slice(1, Math.max(1, path.length - 1));
+        if (wireDragMoved) {
+            const path = buildStableWirePath(
+                start,
+                w.vertices || [],
+                end,
+                {
+                    routePref: w.routePref || inferRoutePreference(start, w.vertices || [], end),
+                    startOrientation: draggingWire.startOrientation || w.routePref || null,
+                    endOrientation: draggingWire.endOrientation || w.routePref || null
+                }
+            );
+            w.vertices = path.slice(1, Math.max(1, path.length - 1));
+        }
         tagWireRoutePreference(w);
         if (!wireDragMoved) {
             selectedWire = w;
@@ -3682,27 +3722,88 @@ function syncCursorVisibilityFromDom() {
     });
 }
 
+function computeScopeLayout(mode = scopeDisplayMode || getDefaultScopeMode(), {
+    shellRect = null,
+    viewport = getViewportSize(),
+    headerH = 0,
+    simBarH = 0,
+    windowPos = scopeWindowPos,
+    windowSize = scopeWindowSize
+} = {}) {
+    const containerW = shellRect?.width ?? Math.max(0, viewport?.width || 0);
+    const containerH = shellRect?.height ?? computeWorkspaceHeight({
+        viewportH: viewport?.height || 0,
+        headerH,
+        simBarH
+    });
+
+    if (mode === 'fullscreen') {
+        return {
+            windowed: false,
+            width: containerW,
+            height: containerH,
+            left: 0,
+            top: 0
+        };
+    }
+
+    const baseW = windowSize?.width || 720;
+    const baseH = windowSize?.height || 440;
+    const safeWidth = Math.max(0, Math.min(baseW, containerW || baseW));
+    const safeHeight = Math.max(0, Math.min(baseH, containerH || baseH));
+    const maxLeft = Math.max(0, containerW - safeWidth);
+    const maxTop = Math.max(0, containerH - safeHeight);
+    const left = Math.min(Math.max(windowPos?.x ?? 0, 0), maxLeft);
+    const top = Math.min(Math.max(windowPos?.y ?? 0, 0), maxTop);
+
+    return {
+        windowed: true,
+        width: safeWidth,
+        height: safeHeight,
+        left,
+        top
+    };
+}
+
 function setScopeOverlayLayout(mode = scopeDisplayMode || getDefaultScopeMode()) {
     const overlay = document.getElementById('scope-overlay');
     if (!overlay) return;
     scopeDisplayMode = (mode === 'window') ? 'window' : 'fullscreen';
-    const windowed = (scopeDisplayMode === 'window');
-    const headerH = document.querySelector('.site-header')?.offsetHeight || 0;
-    const { height: viewportH } = getViewportSize();
-    overlay.classList.toggle('scope-window', windowed);
-    if (windowed) {
-        overlay.style.left   = `${scopeWindowPos.x}px`;
-        overlay.style.top    = `${headerH + scopeWindowPos.y}px`;
-        overlay.style.right  = 'auto';
-        overlay.style.bottom = 'auto';
-        overlay.style.height = `min(520px, ${Math.max(0, viewportH - headerH - 96)}px)`;
-    } else {
-        overlay.style.left = '';
-        overlay.style.right = '';
-        overlay.style.bottom = '';
-        overlay.style.top = `${headerH}px`;
-        overlay.style.height = `${Math.max(0, viewportH - headerH)}px`;
+
+    if (scopeDisplayMode === 'fullscreen') {
+        scopeWindowSize = {
+            width: overlay.offsetWidth || scopeWindowSize.width,
+            height: overlay.offsetHeight || scopeWindowSize.height
+        };
     }
+
+    const shellRect = overlay.parentElement?.getBoundingClientRect?.() ||
+        document.querySelector('.canvas-shell')?.getBoundingClientRect?.() ||
+        null;
+    const headerH = document.querySelector('.site-header')?.offsetHeight || 0;
+    const simBarH = document.getElementById('sim-bar')?.getBoundingClientRect?.().height || 0;
+    const layout = computeScopeLayout(scopeDisplayMode, {
+        shellRect,
+        viewport: getViewportSize(),
+        headerH,
+        simBarH,
+        windowPos: scopeWindowPos,
+        windowSize: scopeWindowSize
+    });
+
+    if (layout.windowed) {
+        scopeWindowPos = { x: layout.left, y: layout.top };
+        scopeWindowSize = { width: layout.width, height: layout.height };
+    }
+
+    overlay.classList.toggle('scope-window', layout.windowed);
+    overlay.classList.toggle('fullscreen', !layout.windowed);
+    overlay.style.left = `${layout.left}px`;
+    overlay.style.top = `${layout.top}px`;
+    overlay.style.right = layout.windowed ? 'auto' : '0px';
+    overlay.style.bottom = layout.windowed ? 'auto' : '0px';
+    overlay.style.width = `${layout.width}px`;
+    overlay.style.height = `${layout.height}px`;
     updateScopeModeButton();
 }
 
@@ -3747,6 +3848,7 @@ function closeScope() {
     if (overlay) {
         overlay.classList.add('hidden');
         overlay.classList.remove('scope-window');
+        overlay.classList.remove('fullscreen');
     }
 }
 
@@ -3856,22 +3958,21 @@ function dragScopeWindow(e) {
     if (!isDraggingScope) return;
     if (e && e.touches && e.cancelable !== false) e.preventDefault();
     const overlay = document.getElementById('scope-overlay');
-    if (!overlay) return;
+    const shellRect = overlay?.parentElement?.getBoundingClientRect?.();
+    if (!overlay || !shellRect) return;
 
     const w = overlay.offsetWidth;
     const h = overlay.offsetHeight;
     const pad = 8;
-    const headerH = document.querySelector('.site-header')?.offsetHeight || 0;
     const { clientX, clientY } = getPointerXY(e);
-    let x = clientX - scopeDragOffset.x;
-    let y = clientY - scopeDragOffset.y;
-    const maxX = Math.max(pad, window.innerWidth - w - pad);
-    const minY = headerH + pad;
-    const maxY = Math.max(minY, window.innerHeight - h - pad);
+    let x = clientX - shellRect.left - scopeDragOffset.x;
+    let y = clientY - shellRect.top - scopeDragOffset.y;
+    const maxX = Math.max(pad, shellRect.width - w - pad);
+    const maxY = Math.max(pad, shellRect.height - h - pad);
     x = Math.min(Math.max(x, pad), maxX);
-    y = Math.min(Math.max(y, minY), maxY);
+    y = Math.min(Math.max(y, pad), maxY);
 
-    scopeWindowPos = { x, y: y - headerH };
+    scopeWindowPos = { x, y };
     overlay.style.left   = `${x}px`;
     overlay.style.top    = `${y}px`;
     overlay.style.right  = 'auto';
@@ -4219,6 +4320,7 @@ export {
     routeManhattan,
     computeWorkspaceHeight,
     validateLayoutHeights,
+    computeScopeLayout,
     snapToBoardPoint,
     getPinDirection,
     cursorIsVisible,

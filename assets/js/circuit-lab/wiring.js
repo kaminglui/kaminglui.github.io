@@ -11,6 +11,21 @@ function createWiringApi({
   Junction,
   distToSegment
 }) {
+  const DELTA_TOLERANCE = Math.max(0.5, GRID * 0.05);
+
+  const snapWithMeta = (p = {}) => {
+    const snapped = snapToBoardPoint(p.x ?? 0, p.y ?? 0);
+    if (p.userPlaced) snapped.userPlaced = true;
+    return snapped;
+  };
+
+  const cloneVerts = (list = []) => list.map((v) => ({ ...v }));
+
+  const deltasMatch = (a = {}, b = {}, tol = DELTA_TOLERANCE) => (
+    Math.abs((a.dx || 0) - (b.dx || 0)) <= tol &&
+    Math.abs((a.dy || 0) - (b.dy || 0)) <= tol
+  );
+
   function mergeCollinear(pts = []) {
     if (!Array.isArray(pts) || pts.length < 2) return Array.isArray(pts) ? pts.slice() : [];
     const out = [pts[0]];
@@ -21,13 +36,21 @@ function createWiringApi({
 
       const duplicatePrev = (curr.x === prev.x && curr.y === prev.y);
       const duplicateNext = (curr.x === next.x && curr.y === next.y);
-      if (duplicatePrev || duplicateNext) continue;
+      if (duplicatePrev) {
+        if (curr.userPlaced) prev.userPlaced = prev.userPlaced || curr.userPlaced;
+        continue;
+      }
+      if (duplicateNext) {
+        if (curr.userPlaced) next.userPlaced = next.userPlaced || curr.userPlaced;
+        continue;
+      }
 
       out.push(curr);
     }
     const last = pts[pts.length - 1];
     const tail = out[out.length - 1];
     if (last.x !== tail.x || last.y !== tail.y) out.push(last);
+    else if (last.userPlaced) tail.userPlaced = tail.userPlaced || last.userPlaced;
     return out;
   }
 
@@ -50,7 +73,7 @@ function createWiringApi({
           const dy = Math.abs(curr.y - prev.y);
           elbow = (dx >= dy) ? { x: curr.x, y: prev.y } : { x: prev.x, y: curr.y };
         }
-        out.push(snapToBoardPoint(elbow.x, elbow.y));
+        out.push(snapWithMeta(elbow));
       }
       out.push(curr);
     }
@@ -144,7 +167,7 @@ function createWiringApi({
   }
 
   function buildStableWirePath(start, midPoints, end, { routePref = null, startOrientation = null, endOrientation = null } = {}) {
-    const snap = (p = {}) => snapToBoardPoint(p.x ?? 0, p.y ?? 0);
+    const snap = snapWithMeta;
     const s = snap(start);
     const e = snap(end);
     const mids = Array.isArray(midPoints) ? midPoints.map((p) => snap(p)) : [];
@@ -164,7 +187,10 @@ function createWiringApi({
     const preferredOrientation = opts.preferredOrientation || null;
     const stickiness = Number.isFinite(opts.stickiness) ? opts.stickiness : 0.6;
     let orientationHint = preferredOrientation;
-    const targets = [...(midPoints || []), end].map((p) => snapToBoardPoint(p.x, p.y));
+    const targets = [...(midPoints || []), end].map((p) => ({
+      ...snapWithMeta(p),
+      userPlaced: !!p.userPlaced
+    }));
 
     function stubFrom(p, dir, toward) {
       if (dir) return snapToBoardPoint(p.x + dir.x * GRID, p.y + dir.y * GRID);
@@ -249,12 +275,12 @@ function createWiringApi({
     const dir = getPinDirection(fromPin.c, fromPin.p);
     const endDir = getPinDirection(toPin.c, toPin.p);
     const path = routeManhattan(start, midPoints || [], end, dir, endDir);
-    const verts = path.slice(1, Math.max(1, path.length - 1));
+    const verts = path.slice(1, Math.max(1, path.length - 1)).map((p) => ({ ...p }));
     return mergeCollinear(verts);
   }
 
   function adjustWireAnchors(wire, { start, end, startDir = null, endDir = null } = {}) {
-    const snap = (p = {}) => snapToBoardPoint(p.x ?? 0, p.y ?? 0);
+    const snap = snapWithMeta;
     const poly = [
       snap(start),
       ...(Array.isArray(wire?.vertices) ? wire.vertices.map((v) => snap(v)) : []),
@@ -405,6 +431,7 @@ function createWiringApi({
       snaps.push({
         wire: w,
         polyline: poly,
+        vertices: cloneVerts(w.vertices || []),
         fromMoved: movingSet.has(w.from.c),
         toMoved: movingSet.has(w.to.c),
         routePref: w.routePref || inferRoutePreference(start, poly.slice(1, Math.max(1, poly.length - 1)), end),
@@ -420,34 +447,41 @@ function createWiringApi({
     const { wire } = snapshot;
     const start = wire.from.c.getPinPos(wire.from.p);
     const end = wire.to.c.getPinPos(wire.to.p);
-    const safeDelta = (comp) => {
-      const delta = deltaMap?.get(comp);
-      return delta ? delta : { dx: 0, dy: 0 };
-    };
-    const startDelta = safeDelta(wire.from.c);
-    const endDelta = safeDelta(wire.to.c);
-    const movedTogether = snapshot.fromMoved && snapshot.toMoved &&
-      startDelta.dx === endDelta.dx && startDelta.dy === endDelta.dy;
-
-    const mids = snapshot.polyline.slice(1, Math.max(1, snapshot.polyline.length - 1)).map((p) => ({ ...p }));
-    const adjusted = mids.map((p, idx, arr) => {
-      let x = p.x;
-      let y = p.y;
+    const basePolyline = snapshot.polyline || [];
+    const snapStart = basePolyline[0] || start;
+    const snapEnd = basePolyline[basePolyline.length - 1] || end;
+    const startDelta = { dx: start.x - snapStart.x, dy: start.y - snapStart.y };
+    const endDelta = { dx: end.x - snapEnd.x, dy: end.y - snapEnd.y };
+    const movedTogether = snapshot.fromMoved && snapshot.toMoved && deltasMatch(startDelta, endDelta);
+    const midsSource = (basePolyline.length > 2)
+      ? basePolyline.slice(1, Math.max(1, basePolyline.length - 1)).map((p, idx) => ({
+          ...p,
+          userPlaced: snapshot.vertices?.[idx]?.userPlaced || p.userPlaced
+        }))
+      : (snapshot.vertices && snapshot.vertices.length ? snapshot.vertices : []);
+    const adjusted = midsSource.map((p, idx, arr) => {
+      const v = { ...p };
       if (movedTogether) {
-        x += startDelta.dx;
-        y += startDelta.dy;
+        v.x += startDelta.dx;
+        v.y += startDelta.dy;
       } else {
         if (snapshot.fromMoved && idx === 0) {
-          x += startDelta.dx;
-          y += startDelta.dy;
+          v.x += startDelta.dx;
+          v.y += startDelta.dy;
         }
         if (snapshot.toMoved && idx === arr.length - 1) {
-          x += endDelta.dx;
-          y += endDelta.dy;
+          v.x += endDelta.dx;
+          v.y += endDelta.dy;
         }
       }
-      return { x, y };
+      return snapWithMeta(v);
     });
+
+    if (movedTogether) {
+      wire.vertices = mergeCollinear(adjusted);
+      wire.routePref = snapshot.routePref || wire.routePref || inferRoutePreference(start, wire.vertices, end);
+      return;
+    }
 
     const path = buildStableWirePath(
       start,
@@ -468,9 +502,34 @@ function createWiringApi({
     const { wire } = snapshot;
     const start = wire.from.c.getPinPos(wire.from.p);
     const end = wire.to.c.getPinPos(wire.to.p);
+    const basePolyline = snapshot.polyline || [];
+    const snapStart = basePolyline[0] || start;
+    const snapEnd = basePolyline[basePolyline.length - 1] || end;
+    const startDelta = { dx: start.x - snapStart.x, dy: start.y - snapStart.y };
+    const endDelta = { dx: end.x - snapEnd.x, dy: end.y - snapEnd.y };
+    const movedTogether = snapshot.fromMoved && snapshot.toMoved && deltasMatch(startDelta, endDelta);
+    const midsSource = (basePolyline.length > 2)
+      ? basePolyline.slice(1, Math.max(1, basePolyline.length - 1)).map((p, idx) => ({
+          ...p,
+          userPlaced: snapshot.vertices?.[idx]?.userPlaced || p.userPlaced
+        }))
+      : (snapshot.vertices && snapshot.vertices.length ? snapshot.vertices : []);
+
+    if (movedTogether) {
+      const shifted = midsSource.map((p) => snapWithMeta({
+        ...p,
+        x: p.x + startDelta.dx,
+        y: p.y + startDelta.dy
+      }));
+      wire.vertices = mergeCollinear(shifted);
+      wire.routePref = snapshot.routePref || wire.routePref || inferRoutePreference(start, wire.vertices, end);
+      return;
+    }
+
+    const workingVerts = wire.vertices && wire.vertices.length ? wire.vertices : midsSource;
     const path = buildStableWirePath(
       start,
-      wire.vertices || [],
+      workingVerts,
       end,
       {
         routePref: wire.routePref || snapshot.routePref,
