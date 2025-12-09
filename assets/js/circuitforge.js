@@ -175,6 +175,7 @@ let dragListenersAttached = false;
 let scopeDisplayMode = null; // 'window' | 'fullscreen'
 let scopeWindowPos = { ...DEFAULT_SCOPE_WINDOW_POS };
 let scopeWindowSize = { width: 720, height: 440 };
+let scopeHorizontalDivs = 10;
 let scopeDragStart = null;
 let isDraggingScope = false;
 let autosaveTimer = null;
@@ -831,7 +832,8 @@ function simulate(t) {
             const v2 = (n2 === -1 ? 0 : sol[n2] - vG);
 
             const tDiv       = parseUnit(c.props.TimeDiv || '1m');
-            const windowTime = tDiv * 10;
+            const horizDivs  = getScopeHorizontalDivs();
+            const windowTime = tDiv * horizDivs;
             const sampleT    = windowTime / HISTORY_SIZE || DT;
 
             c.sampleAccum += DT;
@@ -1558,21 +1560,30 @@ function drawScope() {
     if (!scope) return;
 
     const w = scopeCanvas.width;
-    const h = scopeCanvas.height;
-    
+    const dpr = window.devicePixelRatio || 1;
+    const drawW = (scopeCanvas.clientWidth || w / dpr);
+    const drawH = (scopeCanvas.clientHeight || scopeCanvas.height / dpr);
+    scopeCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+    const h = drawH;
+    const gridCell = (h || 1) / 10;
+    const horizontalDivs = getScopeHorizontalDivs(drawW, drawH, { updateCache: true });
+
     // 1. Clear with BLACK (Hardware look)
     scopeCtx.fillStyle = '#000000';
-    scopeCtx.fillRect(0, 0, w, h);
+    scopeCtx.fillRect(0, 0, drawW, h);
 
     // 2. Draw Grid (Dark Gray)
     scopeCtx.strokeStyle = '#333333';
     scopeCtx.lineWidth   = 1;
     scopeCtx.beginPath();
-    for (let i = 1; i < 10; i++) {
-        const x = i * (w / 10);
-        const y = i * (h / 10);
+    for (let i = 1; i < horizontalDivs; i++) {
+        const x = i * gridCell;
         scopeCtx.moveTo(x, 0); scopeCtx.lineTo(x, h);
-        scopeCtx.moveTo(0, y); scopeCtx.lineTo(w, y);
+    }
+    for (let j = 1; j < 10; j++) {
+        const y = j * gridCell;
+        scopeCtx.moveTo(0, y); scopeCtx.lineTo(drawW, y);
     }
     scopeCtx.stroke();
 
@@ -1580,7 +1591,7 @@ function drawScope() {
     const midY = h / 2;
     scopeCtx.strokeStyle = '#666666';
     scopeCtx.beginPath();
-    scopeCtx.moveTo(0, midY); scopeCtx.lineTo(w, midY);
+    scopeCtx.moveTo(0, midY); scopeCtx.lineTo(drawW, midY);
     scopeCtx.stroke();
 
     // 4. Draw Text (WHITE - CRITICAL FIX)
@@ -1609,14 +1620,14 @@ function drawScope() {
         scopeCtx.strokeStyle = ch.color;
         scopeCtx.lineWidth   = 2;
         scopeCtx.beginPath();
-        for (let x = 0; x < w; x++) {
-            const t   = x / w;
+        for (let x = 0; x < drawW; x++) {
+            const t   = x / drawW;
             const off = Math.floor(t * HISTORY_SIZE);
             const idx = (startIdx + off) % HISTORY_SIZE;
             const v   = ch.data[idx];
             const y   = midY - v * ch.scale;
             if (x === 0) scopeCtx.moveTo(x, y);
-            else         scopeCtx.lineTo(x, y);
+            else scopeCtx.lineTo(x, y);
         }
         scopeCtx.stroke();
     }
@@ -1626,7 +1637,7 @@ function drawScope() {
     const cursorMetrics = buildCursorMetrics(scope);
     if (cursorMetrics && (showCursor1 || showCursor2)) {
         const drawCursorMarker = (pct, color, values) => {
-            const x = (pct / 100) * w;
+            const x = (pct / 100) * drawW;
             scopeCtx.save();
             scopeCtx.setLineDash([4, 4]);
             scopeCtx.strokeStyle = color;
@@ -1695,8 +1706,11 @@ function resize() {
     if (scopeCanvas && document.getElementById('scope-container')) {
         const sw = document.getElementById('scope-container').clientWidth;
         const sh = document.getElementById('scope-container').clientHeight;
-        scopeCanvas.width = sw; // * dpr if you want high res scope
-        scopeCanvas.height = sh;
+        const dpr = window.devicePixelRatio || 1;
+        scopeCanvas.width = Math.max(1, Math.floor(sw * dpr));
+        scopeCanvas.height = Math.max(1, Math.floor(sh * dpr));
+        scopeCanvas.style.width = `${sw}px`;
+        scopeCanvas.style.height = `${sh}px`;
     }
 
     // Keep layout helpers in sync after size changes
@@ -3675,6 +3689,17 @@ function getCursorPercents() {
     return { a: pctA, b: pctB };
 }
 
+function getScopeHorizontalDivs(drawW = null, drawH = null, { updateCache = false } = {}) {
+    const canvasEl = scopeCanvas;
+    const w = drawW ?? canvasEl?.clientWidth ?? canvasEl?.width ?? 0;
+    const h = drawH ?? canvasEl?.clientHeight ?? canvasEl?.height ?? 0;
+    if (!w || !h) return scopeHorizontalDivs || 10;
+    const gridCell = (h || 1) / 10;
+    const divs = Math.max(10, Math.round(w / gridCell));
+    if (updateCache) scopeHorizontalDivs = divs;
+    return divs;
+}
+
 function sampleChannelAt(arr, startIdx, pct) {
     const pos = (pct / 100) * HISTORY_SIZE;
     const idx = Math.floor(pos);
@@ -3689,8 +3714,9 @@ function sampleChannelAt(arr, startIdx, pct) {
 function buildCursorMetrics(scope) {
     if (!scope) return null;
     const { a: pctA, b: pctB } = getCursorPercents();
+    const horizDivs   = getScopeHorizontalDivs();
     const tDiv        = parseUnit(scope.props.TimeDiv || '1m');
-    const totalWindow = tDiv * 10;
+    const totalWindow = tDiv * horizDivs;
     const tA          = (pctA / 100) * totalWindow;
     const tB          = (pctB / 100) * totalWindow;
     const deltaT      = tB - tA;
@@ -3744,11 +3770,13 @@ function computeScopeLayout(mode = scopeDisplayMode || getDefaultScopeMode(), {
     windowSize = scopeWindowSize
 } = {}) {
     const containerW = shellRect?.width ?? Math.max(0, viewport?.width || 0);
-    const containerH = shellRect?.height ?? computeWorkspaceHeight({
+    const containerHRaw = shellRect?.height ?? computeWorkspaceHeight({
         viewportH: viewport?.height || 0,
         headerH,
         simBarH
     });
+    const maxWindowH = Math.max(0, (viewport?.height || 0) - headerH - 8);
+    const containerH = Math.max(0, Math.min(containerHRaw, maxWindowH || containerHRaw));
 
     if (mode === 'fullscreen') {
         return {
