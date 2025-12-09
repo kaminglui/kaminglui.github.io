@@ -3933,7 +3933,7 @@ function setScopeOverlayLayout(mode = scopeDisplayMode || getDefaultScopeMode())
         overlay.style.right = 'auto';
         overlay.style.bottom = 'auto';
         overlay.style.width = `${layout.width}px`;
-        overlay.style.height = 'auto';
+        overlay.style.height = `${layout.height}px`;
         overlay.style.maxHeight = `${layout.height}px`;
     } else {
         overlay.style.left = '0px';
@@ -4239,7 +4239,11 @@ function updateToolsToggleLabel(forceState = null) {
         ? root.classList.contains('sidebar-open')
         : !(sidebar && sidebar.classList.contains('collapsed'));
     const isOpen = (forceState != null) ? forceState : computedOpen;
-    btn.textContent = isOpen ? 'Hide Tools' : 'Show Tools';
+    const textSpan = btn.querySelector('.btn-text');
+    const labelText = isOpen ? 'Hide Tools' : 'Show Tools';
+    if (textSpan) textSpan.textContent = labelText;
+    else btn.textContent = labelText;
+    btn.setAttribute('aria-label', labelText);
     btn.setAttribute('aria-pressed', isOpen ? 'true' : 'false');
 }
 
