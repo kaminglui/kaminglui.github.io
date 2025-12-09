@@ -119,6 +119,30 @@ function createWiringApi({
     return out;
   }
 
+  function enforceConvexPath(pts = []) {
+    if (!Array.isArray(pts) || pts.length < 3) return Array.isArray(pts) ? pts.slice() : [];
+    const out = [pts[0]];
+    let lastDir = null;
+    for (let i = 1; i < pts.length; i++) {
+      const prev = out[out.length - 1];
+      const curr = pts[i];
+      if (!prev || !curr) continue;
+      if (prev.x === curr.x && prev.y === curr.y) continue;
+      const dir = { x: Math.sign(curr.x - prev.x), y: Math.sign(curr.y - prev.y) };
+      const reverses = lastDir && ((dir.x && dir.x === -lastDir.x) || (dir.y && dir.y === -lastDir.y));
+      if (reverses && out.length >= 2) {
+        const prior = out[out.length - 2];
+        const merged = { x: curr.x, y: curr.y, userPlaced: !!(curr.userPlaced || prev.userPlaced) };
+        out[out.length - 1] = merged;
+        lastDir = { x: Math.sign(merged.x - prior.x), y: Math.sign(merged.y - prior.y) };
+        continue;
+      }
+      out.push(curr);
+      lastDir = dir;
+    }
+    return out;
+  }
+
   function ensureOrthogonalPath(points, preferredOrientation = null) {
     if (points.length < 2) return points.slice();
     const out = [points[0]];
@@ -426,7 +450,7 @@ function createWiringApi({
     });
 
     pts = mergeCollinear(pts);
-    return pts;
+    return enforceConvexPath(pts);
   }
 
   function buildWireVertices(fromPin, midPoints, toPin, opts = {}) {
@@ -847,6 +871,7 @@ function createWiringApi({
 
   return {
     mergeCollinear,
+    enforceConvexPath,
     ensureOrthogonalPath,
     firstSegmentOrientation,
     lastSegmentOrientation,
