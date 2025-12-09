@@ -174,7 +174,7 @@ let activeScopeComponent = null;
 let dragListenersAttached = false;
 let scopeDisplayMode = null; // 'window' | 'fullscreen'
 let scopeWindowPos = { ...DEFAULT_SCOPE_WINDOW_POS };
-let scopeWindowSize = { width: 720, height: 440 };
+let scopeWindowSize = { width: 640, height: 380 };
 let scopeHorizontalDivs = 10;
 let scopeDragStart = null;
 let scopeDragBounds = null;
@@ -3871,8 +3871,8 @@ function computeScopeLayout(mode = scopeDisplayMode || getDefaultScopeMode(), {
         };
     }
 
-    const baseW = windowSize?.width || 720;
-    const baseH = windowSize?.height || 440;
+    const baseW = windowSize?.width || 640;
+    const baseH = windowSize?.height || 380;
     const safeWidth = Math.max(0, Math.min(baseW, containerW || baseW));
     const safeHeight = Math.max(0, Math.min(baseH, containerH || baseH));
     const maxLeft = Math.max(0, containerW - safeWidth);
