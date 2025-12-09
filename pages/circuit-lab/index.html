@@ -289,9 +289,7 @@
             right: auto;
             bottom: auto;
             max-height: calc(100vh - 12px);
-            overflow-y: auto;
-            overflow-x: hidden;
-            -webkit-overflow-scrolling: touch;
+            overflow: hidden;
         }
 
         #scope-overlay.fullscreen {
@@ -301,6 +299,7 @@
             border-radius: 0; border: none;
             z-index: 2000; /* On top of sidebar */
             overflow: hidden;
+            max-height: none;
         }
 
         .scope-topbar {
@@ -320,6 +319,11 @@
             border-radius: 4px;
             margin: 0 16px;
             overflow: hidden;
+        }
+        #scope-overlay.fullscreen #scope-container {
+            flex: 1 1 auto;
+            min-height: 0;
+            margin: 0;
         }
         #scope-overlay:not(.hidden) #scope-container {
             min-height: 260px;
@@ -396,6 +400,11 @@
             #scope-overlay {
                 max-height: calc(100vh - 12px);
                 overflow-y: auto;
+                -webkit-overflow-scrolling: touch;
+            }
+            #scope-overlay.scope-window {
+                overflow-y: auto;
+                overflow-x: hidden;
             }
             #scope-control-bar {
                 flex-direction: column;

@@ -177,6 +177,7 @@ let scopeWindowPos = { ...DEFAULT_SCOPE_WINDOW_POS };
 let scopeWindowSize = { width: 720, height: 440 };
 let scopeHorizontalDivs = 10;
 let scopeDragStart = null;
+let scopeDragBounds = null;
 let isDraggingScope = false;
 let autosaveTimer = null;
 let isRestoringState = false;
@@ -190,6 +191,7 @@ let touchSelectionTimer = null;
 let touchDeleteTimer = null;
 let touchHoldStart = null;
 let touchMovedSinceDown = false;
+let pinchState = null;
 const cursorVisibility = { 1: true, 2: true };
 
 // Canvas handles (set after DOM exists)
@@ -2985,6 +2987,63 @@ function canvasPoint(e) {
     return { x: p.x, y: p.y };
 }
 
+function touchDistance(e) {
+    if (!e?.touches || e.touches.length < 2) return 0;
+    const [a, b] = [e.touches[0], e.touches[1]];
+    return Math.hypot(b.clientX - a.clientX, b.clientY - a.clientY);
+}
+
+function touchMidpoint(e) {
+    if (!e?.touches || e.touches.length < 2) return null;
+    const [a, b] = [e.touches[0], e.touches[1]];
+    return { clientX: (a.clientX + b.clientX) / 2, clientY: (a.clientY + b.clientY) / 2 };
+}
+
+function startPinch(e) {
+    if (!isMobileViewport() || !canvas || !e?.touches || e.touches.length < 2) return false;
+    const dist = touchDistance(e);
+    const mid = touchMidpoint(e);
+    if (!dist || !mid) return false;
+    const anchorWorld = screenToWorld(mid.clientX, mid.clientY);
+    const rect = canvas.getBoundingClientRect();
+    pinchState = {
+        active: true,
+        startDist: dist,
+        startZoom: zoom,
+        anchorWorld,
+        rect
+    };
+    lastMouseWorld = anchorWorld;
+    return true;
+}
+
+function endPinch() {
+    pinchState = null;
+}
+
+function updatePinch(e) {
+    if (!pinchState?.active || !canvas || !e?.touches || e.touches.length < 2) {
+        endPinch();
+        return;
+    }
+    const dist = touchDistance(e);
+    const mid = touchMidpoint(e);
+    if (!dist || !mid) return;
+    const factor = dist / (pinchState.startDist || 1);
+    const targetZoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, pinchState.startZoom * factor));
+    const rect = pinchState.rect || canvas.getBoundingClientRect();
+    const scaleX = rect.width ? (canvas.width / rect.width) : 1;
+    const scaleY = rect.height ? (canvas.height / rect.height) : 1;
+
+    zoom = targetZoom;
+    // Keep the anchor world point under the pinch midpoint for intuitive pan + zoom.
+    viewOffsetX = ((mid.clientX - rect.left) * scaleX) / zoom - pinchState.anchorWorld.x;
+    viewOffsetY = ((mid.clientY - rect.top)  * scaleY) / zoom - pinchState.anchorWorld.y;
+    clampView();
+    lastMouseWorld = pinchState.anchorWorld;
+    markStateDirty();
+}
+
 // find a pin under mouse
 function findPinAt(m) {
     for (const c of components) {
@@ -3123,10 +3182,12 @@ function onDown(e) {
         return;
     }
     if (isTouch && touchCount >= 2) {
-        isPanning = true;
-        wireDragStart = m;
-        attachDragListeners();
-        return;
+        if (startPinch(e)) {
+            isPanning = false;
+            wireDragStart = null;
+            attachDragListeners();
+            return;
+        }
     }
 
     // right-click -> deselect / cancel
@@ -3389,6 +3450,15 @@ function onDown(e) {
 }
 
 function onMove(e) {
+    if (pinchState?.active && (!e?.touches || e.touches.length < 2)) {
+        endPinch();
+        return;
+    }
+    if (pinchState?.active && e?.touches && e.touches.length >= 2) {
+        if (e.cancelable !== false) e.preventDefault();
+        updatePinch(e);
+        return;
+    }
     if (e && e.touches && e.cancelable !== false) {
         e.preventDefault();
     }
@@ -3493,6 +3563,10 @@ function onMove(e) {
 }
 
 function onCanvasMove(e) {
+    if (pinchState?.active) {
+        updatePinch(e);
+        return;
+    }
     if (draggingComponent || draggingWire || isPanning) return;
     onMove(e);
 }
@@ -3500,6 +3574,14 @@ function onCanvasMove(e) {
 function onUp(e) {
     const m = canvasPoint(e);
     let handled = false;
+
+    if (pinchState?.active) {
+        endPinch();
+        isPanning = false;
+        wireDragStart = null;
+        detachDragListeners();
+        return;
+    }
 
     clearTouchTimers();
     touchHoldStart = null;
@@ -3779,10 +3861,11 @@ function computeScopeLayout(mode = scopeDisplayMode || getDefaultScopeMode(), {
     const containerH = Math.max(0, Math.min(containerHRaw, maxWindowH || containerHRaw));
 
     if (mode === 'fullscreen') {
+        const fullH = shellRect?.height ?? containerHRaw;
         return {
             windowed: false,
             width: containerW,
-            height: containerH,
+            height: fullH || containerH,
             left: 0,
             top: 0
         };
@@ -3839,12 +3922,23 @@ function setScopeOverlayLayout(mode = scopeDisplayMode || getDefaultScopeMode())
 
     overlay.classList.toggle('scope-window', layout.windowed);
     overlay.classList.toggle('fullscreen', !layout.windowed);
-    overlay.style.left = `${layout.left}px`;
-    overlay.style.top = `${layout.top}px`;
-    overlay.style.right = layout.windowed ? 'auto' : '0px';
-    overlay.style.bottom = layout.windowed ? 'auto' : '0px';
-    overlay.style.width = `${layout.width}px`;
-    overlay.style.height = `${layout.height}px`;
+    if (layout.windowed) {
+        overlay.style.left = `${layout.left}px`;
+        overlay.style.top = `${layout.top}px`;
+        overlay.style.right = 'auto';
+        overlay.style.bottom = 'auto';
+        overlay.style.width = `${layout.width}px`;
+        overlay.style.height = `${layout.height}px`;
+        overlay.style.maxHeight = '';
+    } else {
+        overlay.style.left = '0px';
+        overlay.style.top = '0px';
+        overlay.style.right = '0px';
+        overlay.style.bottom = '0px';
+        overlay.style.width = '100%';
+        overlay.style.height = '100%';
+        overlay.style.maxHeight = 'none';
+    }
     updateScopeModeButton();
 }
 
@@ -3989,8 +4083,11 @@ function startScopeWindowDrag(e) {
     const { clientX, clientY } = getPointerXY(e);
     scopeDragStart = {
         pointer: { x: clientX, y: clientY },
-        pos: { left: rect.left - shellRect.left, top: rect.top - shellRect.top }
+        pos: { left: rect.left - shellRect.left, top: rect.top - shellRect.top },
+        size: { w: rect.width, h: rect.height },
+        bounds: { w: shellRect.width, h: shellRect.height }
     };
+    scopeDragBounds = { w: shellRect.width, h: shellRect.height };
     isDraggingScope = true;
     window.addEventListener('mousemove', dragScopeWindow);
     window.addEventListener('mouseup', stopScopeWindowDrag);
@@ -4003,21 +4100,20 @@ function dragScopeWindow(e) {
     if (!isDraggingScope || !scopeDragStart) return;
     if (e && e.touches && e.cancelable !== false) e.preventDefault();
     const overlay = document.getElementById('scope-overlay');
-    const shellRect = overlay?.parentElement?.getBoundingClientRect?.();
-    if (!overlay || !shellRect) return;
+    if (!overlay || !scopeDragStart.bounds) return;
 
-    const w = overlay.offsetWidth;
-    const h = overlay.offsetHeight;
-    const pad = 8;
+    const w = scopeDragStart.size?.w || overlay.offsetWidth;
+    const h = scopeDragStart.size?.h || overlay.offsetHeight;
+    const pad = 4;
     const { clientX, clientY } = getPointerXY(e);
     const dx = clientX - scopeDragStart.pointer.x;
     const dy = clientY - scopeDragStart.pointer.y;
     let x = scopeDragStart.pos.left + dx;
     let y = scopeDragStart.pos.top + dy;
-    const maxX = Math.max(pad, shellRect.width - w - pad);
-    const maxY = Math.max(pad, shellRect.height - h - pad);
-    x = Math.min(Math.max(x, pad), maxX);
-    y = Math.min(Math.max(y, pad), maxY);
+    const maxX = Math.max(pad, (scopeDragBounds?.w || 0) - w - pad);
+    const maxY = Math.max(pad, (scopeDragBounds?.h || 0) - h - pad);
+    x = Math.min(Math.max(x, -pad), maxX);
+    y = Math.min(Math.max(y, -pad), maxY);
 
     scopeWindowPos = { x, y };
     overlay.style.left   = `${x}px`;
@@ -4029,6 +4125,7 @@ function dragScopeWindow(e) {
 function stopScopeWindowDrag() {
     isDraggingScope = false;
     scopeDragStart = null;
+    scopeDragBounds = null;
     window.removeEventListener('mousemove', dragScopeWindow);
     window.removeEventListener('mouseup', stopScopeWindowDrag);
     window.removeEventListener('touchmove', dragScopeWindow);
