@@ -3892,9 +3892,10 @@ function computeScopeLayout(mode = scopeDisplayMode || getDefaultScopeMode(), {
 function setScopeOverlayLayout(mode = scopeDisplayMode || getDefaultScopeMode()) {
     const overlay = document.getElementById('scope-overlay');
     if (!overlay) return;
+    const prevMode = scopeDisplayMode || getDefaultScopeMode();
     scopeDisplayMode = (mode === 'window') ? 'window' : 'fullscreen';
 
-    if (scopeDisplayMode === 'fullscreen') {
+    if (scopeDisplayMode === 'fullscreen' && prevMode !== 'fullscreen') {
         scopeWindowSize = {
             width: overlay.offsetWidth || scopeWindowSize.width,
             height: overlay.offsetHeight || scopeWindowSize.height
@@ -3942,6 +3943,15 @@ function setScopeOverlayLayout(mode = scopeDisplayMode || getDefaultScopeMode())
     updateScopeModeButton();
     // Ensure canvas sizes update after layout writes
     requestAnimationFrame(() => {
+        if (scopeCanvas && scopeCanvas.parentElement) {
+            const dpr = window.devicePixelRatio || 1;
+            const sw = scopeCanvas.parentElement.clientWidth;
+            const sh = scopeCanvas.parentElement.clientHeight;
+            scopeCanvas.width = Math.max(1, Math.floor(sw * dpr));
+            scopeCanvas.height = Math.max(1, Math.floor(sh * dpr));
+            scopeCanvas.style.width = `${sw}px`;
+            scopeCanvas.style.height = `${sh}px`;
+        }
         resize();
         if (scopeMode) drawScope();
     });
