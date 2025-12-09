@@ -1,6 +1,7 @@
 // Restored main interaction script after asset cleanup.
 import { defaultContent } from './content.js';
 import { setupNav } from './nav.js';
+import { initThemeControls } from './layout/theme.js';
 
 const STORAGE_KEY = 'kaminglui-site-content-v1';
 const EDIT_VISIBILITY_KEY = 'kaminglui-site-edit-visible';
@@ -110,7 +111,6 @@ function formatTitleCase(text) {
 }
 
 const body = document.body;
-let themeToggle = null;
 const yearElement = document.querySelector('#year');
 let editToggle = null;
 const editToolbar = document.querySelector('.edit-toolbar');
@@ -228,18 +228,6 @@ function persistContent() {
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(content));
   } catch (error) {
     console.warn('Unable to persist content to localStorage.', error);
-  }
-}
-
-function setTheme(isDark) {
-  body.classList.toggle('theme-dark', isDark);
-  body.classList.toggle('theme-light', !isDark);
-  const toggle = themeToggle ?? document.querySelector('.theme-toggle');
-  if (toggle) {
-    toggle.innerHTML = isDark
-      ? '<span aria-hidden="true">☀️</span>'
-      : '<span aria-hidden="true">🌙</span>';
-    themeToggle = toggle;
   }
 }
 
@@ -646,26 +634,7 @@ function renderAll() {
 }
 
 function setupTheme() {
-  themeToggle = document.querySelector('.theme-toggle');
-  const prefersDarkScheme = window.matchMedia('(prefers-color-scheme: dark)');
-  const storedTheme = window.localStorage.getItem('theme');
-
-  if (storedTheme === 'dark' || (!storedTheme && prefersDarkScheme.matches)) {
-    setTheme(true);
-  } else {
-    setTheme(false);
-  }
-
-  prefersDarkScheme.addEventListener('change', (event) => {
-    if (window.localStorage.getItem('theme')) return;
-    setTheme(event.matches);
-  });
-
-  themeToggle?.addEventListener('click', () => {
-    const isDark = !body.classList.contains('theme-dark');
-    setTheme(isDark);
-    window.localStorage.setItem('theme', isDark ? 'dark' : 'light');
-  });
+  initThemeControls();
 }
 
 function setupBackToTop() {
@@ -1367,7 +1336,6 @@ if (yearElement) {
 }
 
 setupNav();
-themeToggle = document.querySelector('.theme-toggle');
 editToggle = document.querySelector('.edit-toggle');
 setupTheme();
 setupBackToTop();

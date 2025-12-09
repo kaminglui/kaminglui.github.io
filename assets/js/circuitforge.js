@@ -21,6 +21,7 @@ import {
 } from './sim/utils/idGenerator.js';
 import { listTemplates, loadTemplate } from './circuit-lab/templateRegistry.js';
 import { solveCircuitWasm, updateCircuitState } from './sim/wasmInterface.js';
+import { createWiringApi } from './circuit-lab/wiring.js';
 
 /* === CONFIG === */
 // Grid + time-step config
@@ -927,16 +928,25 @@ function mergeCollinear(pts = []) {
     return out;
 }
 
-function ensureOrthogonalPath(points) {
+function ensureOrthogonalPath(points, preferredOrientation = null) {
     if (points.length < 2) return points.slice();
     const out = [points[0]];
     for (let i = 1; i < points.length; i++) {
         const prev = out[out.length - 1];
         const curr = points[i];
         if (prev.x !== curr.x && prev.y !== curr.y) {
-            const elbow = (Math.abs(curr.x - prev.x) >= Math.abs(curr.y - prev.y))
-                ? { x: curr.x, y: prev.y }
-                : { x: prev.x, y: curr.y };
+            const preferH = preferredOrientation === ROUTE_ORIENTATION.H_FIRST;
+            const preferV = preferredOrientation === ROUTE_ORIENTATION.V_FIRST;
+            let elbow;
+            if (preferH && !preferV) {
+                elbow = { x: curr.x, y: prev.y };
+            } else if (preferV && !preferH) {
+                elbow = { x: prev.x, y: curr.y };
+            } else {
+                const dx = Math.abs(curr.x - prev.x);
+                const dy = Math.abs(curr.y - prev.y);
+                elbow = (dx >= dy) ? { x: curr.x, y: prev.y } : { x: prev.x, y: curr.y };
+            }
             out.push(snapToBoardPoint(elbow.x, elbow.y));
         }
         out.push(curr);
@@ -949,10 +959,11 @@ function orthogonalizeWire(wire) {
     const start = wire.from.c.getPinPos(wire.from.p);
     const end = wire.to.c.getPinPos(wire.to.p);
     const mids = (wire.vertices || []).map(v => snapToBoardPoint(v.x, v.y));
-    const path = ensureOrthogonalPath([start, ...mids, end]);
+    const pref = wire.routePref || inferRoutePreference(start, mids, end);
+    const path = buildStableWirePath(start, mids, end, { routePref: pref });
     const verts = path.slice(1, Math.max(1, path.length - 1));
-    wire.vertices = mergeCollinear(verts);
-    tagWireRoutePreference(wire);
+    wire.vertices = verts;
+    wire.routePref = pref;
 }
 
 function getPinDirection(comp, pinIdx) {
@@ -976,12 +987,33 @@ const ROUTE_ORIENTATION = {
     V_FIRST: 'v-first'
 };
 
+function directionToOrientation(dir) {
+    if (!dir) return null;
+    if (Math.abs(dir.x) >= Math.abs(dir.y)) return ROUTE_ORIENTATION.H_FIRST;
+    if (Math.abs(dir.y) > Math.abs(dir.x)) return ROUTE_ORIENTATION.V_FIRST;
+    return null;
+}
+
 function firstSegmentOrientation(points = []) {
     if (!Array.isArray(points)) return null;
     for (let i = 1; i < points.length; i++) {
         const prev = points[i - 1];
         const curr = points[i];
         if (!prev || !curr) continue;
+        const dx = curr.x - prev.x;
+        const dy = curr.y - prev.y;
+        if (dx === 0 && dy === 0) continue;
+        return (Math.abs(dx) >= Math.abs(dy)) ? ROUTE_ORIENTATION.H_FIRST : ROUTE_ORIENTATION.V_FIRST;
+    }
+    return null;
+}
+
+function lastSegmentOrientation(points = []) {
+    if (!Array.isArray(points)) return null;
+    for (let i = points.length - 1; i > 0; i--) {
+        const curr = points[i];
+        const prev = points[i - 1];
+        if (!curr || !prev) continue;
         const dx = curr.x - prev.x;
         const dy = curr.y - prev.y;
         if (dx === 0 && dy === 0) continue;
@@ -1001,6 +1033,68 @@ function tagWireRoutePreference(wire) {
     const end = wire.to.c.getPinPos(wire.to.p);
     wire.routePref = inferRoutePreference(start, wire.vertices || [], end);
     return wire;
+}
+
+function buildTwoPointPath(start, end, orientationHint = null) {
+    if (start.x === end.x || start.y === end.y) return [start, end];
+    const preferH = orientationHint === ROUTE_ORIENTATION.H_FIRST;
+    const preferV = orientationHint === ROUTE_ORIENTATION.V_FIRST;
+    let elbow;
+    if (preferH && !preferV) {
+        elbow = { x: end.x, y: start.y };
+    } else if (preferV && !preferH) {
+        elbow = { x: start.x, y: end.y };
+    } else {
+        const dx = Math.abs(end.x - start.x);
+        const dy = Math.abs(end.y - start.y);
+        elbow = (dx >= dy) ? { x: end.x, y: start.y } : { x: start.x, y: end.y };
+    }
+    const snapElbow = snapToBoardPoint(elbow.x, elbow.y);
+    return [start, snapElbow, end];
+}
+
+function alignEndpoint(path = [], side = 'start', orientationHint = null) {
+    if (!Array.isArray(path) || path.length < 2) return path;
+    const anchorIdx = (side === 'end') ? path.length - 1 : 0;
+    const neighborIdx = (side === 'end') ? path.length - 2 : 1;
+    const anchor = path[anchorIdx];
+    const neighbor = { ...(path[neighborIdx] || {}) };
+    if (!anchor || neighborIdx < 0 || !isFinite(neighbor.x) || !isFinite(neighbor.y)) return path;
+    if (anchor.x === neighbor.x || anchor.y === neighbor.y) {
+        path[neighborIdx] = snapToBoardPoint(neighbor.x, neighbor.y);
+        return path;
+    }
+    const preferH = orientationHint === ROUTE_ORIENTATION.H_FIRST;
+    const preferV = orientationHint === ROUTE_ORIENTATION.V_FIRST;
+    if (preferH && !preferV) {
+        neighbor.y = anchor.y;
+    } else if (preferV && !preferH) {
+        neighbor.x = anchor.x;
+    } else {
+        const dx = Math.abs(neighbor.x - anchor.x);
+        const dy = Math.abs(neighbor.y - anchor.y);
+        if (dx >= dy) neighbor.y = anchor.y;
+        else neighbor.x = anchor.x;
+    }
+    path[neighborIdx] = snapToBoardPoint(neighbor.x, neighbor.y);
+    return path;
+}
+
+function buildStableWirePath(start, midPoints, end, { routePref = null, startOrientation = null, endOrientation = null } = {}) {
+    const snap = (p = {}) => snapToBoardPoint(p.x ?? 0, p.y ?? 0);
+    const s = snap(start);
+    const e = snap(end);
+    const mids = Array.isArray(midPoints) ? midPoints.map(p => snap(p)) : [];
+    const pref = routePref || inferRoutePreference(s, mids, e);
+    const path = ensureOrthogonalPath([s, ...mids, e], pref);
+    if (path.length === 2) {
+        return mergeCollinear(buildTwoPointPath(s, e, pref));
+    }
+    const orientedStart = startOrientation || pref;
+    const orientedEnd = endOrientation || pref;
+    alignEndpoint(path, 'start', orientedStart);
+    alignEndpoint(path, 'end', orientedEnd);
+    return mergeCollinear(path);
 }
 
 // Build an orthogonal path that honours user-provided midpoints in sequence and
@@ -1214,13 +1308,17 @@ function getWirePolyline(w) {
     const pEnd   = w.to.c.getPinPos(w.to.p);
     const dir    = getPinDirection(w.from.c, w.from.p);
     const endDir = getPinDirection(w.to.c, w.to.p);
-    return routeManhattan(
+    const startOrientation = directionToOrientation(dir);
+    const endOrientation = directionToOrientation(endDir);
+    return buildStableWirePath(
         pStart,
         w.vertices || [],
         pEnd,
-        dir,
-        endDir,
-        { preferredOrientation: w.routePref || null }
+        {
+            routePref: w.routePref || null,
+            startOrientation: startOrientation || w.routePref || null,
+            endOrientation: endOrientation || w.routePref || null
+        }
     );
 }
 
@@ -1864,9 +1962,111 @@ function rerouteWiresForComponent(c) {
             startDir,
             endDir
         });
-        w.vertices = updated;
-        orthogonalizeWire(w);
+        const path = buildStableWirePath(
+            startPos,
+            updated,
+            endPos,
+            {
+                routePref: w.routePref || inferRoutePreference(startPos, updated, endPos),
+                startOrientation: directionToOrientation(startDir),
+                endOrientation: directionToOrientation(endDir)
+            }
+        );
+        w.vertices = path.slice(1, Math.max(1, path.length - 1));
+        tagWireRoutePreference(w);
     });
+}
+
+function snapshotWireForDrag(wire, movingSet) {
+    const poly = getWirePolyline(wire);
+    const start = poly[0];
+    const end = poly[poly.length - 1];
+    return {
+        wire,
+        polyline: poly,
+        fromMoved: movingSet.has(wire.from.c),
+        toMoved: movingSet.has(wire.to.c),
+        routePref: wire.routePref || inferRoutePreference(start, poly.slice(1, Math.max(1, poly.length - 1)), end),
+        startOrientation: firstSegmentOrientation(poly),
+        endOrientation: lastSegmentOrientation(poly)
+    };
+}
+
+function captureWireSnapshots(movingComponents = []) {
+    const movingSet = new Set(movingComponents);
+    const snaps = [];
+    wires.forEach(w => {
+        if (!movingSet.has(w.from.c) && !movingSet.has(w.to.c)) return;
+        snaps.push(snapshotWireForDrag(w, movingSet));
+    });
+    return snaps;
+}
+
+function updateWireFromSnapshot(snapshot, deltaMap) {
+    if (!snapshot || !snapshot.wire) return;
+    const { wire } = snapshot;
+    const start = wire.from.c.getPinPos(wire.from.p);
+    const end = wire.to.c.getPinPos(wire.to.p);
+    const safeDelta = (comp) => {
+        const delta = deltaMap?.get(comp);
+        return delta ? delta : { dx: 0, dy: 0 };
+    };
+    const startDelta = safeDelta(wire.from.c);
+    const endDelta = safeDelta(wire.to.c);
+    const movedTogether = snapshot.fromMoved && snapshot.toMoved &&
+        startDelta.dx === endDelta.dx && startDelta.dy === endDelta.dy;
+
+    const mids = snapshot.polyline.slice(1, Math.max(1, snapshot.polyline.length - 1)).map(p => ({ ...p }));
+    const adjusted = mids.map((p, idx, arr) => {
+        let x = p.x;
+        let y = p.y;
+        if (movedTogether) {
+            x += startDelta.dx;
+            y += startDelta.dy;
+        } else {
+            if (snapshot.fromMoved && idx === 0) {
+                x += startDelta.dx;
+                y += startDelta.dy;
+            }
+            if (snapshot.toMoved && idx === arr.length - 1) {
+                x += endDelta.dx;
+                y += endDelta.dy;
+            }
+        }
+        return { x, y };
+    });
+
+    const path = buildStableWirePath(
+        start,
+        adjusted,
+        end,
+        {
+            routePref: snapshot.routePref,
+            startOrientation: snapshot.startOrientation,
+            endOrientation: snapshot.endOrientation
+        }
+    );
+    wire.vertices = path.slice(1, Math.max(1, path.length - 1));
+    wire.routePref = snapshot.routePref || wire.routePref || inferRoutePreference(start, wire.vertices, end);
+}
+
+function normalizeWireFromSnapshot(snapshot) {
+    if (!snapshot || !snapshot.wire) return;
+    const { wire } = snapshot;
+    const start = wire.from.c.getPinPos(wire.from.p);
+    const end = wire.to.c.getPinPos(wire.to.p);
+    const path = buildStableWirePath(
+        start,
+        wire.vertices || [],
+        end,
+        {
+            routePref: wire.routePref || snapshot.routePref,
+            startOrientation: snapshot.startOrientation,
+            endOrientation: snapshot.endOrientation
+        }
+    );
+    wire.vertices = path.slice(1, Math.max(1, path.length - 1));
+    wire.routePref = wire.routePref || snapshot.routePref || inferRoutePreference(start, wire.vertices, end);
 }
 
 function pinConnected(comp, pinIdx) {
@@ -2829,6 +3029,42 @@ function autoConnectPins(component) {
     });
 }
 
+const wiringApi = createWiringApi({
+    GRID,
+    ROUTE_ORIENTATION,
+    WIRE_HIT_DISTANCE,
+    snapToBoardPoint,
+    getPinDirection,
+    getComponents: () => components,
+    setComponents: (next) => { components = next; },
+    getWires: () => wires,
+    setWires: (next) => { wires = next; },
+    Junction,
+    distToSegment
+});
+
+({
+    mergeCollinear,
+    ensureOrthogonalPath,
+    firstSegmentOrientation,
+    lastSegmentOrientation,
+    inferRoutePreference,
+    tagWireRoutePreference,
+    buildTwoPointPath,
+    alignEndpoint,
+    buildStableWirePath,
+    routeManhattan,
+    buildWireVertices,
+    adjustWireAnchors,
+    getWirePolyline,
+    splitWireAtPoint,
+    pickWireAt,
+    captureWireSnapshots,
+    updateWireFromSnapshot,
+    normalizeWireFromSnapshot,
+    rerouteWiresForComponent
+} = wiringApi);
+
 function onDown(e) {
     const isTouch = !!(e && e.touches && e.touches.length);
     const touchCount = isTouch ? (e.touches.length || e.changedTouches?.length || 0) : 0;
@@ -2980,7 +3216,9 @@ function onDown(e) {
             wire: wireHit,
             start: m,
             verts: (wireHit.vertices || []).map(v => ({ ...v })),
-            wasSelected: (selectedWire === wireHit)
+            wasSelected: (selectedWire === wireHit),
+            startOrientation: firstSegmentOrientation(getWirePolyline(wireHit)),
+            endOrientation: lastSegmentOrientation(getWirePolyline(wireHit))
         };
         wireDragStart = m;
         wireDragMoved = false;
@@ -3112,25 +3350,35 @@ function onMove(e) {
         const dy = m.y - pendingComponentDrag.start.y;
         if (Math.hypot(dx, dy) >= DRAG_DEADZONE) {
             draggingComponent = pendingComponentDrag;
+            const movingComponents = draggingComponent.objs.map(entry => entry.obj);
+            draggingComponent.wireSnapshots = captureWireSnapshots(movingComponents);
             pendingComponentDrag = null;
         }
     }
 
     if (draggingComponent) {
         let moved = false;
+        const deltas = new Map();
         draggingComponent.objs.forEach(entry => {
             const c = entry.obj;
             const nx = m.x - entry.offsetX;
             const ny = m.y - entry.offsetY;
             const snap = snapToBoardPoint(nx, ny);
             if (c.x !== snap.x || c.y !== snap.y) {
+                const prevX = c.x;
+                const prevY = c.y;
                 c.x = snap.x;
                 c.y = snap.y;
-                rerouteWiresForComponent(c);
+                deltas.set(c, { dx: snap.x - prevX, dy: snap.y - prevY });
                 moved = true;
             }
         });
         if (moved) {
+            if (!draggingComponent.wireSnapshots) {
+                const comps = draggingComponent.objs.map(entry => entry.obj);
+                draggingComponent.wireSnapshots = captureWireSnapshots(comps);
+            }
+            draggingComponent.wireSnapshots.forEach(snap => updateWireFromSnapshot(snap, deltas));
             markStateDirty();
         }
     }
@@ -3203,10 +3451,13 @@ function onUp(e) {
     }
 
     if (draggingComponent) {
-        draggingComponent.objs.forEach(entry => {
-            autoConnectPins(entry.obj);
-            rerouteWiresForComponent(entry.obj);
-        });
+        const movedComponents = draggingComponent.objs.map(entry => entry.obj);
+        movedComponents.forEach(autoConnectPins);
+        if (draggingComponent.wireSnapshots && draggingComponent.wireSnapshots.length) {
+            draggingComponent.wireSnapshots.forEach(normalizeWireFromSnapshot);
+        } else {
+            movedComponents.forEach(rerouteWiresForComponent);
+        }
         draggingComponent = null;
         pendingComponentDrag = null;
         cleanupJunctions();
@@ -3234,24 +3485,23 @@ function onUp(e) {
 
     if (draggingWire) {
         const w = draggingWire.wire;
-        orthogonalizeWire(w);
-        if (!wireDragMoved) {
-            if (draggingWire.wasSelected && !activeWire) {
-                const pts = getWirePolyline(w);
-                const dStart = Math.hypot(draggingWire.start.x - pts[0].x, draggingWire.start.y - pts[0].y);
-                const dEnd   = Math.hypot(draggingWire.start.x - pts[pts.length - 1].x, draggingWire.start.y - pts[pts.length - 1].y);
-                const fromPin = (dEnd < dStart) ? w.to : w.from;
-                activeWire = {
-                    fromPin,
-                    vertices: [],
-                    currentPoint: snapToBoardPoint(draggingWire.start.x, draggingWire.start.y)
-                };
-                selectedWire = null;
-                setSelectedComponent(null);
-            } else {
-                selectedWire = w;
-                setSelectedComponent(null);
+        const start = w.from.c.getPinPos(w.from.p);
+        const end = w.to.c.getPinPos(w.to.p);
+        const path = buildStableWirePath(
+            start,
+            w.vertices || [],
+            end,
+            {
+                routePref: w.routePref || inferRoutePreference(start, w.vertices || [], end),
+                startOrientation: draggingWire.startOrientation || w.routePref || null,
+                endOrientation: draggingWire.endOrientation || w.routePref || null
             }
+        );
+        w.vertices = path.slice(1, Math.max(1, path.length - 1));
+        tagWireRoutePreference(w);
+        if (!wireDragMoved) {
+            selectedWire = w;
+            setSelectedComponent(null);
             updateProps();
         }
         draggingWire  = null;
@@ -3330,7 +3580,7 @@ function onKey(e) {
 let activeCursor = 0;
 
 function getDefaultScopeMode() {
-    return (viewMode === 'schematic') ? 'window' : 'fullscreen';
+    return 'window';
 }
 
 function updateScopeModeButton() {
@@ -3458,11 +3708,13 @@ function openScope(targetScope = null) {
     if (!scopeCtx && scopeCanvas) scopeCtx = scopeCanvas.getContext('2d');
 
     scopeMode = true;
-    setScopeOverlayLayout(scopeDisplayMode || getDefaultScopeMode());
+    scopeDisplayMode = getDefaultScopeMode();
+    setScopeOverlayLayout(scopeDisplayMode);
     const overlay = document.getElementById('scope-overlay');
     if (overlay) overlay.classList.remove('hidden');
     syncCursorVisibilityFromDom();
     resize();
+    bindScopeDragHandle();
     attachScopeControlHandlers();
     syncScopeControls();
     drawScope();
@@ -3552,6 +3804,16 @@ function updateCursors() {
         const legacyDv = document.getElementById(`scope-dv${idx + 1}`);
         if (legacyDv) legacyDv.innerText = formatSignedUnit(row.vb - row.va, 'V');
     });
+}
+
+function bindScopeDragHandle() {
+    const bar = document.querySelector('.scope-topbar');
+    if (!bar || bar._dragHooked) return;
+    const startDrag = (e) => startScopeWindowDrag(e);
+    bar.addEventListener('mousedown', startDrag);
+    bar.addEventListener('touchstart', startDrag, { passive: false });
+    bar._dragHooked = true;
+    bar.style.cursor = 'grab';
 }
 
 

@@ -77,7 +77,7 @@
             overflow: hidden;
             position: relative;
             /* Force height calculation */
-            height: calc(100vh - var(--simbar-h));
+            height: calc(100vh - var(--header-h, 0px) - var(--simbar-h));
         }
 
         /* --- SIDEBAR --- */
@@ -422,8 +422,7 @@
 
             <div id="scope-overlay" class="hidden">
                 <div class="scope-topbar flex justify-between items-center mb-4 px-4 pt-4 flex-wrap gap-3 text-white">
-                    <h2 class="text-2xl font-bold text-yellow-400 font-mono scope-drag-handle"
-                        onmousedown="startScopeWindowDrag(event)" ontouchstart="startScopeWindowDrag(event)">
+                    <h2 class="text-2xl font-bold text-yellow-400 font-mono scope-drag-handle">
                         <i class="fas fa-wave-square"></i>
                         OSCILLOSCOPE <span class="text-gray-400 text-sm">Dual Channel X-Y</span>
                     </h2>
@@ -666,59 +665,16 @@
         });
         window.addEventListener('resize', closeMenus);
     </script>
-    <script>
-        const THEME_KEY = 'circuitforge-theme';
-        let themeToggle = null;
+    <script type="module">
+        import { initThemeControls } from '../../assets/js/layout/theme.js';
 
-        function updateThemeToggle(theme) {
-            if (!themeToggle) return;
-            themeToggle.setAttribute('aria-pressed', theme === 'dark' ? 'true' : 'false');
-            themeToggle.innerHTML = theme === 'dark'
-                ? '<span aria-hidden="true">🌙</span>'
-                : '<span aria-hidden="true">☀️</span>';
-        }
+        const refreshCircuitTheme = () => {
+            if (typeof updateBoardThemeColors === 'function') updateBoardThemeColors();
+            if (typeof draw === 'function') draw();
+            if (typeof renderToolIcons === 'function') renderToolIcons();
+        };
 
-        function applyTheme(theme) {
-            document.body.classList.toggle('theme-dark', theme === 'dark');
-            document.body.classList.toggle('theme-light', theme === 'light');
-            document.documentElement.classList.toggle('dark', theme === 'dark');
-            localStorage.setItem(THEME_KEY, theme);
-            localStorage.setItem('theme', theme);
-            updateThemeToggle(theme);
-
-            if (typeof updateBoardThemeColors === 'function') {
-                updateBoardThemeColors();
-            }
-            if (typeof draw === 'function') {
-                draw();
-            }
-            if (typeof renderToolIcons === 'function') {
-                renderToolIcons();
-            }
-        }
-
-        function wireThemeToggle() {
-            themeToggle = document.querySelector('#site-header .theme-toggle') || document.querySelector('.theme-toggle');
-            if (!themeToggle) return;
-            themeToggle.addEventListener('click', () => {
-                const currentTheme = document.body.classList.contains('theme-dark') ? 'dark' : 'light';
-                const nextTheme = currentTheme === 'dark' ? 'light' : 'dark';
-                applyTheme(nextTheme);
-                setTimeout(() => {
-                    if (window.circuitForgeApi) window.circuitForgeApi.renderToolIcons();
-                }, 50);
-            });
-            updateThemeToggle(document.body.classList.contains('theme-dark') ? 'dark' : 'light');
-        }
-
-        const savedTheme = localStorage.getItem(THEME_KEY) ?? localStorage.getItem('theme');
-        applyTheme(savedTheme === 'light' ? 'light' : 'dark');
-
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', wireThemeToggle, { once: true });
-        } else {
-            wireThemeToggle();
-        }
+        initThemeControls({ onChange: refreshCircuitTheme });
     </script>
 </body>
 </html>

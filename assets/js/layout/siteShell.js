@@ -1,5 +1,6 @@
 import { renderSiteHeader as buildHeader, computeRootPrefix } from '../site-header.js';
 import { renderSiteFooter as buildFooter, updateFooterYear } from '../site-footer.js';
+import { initThemeControls } from './theme.js';
 
 function setHeaderVars(header) {
   if (!header || !header.getBoundingClientRect) return;
@@ -95,6 +96,7 @@ function initSiteShell(pageId = 'home', opts = {}) {
     showEditToggle: opts.showEditToggle,
     useLocalAnchors: opts.useLocalAnchors
   });
+  initThemeControls(opts.themeOptions || {});
   if (resolvedId !== 'circuit-lab') {
     renderSiteFooter({ pageId: resolvedId, rootPrefix });
   }
