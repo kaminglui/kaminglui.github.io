@@ -2017,21 +2017,25 @@ function updateWireFromSnapshot(snapshot, deltaMap) {
         startDelta.dx === endDelta.dx && startDelta.dy === endDelta.dy;
 
     const mids = snapshot.polyline.slice(1, Math.max(1, snapshot.polyline.length - 1)).map(p => ({ ...p }));
+
+    if (movedTogether) {
+        // Preserve the exact shape when both endpoints move as a group; just translate the midpoints.
+        const shifted = mids.map(p => snapToBoardPoint(p.x + startDelta.dx, p.y + startDelta.dy));
+        wire.vertices = mergeCollinear(shifted);
+        wire.routePref = snapshot.routePref || wire.routePref || inferRoutePreference(start, wire.vertices, end);
+        return;
+    }
+
     const adjusted = mids.map((p, idx, arr) => {
         let x = p.x;
         let y = p.y;
-        if (movedTogether) {
+        if (snapshot.fromMoved && idx === 0) {
             x += startDelta.dx;
             y += startDelta.dy;
-        } else {
-            if (snapshot.fromMoved && idx === 0) {
-                x += startDelta.dx;
-                y += startDelta.dy;
-            }
-            if (snapshot.toMoved && idx === arr.length - 1) {
-                x += endDelta.dx;
-                y += endDelta.dy;
-            }
+        }
+        if (snapshot.toMoved && idx === arr.length - 1) {
+            x += endDelta.dx;
+            y += endDelta.dy;
         }
         return { x, y };
     });
