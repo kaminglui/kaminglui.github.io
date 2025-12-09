@@ -52,7 +52,7 @@ const LOCAL_STORAGE_KEY     = 'circuitforge-save';
 const AUTOSAVE_DELAY_MS     = 450;
 const ZOOM_IN_STEP          = 1.1;
 const ZOOM_OUT_STEP         = 0.9;
-const DEFAULT_SCOPE_WINDOW_POS = { x: 8, y: 8 };
+const DEFAULT_SCOPE_WINDOW_POS = { x: 12, y: 0 };
 const EDITABLE_TAGS         = new Set(['INPUT', 'SELECT', 'TEXTAREA']);
 const LABEL_FONT_SMALL      = '8px monospace';
 const LABEL_FONT_MEDIUM     = '10px monospace';
@@ -1853,6 +1853,9 @@ function ensureSidebarExpanded() {
     const root = document.getElementById('circuit-lab-root');
     if (!sidebar) return;
     if (isMobileViewport()) {
+        if (root && root.classList.contains('sidebar-open')) {
+            root.classList.remove('sidebar-open');
+        }
         sidebar.classList.remove('collapsed');
         document.body.classList.remove('sidebar-collapsed');
         const open = root?.classList.contains('sidebar-open') || false;
@@ -3936,8 +3939,8 @@ function setScopeOverlayLayout(mode = scopeDisplayMode || getDefaultScopeMode())
         overlay.style.top = '0px';
         overlay.style.right = '0px';
         overlay.style.bottom = '0px';
-        overlay.style.width = '100%';
-        overlay.style.height = '100%';
+        overlay.style.width = `${layout.width}px`;
+        overlay.style.height = `${layout.height}px`;
         overlay.style.maxHeight = 'none';
     }
     updateScopeModeButton();
@@ -4098,13 +4101,18 @@ function startScopeWindowDrag(e) {
     if (scopeDisplayMode !== 'window') return;
     if (e.target && (e.target.tagName === 'BUTTON' || e.target.closest('button'))) return;
     const overlay = document.getElementById('scope-overlay');
-    const shellRect = overlay?.parentElement?.getBoundingClientRect?.();
-    if (!overlay || !shellRect) return;
+    const shell = overlay?.parentElement;
+    const shellRect = shell?.getBoundingClientRect?.();
+    if (!overlay || !shell || !shellRect) return;
     const rect = overlay.getBoundingClientRect();
     const { clientX, clientY } = getPointerXY(e);
+    const parsedLeft = parseFloat(overlay.style.left);
+    const parsedTop = parseFloat(overlay.style.top);
+    const left = Number.isFinite(parsedLeft) ? parsedLeft : (rect.left - shellRect.left);
+    const top = Number.isFinite(parsedTop) ? parsedTop : (rect.top - shellRect.top);
     scopeDragStart = {
         pointer: { x: clientX, y: clientY },
-        pos: { left: rect.left - shellRect.left, top: rect.top - shellRect.top },
+        pos: { left, top },
         size: { w: rect.width, h: rect.height },
         bounds: { w: shellRect.width, h: shellRect.height }
     };
@@ -4121,20 +4129,20 @@ function dragScopeWindow(e) {
     if (!isDraggingScope || !scopeDragStart) return;
     if (e && e.touches && e.cancelable !== false) e.preventDefault();
     const overlay = document.getElementById('scope-overlay');
-    if (!overlay || !scopeDragStart.bounds) return;
+    const shell = overlay?.parentElement;
+    if (!overlay || !shell || !scopeDragStart.bounds) return;
 
-    const w = scopeDragStart.size?.w || overlay.offsetWidth;
-    const h = scopeDragStart.size?.h || overlay.offsetHeight;
-    const pad = 4;
+    const w = scopeDragStart.size?.w || overlay.offsetWidth || 0;
+    const h = scopeDragStart.size?.h || overlay.offsetHeight || 0;
     const { clientX, clientY } = getPointerXY(e);
     const dx = clientX - scopeDragStart.pointer.x;
     const dy = clientY - scopeDragStart.pointer.y;
     let x = scopeDragStart.pos.left + dx;
     let y = scopeDragStart.pos.top + dy;
-    const maxX = Math.max(pad, (scopeDragBounds?.w || 0) - w - pad);
-    const maxY = Math.max(pad, (scopeDragBounds?.h || 0) - h - pad);
-    x = Math.min(Math.max(x, -pad), maxX);
-    y = Math.min(Math.max(y, -pad), maxY);
+    const maxX = Math.max(0, (scopeDragBounds?.w || shell.clientWidth || 0) - w);
+    const maxY = Math.max(0, (scopeDragBounds?.h || shell.clientHeight || 0) - h);
+    x = Math.min(Math.max(x, 0), maxX);
+    y = Math.min(Math.max(y, 0), maxY);
 
     scopeWindowPos = { x, y };
     overlay.style.left   = `${x}px`;
@@ -4209,8 +4217,9 @@ function updatePlayPauseButton() {
     if (!btn) return;
     const icon = isPaused ? 'fa-play' : 'fa-pause';
     const label = isPaused ? 'Play' : 'Pause';
-    btn.innerHTML = `<i class="fas ${icon}"></i><span class="font-semibold text-sm">${label}</span>`;
+    btn.innerHTML = `<i class="fas ${icon}"></i><span class="font-semibold text-sm btn-text">${label}</span><span class="sr-only">${label}</span>`;
     btn.setAttribute('aria-pressed', (!isPaused).toString());
+    btn.setAttribute('aria-label', label);
     btn.title = label;
 }
 
@@ -4356,7 +4365,7 @@ function reportInitError(message) {
     const statusEl  = document.getElementById('sim-status');
     if (simTimeEl) simTimeEl.innerText = formatUnit(time, 's');
     if (statusEl)  statusEl.innerText  = simError ? `ERROR: ${simError}`
-                                                  : (isPaused ? 'PAUSED' : 'RUNNING');
+                                                  : (isPaused ? 'PAUSED' : 'RUN');
 
     requestAnimationFrame(loop);
   }

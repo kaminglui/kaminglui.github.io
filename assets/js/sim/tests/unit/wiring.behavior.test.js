@@ -81,7 +81,9 @@ describe('wiring drag stability', () => {
     api.tagWireRoutePreference(ctx.wires[0]);
 
     const snap = api.captureWireSnapshots([a, b])[0];
+    const basePolyline = snap.polyline;
     const baseMids = snap.polyline.slice(1, snap.polyline.length - 1);
+    const baseRoutePref = ctx.wires[0].routePref;
 
     const dx = 40;
     const dy = 20;
@@ -99,6 +101,13 @@ describe('wiring drag stability', () => {
       expect(v.x - baseMids[idx].x).toBe(startDelta.dx);
       expect(v.y - baseMids[idx].y).toBe(startDelta.dy);
     });
+    const translatedPolyline = api.getWirePolyline(ctx.wires[0]);
+    expect(translatedPolyline).toHaveLength(basePolyline.length);
+    translatedPolyline.forEach((p, idx) => {
+      expect(p.x - basePolyline[idx].x).toBe(startDelta.dx);
+      expect(p.y - basePolyline[idx].y).toBe(startDelta.dy);
+    });
+    expect(ctx.wires[0].routePref).toBe(baseRoutePref);
   });
 
   it('keeps first segment orientation stable during a single-end drag', () => {
@@ -180,6 +189,11 @@ describe('junction insertion', () => {
       (w) => w.from.c === junction || w.to.c === junction
     );
     expect(junctionConnections.length).toBe(2);
+    const junctionPos = junction.getPinPos(0);
+    junctionConnections.forEach((w) => {
+      const poly = api.getWirePolyline(w);
+      expect(poly.some((p) => p.x === junctionPos.x && p.y === junctionPos.y)).toBe(true);
+    });
   });
 });
 
@@ -204,5 +218,23 @@ describe('overlap avoidance', () => {
     const poly = [a.getPinPos(0), ...verts, b.getPinPos(0)];
     expect(api.firstSegmentOrientation(poly)).toBe(ROUTE_ORIENTATION.V_FIRST);
     expect(verts.every((v) => v.y !== 0 || v.x === 0)).toBe(true);
+  });
+
+  it('nudges a new parallel wire off an occupied lane', () => {
+    const ctx = createApi();
+    const { api } = ctx;
+    const start = snapToBoardPoint(0, 0);
+    const end = snapToBoardPoint(100, 0);
+    const pathKey = `${Math.min(start.x, end.x)},${Math.min(start.y, end.y)}-${Math.max(start.x, end.x)},${Math.max(start.y, end.y)}`;
+    const occupancy = {
+      keys: new Set([pathKey]),
+      segments: [{ a: start, b: end }]
+    };
+
+    const routed = api.routeManhattan(start, [], end, null, null, { occupancy });
+    const direct = [start, end];
+    expect(routed).not.toEqual(direct);
+    expect(routed.length).toBeGreaterThan(2);
+    expect(routed.some((p) => p.y !== start.y)).toBe(true);
   });
 });

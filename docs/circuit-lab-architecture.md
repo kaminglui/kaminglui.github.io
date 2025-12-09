@@ -15,6 +15,12 @@
 - Add focused component tests under `assets/js/sim/tests/unit/` and multi-block/template circuits under `assets/js/sim/tests/integration/`.
 - Import helpers from `assets/js/sim/tests/testHarness.js`; template-driven tests should load JSON via `assets/js/circuit-lab/templateRegistry.js`.
 
+## Wiring and scope UI
+- Wiring helpers live in `assets/js/circuit-lab/wiring.js` and are injected into the UI with `createWiringApi` inside `circuitforge.js`. Snapshots power drag behaviour: both-end moves translate every vertex, while single-end moves only re-anchor the touched side and preserve user bends. Route preferences are cached per wire so the first leg stays stable, and occupancy maps steer new routes (with small offsets if two wires would otherwise sit on the same lane).
+- Junction insertion flows through `splitWireAtPoint`, replacing the original wire with two tagged segments so later drags keep their orthogonal legs. UI shift-clicks simply call this helper and start a new active wire from the created junction.
+- The oscilloscope overlay is sized by `computeScopeLayout`/`setScopeOverlayLayout` using the canvas shell, header height, and sim bar height. Window mode clamps the top/left inside the shell (defaulting to the top edge); fullscreen uses the shell bounds. Dragging records pointer deltas and applies a clamped translation; the scope canvas is resized after layout writes to keep the waveform aspect ratio accurate.
+- When adding UI-facing tests, prefer the Vitest suites under `assets/js/sim/tests/unit/` (e.g. `wiring.behavior.test.js` or `scope.layout.test.js`) so routing/layout assumptions are covered alongside the solver.
+
 ## Node and reference handling
 - Pins from every component are unioned using the wire list to form connectivity roots.
 - A reference node is required. It is detected from any `Ground` component or the negative/COM pin of a voltage source or function generator. If none is found the engine returns a clear error.
