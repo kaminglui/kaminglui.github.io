@@ -174,7 +174,7 @@ let activeScopeComponent = null;
 let dragListenersAttached = false;
 let scopeDisplayMode = null; // 'window' | 'fullscreen'
 let scopeWindowPos = { ...DEFAULT_SCOPE_WINDOW_POS };
-let scopeWindowSize = { width: 640, height: 380 };
+let scopeWindowSize = { width: 640, height: 420 };
 let scopeHorizontalDivs = 10;
 let scopeDragStart = null;
 let scopeDragBounds = null;
@@ -3872,7 +3872,7 @@ function computeScopeLayout(mode = scopeDisplayMode || getDefaultScopeMode(), {
     }
 
     const baseW = windowSize?.width || 640;
-    const baseH = windowSize?.height || 380;
+    const baseH = windowSize?.height || 420;
     const safeWidth = Math.max(0, Math.min(baseW, containerW || baseW));
     const safeHeight = Math.max(0, Math.min(baseH, containerH || baseH));
     const maxLeft = Math.max(0, containerW - safeWidth);
@@ -3929,8 +3929,8 @@ function setScopeOverlayLayout(mode = scopeDisplayMode || getDefaultScopeMode())
         overlay.style.right = 'auto';
         overlay.style.bottom = 'auto';
         overlay.style.width = `${layout.width}px`;
-        overlay.style.height = `${layout.height}px`;
-        overlay.style.maxHeight = '';
+        overlay.style.height = 'auto';
+        overlay.style.maxHeight = `${layout.height}px`;
     } else {
         overlay.style.left = '0px';
         overlay.style.top = '0px';
@@ -3943,6 +3943,12 @@ function setScopeOverlayLayout(mode = scopeDisplayMode || getDefaultScopeMode())
     updateScopeModeButton();
     // Ensure canvas sizes update after layout writes
     requestAnimationFrame(() => {
+        if (overlay && layout.windowed) {
+            const contentH = overlay.scrollHeight;
+            const boundedH = Math.min(layout.height, contentH);
+            overlay.style.height = `${boundedH}px`;
+            scopeWindowSize = { width: layout.width, height: boundedH };
+        }
         if (scopeCanvas && scopeCanvas.parentElement) {
             const dpr = window.devicePixelRatio || 1;
             const sw = scopeCanvas.parentElement.clientWidth;
