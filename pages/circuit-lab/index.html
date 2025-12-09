@@ -151,10 +151,21 @@
             border-top: 1px solid var(--border-subtle);
             display: flex;
             align-items: center;
-            justify-content: space-between;
+            justify-content: center;
+            gap: 12px;
+            position: relative;
             padding: 0 16px;
             z-index: 50;
             box-shadow: 0 -4px 20px rgba(0,0,0,0.1);
+        }
+        #sim-bar .sim-info {
+            position: absolute;
+            left: 16px;
+        }
+        #sim-bar .sim-actions {
+            display: flex;
+            align-items: center;
+            gap: 10px;
         }
 
         /* --- ROBUST DROPDOWNS --- */

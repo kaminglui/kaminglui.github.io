@@ -3191,6 +3191,21 @@ function onDown(e) {
 
     // 2) If clicking a wire
     if (wireHit) {
+        // Shift+click on a wire inserts a junction and starts a new wire from that point.
+        if (!activeWire && e.shiftKey) {
+            const junction = splitWireAtPoint(wireHit, m);
+            activeWire = {
+                fromPin: { c: junction, p: 0 },
+                vertices: [],
+                currentPoint: snapToBoardPoint(m.x, m.y)
+            };
+            selectedWire = null;
+            setSelectedComponent(null);
+            markStateDirty();
+            cleanupJunctions();
+            updateProps();
+            return;
+        }
         // connect active wire into this wire by creating a junction
         if (activeWire && !activeWire.toPin) {
             const junction = splitWireAtPoint(wireHit, m);
