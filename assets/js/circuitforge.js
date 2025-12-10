@@ -1687,8 +1687,17 @@ function resize() {
     // The CSS flexbox rules determine how big this shell is.
     const container = canvas.parentElement; 
     const rect = container?.getBoundingClientRect?.();
-    const w = container ? (container.clientWidth || rect?.width || 0) : 0;
-    const h = container ? (container.clientHeight || rect?.height || 0) : 0;
+    let w = container ? (container.clientWidth || rect?.width || 0) : 0;
+    let h = container ? (container.clientHeight || rect?.height || 0) : 0;
+
+    // Fallback: when overlays are visible some layouts report 0 height; derive from viewport instead.
+    if (!w || !h) {
+        const { width: vw, height: vh } = getViewportSize();
+        const headerH = document.querySelector('.site-header')?.getBoundingClientRect?.().height || 0;
+        const simBarH = document.getElementById('sim-bar')?.getBoundingClientRect?.().height || 0;
+        w = w || vw || canvasCssWidth || 0;
+        h = h || computeWorkspaceHeight({ viewportH: vh, headerH, simBarH }) || canvasCssHeight || 0;
+    }
 
     // 2. Update Canvas Memory (Resolution)
     // Use devicePixelRatio for sharp text on Retinas
