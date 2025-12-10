@@ -53,6 +53,7 @@ const AUTOSAVE_DELAY_MS     = 450;
 const ZOOM_IN_STEP          = 1.1;
 const ZOOM_OUT_STEP         = 0.9;
 const DEFAULT_SCOPE_WINDOW_POS = { x: 12, y: 0 };
+const SCOPE_WINDOW_MODE_ENABLED = false; // Disable windowed scope view without removing code paths
 const EDITABLE_TAGS         = new Set(['INPUT', 'SELECT', 'TEXTAREA']);
 const LABEL_FONT_SMALL      = '8px monospace';
 const LABEL_FONT_MEDIUM     = '10px monospace';
@@ -3763,7 +3764,7 @@ function onKey(e) {
 let activeCursor = 0;
 
 function getDefaultScopeMode() {
-    return 'window';
+    return SCOPE_WINDOW_MODE_ENABLED ? 'window' : 'fullscreen';
 }
 
 function updateScopeModeButton() {
@@ -3771,6 +3772,28 @@ function updateScopeModeButton() {
     if (!btn) return;
     const label = btn.querySelector('span');
     const icon  = btn.querySelector('i');
+    if (!SCOPE_WINDOW_MODE_ENABLED) {
+        btn.classList.add('hidden');
+        btn.setAttribute('hidden', 'true');
+        btn.setAttribute('aria-hidden', 'true');
+        btn.setAttribute('aria-disabled', 'true');
+        btn.setAttribute('tabindex', '-1');
+        btn.disabled = true;
+        if (label) label.innerText = 'Full Screen';
+        if (icon)  icon.className = 'fas fa-expand';
+        return;
+    }
+
+    btn.classList.remove('hidden');
+    btn.removeAttribute('hidden');
+    btn.removeAttribute('aria-hidden');
+    btn.removeAttribute('aria-disabled');
+    btn.removeAttribute('tabindex');
+    btn.disabled = false;
+    btn.title = '';
+    btn.style.opacity = '';
+    btn.style.cursor = '';
+
     const windowed = scopeDisplayMode === 'window';
     if (label) label.innerText = windowed ? 'Full Screen' : 'Window';
     if (icon)  icon.className = windowed ? 'fas fa-expand' : 'fas fa-clone';
@@ -3913,8 +3936,9 @@ function computeScopeLayout(mode = scopeDisplayMode || getDefaultScopeMode(), {
 function setScopeOverlayLayout(mode = scopeDisplayMode || getDefaultScopeMode()) {
     const overlay = document.getElementById('scope-overlay');
     if (!overlay) return;
-    const prevMode = scopeDisplayMode || getDefaultScopeMode();
-    scopeDisplayMode = (mode === 'window') ? 'window' : 'fullscreen';
+    const prevMode = SCOPE_WINDOW_MODE_ENABLED ? (scopeDisplayMode || getDefaultScopeMode()) : 'fullscreen';
+    const targetMode = (mode === 'window') ? 'window' : 'fullscreen';
+    scopeDisplayMode = SCOPE_WINDOW_MODE_ENABLED ? targetMode : 'fullscreen';
 
     if (scopeDisplayMode === 'fullscreen' && prevMode !== 'fullscreen') {
         scopeWindowSize = {
@@ -3987,6 +4011,13 @@ function setScopeOverlayLayout(mode = scopeDisplayMode || getDefaultScopeMode())
 }
 
 function toggleScopeDisplayMode() {
+    if (!SCOPE_WINDOW_MODE_ENABLED) {
+        setScopeOverlayLayout('fullscreen');
+        resize();
+        if (scopeMode) drawScope();
+        return;
+    }
+
     const next = (scopeDisplayMode === 'window') ? 'fullscreen' : 'window';
     setScopeOverlayLayout(next);
     resize();
@@ -4233,14 +4264,21 @@ function attachScopeControlHandlers() {
 /* ---------- VIEW / SIM CONTROL ---------- */
 
 function updatePlayPauseButton() {
-    const btn = document.getElementById('play-pause-btn');
-    if (!btn) return;
     const icon = isPaused ? 'fa-play' : 'fa-pause';
     const label = isPaused ? 'Play' : 'Pause';
-    btn.innerHTML = `<i class="fas ${icon}"></i><span class="btn-text">${label}</span><span class="sr-only">${label}</span>`;
-    btn.setAttribute('aria-pressed', (!isPaused).toString());
-    btn.setAttribute('aria-label', label);
-    btn.title = label;
+
+    const applyState = (btn, { text = label, includeSr = false, iconExtra = '' } = {}) => {
+        if (!btn) return;
+        const sr = includeSr ? `<span class="sr-only">${label}</span>` : '';
+        const iconClass = iconExtra ? `${icon} ${iconExtra}` : icon;
+        btn.innerHTML = `<i class="fas ${iconClass}"></i><span class="btn-text">${text}</span>${sr}`;
+        btn.setAttribute('aria-pressed', (!isPaused).toString());
+        btn.setAttribute('aria-label', label);
+        btn.title = label;
+    };
+
+    applyState(document.getElementById('play-pause-btn'), { text: label, includeSr: true });
+    applyState(document.getElementById('play-pause-btn-hero'), { text: `${label} Sim`, iconExtra: 'mr-2' });
 }
 
 function updateViewLabel() {
