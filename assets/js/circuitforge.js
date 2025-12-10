@@ -1686,8 +1686,9 @@ function resize() {
     // 1. Get the PARENT container dimensions
     // The CSS flexbox rules determine how big this shell is.
     const container = canvas.parentElement; 
-    const w = container ? container.clientWidth : 0;
-    const h = container ? container.clientHeight : 0;
+    const rect = container?.getBoundingClientRect?.();
+    const w = container ? (container.clientWidth || rect?.width || 0) : 0;
+    const h = container ? (container.clientHeight || rect?.height || 0) : 0;
 
     // 2. Update Canvas Memory (Resolution)
     // Use devicePixelRatio for sharp text on Retinas
