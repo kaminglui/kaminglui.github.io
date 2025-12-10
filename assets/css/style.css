@@ -1089,8 +1089,11 @@ body.theme-dark .project-card {
 
 @media (max-width: 800px) {
   .nav-links {
-    position: fixed;
-    inset: calc(var(--nav-height) + 1rem) 1rem auto;
+    position: absolute;
+    top: calc(var(--nav-height) + 0.75rem);
+    left: 1rem;
+    right: auto;
+    width: min(360px, 92vw);
     flex-direction: column;
     align-items: flex-start;
     background: var(--color-bg-alt);
@@ -1102,6 +1105,8 @@ body.theme-dark .project-card {
     pointer-events: none;
     transform: translateY(-10px);
     transition: opacity 150ms ease, transform 150ms ease;
+    max-height: calc(100vh - var(--nav-height) - 1.5rem);
+    overflow: hidden;
   }
 
   .nav-links[data-visible='true'] {
@@ -1137,6 +1142,7 @@ body.theme-dark .project-card {
     background: transparent;
     gap: 0.25rem;
     transform: none;
+    overflow: hidden;
   }
 
   .nav-dropdown-menu a {
