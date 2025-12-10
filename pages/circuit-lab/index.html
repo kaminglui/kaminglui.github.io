@@ -386,16 +386,16 @@
         }
 
         #scope-overlay.scope-window {
-            width: 640px;
+            width: min(620px, 90vw);
             height: auto;
-            min-height: 360px;
-            top: 0px;
-            left: 0px;
-            right: auto;
-            bottom: auto;
-            max-height: calc(100vh - 12px);
-            overflow: auto;
-            max-width: min(90vw, 760px);
+            min-height: 260px;
+            top: auto;
+            left: auto;
+            right: 16px;
+            bottom: 16px;
+            max-height: calc(80vh - var(--header-h, 0px));
+            overflow: hidden;
+            max-width: min(92vw, 760px);
         }
 
         #scope-overlay.fullscreen {
@@ -437,6 +437,9 @@
             min-height: 260px;
             display: flex;
             flex-direction: column;
+        }
+        #scope-overlay.scope-window #scope-container {
+            margin: 8px;
         }
         #scopeCanvas {
             width: 100%;

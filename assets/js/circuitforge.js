@@ -3874,6 +3874,7 @@ function computeScopeLayout(mode = scopeDisplayMode || getDefaultScopeMode(), {
     });
     const maxWindowH = Math.max(0, (viewport?.height || 0) - headerH - 8);
     const containerH = Math.max(0, Math.min(containerHRaw, maxWindowH || containerHRaw));
+    const hasStoredPos = Number.isFinite(windowPos?.x) && Number.isFinite(windowPos?.y);
 
     if (mode === 'fullscreen') {
         const fullH = shellRect?.height ?? containerHRaw;
@@ -3886,14 +3887,19 @@ function computeScopeLayout(mode = scopeDisplayMode || getDefaultScopeMode(), {
         };
     }
 
-    const baseW = windowSize?.width || 640;
-    const baseH = windowSize?.height || 420;
-    const safeWidth = Math.max(0, Math.min(baseW, containerW || baseW));
-    const safeHeight = Math.max(0, Math.min(baseH, containerH || baseH));
-    const maxLeft = Math.max(0, containerW - safeWidth);
-    const maxTop = Math.max(0, containerH - safeHeight);
-    const left = Math.min(Math.max(windowPos?.x ?? 0, 0), maxLeft);
-    const top = Math.min(Math.max(windowPos?.y ?? 0, 0), maxTop);
+    const padding = 16;
+    const minW = 320;
+    const minH = 240;
+    const baseW = Math.max(minW, Math.min(windowSize?.width || 560, Math.max(minW, (containerW || minW) - padding * 2)));
+    const baseH = Math.max(minH, Math.min(windowSize?.height || 360, Math.max(minH, (containerH || minH) - padding * 2)));
+    const safeWidth = Math.max(minW, Math.min(baseW, containerW || baseW));
+    const safeHeight = Math.max(minH, Math.min(baseH, containerH || baseH));
+    const maxLeft = Math.max(0, containerW - safeWidth - padding);
+    const maxTop = Math.max(0, containerH - safeHeight - padding);
+    let left = hasStoredPos ? windowPos.x : maxLeft;
+    let top = hasStoredPos ? windowPos.y : maxTop;
+    left = Math.min(Math.max(left, padding), maxLeft || padding);
+    top = Math.min(Math.max(top, padding), maxTop || padding);
 
     return {
         windowed: true,
@@ -3938,7 +3944,8 @@ function setScopeOverlayLayout(mode = scopeDisplayMode || getDefaultScopeMode())
 
     overlay.classList.toggle('scope-window', layout.windowed);
     overlay.classList.toggle('fullscreen', !layout.windowed);
-    overlay.style.overflowY = layout.windowed ? 'auto' : 'hidden';
+    overlay.style.overflowY = layout.windowed ? 'hidden' : 'hidden';
+    overlay.style.position = 'absolute';
     if (layout.windowed) {
         overlay.style.left = `${layout.left}px`;
         overlay.style.top = `${layout.top}px`;
