@@ -1698,8 +1698,6 @@ function resize() {
         w = w || vw || canvasCssWidth || 0;
         h = h || computeWorkspaceHeight({ viewportH: vh, headerH, simBarH }) || canvasCssHeight || 0;
     }
-    w = Math.max(1, Math.floor(w));
-    h = Math.max(1, Math.floor(h));
 
     // 2. Update Canvas Memory (Resolution)
     // Use devicePixelRatio for sharp text on Retinas
