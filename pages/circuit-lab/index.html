@@ -171,7 +171,11 @@
             border-collapse: collapse;
             color: var(--text-primary);
             font-size: 12px;
+            table-layout: fixed;
+            width: 220px;
         }
+        .sim-info-table.sim-info-grid th,
+        .sim-info-table.sim-info-grid td { width: 50%; }
         .sim-info-table th {
             text-align: left;
             font-weight: 700;
@@ -184,6 +188,7 @@
         .sim-info-table td {
             padding: 3px 0;
             white-space: nowrap;
+            text-align: left;
         }
         .sim-info-table .sim-time {
             color: var(--success);
@@ -533,6 +538,7 @@
                 position: static;
                 justify-content: flex-start;
                 width: 100%;
+                padding: 0 4px;
             }
             #sim-bar .sim-actions {
                 width: 100%;
@@ -767,6 +773,10 @@
                             <option value="10">10</option>
                         </select>
                     </label>
+                    <button onclick="toggleCursors()"
+                            class="ml-auto bg-gray-800 px-3 py-2 rounded border border-gray-700 hover:bg-gray-700 uppercase tracking-wider font-bold text-[11px]">
+                        Toggle Cursors
+                    </button>
                 </div>
 
                 <div id="scope-container"
@@ -828,30 +838,22 @@
                     </div>
                 </div>
 
-                <div class="mt-2 flex gap-4 justify-center pb-4 text-white">
-                    <button onclick="toggleCursors()"
-                            class="bg-gray-800 px-6 py-2 rounded text-xs hover:bg-gray-700 uppercase tracking-wider font-bold">
-                        Toggle Cursors
-                    </button>
-                    <button id="play-pause-btn-hero" onclick="toggleSim()"
-                            class="bg-blue-800 px-6 py-2 rounded text-xs hover:bg-blue-700 uppercase tracking-wider font-bold">
-                        <i class="fas fa-pause mr-2"></i> Play/Pause Sim
-                    </button>
-                </div>
             </div>
         </div>
     </main>
 
     <div id="sim-bar">
         <div class="sim-info text-xs font-mono" aria-live="polite">
-            <table class="sim-info-table">
+            <table class="sim-info-table sim-info-grid">
+                <thead>
+                    <tr>
+                        <th scope="col">Time</th>
+                        <th scope="col">Status</th>
+                    </tr>
+                </thead>
                 <tbody>
                     <tr>
-                        <th scope="row">Time</th>
                         <td><span class="sim-time" id="sim-time">0.00s</span></td>
-                    </tr>
-                    <tr>
-                        <th scope="row">Status</th>
                         <td>
                             <button type="button"
                                     class="sim-status sim-status--paused"

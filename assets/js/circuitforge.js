@@ -4278,7 +4278,6 @@ function updatePlayPauseButton() {
     };
 
     applyState(document.getElementById('play-pause-btn'), { text: label, includeSr: true });
-    applyState(document.getElementById('play-pause-btn-hero'), { text: `${label} Sim`, iconExtra: 'mr-2' });
 }
 
 function updateViewLabel() {
