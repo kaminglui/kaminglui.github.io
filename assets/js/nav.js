@@ -34,13 +34,8 @@ function setupNav() {
     typeof window !== 'undefined' && typeof window.matchMedia === 'function'
       ? window.matchMedia('(hover: none)')
       : null;
-  const CLICK_ONLY_BREAKPOINT = 1024; // force click-only on tablets/phones even if hover is reported
-
-  const shouldUseClickToggle = () => {
-    const noHover = hoverNoneQuery?.matches ?? false;
-    const smallViewport = typeof window !== 'undefined' ? window.innerWidth < CLICK_ONLY_BREAKPOINT : false;
-    return noHover || smallViewport;
-  };
+  // Always use click to open/close dropdowns for consistent behavior across devices.
+  const shouldUseClickToggle = () => true;
 
   const closeAllDropdowns = ({ except } = {}) => {
     let changed = false;
