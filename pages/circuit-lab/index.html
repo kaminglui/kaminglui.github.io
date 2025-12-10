@@ -163,7 +163,8 @@
         #sim-bar .sim-info {
             display: flex;
             align-items: flex-start;
-            margin-right: auto;
+            margin-right: 0;
+            flex-shrink: 0;
             font-family: 'Fira Code', monospace;
         }
         .sim-info-table {
@@ -188,6 +189,7 @@
             color: var(--success);
             font-weight: 700;
         }
+        .sim-info-table td { text-align: left; }
         #sim-bar .sim-info .sim-status {
             border: 1px solid transparent;
             background: transparent;
@@ -199,6 +201,8 @@
             letter-spacing: 0.02em;
             transition: transform 0.12s ease, box-shadow 0.12s ease, background 0.12s ease, color 0.12s ease, border-color 0.12s ease;
             cursor: default;
+            justify-content: flex-start;
+            text-align: left;
         }
         .sim-status--run {
             color: var(--success);
@@ -225,6 +229,8 @@
             justify-content: center;
             gap: 10px;
             flex-wrap: nowrap;
+            flex: 1;
+            min-width: 0;
         }
         .sim-btn {
             display: inline-flex;
@@ -267,6 +273,10 @@
         }
         .sim-btn.success:hover { filter: brightness(1.05); }
         .sim-btn .btn-text { white-space: nowrap; }
+        #play-pause-btn {
+            width: 140px;
+            flex: 0 0 140px;
+        }
 
         /* --- ROBUST DROPDOWNS --- */
         .menu-wrapper { position: relative; }
@@ -521,12 +531,12 @@
                 gap: 6px;
                 font-size: 11px;
                 position: static;
-                justify-content: space-between;
+                justify-content: flex-start;
                 width: 100%;
             }
             #sim-bar .sim-actions {
                 width: 100%;
-                justify-content: space-between;
+                justify-content: center;
                 gap: 8px;
             }
             .mobile-icon-only {
@@ -539,6 +549,10 @@
             }
             .mobile-icon-only .btn-text,
             .mobile-icon-only .btn-chevron { display: none; }
+            #play-pause-btn {
+                width: 40px;
+                flex: 0 0 40px;
+            }
             #scope-overlay {
                 max-height: calc(100vh - 12px);
                 overflow-y: auto !important;
@@ -681,7 +695,7 @@
             <canvas id="circuitCanvas"></canvas>
 
             <div id="scope-overlay" class="hidden">
-                <div class="scope-topbar flex justify-between items-center mb-4 px-4 pt-4 flex-wrap gap-3 text-white">
+                <div class="scope-topbar flex justify-between items-center mb-4 px-4 pt-4 pr-12 flex-wrap gap-3 text-white relative">
                     <h2 class="text-2xl font-bold text-yellow-400 font-mono scope-drag-handle">
                         <i class="fas fa-wave-square"></i>
                         OSCILLOSCOPE <span class="text-gray-400 text-sm">Dual Channel X-Y</span>
@@ -704,12 +718,12 @@
                             <i class="fas fa-clone"></i>
                             <span>Window</span>
                         </button>
-                        <button onclick="closeScope()"
-                                class="text-white hover:text-red-500 bg-gray-800 p-2 rounded-full w-8 h-8
-                                       flex items-center justify-center">
-                            <i class="fas fa-times"></i>
-                        </button>
                     </div>
+                    <button onclick="closeScope()"
+                            class="text-white hover:text-red-500 bg-gray-800 p-2 rounded-full w-8 h-8
+                                   flex items-center justify-center absolute right-4 top-4">
+                        <i class="fas fa-times"></i>
+                    </button>
                 </div>
 
                 <div id="scope-control-bar"
