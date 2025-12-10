@@ -4220,7 +4220,7 @@ function updatePlayPauseButton() {
     if (!btn) return;
     const icon = isPaused ? 'fa-play' : 'fa-pause';
     const label = isPaused ? 'Play' : 'Pause';
-    btn.innerHTML = `<i class="fas ${icon}"></i><span class="font-semibold text-sm btn-text">${label}</span><span class="sr-only">${label}</span>`;
+    btn.innerHTML = `<i class="fas ${icon}"></i><span class="btn-text">${label}</span><span class="sr-only">${label}</span>`;
     btn.setAttribute('aria-pressed', (!isPaused).toString());
     btn.setAttribute('aria-label', label);
     btn.title = label;
@@ -4242,7 +4242,7 @@ function updateToolsToggleLabel(forceState = null) {
         : !(sidebar && sidebar.classList.contains('collapsed'));
     const isOpen = (forceState != null) ? forceState : computedOpen;
     const textSpan = btn.querySelector('.btn-text');
-    const labelText = isOpen ? 'Hide Tools' : 'Show Tools';
+    const labelText = isOpen ? 'Hide Menu' : 'Show Menu';
     if (textSpan) textSpan.textContent = labelText;
     else btn.textContent = labelText;
     btn.setAttribute('aria-label', labelText);

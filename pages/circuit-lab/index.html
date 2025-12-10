@@ -160,20 +160,31 @@
         }
         #sim-bar .sim-info {
             display: flex;
-            align-items: center;
-            gap: 8px;
+            align-items: flex-start;
             margin-right: auto;
             font-family: 'Fira Code', monospace;
-            font-size: 12px;
-            line-height: 1.2;
         }
-        #sim-bar .sim-info .sim-time {
+        .sim-info-table {
+            border-collapse: collapse;
+            color: var(--text-primary);
+            font-size: 12px;
+        }
+        .sim-info-table th {
+            text-align: left;
+            font-weight: 700;
+            color: var(--text-muted);
+            padding: 3px 10px 3px 0;
+            white-space: nowrap;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+        }
+        .sim-info-table td {
+            padding: 3px 0;
+            white-space: nowrap;
+        }
+        .sim-info-table .sim-time {
             color: var(--success);
             font-weight: 700;
-        }
-        #sim-bar .sim-info .sim-divider {
-            color: var(--text-muted);
-            opacity: 0.65;
         }
         #sim-bar .sim-info .sim-status {
             border: 1px solid transparent;
@@ -745,11 +756,11 @@
                     <canvas id="scopeCanvas" class="w-full h-full block"></canvas>
                     <div id="cursor-1" class="cursor-line border-yellow-500/80 left-[30%]">
                         <div class="cursor-handle bg-yellow-500 text-black font-bold text-[10px]"
-                             onmousedown="startDragCursor(1, event)" ontouchstart="startDragCursor(1, event)">1</div>
+                             onmousedown="startDragCursor(1, event)" ontouchstart="startDragCursor(1, event)">A</div>
                     </div>
                     <div id="cursor-2" class="cursor-line border-cyan-500/80 left-[70%]">
                         <div class="cursor-handle bg-cyan-500 text-black font-bold text-[10px]"
-                             onmousedown="startDragCursor(2, event)" ontouchstart="startDragCursor(2, event)">2</div>
+                             onmousedown="startDragCursor(2, event)" ontouchstart="startDragCursor(2, event)">B</div>
                     </div>
                 </div>
 
@@ -814,18 +825,39 @@
 
     <div id="sim-bar">
         <div class="sim-info text-xs font-mono" aria-live="polite">
-            <span class="sim-time" id="sim-time">0.00s</span>
-            <span class="sim-divider" aria-hidden="true">|</span>
-            <button type="button"
-                    class="sim-status sim-status--paused"
-                    id="sim-status"
-                    aria-label="Simulation paused"
-                    aria-live="polite">
-                PAUSED
-            </button>
+            <table class="sim-info-table">
+                <tbody>
+                    <tr>
+                        <th scope="row">Time</th>
+                        <td><span class="sim-time" id="sim-time">0.00s</span></td>
+                    </tr>
+                    <tr>
+                        <th scope="row">Status</th>
+                        <td>
+                            <button type="button"
+                                    class="sim-status sim-status--paused"
+                                    id="sim-status"
+                                    aria-label="Simulation paused"
+                                    aria-live="polite">
+                                PAUSED
+                            </button>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
         </div>
 
         <div class="sim-actions" role="toolbar" aria-label="Simulation controls">
+            <button id="mobile-tools-toggle"
+                    type="button"
+                    class="sim-btn mobile-icon-only"
+                    aria-pressed="false"
+                    aria-controls="sidebar"
+                    onclick="toggleSidebar()">
+                <i class="fas fa-screwdriver-wrench" id="sidebar-toggle-icon"></i>
+                <span class="btn-text">Show Menu</span>
+            </button>
+
             <div class="menu-wrapper">
                 <button class="sim-btn success mobile-icon-only"
                         type="button"
@@ -838,8 +870,8 @@
                     <i class="fas fa-chevron-up text-[10px] btn-chevron" aria-hidden="true"></i>
                 </button>
                 <div id="save-menu" class="menu-list">
-                    <button onclick="runSaveOption('circuit')"><i class="fas fa-file-circuit"></i> Save Circuit</button>
-                    <button onclick="runSaveOption('template')"><i class="fas fa-cubes"></i> Save Template</button>
+                    <button onclick="runSaveOption('circuit')"><i class="fas fa-download"></i> Save Circuit</button>
+                    <button onclick="runSaveOption('template')"><i class="fas fa-puzzle-piece"></i> Save Template</button>
                 </div>
             </div>
 
@@ -855,7 +887,7 @@
                     <i class="fas fa-chevron-up text-[10px] btn-chevron" aria-hidden="true"></i>
                 </button>
                 <div id="load-menu" class="menu-list">
-                    <button onclick="runLoadOption('circuit')"><i class="fas fa-upload"></i> Load File...</button>
+                    <button onclick="runLoadOption('circuit')"><i class="fas fa-upload"></i> Load Circuit</button>
                     <button onclick="runLoadOption('template')"><i class="fas fa-puzzle-piece"></i> Load Template</button>
                 </div>
             </div>
@@ -868,21 +900,11 @@
                 <span class="btn-text">Clear</span>
             </button>
 
-            <button id="mobile-tools-toggle"
-                    type="button"
-                    class="sim-btn mobile-icon-only"
-                    aria-pressed="false"
-                    aria-controls="sidebar"
-                    onclick="toggleSidebar()">
-                <i class="fas fa-screwdriver-wrench" id="sidebar-toggle-icon"></i>
-                <span class="btn-text">Show Tools</span>
-            </button>
-
             <button id="play-pause-btn" onclick="toggleSim()" 
                     type="button"
                     class="sim-btn primary mobile-icon-only">
                 <i class="fas fa-play"></i>
-                <span class="font-semibold text-sm btn-text">Play</span>
+                <span class="btn-text">Play</span>
                 <span class="sr-only">Play</span>
             </button>
         </div>
