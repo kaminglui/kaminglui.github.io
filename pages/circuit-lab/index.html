@@ -43,6 +43,7 @@
             /* Layout Dimensions */
             --header-h: 0px; 
             --simbar-h: 52px; /* Slightly more compact */
+            --simbar-height: var(--simbar-h);
             --sidebar-w: 260px;
         }
 
@@ -77,7 +78,7 @@
             overflow: hidden;
             position: relative;
             /* Force height calculation */
-            height: calc(100vh - var(--header-h, 0px) - var(--simbar-h));
+            height: calc(100vh - var(--header-h, 0px) - var(--simbar-height, var(--simbar-h)));
         }
 
         /* --- SIDEBAR --- */
@@ -146,24 +147,64 @@
 
         /* --- BOTTOM SIMULATION BAR --- */
         #sim-bar {
-            height: var(--simbar-h);
+            min-height: var(--simbar-h);
             background: var(--bg-panel);
             border-top: 1px solid var(--border-subtle);
             display: flex;
             align-items: center;
-            justify-content: center;
             gap: 12px;
             position: relative;
-            padding: 0 16px;
+            padding: 8px 16px;
             z-index: 50;
             box-shadow: 0 -4px 20px rgba(0,0,0,0.1);
         }
         #sim-bar .sim-info {
-            position: absolute;
-            left: 16px;
             display: flex;
             align-items: center;
-            gap: 6px;
+            gap: 8px;
+            margin-right: auto;
+            font-family: 'Fira Code', monospace;
+            font-size: 12px;
+            line-height: 1.2;
+        }
+        #sim-bar .sim-info .sim-time {
+            color: var(--success);
+            font-weight: 700;
+        }
+        #sim-bar .sim-info .sim-divider {
+            color: var(--text-muted);
+            opacity: 0.65;
+        }
+        #sim-bar .sim-info .sim-status {
+            border: 1px solid transparent;
+            background: transparent;
+            color: var(--text-secondary, var(--text-primary));
+            padding: 6px 10px;
+            border-radius: 8px;
+            font-family: 'Fira Code', monospace;
+            font-weight: 700;
+            letter-spacing: 0.02em;
+            transition: transform 0.12s ease, box-shadow 0.12s ease, background 0.12s ease, color 0.12s ease, border-color 0.12s ease;
+            cursor: default;
+        }
+        .sim-status--run {
+            color: var(--success);
+            background: rgba(16, 185, 129, 0.12);
+        }
+        .sim-status--paused {
+            color: #eab308;
+            background: rgba(234, 179, 8, 0.16);
+        }
+        .sim-status--error {
+            color: var(--danger);
+            background: rgba(239, 68, 68, 0.16);
+            border: 1px solid rgba(239, 68, 68, 0.45);
+        }
+        .sim-status--clickable { cursor: pointer; }
+        .sim-status--clickable:hover,
+        .sim-status--clickable:focus-visible {
+            box-shadow: 0 0 0 1px rgba(239, 68, 68, 0.6);
+            transform: translateY(-1px);
         }
         #sim-bar .sim-actions {
             display: flex;
@@ -177,7 +218,7 @@
             align-items: center;
             justify-content: center;
             gap: 8px;
-            height: 36px;
+            height: 38px;
             padding: 0 12px;
             border-radius: 8px;
             border: 1px solid var(--border-subtle);
@@ -212,10 +253,7 @@
             color: #fff;
         }
         .sim-btn.success:hover { filter: brightness(1.05); }
-        .sim-btn.icon {
-            width: 36px;
-            padding: 0;
-        }
+        .sim-btn .btn-text { white-space: nowrap; }
 
         /* --- ROBUST DROPDOWNS --- */
         .menu-wrapper { position: relative; }
@@ -262,6 +300,59 @@
         }
         .menu-list button i { width: 16px; text-align: center; opacity: 0.7; }
         .menu-list button:hover { background: var(--bg-surface); }
+
+        /* --- ERROR DIALOG --- */
+        .sim-error-dialog {
+            border: 1px solid var(--border-focus);
+            border-radius: 12px;
+            background: var(--bg-panel);
+            color: var(--text-primary);
+            padding: 16px;
+            width: min(520px, 92vw);
+            box-shadow: 0 20px 45px rgba(0,0,0,0.35);
+            z-index: 1400;
+        }
+        .sim-error-dialog::backdrop {
+            background: rgba(0, 0, 0, 0.45);
+            backdrop-filter: blur(2px);
+        }
+        .sim-error-dialog[open],
+        .sim-error-dialog[data-open='true'] {
+            display: block;
+        }
+        .sim-error-dialog[data-open='true'] {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+        .sim-error-dialog h3 {
+            margin: 0 0 6px;
+            font-size: 16px;
+        }
+        .sim-error-dialog .sim-error-subtitle {
+            margin: 0 0 10px;
+            color: var(--text-secondary);
+            font-size: 13px;
+        }
+        .sim-error-dialog pre {
+            margin: 0 0 14px;
+            padding: 12px;
+            border-radius: 8px;
+            background: var(--bg-surface);
+            border: 1px solid var(--border-subtle);
+            max-height: 240px;
+            overflow: auto;
+            white-space: pre-wrap;
+            word-break: break-word;
+            font-family: 'Fira Code', monospace;
+            font-size: 12px;
+        }
+        .sim-error-dialog .dialog-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 8px;
+        }
 
         /* --- OSCILLOSCOPE OVERLAY (Hardware Look) --- */
         #scope-overlay {
@@ -404,11 +495,32 @@
             .canvas-shell.sidebar-obscured { pointer-events: none; filter: brightness(0.85); }
             
             #sim-bar {
-                padding: 8px;
-                justify-content: center;
+                flex-direction: column;
+                align-items: stretch;
+                gap: 10px;
+                padding: 10px;
             }
-            #sim-bar .sim-info { display: flex; gap: 4px; font-size: 11px; position: static; }
-            .mobile-icon-only { width: 40px; padding: 0 10px; gap: 0; justify-content: center; }
+            #sim-bar .sim-info {
+                display: flex;
+                gap: 6px;
+                font-size: 11px;
+                position: static;
+                justify-content: space-between;
+                width: 100%;
+            }
+            #sim-bar .sim-actions {
+                width: 100%;
+                justify-content: space-between;
+                gap: 8px;
+            }
+            .mobile-icon-only {
+                width: 40px;
+                height: 40px;
+                padding: 0;
+                gap: 0;
+                justify-content: center;
+                flex: 0 0 40px;
+            }
             .mobile-icon-only .btn-text,
             .mobile-icon-only .btn-chevron { display: none; }
             #scope-overlay {
@@ -701,18 +813,29 @@
     </main>
 
     <div id="sim-bar">
-            <div class="sim-info text-xs font-mono">
-                <span class="text-green-500 font-bold" id="sim-time">0.00s</span>
-                <span class="text-gray-500">|</span>
-                <span class="text-gray-400" id="sim-status">STOPPED</span>
-            </div>
+        <div class="sim-info text-xs font-mono" aria-live="polite">
+            <span class="sim-time" id="sim-time">0.00s</span>
+            <span class="sim-divider" aria-hidden="true">|</span>
+            <button type="button"
+                    class="sim-status sim-status--paused"
+                    id="sim-status"
+                    aria-label="Simulation paused"
+                    aria-live="polite">
+                PAUSED
+            </button>
+        </div>
 
-        <div class="sim-actions">
+        <div class="sim-actions" role="toolbar" aria-label="Simulation controls">
             <div class="menu-wrapper">
                 <button class="sim-btn success mobile-icon-only"
+                        type="button"
+                        aria-haspopup="true"
+                        aria-expanded="false"
+                        aria-controls="save-menu"
+                        aria-label="Save options"
                         onclick="toggleMenu('save-menu')">
                     <i class="fas fa-save"></i> <span class="btn-text">Save</span>
-                    <i class="fas fa-chevron-up text-[10px] btn-chevron"></i>
+                    <i class="fas fa-chevron-up text-[10px] btn-chevron" aria-hidden="true"></i>
                 </button>
                 <div id="save-menu" class="menu-list">
                     <button onclick="runSaveOption('circuit')"><i class="fas fa-file-circuit"></i> Save Circuit</button>
@@ -722,9 +845,14 @@
 
             <div class="menu-wrapper">
                 <button class="sim-btn primary mobile-icon-only"
+                        type="button"
+                        aria-haspopup="true"
+                        aria-expanded="false"
+                        aria-controls="load-menu"
+                        aria-label="Load options"
                         onclick="toggleMenu('load-menu')">
                     <i class="fas fa-folder-open"></i> <span class="btn-text">Load</span>
-                    <i class="fas fa-chevron-up text-[10px] btn-chevron"></i>
+                    <i class="fas fa-chevron-up text-[10px] btn-chevron" aria-hidden="true"></i>
                 </button>
                 <div id="load-menu" class="menu-list">
                     <button onclick="runLoadOption('circuit')"><i class="fas fa-upload"></i> Load File...</button>
@@ -733,20 +861,41 @@
             </div>
 
             <button onclick="clearCanvas()"
-                    class="sim-btn danger icon"
+                    type="button"
+                    class="sim-btn danger mobile-icon-only"
                     aria-label="Clear workspace">
                 <i class="fas fa-broom"></i>
+                <span class="btn-text">Clear</span>
             </button>
 
-            <div class="h-4 w-px bg-gray-700 mx-1"></div>
+            <button id="mobile-tools-toggle"
+                    type="button"
+                    class="sim-btn mobile-icon-only"
+                    aria-pressed="false"
+                    aria-controls="sidebar"
+                    onclick="toggleSidebar()">
+                <i class="fas fa-screwdriver-wrench" id="sidebar-toggle-icon"></i>
+                <span class="btn-text">Show Tools</span>
+            </button>
 
             <button id="play-pause-btn" onclick="toggleSim()" 
+                    type="button"
                     class="sim-btn primary mobile-icon-only">
                 <i class="fas fa-play"></i>
                 <span class="font-semibold text-sm btn-text">Play</span>
+                <span class="sr-only">Play</span>
             </button>
         </div>
     </div>
+
+    <dialog id="sim-error-dialog" class="sim-error-dialog" aria-labelledby="sim-error-title">
+        <h3 id="sim-error-title">Simulation error</h3>
+        <p class="sim-error-subtitle">Fix the issue, then press Play to retry.</p>
+        <pre id="sim-error-details"></pre>
+        <div class="dialog-actions">
+            <button type="button" class="sim-btn" data-close-error>Close</button>
+        </div>
+    </dialog>
 
     <script type="module">
         import { initSiteShell } from '../../assets/js/layout/siteShell.js';
@@ -761,15 +910,21 @@
     <script type="module" src="../../assets/js/circuitforge.js"></script>
     <script>
         function closeMenus() {
-            document.querySelectorAll('.menu-list').forEach(m => m.classList.remove('active'));
+            document.querySelectorAll('.menu-list').forEach(m => {
+                m.classList.remove('active');
+                const trigger = m.previousElementSibling;
+                if (trigger?.setAttribute) trigger.setAttribute('aria-expanded', 'false');
+            });
         }
         function toggleMenu(id) {
             const menu = document.getElementById(id);
             if (!menu) return;
+            const trigger = menu.previousElementSibling;
             const isOpening = !menu.classList.contains('active');
             closeMenus();
             if (isOpening) {
                 menu.classList.add('active');
+                if (trigger?.setAttribute) trigger.setAttribute('aria-expanded', 'true');
             }
         }
         function runSaveOption(type) {
@@ -784,6 +939,9 @@
         }
         document.addEventListener('click', (e) => {
             if (!e.target.closest('.menu-wrapper')) closeMenus();
+        });
+        window.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') closeMenus();
         });
         window.addEventListener('resize', closeMenus);
     </script>

@@ -149,6 +149,7 @@ let wires      = [];
 let time       = 0;
 let isPaused   = true;
 let simError   = null;
+let simErrorMessage = '';
 let warnedNoSources = false;
 
 let selectedComponent = null;
@@ -1680,6 +1681,7 @@ function drawScope() {
 /* ---------- UI HELPERS / MODES ---------- */
 function resize() {
     if (!canvas) return;
+    syncViewportCssVars();
     
     // 1. Get the PARENT container dimensions
     // The CSS flexbox rules determine how big this shell is.
@@ -4247,6 +4249,104 @@ function updateToolsToggleLabel(forceState = null) {
     btn.setAttribute('aria-pressed', isOpen ? 'true' : 'false');
 }
 
+function setSimStatusDisplay(state, errorMessage = '') {
+    const statusEl = document.getElementById('sim-status');
+    if (!statusEl) return;
+    const classes = ['sim-status--run', 'sim-status--paused', 'sim-status--error', 'sim-status--clickable'];
+    classes.forEach(cls => statusEl.classList.remove(cls));
+
+    let label = 'PAUSED';
+    if (state === 'run') label = 'RUN';
+    else if (state === 'error') label = 'ERROR';
+
+    statusEl.textContent = label;
+    statusEl.dataset.state = state;
+    statusEl.classList.add(`sim-status--${state}`);
+    const ariaLabel = (state === 'error')
+        ? (errorMessage ? `Simulation error: ${errorMessage}` : 'Simulation error')
+        : `Simulation ${label.toLowerCase()}`;
+    statusEl.setAttribute('aria-label', ariaLabel);
+    const clickable = state === 'error' && !!errorMessage;
+    statusEl.setAttribute('aria-disabled', clickable ? 'false' : 'true');
+    statusEl.setAttribute('aria-live', state === 'error' ? 'assertive' : 'polite');
+    statusEl.classList.toggle('sim-status--clickable', clickable);
+    statusEl.title = clickable ? 'View error details' : '';
+}
+
+function openSimErrorDialog() {
+    if (!simErrorMessage) return;
+    const dialog = document.getElementById('sim-error-dialog');
+    if (!dialog) return;
+    const detail = document.getElementById('sim-error-details');
+    if (detail) detail.textContent = simErrorMessage;
+
+    if (typeof dialog.showModal === 'function') {
+        if (!dialog.open) dialog.showModal();
+    } else {
+        dialog.setAttribute('open', 'true');
+        dialog.setAttribute('data-open', 'true');
+        dialog.style.display = 'block';
+        dialog.removeAttribute('hidden');
+    }
+}
+
+function closeSimErrorDialog(silent = false) {
+    const dialog = document.getElementById('sim-error-dialog');
+    if (!dialog) return;
+    if (typeof dialog.close === 'function') {
+        if (dialog.open) dialog.close();
+    } else {
+        dialog.removeAttribute('data-open');
+        dialog.removeAttribute('open');
+        dialog.style.display = 'none';
+        dialog.setAttribute('hidden', 'true');
+    }
+    if (!silent) {
+        const statusEl = document.getElementById('sim-status');
+        statusEl?.focus?.();
+    }
+}
+
+function refreshSimIndicators() {
+    const simTimeEl = document.getElementById('sim-time');
+    if (simTimeEl) simTimeEl.innerText = formatUnit(time, 's');
+    simErrorMessage = simError ? String(simError) : '';
+    const nextState = simError ? 'error' : (isPaused ? 'paused' : 'run');
+    setSimStatusDisplay(nextState, simErrorMessage);
+    if (!simError) closeSimErrorDialog(true);
+}
+
+function attachStatusHandlers() {
+    const statusEl = document.getElementById('sim-status');
+    if (statusEl && !statusEl._simStatusHooked) {
+        statusEl.addEventListener('click', () => {
+            if (statusEl.dataset.state === 'error') openSimErrorDialog();
+        });
+        statusEl.addEventListener('keydown', (event) => {
+            if ((event.key === 'Enter' || event.key === ' ') && statusEl.dataset.state === 'error') {
+                event.preventDefault();
+                openSimErrorDialog();
+            }
+        });
+        statusEl._simStatusHooked = true;
+    }
+
+    const dialog = document.getElementById('sim-error-dialog');
+    if (dialog && !dialog._simDialogHooked) {
+        dialog.addEventListener('click', (event) => {
+            const target = event.target;
+            if (target === dialog || target?.closest?.('[data-close-error]')) {
+                closeSimErrorDialog();
+            }
+        });
+        dialog.addEventListener('cancel', (event) => {
+            event.preventDefault();
+            closeSimErrorDialog();
+        });
+        dialog._simDialogHooked = true;
+    }
+}
+
 function toggleView() {
     viewMode = (viewMode === 'physical') ? 'schematic' : 'physical';
     updateViewLabel();
@@ -4297,6 +4397,7 @@ function zoomOutButton() { applyZoom(ZOOM_OUT_STEP); }
 function toggleSim() {
     isPaused = !isPaused;
     updatePlayPauseButton();
+    refreshSimIndicators();
 }
 
 function clearCanvas() {
@@ -4320,6 +4421,7 @@ function clearCanvas() {
     templatePlacementCount = 0;
     markStateDirty();
     updateProps();
+    refreshSimIndicators();
 }
 
 /* ---------- MAIN LOOP & INIT ---------- */
@@ -4366,12 +4468,7 @@ function reportInitError(message) {
       draw();
       if (scopeMode) drawScope();
 
-    const simTimeEl = document.getElementById('sim-time');
-    const statusEl  = document.getElementById('sim-status');
-    if (simTimeEl) simTimeEl.innerText = formatUnit(time, 's');
-    if (statusEl)  statusEl.innerText  = simError ? `ERROR: ${simError}`
-                                                  : (isPaused ? 'PAUSED' : 'RUN');
-
+    refreshSimIndicators();
     requestAnimationFrame(loop);
   }
   
@@ -4425,7 +4522,9 @@ function reportInitError(message) {
     updateViewLabel();
     ensureSidebarExpanded();
     updateToolsToggleLabel();
+    attachStatusHandlers();
     syncSidebarOverlayState();
+    refreshSimIndicators();
     if (canvas && canvas.parentElement && typeof ResizeObserver !== 'undefined') {
         const ro = new ResizeObserver(() => resize());
         ro.observe(canvas.parentElement);

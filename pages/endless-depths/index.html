@@ -18,14 +18,7 @@
     <link rel="stylesheet" href="../../assets/css/endless-depths.css" />
   </head>
   <body class="theme-dark">
-    <header
-      class="site-header"
-      id="top"
-      data-site-header
-      data-nav-root="../.."
-      data-current-lab="endless-depths"
-    ></header>
-    <script type="module" src="../../assets/js/site-header-init.js"></script>
+    <div id="site-header"></div>
 
     <main class="depths-main">
       <section class="lab-hero">
@@ -150,17 +143,15 @@
       </section>
     </main>
 
-    <footer
-      class="site-footer"
-      data-site-footer
-      data-footer-id="endless-depths"
-      data-nav-root="../.."
-    ></footer>
+    <div id="site-footer"></div>
 
     <!-- Patch notes: Fixed layout fullscreen for entire wrapper, hardened game loop/input safety, and stabilized purgatory restore and crafting messaging. -->
 
+    <script type="module">
+      import { initSiteShell } from '../../assets/js/layout/siteShell.js';
+      initSiteShell('endless-depths');
+    </script>
     <script type="module" src="../../assets/js/nav.js"></script>
-    <script type="module" src="../../assets/js/site-footer-init.js"></script>
     <script type="module">
       const body = document.body;
       const themeToggle = document.querySelector('.theme-toggle');
