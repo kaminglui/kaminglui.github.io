@@ -2791,6 +2791,7 @@ function syncQuickScopeSelect() {
     if (typeof document === 'undefined') return;
     const select = document.getElementById('quick-scope-select');
     if (!select || typeof document.createElement !== 'function') return;
+    const wasOpen = select.dataset?.open === 'true';
     const scopes = listScopes();
     const descriptors = describeScopePosition(scopes);
     select.innerHTML = '';
@@ -2800,10 +2801,28 @@ function syncQuickScopeSelect() {
         opt.textContent = label;
         select.appendChild(opt);
     });
-    select.classList?.add?.('hidden');
-    select.hidden = true;
-    if (select.style) select.style.display = 'none';
-    if (select.dataset) select.dataset.open = 'false';
+    const nextSize = Math.min(Math.max(descriptors.length, 1), 6);
+    select.size = nextSize;
+    if (!descriptors.length) {
+        select.dataset = select.dataset || {};
+        select.dataset.open = 'false';
+        select.classList?.add?.('hidden');
+        select.hidden = true;
+        if (select.style) select.style.display = 'none';
+        return;
+    }
+    if (wasOpen) {
+        select.dataset = select.dataset || {};
+        select.dataset.open = 'true';
+        select.classList?.remove?.('hidden');
+        select.hidden = false;
+        if (select.style) select.style.display = 'block';
+    } else {
+        select.classList?.add?.('hidden');
+        select.hidden = true;
+        if (select.style) select.style.display = 'none';
+        if (select.dataset) select.dataset.open = 'false';
+    }
     const active = activeScopeComponent && scopes.includes(activeScopeComponent)
         ? activeScopeComponent
         : scopes[0];
@@ -3025,40 +3044,71 @@ function quickSelectScope(id) {
     syncQuickScopeSelect();
 }
 
-function quickScopeDropdownAction() {
-    const scopes = listScopes();
-    if (!scopes.length) return;
+let quickScopeMenuClickHandler = null;
+let quickScopeMenuKeyHandler = null;
+let quickScopeMenuResizeHandler = null;
+
+function closeQuickScopeMenu() {
     const select = (typeof document !== 'undefined') ? document.getElementById('quick-scope-select') : null;
-    if (select) {
-        select.dataset = select.dataset || {};
-        const close = () => {
-            select.dataset.open = 'false';
-            select.classList.add('hidden');
-            select.hidden = true;
-            if (select.style) select.style.display = 'none';
-            select.size = 1;
-            select.removeEventListener('blur', close);
-            select.removeEventListener('change', close);
-        };
-        const show = () => {
-            select.classList.remove('hidden');
-            select.hidden = false;
-            if (select.style) select.style.display = 'block';
-            select.size = Math.min(scopes.length, 6);
-            select.dataset.open = 'true';
-            if (typeof select.showPicker === 'function') {
-                try { select.showPicker(); } catch (_) {}
-            } else {
-                select.focus?.();
-            }
-            select.addEventListener('blur', close);
-            select.addEventListener('change', close);
-        };
-        if (select.dataset.open === 'true') {
-            close();
-        } else {
-            show();
-        }
+    if (!select) return;
+    select.dataset = select.dataset || {};
+    select.dataset.open = 'false';
+    select.classList?.add?.('hidden');
+    select.hidden = true;
+    if (select.style) select.style.display = 'none';
+    select.size = 1;
+    if (quickScopeMenuClickHandler && typeof document !== 'undefined') {
+        document.removeEventListener('click', quickScopeMenuClickHandler);
+    }
+    if (quickScopeMenuKeyHandler && typeof window !== 'undefined') {
+        window.removeEventListener('keydown', quickScopeMenuKeyHandler);
+    }
+    if (quickScopeMenuResizeHandler && typeof window !== 'undefined') {
+        window.removeEventListener('resize', quickScopeMenuResizeHandler);
+    }
+    quickScopeMenuClickHandler = null;
+    quickScopeMenuKeyHandler = null;
+    quickScopeMenuResizeHandler = null;
+}
+
+function openQuickScopeMenu() {
+    const select = (typeof document !== 'undefined') ? document.getElementById('quick-scope-select') : null;
+    const scopes = listScopes();
+    if (!select || !scopes.length) return;
+    syncQuickScopeSelect();
+    select.dataset = select.dataset || {};
+    select.dataset.open = 'true';
+    select.classList?.remove?.('hidden');
+    select.hidden = false;
+    if (select.style) select.style.display = 'block';
+    select.size = Math.min(scopes.length, 6);
+    if (typeof select.showPicker === 'function') {
+        try { select.showPicker(); } catch (_) {}
+    } else {
+        select.focus?.();
+    }
+
+    quickScopeMenuClickHandler = (e) => {
+        if (!e?.target?.closest || !e.target.closest('.scope-pair')) closeQuickScopeMenu();
+    };
+    quickScopeMenuKeyHandler = (e) => {
+        if (e?.key === 'Escape') closeQuickScopeMenu();
+    };
+    quickScopeMenuResizeHandler = () => closeQuickScopeMenu();
+    if (typeof document !== 'undefined') document.addEventListener('click', quickScopeMenuClickHandler);
+    if (typeof window !== 'undefined') {
+        window.addEventListener('keydown', quickScopeMenuKeyHandler);
+        window.addEventListener('resize', quickScopeMenuResizeHandler);
+    }
+}
+
+function quickScopeDropdownAction() {
+    const select = (typeof document !== 'undefined') ? document.getElementById('quick-scope-select') : null;
+    if (!select) return;
+    if (select.dataset?.open === 'true') {
+        closeQuickScopeMenu();
+    } else {
+        openQuickScopeMenu();
     }
 }
 
@@ -3153,6 +3203,10 @@ function __testSetScope(scope) {
 
 function __testGetActiveScope() {
     return activeScopeComponent;
+}
+
+function __testIsPaused() {
+    return isPaused;
 }
 
 function deserializeTemplate(templateObj) {
@@ -5123,7 +5177,24 @@ function toggleSidebar() {
 function zoomInButton() { applyZoom(ZOOM_IN_STEP); }
 function zoomOutButton() { applyZoom(ZOOM_OUT_STEP); }
 
+function canvasIsEmpty() {
+    return (!components || components.length === 0) && (!wires || wires.length === 0);
+}
+
+function enforcePauseWhenEmpty() {
+    if (!canvasIsEmpty()) return false;
+    if (!isPaused) {
+        isPaused = true;
+        updatePlayPauseButton();
+    }
+    return true;
+}
+
 function toggleSim() {
+    if (enforcePauseWhenEmpty()) {
+        refreshSimIndicators();
+        return;
+    }
     isPaused = !isPaused;
     updatePlayPauseButton();
     refreshSimIndicators();
@@ -5179,6 +5250,13 @@ function reportInitError(message) {
 }
   
   function loop() {
+      if (enforcePauseWhenEmpty()) {
+          draw();
+          if (scopeMode) drawScope();
+          refreshSimIndicators();
+          requestAnimationFrame(loop);
+          return;
+      }
       if (!isPaused) {
           const readiness = checkSimReadiness();
           if (!readiness.ok) {
@@ -5384,7 +5462,9 @@ export {
     quickScopeToggleMain,
     autoscaleScopeVoltage,
     __testSetScope,
-    __testGetActiveScope
+    __testGetActiveScope,
+    __testIsPaused,
+    toggleSim
 };
 
 function startCircuitForge() {

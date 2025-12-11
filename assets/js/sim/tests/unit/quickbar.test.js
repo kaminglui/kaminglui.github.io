@@ -16,6 +16,8 @@ import {
   syncQuickBarVisibility,
   quickSelectScope,
   __testGetActiveScope,
+  __testIsPaused,
+  toggleSim,
   safeCall,
   __testSetComponents,
   __testGetSelected,
@@ -25,25 +27,56 @@ import {
 
 function stubDom(groups = []) {
   const toggles = [];
+  const listeners = { document: {}, window: {} };
   const bar = {
     classList: {
       toggle: (cls, state) => toggles.push({ cls, state })
     },
     setAttribute: vi.fn()
   };
+  const createBaseElement = (id = '') => {
+    const el = {
+      id,
+      value: '',
+      innerText: '',
+      textContent: '',
+      children: [],
+      style: {},
+      dataset: {},
+      hidden: true,
+      classList: {
+        toggle(cls, state) {
+          if (cls === 'hidden') el.hidden = state;
+        },
+        add(cls) {
+          if (cls === 'hidden') el.hidden = true;
+        },
+        remove(cls) {
+          if (cls === 'hidden') el.hidden = false;
+        },
+        contains(cls) {
+          return cls === 'hidden' ? !!el.hidden : false;
+        }
+      },
+      appendChild(child) {
+        this.children.push(child);
+      },
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      focus: vi.fn(),
+      closest: () => null
+    };
+    return el;
+  };
   const store = new Map();
   groups.forEach((id) => {
-    store.set(id, {
-      dataset: { kind: id },
-      classList: {
-        hidden: false,
-        toggle(cls, state) {
-          if (cls === 'hidden') this.hidden = state;
-        }
-      }
-    });
+    const el = createBaseElement(id);
+    el.dataset = { kind: id };
+    store.set(id, el);
   });
   const slider = { id: 'quick-pot-slider', value: '0', disabled: false };
+  const quickSelect = createBaseElement('quick-scope-select');
+  quickSelect.hidden = true;
   [
     'quick-resistor-value', 'quick-resistor-suffix',
     'quick-capacitor-value', 'quick-capacitor-suffix',
@@ -51,36 +84,39 @@ function stubDom(groups = []) {
     'quick-fg-vpp-value', 'quick-fg-vpp-suffix',
     'quick-scope-select',
     'quick-pot-value'
-  ].forEach((id) => store.set(id, {
-    id,
-    value: '',
-    innerText: '',
-    style: {},
-    classList: {
-      toggle(cls, state) {
-        if (cls === 'hidden') store.get(id).hidden = state;
-      },
-      add(cls) {
-        if (cls === 'hidden') store.get(id).hidden = true;
-      },
-      remove(cls) {
-        if (cls === 'hidden') store.get(id).hidden = false;
-      }
-    },
-    hidden: true,
-    addEventListener: () => {},
-    removeEventListener: () => {},
-    dataset: {}
-  }));
+  ].forEach((id) => {
+    if (id === 'quick-scope-select') {
+      store.set(id, quickSelect);
+      return;
+    }
+    store.set(id, createBaseElement(id));
+  });
   global.document = {
     getElementById: (id) => {
       if (id === 'mobile-quick-bar') return bar;
       if (id === 'quick-pot-slider') return slider;
       return store.get(id) || null;
     },
-    querySelectorAll: () => Array.from(store.values())
+    querySelectorAll: () => Array.from(store.values()),
+    createElement: (tag) => {
+      const el = createBaseElement();
+      el.tagName = tag.toUpperCase();
+      return el;
+    },
+    addEventListener: (type, fn) => { listeners.document[type] = fn; },
+    removeEventListener: (type, fn) => {
+      if (listeners.document[type] === fn) delete listeners.document[type];
+    },
+    _listeners: listeners.document
   };
-  return { bar, toggles, slider, groups: store, store };
+  global.window = {
+    addEventListener: (type, fn) => { listeners.window[type] = fn; },
+    removeEventListener: (type, fn) => {
+      if (listeners.window[type] === fn) delete listeners.window[type];
+    },
+    _listeners: listeners.window
+  };
+  return { bar, toggles, slider, groups: store, store, listeners };
 }
 
 function setComponents(list) {
@@ -117,17 +153,22 @@ describe('quick bar logic', () => {
   });
 
   it('dropdown button toggles visibility and selecting scope sets active scope', () => {
-    const { store } = stubDom();
+    const { store, listeners } = stubDom();
     const scopes = [
       { kind: 'oscilloscope', id: 'S1', props: {} },
       { kind: 'oscilloscope', id: 'S2', props: {} }
     ];
     setComponents(scopes);
-    const select = store.get('quick-scope-select');
-    select.classList.add = () => { select.hidden = true; };
-    select.classList.remove = () => { select.hidden = false; };
     quickScopeDropdownAction();
+    const select = store.get('quick-scope-select');
     expect(select.hidden).toBe(false);
+    expect(select.dataset.open).toBe('true');
+    expect(select.children.map((c) => c.value)).toEqual(['S1', 'S2']);
+    const clickAway = listeners.document.click;
+    clickAway?.({ target: { closest: () => null } });
+    expect(select.hidden).toBe(true);
+    expect(select.dataset.open).toBe('false');
+    quickScopeDropdownAction();
     expect(select.dataset.open).toBe('true');
     quickSelectScope('S2');
     expect(__testGetActiveScope()).toBe(scopes[1]);
@@ -205,11 +246,11 @@ describe('quick bar logic', () => {
     setComponents([sw, pot, fg]);
     __testSetSelected(pot);
     updateQuickControlsVisibility();
-    expect(groups.get('potentiometer').classList.hidden).toBe(false);
-    expect(groups.get('switch').classList.hidden).toBe(true);
+    expect(groups.get('potentiometer').hidden).toBe(false);
+    expect(groups.get('switch').hidden).toBe(true);
     __testSetSelected(fg);
     updateQuickControlsVisibility();
-    expect(groups.get('funcgen').classList.hidden).toBe(false);
+    expect(groups.get('funcgen').hidden).toBe(false);
   });
 
   it('keeps pot slider in sync with current selection value', () => {
@@ -221,5 +262,15 @@ describe('quick bar logic', () => {
     pot.props.Turn = '80';
     __testSetSelected(pot);
     expect(slider.value).toBe('80');
+  });
+
+  it('forces pause when canvas is empty', () => {
+    stubDom(); // setup document/window for toggleSim
+    setComponents([]);
+    toggleSim();
+    expect(__testIsPaused()).toBe(true);
+    setComponents([{ kind: 'switch', id: 'SW1', props: { Position: 'A' } }]);
+    toggleSim();
+    expect(__testIsPaused()).toBe(false);
   });
 });
