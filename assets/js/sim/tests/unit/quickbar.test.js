@@ -56,7 +56,17 @@ function stubDom(groups = []) {
     value: '',
     innerText: '',
     style: {},
-    classList: { toggle() {}, add() {}, remove() {} },
+    classList: {
+      toggle(cls, state) {
+        if (cls === 'hidden') store.get(id).hidden = state;
+      },
+      add(cls) {
+        if (cls === 'hidden') store.get(id).hidden = true;
+      },
+      remove(cls) {
+        if (cls === 'hidden') store.get(id).hidden = false;
+      }
+    },
     hidden: true,
     addEventListener: () => {},
     removeEventListener: () => {},
@@ -100,7 +110,7 @@ describe('quick bar logic', () => {
     quickScopeDropdownAction();
     const select = store.get('quick-scope-select');
     expect(select.size).toBe(2);
-    expect(select.hidden).toBe(true); // dropdown handled via hidden class
+    expect(select.hidden).toBe(false);
     __testSetSelected(scopes[0]);
     quickScopeToggleMain(); // should not throw
   });
