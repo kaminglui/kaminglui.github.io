@@ -909,23 +909,25 @@
             <i class="fas fa-chevron-left"></i>
         </button>
         <div class="quick-controls">
-            <div class="mini-group">
+            <div class="mini-group quick-group" data-kind="switch">
                 <button class="sim-btn" onclick="quickToggleSwitchPosition()" aria-label="Toggle switch">
                     <i class="fas fa-toggle-on"></i><span class="btn-text">Switch</span>
                 </button>
-                <div class="mini-group">
-                    <span class="text-gray-300">Pot</span>
-                    <button class="sim-btn" onclick="quickAdjustPot(-10)" aria-label="Pot -10%">-10%</button>
-                    <button class="sim-btn" onclick="quickAdjustPot(10)" aria-label="Pot +10%">+10%</button>
-                </div>
+            </div>
+            <div class="mini-group quick-group" data-kind="potentiometer">
+                <span class="text-gray-300">Pot</span>
+                <button class="sim-btn" onclick="quickAdjustPot(-10)" aria-label="Pot -10%">-10%</button>
+                <button class="sim-btn" onclick="quickAdjustPot(10)" aria-label="Pot +10%">+10%</button>
+                <input type="range" min="0" max="100" step="1" value="50"
+                       class="h-6"
+                       oninput="quickSetPotTurn(this.value)" aria-label="Pot slider">
+            </div>
+            <div class="mini-group quick-group" data-kind="oscilloscope">
                 <button class="sim-btn" onclick="quickToggleScopeOverlay()" aria-label="Toggle scope">
                     <i class="fas fa-wave-square"></i><span class="btn-text">Scope</span>
                 </button>
-                <button class="sim-btn" onclick="quickToggleViewMode()" aria-label="Toggle view">
-                    <i class="fas fa-exchange-alt"></i><span class="btn-text">View</span>
-                </button>
             </div>
-            <div class="funcgen-group mini-group">
+            <div class="funcgen-group mini-group quick-group" data-kind="funcgen">
                 <span class="text-gray-300">Freq</span>
                 <button class="sim-btn" onclick="quickSetFuncGenFreq('110')" aria-label="Set freq 110Hz">110</button>
                 <button class="sim-btn" onclick="quickSetFuncGenFreq('880')" aria-label="Set freq 880Hz">880</button>

@@ -2664,6 +2664,33 @@ function buildQuickList() {
     return list;
 }
 
+function getActiveQuickKind() {
+    const selectedKind = compKind(selectedComponent);
+    if (selectedComponent && QUICK_KIND_GROUPS.some(g => g.aliases.includes(selectedKind))) {
+        return selectedKind;
+    }
+    const list = buildQuickList();
+    return compKind(list[0]) || null;
+}
+
+function updateQuickControlsVisibility() {
+    const groups = (typeof document !== 'undefined' && typeof document.querySelectorAll === 'function')
+        ? Array.from(document.querySelectorAll('.quick-group'))
+        : [];
+    if (!groups.length) return;
+    const availableKinds = new Set(buildQuickList().map(compKind));
+    if (!availableKinds.size) {
+        groups.forEach(el => el.classList.add('hidden'));
+        return;
+    }
+    const active = getActiveQuickKind();
+    groups.forEach((el) => {
+        const kind = (el.dataset?.kind || '').toLowerCase();
+        const show = availableKinds.has(kind) && kind === active;
+        el.classList.toggle('hidden', !show);
+    });
+}
+
 function quickSelect(delta) {
     const list = buildQuickList();
     if (!list.length) return;
@@ -2675,6 +2702,7 @@ function quickSelect(delta) {
     selectionGroup = target ? [target] : [];
     safeCall(updateProps);
     safeCall(draw);
+    updateQuickControlsVisibility();
 }
 
 function quickSelectPrev() { quickSelectionIndex = quickSelectionIndex < 0 ? 0 : quickSelectionIndex; quickSelect(-1); }
@@ -2696,6 +2724,7 @@ function quickToggleSwitchPosition() {
     selectionGroup = [sw];
     safeCall(markStateDirty);
     safeCall(updateProps);
+    updateQuickControlsVisibility();
 }
 
 function quickAdjustPot(delta) {
@@ -2711,15 +2740,33 @@ function quickAdjustPot(delta) {
     selectionGroup = [pot];
     safeCall(markStateDirty);
     safeCall(updateProps);
+    updateQuickControlsVisibility();
+}
+
+function quickSetPotTurn(val) {
+    const pot = selectedComponent && compKind(selectedComponent) === 'potentiometer'
+        ? selectedComponent
+        : findComponentByKind('potentiometer');
+    if (!pot) return;
+    const num = Math.min(100, Math.max(0, parseFloat(val) || 0));
+    pot.props = pot.props || {};
+    pot.props.Turn = String(num);
+    setSelectedComponent(pot);
+    selectionGroup = [pot];
+    safeCall(markStateDirty);
+    safeCall(updateProps);
+    updateQuickControlsVisibility();
 }
 
 function quickToggleScopeOverlay() {
     if (scopeMode) safeCall(closeScope);
     else safeCall(openScope);
+    updateQuickControlsVisibility();
 }
 
 function quickToggleViewMode() {
     safeCall(toggleView);
+    updateQuickControlsVisibility();
 }
 
 function quickSetFuncGenFreq(freq) {
@@ -2734,6 +2781,7 @@ function quickSetFuncGenFreq(freq) {
     selectionGroup = [fg];
     safeCall(markStateDirty);
     safeCall(updateProps);
+    updateQuickControlsVisibility();
 }
 
 function quickSetFuncGenVpp(vpp) {
@@ -2748,6 +2796,7 @@ function quickSetFuncGenVpp(vpp) {
     selectionGroup = [fg];
     safeCall(markStateDirty);
     safeCall(updateProps);
+    updateQuickControlsVisibility();
 }
 
 function syncQuickBarVisibility() {
@@ -2758,6 +2807,7 @@ function syncQuickBarVisibility() {
     quickBarVisible = hasComponents;
     bar.classList.toggle('hidden', !hasComponents);
     bar.setAttribute('aria-hidden', (!hasComponents).toString());
+    if (hasComponents) updateQuickControlsVisibility();
 }
 
 function __testSetComponents(list = []) {
@@ -4853,7 +4903,8 @@ if (typeof window !== 'undefined') {
         quickToggleScopeOverlay,
         quickToggleViewMode,
         quickSetFuncGenFreq,
-        quickSetFuncGenVpp
+        quickSetFuncGenVpp,
+        quickSetPotTurn
     });
 }
 
@@ -4883,7 +4934,9 @@ export {
     safeCall,
     __testSetComponents,
     __testGetSelected,
-    __testSetSelected
+    __testSetSelected,
+    updateQuickControlsVisibility,
+    quickSetPotTurn
 };
 
 function startCircuitForge() {
