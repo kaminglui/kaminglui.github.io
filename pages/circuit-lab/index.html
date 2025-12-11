@@ -952,8 +952,7 @@
             </div>
             <div class="mini-group quick-group" data-kind="potentiometer">
                 <span class="text-gray-300">Pot</span>
-                <button class="sim-btn" onclick="quickAdjustPot(-10)" aria-label="Pot -10%">-10%</button>
-                <button class="sim-btn" onclick="quickAdjustPot(10)" aria-label="Pot +10%">+10%</button>
+                <span id="quick-pot-value" class="text-white font-bold">0%</span>
                 <input id="quick-pot-slider" type="range" min="0" max="100" step="1" value="50"
                        class="h-6"
                        oninput="quickSetPotTurn(this.value)" aria-label="Pot slider">

@@ -2700,6 +2700,11 @@ function getQuickPotSlider() {
     return document.getElementById('quick-pot-slider');
 }
 
+function getQuickPotValueLabel() {
+    if (typeof document === 'undefined') return null;
+    return document.getElementById('quick-pot-value');
+}
+
 function splitValueSuffix(rawValue, rawSuffix, allowed = ['']) {
     const m = String(rawValue ?? '').trim().match(/^(-?[\d.]+)\s*([a-zA-Zµμ]*)$/);
     let value = String(rawValue ?? '0').trim() || '0';
@@ -2821,16 +2826,19 @@ function getActiveQuickKind() {
 
 function syncQuickPotSlider(target = selectedComponent) {
     const slider = getQuickPotSlider();
+    const label = getQuickPotValueLabel();
     if (!slider) return;
     const pot = (compKind(target) === 'potentiometer')
         ? target
         : buildQuickList().find(c => compKind(c) === 'potentiometer');
     if (!pot) {
         slider.value = '0';
+        if (label) label.innerText = '0%';
         return;
     }
     const next = clampPercent(parseFloat(pot.props?.Turn ?? '0') || 0);
     slider.value = String(next);
+    if (label) label.innerText = `${Math.round(next)}%`;
 }
 
 function updateQuickControlsVisibility() {

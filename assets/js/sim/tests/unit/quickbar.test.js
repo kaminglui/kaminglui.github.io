@@ -47,10 +47,12 @@ function stubDom(groups = []) {
     'quick-capacitor-value', 'quick-capacitor-suffix',
     'quick-fg-freq-value', 'quick-fg-freq-suffix',
     'quick-fg-vpp-value', 'quick-fg-vpp-suffix',
-    'quick-scope-select'
+    'quick-scope-select',
+    'quick-pot-value'
   ].forEach((id) => store.set(id, {
     id,
     value: '',
+    innerText: '',
     style: {},
     classList: { toggle() {}, add() {}, remove() {} },
     addEventListener: () => {},
