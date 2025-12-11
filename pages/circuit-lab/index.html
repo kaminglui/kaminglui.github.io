@@ -163,8 +163,9 @@
         #sim-bar .sim-info {
             display: flex;
             align-items: flex-start;
-            margin-right: 0;
+            margin: 0 auto;
             flex-shrink: 0;
+            justify-content: center;
             font-family: 'Fira Code', monospace;
         }
         .sim-info-table {
@@ -173,6 +174,7 @@
             font-size: 12px;
             table-layout: fixed;
             width: 220px;
+            margin: 0 auto;
         }
         .sim-info-table.sim-info-grid th,
         .sim-info-table.sim-info-grid td { width: 50%; }
@@ -194,7 +196,6 @@
             color: var(--success);
             font-weight: 700;
         }
-        .sim-info-table td { text-align: left; }
         #sim-bar .sim-info .sim-status {
             border: 1px solid transparent;
             background: transparent;
@@ -545,6 +546,14 @@
                 margin: 0 auto;
                 width: 100%;
                 max-width: 260px;
+                text-align: center;
+            }
+            #sim-bar .sim-info .sim-info-table th,
+            #sim-bar .sim-info .sim-info-table td {
+                text-align: center;
+            }
+            #sim-bar .sim-info .sim-status {
+                justify-content: center;
                 text-align: center;
             }
             #sim-bar .sim-actions {
