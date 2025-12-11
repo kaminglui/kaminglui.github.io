@@ -304,6 +304,7 @@
             flex-wrap: nowrap;
             gap: 6px;
             align-items: center;
+            justify-content: center;
             min-width: 0;
         }
         #mobile-quick-bar .mini-group {
@@ -317,6 +318,11 @@
             flex-wrap: nowrap;
             gap: 6px;
             align-items: center;
+        }
+        #mobile-quick-bar .sim-btn,
+        #mobile-quick-bar input,
+        #mobile-quick-bar select {
+            font-size: 0.95rem;
         }
 
         /* --- ROBUST DROPDOWNS --- */
@@ -915,6 +921,10 @@
                                 <div class="flex justify-between"><span>CH2 max</span><span id="ch2-max" class="text-cyan-200">0V</span></div>
                                 <div class="flex justify-between"><span>CH2 min</span><span id="ch2-min" class="text-cyan-200">0V</span></div>
                             </div>
+                            <div class="bg-gray-900/60 rounded p-2 border border-gray-700 col-span-2">
+                                <div class="flex justify-between"><span>Δ max (CH1-CH2)</span><span id="ch-max-diff" class="text-gray-100">0V</span></div>
+                                <div class="flex justify-between"><span>Δ min (CH1-CH2)</span><span id="ch-min-diff" class="text-gray-100">0V</span></div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -923,7 +933,7 @@
         </div>
     </main>
 
-    <div id="mobile-quick-bar" class="text-xs font-mono text-gray-100">
+    <div id="mobile-quick-bar" class="text-sm font-mono text-gray-100">
         <button onclick="quickSelectPrev()"
                 class="sim-btn mobile-icon-only"
                 aria-label="Previous component">
@@ -984,16 +994,43 @@
                 <button class="sim-btn" onclick="quickToggleScopeOverlay()" aria-label="Toggle scope">
                     <i class="fas fa-wave-square"></i><span class="btn-text">Scope</span>
                 </button>
+                <select id="quick-scope-select"
+                        class="bg-gray-900 border border-gray-700 rounded px-2 py-1 text-xs text-right hidden"
+                        onchange="quickSelectScope(this.value)"
+                        aria-label="Select scope">
+                </select>
             </div>
             <div class="funcgen-group mini-group quick-group" data-kind="funcgen">
                 <span class="text-gray-300">Freq</span>
-                <button class="sim-btn" onclick="quickSetFuncGenFreq('110')" aria-label="Set freq 110Hz">110</button>
-                <button class="sim-btn" onclick="quickSetFuncGenFreq('880')" aria-label="Set freq 880Hz">880</button>
-                <button class="sim-btn" onclick="quickSetFuncGenFreq('3520')" aria-label="Set freq 3520Hz">3520</button>
+                <input id="quick-fg-freq-value"
+                       type="text"
+                       inputmode="decimal"
+                       class="w-16 bg-gray-900 border border-gray-700 rounded px-2 py-1 text-xs text-right"
+                       oninput="quickSetFuncGenFreqValue()"
+                       aria-label="Function generator frequency">
+                <select id="quick-fg-freq-suffix"
+                        class="bg-gray-900 border border-gray-700 rounded px-2 py-1 text-xs text-right"
+                        onchange="quickSetFuncGenFreqValue()"
+                        aria-label="Frequency suffix">
+                    <option value="">Hz</option>
+                    <option value="k">kHz</option>
+                    <option value="M">MHz</option>
+                </select>
                 <span class="text-gray-300 ml-2">Vpp</span>
-                <button class="sim-btn" onclick="quickSetFuncGenVpp('0.5')" aria-label="Set Vpp 0.5">0.5</button>
-                <button class="sim-btn" onclick="quickSetFuncGenVpp('1')" aria-label="Set Vpp 1">1</button>
-                <button class="sim-btn" onclick="quickSetFuncGenVpp('2')" aria-label="Set Vpp 2">2</button>
+                <input id="quick-fg-vpp-value"
+                       type="text"
+                       inputmode="decimal"
+                       class="w-14 bg-gray-900 border border-gray-700 rounded px-2 py-1 text-xs text-right"
+                       oninput="quickSetFuncGenVppValue()"
+                       aria-label="Function generator amplitude">
+                <select id="quick-fg-vpp-suffix"
+                        class="bg-gray-900 border border-gray-700 rounded px-2 py-1 text-xs text-right"
+                        onchange="quickSetFuncGenVppValue()"
+                        aria-label="Amplitude suffix">
+                    <option value="">V</option>
+                    <option value="m">mV</option>
+                    <option value="u">uV</option>
+                </select>
             </div>
         </div>
         <button onclick="quickSelectNext()"

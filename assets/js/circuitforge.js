@@ -2653,6 +2653,8 @@ const QUICK_CONTROL_ALIAS_SET = new Set(
 );
 const RESISTOR_SUFFIXES = ['', 'm', 'k', 'M', 'G', 'u', 'n', 'p'];
 const CAPACITOR_SUFFIXES = ['p', 'n', 'u', 'm'];
+const FUNCGEN_FREQ_SUFFIXES = ['', 'k', 'M'];
+const FUNCGEN_VPP_SUFFIXES = ['', 'm', 'u'];
 
 function compKind(c) {
     return (c?.kind || '').toLowerCase();
@@ -2678,9 +2680,13 @@ function buildQuickList() {
     return list;
 }
 
+function buildSelectableQuickList() {
+    return buildQuickList().filter(c => compKind(c) !== 'oscilloscope');
+}
+
 function syncQuickSelectionIndex(target) {
-    const list = buildQuickList();
-    quickSelectionIndex = (target && isQuickControllable(target))
+    const list = buildSelectableQuickList();
+    quickSelectionIndex = (target && isQuickControllable(target) && compKind(target) !== 'oscilloscope')
         ? list.indexOf(target)
         : -1;
 }
@@ -2728,12 +2734,52 @@ function syncQuickValueFields(kind, propKey, allowed) {
     suffix.value = suf;
 }
 
+function getQuickFuncGenElements() {
+    if (typeof document === 'undefined') return {};
+    return {
+        freqInput: document.getElementById('quick-fg-freq-value'),
+        freqSuffix: document.getElementById('quick-fg-freq-suffix'),
+        vppInput: document.getElementById('quick-fg-vpp-value'),
+        vppSuffix: document.getElementById('quick-fg-vpp-suffix')
+    };
+}
+
+function listScopes() {
+    return components.filter(c => compKind(c) === 'oscilloscope');
+}
+
+function syncQuickScopeSelect() {
+    if (typeof document === 'undefined') return;
+    const select = document.getElementById('quick-scope-select');
+    if (!select || typeof document.createElement !== 'function') return;
+    const scopes = listScopes();
+    select.innerHTML = '';
+    scopes.forEach((s, idx) => {
+        const opt = document.createElement('option');
+        opt.value = s.id || `scope-${idx}`;
+        opt.textContent = s.id || `Scope ${idx + 1}`;
+        select.appendChild(opt);
+    });
+    if (scopes.length <= 1) {
+        select.classList?.add?.('hidden');
+    } else {
+        select.classList?.remove?.('hidden');
+    }
+    const active = activeScopeComponent && scopes.includes(activeScopeComponent)
+        ? activeScopeComponent
+        : scopes[0];
+    if (active) {
+        activeScopeComponent = active;
+        select.value = active.id;
+    }
+}
+
 function getActiveQuickKind() {
     const selectedKind = compKind(selectedComponent);
-    if (selectedComponent && isQuickControllable(selectedComponent)) {
+    if (selectedComponent && isQuickControllable(selectedComponent) && compKind(selectedComponent) !== 'oscilloscope') {
         return selectedKind;
     }
-    const list = buildQuickList();
+    const list = buildSelectableQuickList();
     const target = list[(quickSelectionIndex >= 0 && quickSelectionIndex < list.length) ? quickSelectionIndex : 0];
     return compKind(target) || null;
 }
@@ -2765,16 +2811,19 @@ function updateQuickControlsVisibility() {
     const active = getActiveQuickKind();
     groups.forEach((el) => {
         const kind = (el.dataset?.kind || '').toLowerCase();
-        const show = availableKinds.has(kind) && kind === active;
+        const forceShow = kind === 'oscilloscope';
+        const show = availableKinds.has(kind) && (kind === active || forceShow);
         el.classList.toggle('hidden', !show);
     });
     if (active === 'potentiometer') syncQuickPotSlider();
     if (active === 'resistor') syncQuickValueFields('resistor', 'R', RESISTOR_SUFFIXES);
     if (active === 'capacitor') syncQuickValueFields('capacitor', 'C', CAPACITOR_SUFFIXES);
+    if (active === 'funcgen') syncQuickFuncGenFields();
+    syncQuickScopeSelect();
 }
 
 function quickSelect(delta) {
-    const list = buildQuickList();
+    const list = buildSelectableQuickList();
     if (!list.length) return;
     quickSelectionIndex = (quickSelectionIndex + delta + list.length) % list.length;
     const target = list[quickSelectionIndex];
@@ -2869,6 +2918,71 @@ function quickSetCapacitorValue() {
     quickSetComponentValue('capacitor', 'C', CAPACITOR_SUFFIXES);
 }
 
+function quickSetFuncGenValue(propKey, inputEl, suffixEl, allowedSuffixes) {
+    const fg = selectedComponent && ['funcgen', 'functiongenerator'].includes(compKind(selectedComponent))
+        ? selectedComponent
+        : findComponentByKind(['funcgen', 'functiongenerator']);
+    if (!fg || !inputEl || !suffixEl) return;
+    const { value, suffix } = splitValueSuffix(inputEl.value, suffixEl.value, allowedSuffixes);
+    inputEl.value = value;
+    suffixEl.value = suffix;
+    fg.props = fg.props || {};
+    fg.props[propKey] = `${value}${suffix}`;
+    fg.sampleAccum = 0;
+    setSelectedComponent(fg);
+    selectionGroup = [fg];
+    safeCall(markStateDirty);
+    safeCall(updateProps);
+    updateQuickControlsVisibility();
+}
+
+function syncQuickFuncGenFields() {
+    const fg = selectedComponent && ['funcgen', 'functiongenerator'].includes(compKind(selectedComponent))
+        ? selectedComponent
+        : findComponentByKind(['funcgen', 'functiongenerator']);
+    if (!fg) return;
+    const { freqInput, freqSuffix, vppInput, vppSuffix } = getQuickFuncGenElements();
+    if (freqInput && freqSuffix) {
+        const { value, suffix } = splitValueSuffix(fg.props?.Freq || '', freqSuffix.value, FUNCGEN_FREQ_SUFFIXES);
+        freqInput.value = value;
+        freqSuffix.value = suffix;
+    }
+    if (vppInput && vppSuffix) {
+        const { value, suffix } = splitValueSuffix(fg.props?.Vpp || '', vppSuffix.value, FUNCGEN_VPP_SUFFIXES);
+        vppInput.value = value;
+        vppSuffix.value = suffix;
+    }
+}
+
+function quickSetFuncGenFreqValue() {
+    const { freqInput, freqSuffix } = getQuickFuncGenElements();
+    quickSetFuncGenValue('Freq', freqInput, freqSuffix, FUNCGEN_FREQ_SUFFIXES);
+}
+
+function quickSetFuncGenVppValue() {
+    const { vppInput, vppSuffix } = getQuickFuncGenElements();
+    quickSetFuncGenValue('Vpp', vppInput, vppSuffix, FUNCGEN_VPP_SUFFIXES);
+}
+
+function setActiveScopeById(id) {
+    const scopes = listScopes();
+    const match = scopes.find(s => s.id === id) || scopes[0];
+    if (match) {
+        activeScopeComponent = match;
+        if (scopeMode) {
+            syncScopeControls();
+            drawScope();
+            updateCursors();
+        }
+    }
+}
+
+function quickSelectScope(id) {
+    setActiveScopeById(id);
+    if (!scopeMode && activeScopeComponent) safeCall(openScope);
+    syncQuickScopeSelect();
+}
+
 function quickToggleScopeOverlay() {
     if (scopeMode) safeCall(closeScope);
     else safeCall(openScope);
@@ -2915,7 +3029,8 @@ function syncQuickBarVisibility() {
     const bar = document.getElementById('mobile-quick-bar');
     if (!bar) return;
     const hasQuickTargets = buildQuickList().length > 0;
-    const shouldShow = hasQuickTargets && isQuickControllable(selectedComponent);
+    const hasScope = components.some(c => compKind(c) === 'oscilloscope');
+    const shouldShow = hasQuickTargets || hasScope;
     if (quickBarVisible === shouldShow) return;
     quickBarVisible = shouldShow;
     if (!shouldShow) quickSelectionIndex = -1;
@@ -4556,10 +4671,14 @@ function updateCursors() {
     const ch1Min = document.getElementById('ch1-min');
     const ch2Max = document.getElementById('ch2-max');
     const ch2Min = document.getElementById('ch2-min');
+    const chMaxDiff = document.getElementById('ch-max-diff');
+    const chMinDiff = document.getElementById('ch-min-diff');
     if (stats?.ch1 && ch1Max) ch1Max.innerText = formatSignedUnit(stats.ch1.max, 'V');
     if (stats?.ch1 && ch1Min) ch1Min.innerText = formatSignedUnit(stats.ch1.min, 'V');
     if (stats?.ch2 && ch2Max) ch2Max.innerText = formatSignedUnit(stats.ch2.max, 'V');
     if (stats?.ch2 && ch2Min) ch2Min.innerText = formatSignedUnit(stats.ch2.min, 'V');
+    if (stats?.ch1 && stats?.ch2 && chMaxDiff) chMaxDiff.innerText = formatSignedUnit(stats.ch1.max - stats.ch2.max, 'V');
+    if (stats?.ch1 && stats?.ch2 && chMinDiff) chMinDiff.innerText = formatSignedUnit(stats.ch1.min - stats.ch2.min, 'V');
 }
 
 function bindScopeDragHandle() {
@@ -5119,6 +5238,9 @@ if (typeof window !== 'undefined') {
         quickSetPotTurn,
         quickSetResistorValue,
         quickSetCapacitorValue,
+        quickSetFuncGenFreqValue,
+        quickSetFuncGenVppValue,
+        quickSelectScope,
         autoscaleScopeVoltage
     });
 }
@@ -5157,6 +5279,9 @@ export {
     quickSetPotTurn,
     quickSetResistorValue,
     quickSetCapacitorValue,
+    quickSelectScope,
+    quickSetFuncGenFreqValue,
+    quickSetFuncGenVppValue,
     autoscaleScopeVoltage,
     __testSetScope
 };

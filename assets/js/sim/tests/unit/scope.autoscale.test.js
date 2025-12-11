@@ -30,7 +30,7 @@ function stubDom() {
     return el;
   };
   ['cursor-1', 'cursor-2', 'scope-vdiv1', 'scope-vdiv2', 'scope-time-div'].forEach(makeEl);
-  ['ch1-va', 'ch1-vb', 'ch1-dv', 'ch2-va', 'ch2-vb', 'ch2-dv', 'chd-va', 'chd-vb', 'chd-dv', 'ch1-max', 'ch1-min', 'ch2-max', 'ch2-min', 'cursor-dt', 'cursor-freq', 'cursor-ta', 'cursor-tb'].forEach(makeEl);
+  ['ch1-va', 'ch1-vb', 'ch1-dv', 'ch2-va', 'ch2-vb', 'ch2-dv', 'chd-va', 'chd-vb', 'chd-dv', 'ch1-max', 'ch1-min', 'ch2-max', 'ch2-min', 'ch-max-diff', 'ch-min-diff', 'cursor-dt', 'cursor-freq', 'cursor-ta', 'cursor-tb'].forEach(makeEl);
   store.get('cursor-1').style.left = '20';
   store.get('cursor-2').style.left = '80';
   global.document = {
