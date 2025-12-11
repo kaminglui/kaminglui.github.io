@@ -1533,19 +1533,6 @@ function draw() {
             c.drawLabels(ctx, viewMode);
         }
     });
-    // Scope labels for disambiguation
-    const scopeDescriptors = describeScopePosition(listScopes());
-    if (scopeDescriptors.length) {
-        ctx.save();
-        ctx.font = '10px monospace';
-        ctx.fillStyle = '#e5e7eb';
-        ctx.textBaseline = 'top';
-        scopeDescriptors.forEach(({ scope, label }) => {
-            const p = getScopeCenter(scope);
-            ctx.fillText(label, p.x + 8, p.y - 10);
-        });
-        ctx.restore();
-    }
     drawTemplatePreview();
 
     syncQuickBarVisibility();
@@ -3038,13 +3025,14 @@ function quickScopeDropdownAction() {
     if (select) {
         select.classList?.remove?.('hidden');
         select.size = Math.min(scopes.length, 6);
-        select.focus?.();
-        const close = () => {
-            select.size = 1;
+        if ((select.dataset && select.dataset.open) === 'true') {
+            if (select.dataset) select.dataset.open = 'false';
             select.classList?.add?.('hidden');
-            select.removeEventListener('blur', close);
-        };
-        select.addEventListener('blur', close);
+            select.size = 1;
+        } else {
+            if (select.dataset) select.dataset.open = 'true';
+            select.focus?.();
+        }
     }
 }
 
@@ -4747,12 +4735,16 @@ function updateCursors() {
     const ch2Min = document.getElementById('ch2-min');
     const chMaxDiff = document.getElementById('ch-max-diff');
     const chMinDiff = document.getElementById('ch-min-diff');
+    const ch1Span = document.getElementById('ch1-span');
+    const ch2Span = document.getElementById('ch2-span');
     if (stats?.ch1 && ch1Max) ch1Max.innerText = formatSignedUnit(stats.ch1.max, 'V');
     if (stats?.ch1 && ch1Min) ch1Min.innerText = formatSignedUnit(stats.ch1.min, 'V');
     if (stats?.ch2 && ch2Max) ch2Max.innerText = formatSignedUnit(stats.ch2.max, 'V');
     if (stats?.ch2 && ch2Min) ch2Min.innerText = formatSignedUnit(stats.ch2.min, 'V');
     if (stats?.ch1 && chMaxDiff) chMaxDiff.innerText = formatSignedUnit(stats.ch1.max - stats.ch1.min, 'V');
     if (stats?.ch2 && chMinDiff) chMinDiff.innerText = formatSignedUnit(stats.ch2.max - stats.ch2.min, 'V');
+    if (stats?.ch1 && ch1Span) ch1Span.innerText = formatSignedUnit(stats.ch1.max - stats.ch1.min, 'V');
+    if (stats?.ch2 && ch2Span) ch2Span.innerText = formatSignedUnit(stats.ch2.max - stats.ch2.min, 'V');
 }
 
 function bindScopeDragHandle() {
