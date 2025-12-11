@@ -1533,6 +1533,19 @@ function draw() {
             c.drawLabels(ctx, viewMode);
         }
     });
+    // Scope labels for disambiguation
+    const scopeDescriptors = describeScopePosition(listScopes());
+    if (scopeDescriptors.length) {
+        ctx.save();
+        ctx.font = '10px monospace';
+        ctx.fillStyle = '#e5e7eb';
+        ctx.textBaseline = 'top';
+        scopeDescriptors.forEach(({ scope, label }) => {
+            const p = getScopeCenter(scope);
+            ctx.fillText(label, p.x + 8, p.y - 10);
+        });
+        ctx.restore();
+    }
     drawTemplatePreview();
 
     syncQuickBarVisibility();
@@ -2748,16 +2761,51 @@ function listScopes() {
     return components.filter(c => compKind(c) === 'oscilloscope');
 }
 
+function getScopeCenter(scope) {
+    if (!scope) return { x: 0, y: 0 };
+    if (typeof scope.getBoundingBox === 'function') {
+        const b = scope.getBoundingBox();
+        return { x: (b.x1 + b.x2) / 2, y: (b.y1 + b.y2) / 2 };
+    }
+    return { x: scope.x || 0, y: scope.y || 0 };
+}
+
+function describeScopePosition(scopes) {
+    const centers = scopes.map(getScopeCenter);
+    if (!centers.length) return [];
+    const xs = centers.map(c => c.x);
+    const ys = centers.map(c => c.y);
+    const xMid = (Math.min(...xs) + Math.max(...xs)) / 2;
+    const yMid = (Math.min(...ys) + Math.max(...ys)) / 2;
+    const counts = new Map();
+
+    return scopes.map((s, idx) => {
+        const c = centers[idx];
+        const horiz = c.x < xMid - 10 ? 'left' : (c.x > xMid + 10 ? 'right' : 'middle');
+        const vert = c.y < yMid - 10 ? 'top' : (c.y > yMid + 10 ? 'bottom' : 'middle');
+        const key = `${horiz}-${vert}`;
+        const n = (counts.get(key) || 0) + 1;
+        counts.set(key, n);
+        const hv = (horiz === 'middle' && vert === 'middle')
+            ? 'middle'
+            : [horiz, vert].filter(v => v !== 'middle').join('/');
+        const suffix = n > 1 ? ` ${n}` : '';
+        const label = `${s.id || `Scope ${idx + 1}`} (${hv}${suffix})`;
+        return { scope: s, label, center: c, hv, order: n };
+    });
+}
+
 function syncQuickScopeSelect() {
     if (typeof document === 'undefined') return;
     const select = document.getElementById('quick-scope-select');
     if (!select || typeof document.createElement !== 'function') return;
     const scopes = listScopes();
+    const descriptors = describeScopePosition(scopes);
     select.innerHTML = '';
-    scopes.forEach((s, idx) => {
+    descriptors.forEach(({ scope: s, label }, idx) => {
         const opt = document.createElement('option');
         opt.value = s.id || `scope-${idx}`;
-        opt.textContent = s.id || `Scope ${idx + 1}`;
+        opt.textContent = label;
         select.appendChild(opt);
     });
     if (scopes.length <= 1) {
@@ -2981,6 +3029,32 @@ function quickSelectScope(id) {
     setActiveScopeById(id);
     if (!scopeMode && activeScopeComponent) safeCall(openScope);
     syncQuickScopeSelect();
+}
+
+function quickScopeDropdownAction() {
+    const scopes = listScopes();
+    if (!scopes.length) return;
+    const select = (typeof document !== 'undefined') ? document.getElementById('quick-scope-select') : null;
+    if (select) {
+        select.classList?.remove?.('hidden');
+        select.size = Math.min(scopes.length, 6);
+        select.focus?.();
+        const close = () => {
+            select.size = 1;
+            select.classList?.add?.('hidden');
+            select.removeEventListener('blur', close);
+        };
+        select.addEventListener('blur', close);
+    }
+}
+
+function quickScopeToggleMain() {
+    const scopes = listScopes();
+    if (!scopes.length) return;
+    const target = activeScopeComponent || scopes[0];
+    setActiveScopeById(target.id);
+    if (scopeMode) safeCall(closeScope);
+    else safeCall(openScope);
 }
 
 function quickToggleScopeOverlay() {
@@ -5241,6 +5315,8 @@ if (typeof window !== 'undefined') {
         quickSetFuncGenFreqValue,
         quickSetFuncGenVppValue,
         quickSelectScope,
+        quickScopeDropdownAction,
+        quickScopeToggleMain,
         autoscaleScopeVoltage
     });
 }
@@ -5282,6 +5358,8 @@ export {
     quickSelectScope,
     quickSetFuncGenFreqValue,
     quickSetFuncGenVppValue,
+    quickScopeDropdownAction,
+    quickScopeToggleMain,
     autoscaleScopeVoltage,
     __testSetScope
 };

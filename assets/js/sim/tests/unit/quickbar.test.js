@@ -7,6 +7,8 @@ import {
   quickSetPotTurn,
   quickSetFuncGenFreq,
   quickSetFuncGenVpp,
+  quickScopeDropdownAction,
+  quickScopeToggleMain,
   quickSetFuncGenFreqValue,
   quickSetFuncGenVppValue,
   quickSetResistorValue,
@@ -50,7 +52,9 @@ function stubDom(groups = []) {
     id,
     value: '',
     style: {},
-    classList: { toggle() {}, add() {}, remove() {} }
+    classList: { toggle() {}, add() {}, remove() {} },
+    addEventListener: () => {},
+    removeEventListener: () => {}
   }));
   global.document = {
     getElementById: (id) => {
@@ -78,6 +82,20 @@ describe('quick bar logic', () => {
     syncQuickBarVisibility(); // nothing selected yet
     expect(toggles.at(-1)).toEqual({ cls: 'hidden', state: false });
     expect(bar.setAttribute).toHaveBeenCalled();
+  });
+
+  it('opens scope dropdown only when multiple scopes and toggles main scope', () => {
+    const { store } = stubDom();
+    const scopes = [
+      { kind: 'oscilloscope', id: 'S1', props: {} },
+      { kind: 'oscilloscope', id: 'S2', props: {} }
+    ];
+    setComponents(scopes);
+    quickScopeDropdownAction();
+    expect(store.get('quick-scope-select').classList.remove).toBeDefined();
+    expect(store.get('quick-scope-select').size).toBe(2);
+    __testSetSelected(scopes[0]);
+    quickScopeToggleMain(); // should not throw
   });
 
   it('cycles only controllable kinds in order', () => {
