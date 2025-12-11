@@ -2800,11 +2800,8 @@ function syncQuickScopeSelect() {
         opt.textContent = label;
         select.appendChild(opt);
     });
-    if (scopes.length <= 1) {
-        select.classList?.add?.('hidden');
-    } else {
-        select.classList?.remove?.('hidden');
-    }
+    select.classList?.add?.('hidden');
+    if (select.dataset) select.dataset.open = 'false';
     const active = activeScopeComponent && scopes.includes(activeScopeComponent)
         ? activeScopeComponent
         : scopes[0];
@@ -3032,15 +3029,29 @@ function quickScopeDropdownAction() {
     const select = (typeof document !== 'undefined') ? document.getElementById('quick-scope-select') : null;
     if (select) {
         select.dataset = select.dataset || {};
-        select.classList?.remove?.('hidden');
-        select.size = Math.min(scopes.length, 6);
-        if (select.dataset.open === 'true') {
+        const close = () => {
             select.dataset.open = 'false';
-            select.classList?.add?.('hidden');
+            select.classList.add('hidden');
             select.size = 1;
-        } else {
+            select.removeEventListener('blur', close);
+            select.removeEventListener('change', close);
+        };
+        const show = () => {
+            select.classList.remove('hidden');
+            select.size = Math.min(scopes.length, 6);
             select.dataset.open = 'true';
-            select.focus?.();
+            if (typeof select.showPicker === 'function') {
+                try { select.showPicker(); } catch (_) {}
+            } else {
+                select.focus?.();
+            }
+            select.addEventListener('blur', close);
+            select.addEventListener('change', close);
+        };
+        if (select.dataset.open === 'true') {
+            close();
+        } else {
+            show();
         }
     }
 }
