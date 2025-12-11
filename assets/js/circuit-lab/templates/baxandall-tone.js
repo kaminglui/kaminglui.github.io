@@ -1,3 +1,4 @@
+// Template data stored as JS to avoid dual JSON/JS copies
 const baxandallTone = {
   id: "baxandall-tone",
   label: "Baxandall Tone Control",

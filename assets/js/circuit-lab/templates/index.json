@@ -1,0 +1,14 @@
+[
+  {
+    "id": "mixer-karaoke",
+    "file": "mixer-karaoke.json",
+    "label": "Mixer Karaoke",
+    "icon": "fas fa-microphone-lines text-cyan-300"
+  },
+  {
+    "id": "baxandall-tone",
+    "file": "baxandall-tone.json",
+    "label": "Baxandall Tone Control",
+    "icon": "fas fa-sliders"
+  }
+]

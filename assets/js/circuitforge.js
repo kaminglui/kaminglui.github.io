@@ -2585,6 +2585,41 @@ function serializeTemplate(selection = null) {
     return { components: compEntries, wires: serialWires };
 }
 
+function serializeTemplateLibrary(selection = null) {
+    const selected = Array.isArray(selection) && selection.length
+        ? selection.slice()
+        : components.slice();
+    if (!selected.length) return { components: [], wires: [] };
+
+    const compEntries = [];
+    const compIndexMap = new Map();
+    selected.forEach((c) => {
+        const type = getComponentTypeId(c);
+        if (!type) return;
+        const idx = compEntries.length;
+        compEntries.push({
+            id: c.id,
+            type,
+            x: c.x || 0,
+            y: c.y || 0,
+            rotation: c.rotation ?? 0,
+            mirrorX: !!c.mirrorX,
+            props: { ...c.props }
+        });
+        compIndexMap.set(c, idx);
+    });
+
+    const serialWires = wires
+        .filter(w => compIndexMap.has(w.from.c) && compIndexMap.has(w.to.c))
+        .map(w => ({
+            from: { id: w.from.c?.id, pin: w.from.p, index: compIndexMap.get(w.from.c) },
+            to: { id: w.to.c?.id, pin: w.to.p, index: compIndexMap.get(w.to.c) },
+            vertices: (w.vertices || []).map(v => ({ x: v.x || 0, y: v.y || 0 }))
+        }));
+
+    return { components: compEntries, wires: serialWires };
+}
+
 function deserializeTemplate(templateObj) {
     if (!templateObj || typeof templateObj !== 'object') throw new Error('Invalid template data');
     const clone = (typeof structuredClone === 'function')
@@ -2883,16 +2918,24 @@ function fileTimestamp() {
 
 function downloadTemplateJSON() {
     const target = selectionGroup.length ? selectionGroup : null;
-    const payload = serializeTemplate(target);
+    const payload = serializeTemplateLibrary(target);
     if (!payload.components.length) {
         alert('Select at least one component or build a circuit before saving a template.');
         return;
     }
+    const stamp = fileTimestamp();
+    const defaultId = payload.id || `template-${stamp}`;
+    const id = prompt('Template ID (used as filename)', defaultId);
+    if (!id) return;
+    payload.id = id;
+    const label = prompt('Template label (shown in gallery)', payload.label || id) || id;
+    payload.label = label;
+    payload.icon = payload.icon || 'fas fa-puzzle-piece';
     const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `template-${fileTimestamp()}.json`;
+    a.download = `${id}.json`;
     a.click();
     URL.revokeObjectURL(url);
 }
@@ -3910,7 +3953,7 @@ function computeScopeLayout(mode = scopeDisplayMode || getDefaultScopeMode(), {
         };
     }
 
-    const padding = 16;
+    const padding = 0;
     const minW = 320;
     const minH = 240;
     const baseW = Math.max(minW, Math.min(windowSize?.width || 560, Math.max(minW, (containerW || minW) - padding * 2)));
