@@ -21,7 +21,7 @@ const baxandallTone = {
     { id: "J6", type: "junction", x: 1550, y: 2450, rotation: 0, mirrorX: false, props: {} },
     { id: "J7", type: "junction", x: 1290, y: 2410, rotation: 0, mirrorX: false, props: {} },
     { id: "U1", type: "lf412", x: 1150, y: 2430, rotation: 0, mirrorX: false, props: {} },
-    { id: "SCOPE1", type: "oscilloscope", x: 1330, y: 2050, rotation: 0, mirrorX: false, props: {"TimeDiv":"10m","VDiv1":"1","VDiv2":"1"} },
+    { id: "SCOPE1", type: "oscilloscope", x: 1330, y: 2050, rotation: 0, mirrorX: false, props: {"TimeDiv":"1m","VDiv1":"1","VDiv2":"1"} },
     { id: "POT1", type: "potentiometer", x: 1550, y: 2270, rotation: 0, mirrorX: false, props: {"R":"100k","Turn":"100"} },
     { id: "POT2", type: "potentiometer", x: 1550, y: 2590, rotation: 2, mirrorX: true, props: {"R":"100k","Turn":"0"} },
     { id: "R1", type: "resistor", x: 1410, y: 2570, rotation: 0, mirrorX: false, props: {"R":"11k","Tolerance":"5"} },

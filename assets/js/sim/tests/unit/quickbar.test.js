@@ -15,7 +15,7 @@ import {
   updateQuickControlsVisibility
 } from '../../../circuitforge.js';
 
-function stubBar() {
+function stubDom(groups = []) {
   const toggles = [];
   const bar = {
     classList: {
@@ -23,19 +23,8 @@ function stubBar() {
     },
     setAttribute: vi.fn()
   };
-  global.document = {
-    getElementById: (id) => (id === 'mobile-quick-bar' ? bar : null)
-  };
-  return { bar, toggles };
-}
-
-function setComponents(list) {
-  __testSetComponents(list);
-}
-
-function stubGroups(ids) {
   const store = new Map();
-  ids.forEach((id) => {
+  groups.forEach((id) => {
     store.set(id, {
       dataset: { kind: id },
       classList: {
@@ -46,30 +35,46 @@ function stubGroups(ids) {
       }
     });
   });
+  const slider = { id: 'quick-pot-slider', value: '0', disabled: false };
   global.document = {
-    getElementById: (id) => (id === 'mobile-quick-bar' ? { classList: { toggle() {}, hidden: false }, setAttribute: vi.fn() } : null),
+    getElementById: (id) => {
+      if (id === 'mobile-quick-bar') return bar;
+      if (id === 'quick-pot-slider') return slider;
+      return null;
+    },
     querySelectorAll: () => Array.from(store.values())
   };
-  return store;
+  return { bar, toggles, slider, groups: store };
+}
+
+function setComponents(list) {
+  __testSetComponents(list);
 }
 
 describe('quick bar logic', () => {
-  it('hides when no components and shows when present', () => {
-    const { bar, toggles } = stubBar();
+  it('shows only with a selected controllable component', () => {
+    const { bar, toggles } = stubDom();
+    const sw = { kind: 'switch', id: 'SW1', props: { Position: 'A' } };
     setComponents([]);
     syncQuickBarVisibility();
     expect(toggles.at(-1)).toEqual({ cls: 'hidden', state: true });
-    setComponents([{ kind: 'switch', id: 'SW1' }]);
-    syncQuickBarVisibility();
+    setComponents([sw]);
+    syncQuickBarVisibility(); // nothing selected yet
+    expect(toggles.at(-1)).toEqual({ cls: 'hidden', state: true });
+    __testSetSelected(sw);
     expect(toggles.at(-1)).toEqual({ cls: 'hidden', state: false });
     expect(bar.setAttribute).toHaveBeenCalled();
+    __testSetSelected(null);
+    expect(toggles.at(-1)).toEqual({ cls: 'hidden', state: true });
   });
 
-  it('cycles selection by kind order', () => {
+  it('cycles only controllable kinds in order', () => {
+    global.document = { getElementById: () => null };
     setComponents([
-      { kind: 'resistor', id: 'R1', props: {} },
+      { kind: 'ground', id: 'G1', props: {} },
       { kind: 'switch', id: 'SW1', props: { Position: 'A' } },
-      { kind: 'potentiometer', id: 'POT1', props: { Turn: '50' } }
+      { kind: 'potentiometer', id: 'POT1', props: { Turn: '50' } },
+      { kind: 'junction', id: 'J1', props: {} }
     ]);
     quickSelectNext();
     expect(__testGetSelected()?.id).toBe('SW1');
@@ -80,7 +85,7 @@ describe('quick bar logic', () => {
   });
 
   it('quick controls mutate component props', () => {
-    stubGroups(['switch', 'potentiometer', 'funcgen', 'view']);
+    const { slider } = stubDom(['switch', 'potentiometer', 'funcgen']);
     const sw = { kind: 'switch', id: 'SW1', props: { Position: 'A' } };
     const pot = { kind: 'potentiometer', id: 'POT1', props: { Turn: '50' } };
     const fg = { kind: 'funcgen', id: 'FG1', props: { Vpp: '1', Freq: '880' } };
@@ -93,6 +98,7 @@ describe('quick bar logic', () => {
     expect(pot.props.Turn).toBe('40');
     quickSetPotTurn('75');
     expect(pot.props.Turn).toBe('75');
+    expect(slider.value).toBe('75');
     __testSetSelected(fg);
     quickSetFuncGenFreq('110');
     quickSetFuncGenVpp('0.5');
@@ -101,7 +107,7 @@ describe('quick bar logic', () => {
   });
 
   it('shows only the active quick group', () => {
-    const groups = stubGroups(['switch', 'potentiometer', 'funcgen']);
+    const { groups } = stubDom(['switch', 'potentiometer', 'funcgen']);
     const sw = { kind: 'switch', id: 'SW1', props: { Position: 'A' } };
     const pot = { kind: 'potentiometer', id: 'POT1', props: { Turn: '50' } };
     const fg = { kind: 'funcgen', id: 'FG1', props: { Vpp: '1', Freq: '880' } };
@@ -113,5 +119,16 @@ describe('quick bar logic', () => {
     __testSetSelected(fg);
     updateQuickControlsVisibility();
     expect(groups.get('funcgen').classList.hidden).toBe(false);
+  });
+
+  it('keeps pot slider in sync with current selection value', () => {
+    const { slider } = stubDom(['potentiometer']);
+    const pot = { kind: 'potentiometer', id: 'POT1', props: { Turn: '65' } };
+    setComponents([pot]);
+    __testSetSelected(pot);
+    expect(slider.value).toBe('65');
+    pot.props.Turn = '80';
+    __testSetSelected(pot);
+    expect(slider.value).toBe('80');
   });
 });

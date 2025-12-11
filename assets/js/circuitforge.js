@@ -71,6 +71,7 @@ const TOUCH_SELECTION_HOLD_MS = 280;
 const COMPONENT_DELETE_HOLD_MS = 650;
 const SWITCH_TYPES          = ['SPST', 'SPDT', 'DPDT'];
 const DEFAULT_SWITCH_TYPE   = 'SPDT';
+const SCOPE_VDIV_OPTIONS    = ['50m', '100m', '200m', '500m', '1', '2', '5', '10'];
 const MOBILE_BREAKPOINT     = 768;
 const BASELINE_NODE_LEAK    = 1e-11;
 const OPAMP_GAIN            = 1e9;
@@ -1961,8 +1962,10 @@ function setSelectedComponent(c) {
     selectedComponent = c;
     selectionGroup    = c ? [c] : [];
     selectedWire      = null;
-    quickSelectionIndex = -1;
+    syncQuickSelectionIndex(c);
     syncQuickBarVisibility();
+    updateQuickControlsVisibility();
+    syncQuickPotSlider(c);
 }
 
 function rotateSelected() {
@@ -2463,6 +2466,9 @@ function updateProps() {
 
         dyn.appendChild(row);
     }
+
+    updateQuickControlsVisibility();
+    syncQuickPotSlider(selectedComponent);
 }
 
 
@@ -2634,15 +2640,19 @@ function serializeTemplateLibrary(selection = null) {
     return { components: compEntries, wires: serialWires };
 }
 
-const QUICK_KIND_GROUPS = [
+const QUICK_CONTROL_GROUPS = [
     { key: 'switch', aliases: ['switch'] },
     { key: 'potentiometer', aliases: ['potentiometer'] },
-    { key: 'oscilloscope', aliases: ['oscilloscope'] },
-    { key: 'funcgen', aliases: ['funcgen', 'functiongenerator'] },
     { key: 'resistor', aliases: ['resistor'] },
-    { key: 'voltagesource', aliases: ['voltagesource'] },
-    { key: 'ground', aliases: ['ground'] }
+    { key: 'capacitor', aliases: ['capacitor'] },
+    { key: 'oscilloscope', aliases: ['oscilloscope'] },
+    { key: 'funcgen', aliases: ['funcgen', 'functiongenerator'] }
 ];
+const QUICK_CONTROL_ALIAS_SET = new Set(
+    QUICK_CONTROL_GROUPS.flatMap(group => group.aliases)
+);
+const RESISTOR_SUFFIXES = ['', 'm', 'k', 'M', 'G', 'u', 'n', 'p'];
+const CAPACITOR_SUFFIXES = ['p', 'n', 'u', 'm'];
 
 function compKind(c) {
     return (c?.kind || '').toLowerCase();
@@ -2653,9 +2663,13 @@ function matchesKind(c, group) {
     return group.aliases.includes(k);
 }
 
+function isQuickControllable(comp) {
+    return QUICK_CONTROL_ALIAS_SET.has(compKind(comp));
+}
+
 function buildQuickList() {
     const list = [];
-    QUICK_KIND_GROUPS.forEach((group) => {
+    QUICK_CONTROL_GROUPS.forEach((group) => {
         const bucket = components
             .filter(c => matchesKind(c, group))
             .sort((a, b) => (a.id || '').localeCompare(b.id || ''));
@@ -2664,13 +2678,78 @@ function buildQuickList() {
     return list;
 }
 
+function syncQuickSelectionIndex(target) {
+    const list = buildQuickList();
+    quickSelectionIndex = (target && isQuickControllable(target))
+        ? list.indexOf(target)
+        : -1;
+}
+
+function clampPercent(val) {
+    return Math.min(100, Math.max(0, val));
+}
+
+function getQuickPotSlider() {
+    if (typeof document === 'undefined') return null;
+    return document.getElementById('quick-pot-slider');
+}
+
+function splitValueSuffix(rawValue, rawSuffix, allowed = ['']) {
+    const m = String(rawValue ?? '').trim().match(/^(-?[\d.]+)\s*([a-zA-Zµμ]*)$/);
+    let value = String(rawValue ?? '0').trim() || '0';
+    let suffix = String(rawSuffix ?? '').trim();
+    if (m) {
+        value = m[1] || '0';
+        suffix = m[2] || suffix;
+    }
+    if (!allowed.includes(suffix)) {
+        suffix = allowed.includes('') ? '' : allowed[0];
+    }
+    return { value, suffix };
+}
+
+function getQuickValueElements(kind) {
+    if (typeof document === 'undefined') return { input: null, suffix: null };
+    return {
+        input: document.getElementById(`quick-${kind}-value`),
+        suffix: document.getElementById(`quick-${kind}-suffix`)
+    };
+}
+
+function syncQuickValueFields(kind, propKey, allowed) {
+    const { input, suffix } = getQuickValueElements(kind);
+    if (!input || !suffix) return;
+    const comp = selectedComponent && compKind(selectedComponent) === kind
+        ? selectedComponent
+        : findComponentByKind(kind);
+    if (!comp) return;
+    const { value, suffix: suf } = splitValueSuffix(comp.props?.[propKey] || '', suffix.value, allowed);
+    input.value = value;
+    suffix.value = suf;
+}
+
 function getActiveQuickKind() {
     const selectedKind = compKind(selectedComponent);
-    if (selectedComponent && QUICK_KIND_GROUPS.some(g => g.aliases.includes(selectedKind))) {
+    if (selectedComponent && isQuickControllable(selectedComponent)) {
         return selectedKind;
     }
     const list = buildQuickList();
-    return compKind(list[0]) || null;
+    const target = list[(quickSelectionIndex >= 0 && quickSelectionIndex < list.length) ? quickSelectionIndex : 0];
+    return compKind(target) || null;
+}
+
+function syncQuickPotSlider(target = selectedComponent) {
+    const slider = getQuickPotSlider();
+    if (!slider) return;
+    const pot = (compKind(target) === 'potentiometer')
+        ? target
+        : buildQuickList().find(c => compKind(c) === 'potentiometer');
+    if (!pot) {
+        slider.value = '0';
+        return;
+    }
+    const next = clampPercent(parseFloat(pot.props?.Turn ?? '0') || 0);
+    slider.value = String(next);
 }
 
 function updateQuickControlsVisibility() {
@@ -2689,6 +2768,9 @@ function updateQuickControlsVisibility() {
         const show = availableKinds.has(kind) && kind === active;
         el.classList.toggle('hidden', !show);
     });
+    if (active === 'potentiometer') syncQuickPotSlider();
+    if (active === 'resistor') syncQuickValueFields('resistor', 'R', RESISTOR_SUFFIXES);
+    if (active === 'capacitor') syncQuickValueFields('capacitor', 'C', CAPACITOR_SUFFIXES);
 }
 
 function quickSelect(delta) {
@@ -2733,13 +2815,14 @@ function quickAdjustPot(delta) {
         : findComponentByKind('potentiometer');
     if (!pot) return;
     const current = parseFloat(pot.props?.Turn ?? '0') || 0;
-    const next = Math.min(100, Math.max(0, current + delta));
+    const next = clampPercent(current + delta);
     pot.props = pot.props || {};
     pot.props.Turn = String(next);
     setSelectedComponent(pot);
     selectionGroup = [pot];
     safeCall(markStateDirty);
     safeCall(updateProps);
+    syncQuickPotSlider(pot);
     updateQuickControlsVisibility();
 }
 
@@ -2748,14 +2831,42 @@ function quickSetPotTurn(val) {
         ? selectedComponent
         : findComponentByKind('potentiometer');
     if (!pot) return;
-    const num = Math.min(100, Math.max(0, parseFloat(val) || 0));
+    const num = clampPercent(parseFloat(val) || 0);
     pot.props = pot.props || {};
     pot.props.Turn = String(num);
     setSelectedComponent(pot);
     selectionGroup = [pot];
     safeCall(markStateDirty);
     safeCall(updateProps);
+    syncQuickPotSlider(pot);
     updateQuickControlsVisibility();
+}
+
+function quickSetComponentValue(kind, propKey, allowedSuffixes) {
+    const { input, suffix } = getQuickValueElements(kind);
+    if (!input || !suffix) return;
+    const comp = selectedComponent && compKind(selectedComponent) === kind
+        ? selectedComponent
+        : findComponentByKind(kind);
+    if (!comp) return;
+    const { value, suffix: suf } = splitValueSuffix(input.value, suffix.value, allowedSuffixes);
+    input.value = value;
+    suffix.value = suf;
+    comp.props = comp.props || {};
+    comp.props[propKey] = `${value}${suf}`;
+    setSelectedComponent(comp);
+    selectionGroup = [comp];
+    safeCall(markStateDirty);
+    safeCall(updateProps);
+    updateQuickControlsVisibility();
+}
+
+function quickSetResistorValue() {
+    quickSetComponentValue('resistor', 'R', RESISTOR_SUFFIXES);
+}
+
+function quickSetCapacitorValue() {
+    quickSetComponentValue('capacitor', 'C', CAPACITOR_SUFFIXES);
 }
 
 function quickToggleScopeOverlay() {
@@ -2800,14 +2911,20 @@ function quickSetFuncGenVpp(vpp) {
 }
 
 function syncQuickBarVisibility() {
+    if (typeof document === 'undefined') return;
     const bar = document.getElementById('mobile-quick-bar');
     if (!bar) return;
-    const hasComponents = (components?.length || 0) > 0;
-    if (quickBarVisible === hasComponents) return;
-    quickBarVisible = hasComponents;
-    bar.classList.toggle('hidden', !hasComponents);
-    bar.setAttribute('aria-hidden', (!hasComponents).toString());
-    if (hasComponents) updateQuickControlsVisibility();
+    const hasQuickTargets = buildQuickList().length > 0;
+    const shouldShow = hasQuickTargets && isQuickControllable(selectedComponent);
+    if (quickBarVisible === shouldShow) return;
+    quickBarVisible = shouldShow;
+    if (!shouldShow) quickSelectionIndex = -1;
+    bar.classList.toggle('hidden', !shouldShow);
+    bar.setAttribute('aria-hidden', (!shouldShow).toString());
+    if (shouldShow) {
+        updateQuickControlsVisibility();
+        syncQuickPotSlider();
+    }
 }
 
 function __testSetComponents(list = []) {
@@ -2822,8 +2939,13 @@ function __testGetSelected() {
 }
 
 function __testSetSelected(c) {
-    selectedComponent = c;
-    selectionGroup = c ? [c] : [];
+    setSelectedComponent(c);
+}
+
+function __testSetScope(scope) {
+    activeScopeComponent = scope;
+    scopeCanvas = scopeCanvas || {};
+    scopeCtx = scopeCtx || {};
 }
 
 function deserializeTemplate(templateObj) {
@@ -4080,6 +4202,25 @@ function sampleChannelAt(arr, startIdx, pct) {
     return v1 + (v2 - v1) * frac;
 }
 
+function computeScopeChannelStats(scope) {
+    if (!scope || !scope.data) return null;
+    const { ch1 = [], ch2 = [] } = scope.data;
+    const reduceStats = (arr) => {
+        let min = Infinity;
+        let max = -Infinity;
+        for (let i = 0; i < Math.min(arr.length, HISTORY_SIZE); i++) {
+            const v = arr[i];
+            if (!isFinite(v)) continue;
+            if (v < min) min = v;
+            if (v > max) max = v;
+        }
+        if (!isFinite(min)) min = 0;
+        if (!isFinite(max)) max = 0;
+        return { min, max, vpp: max - min };
+    };
+    return { ch1: reduceStats(ch1), ch2: reduceStats(ch2) };
+}
+
 function buildCursorMetrics(scope) {
     if (!scope) return null;
     const { a: pctA, b: pctB } = getCursorPercents();
@@ -4101,7 +4242,25 @@ function buildCursorMetrics(scope) {
         vb: sampleChannelAt(ch.data, startIdx, pctB)
     }));
 
-    return { pctA, pctB, tA, tB, deltaT, freq, channels };
+    const stats = computeScopeChannelStats(scope);
+    const diffA = channels[0].va - channels[1].va;
+    const diffB = channels[0].vb - channels[1].vb;
+
+    return {
+        pctA,
+        pctB,
+        tA,
+        tB,
+        deltaT,
+        freq,
+        channels,
+        diff: {
+            va: diffA,
+            vb: diffB,
+            dv: diffB - diffA
+        },
+        stats
+    };
 }
 
 function cursorIsVisible(id) {
@@ -4384,6 +4543,23 @@ function updateCursors() {
         const legacyDv = document.getElementById(`scope-dv${idx + 1}`);
         if (legacyDv) legacyDv.innerText = formatSignedUnit(row.vb - row.va, 'V');
     });
+
+    const diffAEl = document.getElementById('chd-va');
+    const diffBEl = document.getElementById('chd-vb');
+    const diffDEl = document.getElementById('chd-dv');
+    if (diffAEl) diffAEl.innerText = formatSignedUnit(metrics.diff?.va || 0, 'V');
+    if (diffBEl) diffBEl.innerText = formatSignedUnit(metrics.diff?.vb || 0, 'V');
+    if (diffDEl) diffDEl.innerText = formatSignedUnit(metrics.diff?.dv || 0, 'V');
+
+    const { stats } = metrics;
+    const ch1Max = document.getElementById('ch1-max');
+    const ch1Min = document.getElementById('ch1-min');
+    const ch2Max = document.getElementById('ch2-max');
+    const ch2Min = document.getElementById('ch2-min');
+    if (stats?.ch1 && ch1Max) ch1Max.innerText = formatSignedUnit(stats.ch1.max, 'V');
+    if (stats?.ch1 && ch1Min) ch1Min.innerText = formatSignedUnit(stats.ch1.min, 'V');
+    if (stats?.ch2 && ch2Max) ch2Max.innerText = formatSignedUnit(stats.ch2.max, 'V');
+    if (stats?.ch2 && ch2Min) ch2Min.innerText = formatSignedUnit(stats.ch2.min, 'V');
 }
 
 function bindScopeDragHandle() {
@@ -4477,6 +4653,7 @@ function attachScopeControlHandlers() {
     const timeSel = document.getElementById('scope-time-div');
     const v1Sel = document.getElementById('scope-vdiv1');
     const v2Sel = document.getElementById('scope-vdiv2');
+    const autoBtn = document.getElementById('scope-autoscale-btn');
 
     const hook = (el, handler) => {
         if (el && !el._scopeHooked) {
@@ -4508,6 +4685,40 @@ function attachScopeControlHandlers() {
         drawScope();
         markStateDirty();
     });
+
+    if (autoBtn && !autoBtn._scopeHooked) {
+        autoBtn.addEventListener('click', autoscaleScopeVoltage);
+        autoBtn._scopeHooked = true;
+    }
+}
+
+function pickScopeVScale(targetVpp) {
+    const perDivNeeded = targetVpp / 10;
+    let choice = SCOPE_VDIV_OPTIONS[SCOPE_VDIV_OPTIONS.length - 1];
+    for (const opt of SCOPE_VDIV_OPTIONS) {
+        if (parseUnit(opt) >= perDivNeeded) {
+            choice = opt;
+            break;
+        }
+    }
+    return choice;
+}
+
+function autoscaleScopeVoltage() {
+    const scope = activeScopeComponent || components.find(c => c instanceof Oscilloscope);
+    if (!scope || !scope.data) return;
+    const stats = computeScopeChannelStats(scope);
+    if (!stats) return;
+    const maxVpp = Math.max(stats.ch1.vpp, stats.ch2.vpp);
+    if (!isFinite(maxVpp) || maxVpp <= 0) return;
+    const nextVdiv = pickScopeVScale(maxVpp);
+    scope.props.VDiv1 = nextVdiv;
+    scope.props.VDiv2 = nextVdiv;
+    scope.sampleAccum = 0;
+    safeCall(syncScopeControls);
+    safeCall(drawScope);
+    safeCall(updateCursors);
+    markStateDirty();
 }
 
 /* ---------- VIEW / SIM CONTROL ---------- */
@@ -4873,6 +5084,7 @@ const circuitForgeApi = {
     toggleView,
     toggleScopeDisplayMode,
     closeScope,
+    autoscaleScopeVoltage,
     toggleCursors,
     startScopeWindowDrag,
     startDragCursor,
@@ -4904,7 +5116,10 @@ if (typeof window !== 'undefined') {
         quickToggleViewMode,
         quickSetFuncGenFreq,
         quickSetFuncGenVpp,
-        quickSetPotTurn
+        quickSetPotTurn,
+        quickSetResistorValue,
+        quickSetCapacitorValue,
+        autoscaleScopeVoltage
     });
 }
 
@@ -4921,6 +5136,9 @@ export {
     getPinDirection,
     cursorIsVisible,
     setCursorVisibility,
+    updateCursors,
+    buildCursorMetrics,
+    computeScopeChannelStats,
     // Test helpers
     syncQuickBarVisibility,
     quickSelectPrev,
@@ -4936,7 +5154,11 @@ export {
     __testGetSelected,
     __testSetSelected,
     updateQuickControlsVisibility,
-    quickSetPotTurn
+    quickSetPotTurn,
+    quickSetResistorValue,
+    quickSetCapacitorValue,
+    autoscaleScopeVoltage,
+    __testSetScope
 };
 
 function startCircuitForge() {

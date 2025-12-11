@@ -155,11 +155,11 @@
       "y": 1750,
       "rotation": 0,
       "mirrorX": false,
-      "props": {
-        "TimeDiv": "10m",
-        "VDiv1": "200m",
-        "VDiv2": "200m"
-      }
+        "props": {
+            "TimeDiv": "1m",
+            "VDiv1": "200m",
+            "VDiv2": "200m"
+        }
     },
     {
       "id": "SW1",

@@ -809,30 +809,35 @@
                         <span class="text-yellow-300">CH1 V/div</span>
                         <select id="scope-vdiv1"
                                 class="bg-gray-900 border border-gray-700 rounded px-2 py-1 text-xs text-right">
-                            <option value="50m">50m</option>
-                            <option value="100m">100m</option>
-                            <option value="200m">200m</option>
-                            <option value="500m">500m</option>
-                            <option value="1">1</option>
-                            <option value="2">2</option>
-                            <option value="5">5</option>
-                            <option value="10">10</option>
+                            <option value="50m">50m V/div</option>
+                            <option value="100m">100m V/div</option>
+                            <option value="200m">200m V/div</option>
+                            <option value="500m">500m V/div</option>
+                            <option value="1">1 V/div</option>
+                            <option value="2">2 V/div</option>
+                            <option value="5">5 V/div</option>
+                            <option value="10">10 V/div</option>
                         </select>
                     </label>
                     <label class="flex items-center gap-2 bg-gray-800 px-3 py-2 rounded border border-gray-700">
                         <span class="text-cyan-300">CH2 V/div</span>
                         <select id="scope-vdiv2"
                                 class="bg-gray-900 border border-gray-700 rounded px-2 py-1 text-xs text-right">
-                            <option value="50m">50m</option>
-                            <option value="100m">100m</option>
-                            <option value="200m">200m</option>
-                            <option value="500m">500m</option>
-                            <option value="1">1</option>
-                            <option value="2">2</option>
-                            <option value="5">5</option>
-                            <option value="10">10</option>
+                            <option value="50m">50m V/div</option>
+                            <option value="100m">100m V/div</option>
+                            <option value="200m">200m V/div</option>
+                            <option value="500m">500m V/div</option>
+                            <option value="1">1 V/div</option>
+                            <option value="2">2 V/div</option>
+                            <option value="5">5 V/div</option>
+                            <option value="10">10 V/div</option>
                         </select>
                     </label>
+                    <button id="scope-autoscale-btn"
+                            onclick="autoscaleScopeVoltage()"
+                            class="bg-indigo-700 hover:bg-indigo-600 px-3 py-2 rounded border border-indigo-500 uppercase tracking-wider font-bold text-[11px] text-white">
+                        Autoscale V
+                    </button>
                     <button onclick="toggleCursors()"
                             class="ml-auto bg-gray-800 px-3 py-2 rounded border border-gray-700 hover:bg-gray-700 uppercase tracking-wider font-bold text-[11px]">
                         Toggle Cursors
@@ -893,8 +898,24 @@
                                     <td class="py-1" id="ch2-vb">0V</td>
                                     <td class="py-1" id="ch2-dv">0V</td>
                                 </tr>
+                                <tr>
+                                    <td class="py-1">CH1 - CH2</td>
+                                    <td class="py-1" id="chd-va">0V</td>
+                                    <td class="py-1" id="chd-vb">0V</td>
+                                    <td class="py-1" id="chd-dv">0V</td>
+                                </tr>
                             </tbody>
                         </table>
+                        <div class="grid grid-cols-2 gap-2 mt-3 text-[10px] text-gray-300">
+                            <div class="bg-gray-900/60 rounded p-2 border border-gray-700">
+                                <div class="flex justify-between"><span>CH1 max</span><span id="ch1-max" class="text-yellow-200">0V</span></div>
+                                <div class="flex justify-between"><span>CH1 min</span><span id="ch1-min" class="text-yellow-200">0V</span></div>
+                            </div>
+                            <div class="bg-gray-900/60 rounded p-2 border border-gray-700">
+                                <div class="flex justify-between"><span>CH2 max</span><span id="ch2-max" class="text-cyan-200">0V</span></div>
+                                <div class="flex justify-between"><span>CH2 min</span><span id="ch2-min" class="text-cyan-200">0V</span></div>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -918,9 +939,46 @@
                 <span class="text-gray-300">Pot</span>
                 <button class="sim-btn" onclick="quickAdjustPot(-10)" aria-label="Pot -10%">-10%</button>
                 <button class="sim-btn" onclick="quickAdjustPot(10)" aria-label="Pot +10%">+10%</button>
-                <input type="range" min="0" max="100" step="1" value="50"
+                <input id="quick-pot-slider" type="range" min="0" max="100" step="1" value="50"
                        class="h-6"
                        oninput="quickSetPotTurn(this.value)" aria-label="Pot slider">
+            </div>
+            <div class="mini-group quick-group" data-kind="resistor">
+                <span class="text-gray-300">R</span>
+                <input id="quick-resistor-value"
+                       type="text"
+                       inputmode="decimal"
+                       class="w-16 bg-gray-900 border border-gray-700 rounded px-2 py-1 text-xs text-right"
+                       oninput="quickSetResistorValue()"
+                       aria-label="Resistor value">
+                <select id="quick-resistor-suffix"
+                        class="bg-gray-900 border border-gray-700 rounded px-2 py-1 text-xs text-right"
+                        onchange="quickSetResistorValue()"
+                        aria-label="Resistor suffix">
+                    <option value="">Ω</option>
+                    <option value="m">mΩ</option>
+                    <option value="k">kΩ</option>
+                    <option value="M">MΩ</option>
+                    <option value="G">GΩ</option>
+                </select>
+            </div>
+            <div class="mini-group quick-group" data-kind="capacitor">
+                <span class="text-gray-300">C</span>
+                <input id="quick-capacitor-value"
+                       type="text"
+                       inputmode="decimal"
+                       class="w-16 bg-gray-900 border border-gray-700 rounded px-2 py-1 text-xs text-right"
+                       oninput="quickSetCapacitorValue()"
+                       aria-label="Capacitor value">
+                <select id="quick-capacitor-suffix"
+                        class="bg-gray-900 border border-gray-700 rounded px-2 py-1 text-xs text-right"
+                        onchange="quickSetCapacitorValue()"
+                        aria-label="Capacitor suffix">
+                    <option value="p">pF</option>
+                    <option value="n">nF</option>
+                    <option value="u">uF</option>
+                    <option value="m">mF</option>
+                </select>
             </div>
             <div class="mini-group quick-group" data-kind="oscilloscope">
                 <button class="sim-btn" onclick="quickToggleScopeOverlay()" aria-label="Toggle scope">

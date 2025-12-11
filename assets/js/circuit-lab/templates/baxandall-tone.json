@@ -179,11 +179,11 @@
       "y": 2050,
       "rotation": 0,
       "mirrorX": false,
-      "props": {
-        "TimeDiv": "10m",
-        "VDiv1": "1",
-        "VDiv2": "1"
-      }
+        "props": {
+            "TimeDiv": "1m",
+            "VDiv1": "1",
+            "VDiv2": "1"
+        }
     },
     {
       "id": "POT1",

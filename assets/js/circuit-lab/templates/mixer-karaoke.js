@@ -17,7 +17,7 @@ const mixerKaraoke = {
     { id: "GND4", type: "ground", x: 810, y: 1770, rotation: 2, mirrorX: false, props: {} },
     { id: "GND5", type: "ground", x: 50, y: 1950, rotation: 0, mirrorX: false, props: {} },
     { id: "GND6", type: "ground", x: 50, y: 2130, rotation: 0, mirrorX: false, props: {} },
-    { id: "SCOPE1", type: "oscilloscope", x: 510, y: 1750, rotation: 0, mirrorX: false, props: {"TimeDiv":"10m","VDiv1":"200m","VDiv2":"200m"} },
+    { id: "SCOPE1", type: "oscilloscope", x: 510, y: 1750, rotation: 0, mirrorX: false, props: {"TimeDiv":"1m","VDiv1":"200m","VDiv2":"200m"} },
     { id: "SW1", type: "switch", x: 390, y: 2070, rotation: 0, mirrorX: false, props: {"Type":"SPDT","Position":"B"} },
     { id: "R1", type: "resistor", x: 570, y: 1930, rotation: 0, mirrorX: false, props: {"R":"7.5k","Tolerance":"1"} },
     { id: "R2", type: "resistor", x: 250, y: 1990, rotation: 0, mirrorX: false, props: {"R":"7.5k","Tolerance":"1"} },
