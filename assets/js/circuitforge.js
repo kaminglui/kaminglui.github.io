@@ -4751,8 +4751,8 @@ function updateCursors() {
     if (stats?.ch1 && ch1Min) ch1Min.innerText = formatSignedUnit(stats.ch1.min, 'V');
     if (stats?.ch2 && ch2Max) ch2Max.innerText = formatSignedUnit(stats.ch2.max, 'V');
     if (stats?.ch2 && ch2Min) ch2Min.innerText = formatSignedUnit(stats.ch2.min, 'V');
-    if (stats?.ch1 && stats?.ch2 && chMaxDiff) chMaxDiff.innerText = formatSignedUnit(stats.ch1.max - stats.ch2.max, 'V');
-    if (stats?.ch1 && stats?.ch2 && chMinDiff) chMinDiff.innerText = formatSignedUnit(stats.ch1.min - stats.ch2.min, 'V');
+    if (stats?.ch1 && chMaxDiff) chMaxDiff.innerText = formatSignedUnit(stats.ch1.max - stats.ch1.min, 'V');
+    if (stats?.ch2 && chMinDiff) chMinDiff.innerText = formatSignedUnit(stats.ch2.max - stats.ch2.min, 'V');
 }
 
 function bindScopeDragHandle() {

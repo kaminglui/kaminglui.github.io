@@ -333,6 +333,13 @@
             padding-left: 10px;
             padding-right: 10px;
         }
+        #mobile-quick-bar .quick-scope-select {
+            position: absolute;
+            top: 100%;
+            right: 8px;
+            width: 160px;
+            box-shadow: 0 6px 18px rgba(0,0,0,0.35);
+        }
         #mobile-quick-bar .sim-btn,
         #mobile-quick-bar input,
         #mobile-quick-bar select {
@@ -936,8 +943,8 @@
                                 <div class="flex justify-between"><span>CH2 min</span><span id="ch2-min" class="text-cyan-200">0V</span></div>
                             </div>
                             <div class="bg-gray-900/60 rounded p-2 border border-gray-700 col-span-2">
-                                <div class="flex justify-between"><span>Δ max (CH1-CH2)</span><span id="ch-max-diff" class="text-gray-100">0V</span></div>
-                                <div class="flex justify-between"><span>Δ min (CH1-CH2)</span><span id="ch-min-diff" class="text-gray-100">0V</span></div>
+                                <div class="flex justify-between"><span>Δ (CH1 max-min)</span><span id="ch-max-diff" class="text-gray-100">0V</span></div>
+                                <div class="flex justify-between"><span>Δ (CH2 max-min)</span><span id="ch-min-diff" class="text-gray-100">0V</span></div>
                             </div>
                         </div>
                     </div>
@@ -1012,7 +1019,7 @@
                     <i class="fas fa-caret-down"></i>
                 </button>
                 <select id="quick-scope-select"
-                        class="bg-gray-900 border border-gray-700 rounded px-2 py-1 text-xs text-right hidden"
+                        class="quick-scope-select bg-gray-900 border border-gray-700 rounded px-2 py-1 text-xs text-right hidden"
                         onchange="quickSelectScope(this.value)"
                         aria-label="Select scope">
                 </select>
