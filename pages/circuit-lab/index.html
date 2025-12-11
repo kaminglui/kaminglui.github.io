@@ -313,6 +313,20 @@
             gap: 4px;
             align-items: center;
         }
+        #mobile-quick-bar .scope-pair {
+            display: inline-flex;
+            align-items: stretch;
+        }
+        #mobile-quick-bar .scope-main {
+            border-top-right-radius: 0;
+            border-bottom-right-radius: 0;
+        }
+        #mobile-quick-bar .scope-dropdown {
+            border-top-left-radius: 0;
+            border-bottom-left-radius: 0;
+            padding-left: 10px;
+            padding-right: 10px;
+        }
         #mobile-quick-bar .funcgen-group {
             display: inline-flex;
             flex-wrap: nowrap;
@@ -330,6 +344,14 @@
         #mobile-quick-bar input,
         #mobile-quick-bar select {
             font-size: 0.95rem;
+        }
+        #mobile-quick-bar .quick-contrast {
+            color: #0f172a;
+        }
+        @media (prefers-color-scheme: dark) {
+            #mobile-quick-bar .quick-contrast {
+                color: #e5e7eb;
+            }
         }
 
         /* --- ROBUST DROPDOWNS --- */
@@ -951,8 +973,8 @@
                 </button>
             </div>
             <div class="mini-group quick-group" data-kind="potentiometer">
-                <span class="text-gray-300">Pot</span>
-                <span id="quick-pot-value" class="text-white font-bold">0%</span>
+                <span class="quick-contrast">Pot</span>
+                <span id="quick-pot-value" class="quick-contrast font-bold">0%</span>
                 <input id="quick-pot-slider" type="range" min="0" max="100" step="1" value="50"
                        class="h-6"
                        oninput="quickSetPotTurn(this.value)" aria-label="Pot slider">
@@ -994,9 +1016,12 @@
                     <option value="m">mF</option>
                 </select>
             </div>
-            <div class="mini-group quick-group" data-kind="oscilloscope">
-                <button class="sim-btn" onclick="quickScopeToggleMain()" aria-label="Toggle scope">
-                    <i class="fas fa-wave-square"></i><span class="btn-text">Scope</span>
+            <div class="mini-group quick-group scope-pair" data-kind="oscilloscope">
+                <button class="sim-btn scope-main" onclick="quickScopeToggleMain()" aria-label="Toggle scope">
+                    <i class="fas fa-wave-square"></i>
+                </button>
+                <button class="sim-btn scope-dropdown" onclick="quickScopeDropdownAction()" aria-label="Choose scope">
+                    <i class="fas fa-caret-down"></i>
                 </button>
                 <select id="quick-scope-select"
                         class="quick-scope-select bg-gray-900 border border-gray-700 rounded px-2 py-1 text-xs text-right hidden"

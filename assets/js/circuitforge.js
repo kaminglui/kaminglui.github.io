@@ -3048,10 +3048,6 @@ function quickScopeDropdownAction() {
 function quickScopeToggleMain() {
     const scopes = listScopes();
     if (!scopes.length) return;
-    if (scopes.length > 1) {
-        quickScopeDropdownAction();
-        return;
-    }
     const target = activeScopeComponent || scopes[0];
     setActiveScopeById(target.id);
     if (scopeMode) safeCall(closeScope);
