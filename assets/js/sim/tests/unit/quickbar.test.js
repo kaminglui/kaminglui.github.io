@@ -54,7 +54,8 @@ function stubDom(groups = []) {
     style: {},
     classList: { toggle() {}, add() {}, remove() {} },
     addEventListener: () => {},
-    removeEventListener: () => {}
+    removeEventListener: () => {},
+    dataset: {}
   }));
   global.document = {
     getElementById: (id) => {

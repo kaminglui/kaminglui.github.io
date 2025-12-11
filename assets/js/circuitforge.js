@@ -3020,17 +3020,18 @@ function quickSelectScope(id) {
 
 function quickScopeDropdownAction() {
     const scopes = listScopes();
-    if (!scopes.length) return;
+    if (scopes.length < 2) return;
     const select = (typeof document !== 'undefined') ? document.getElementById('quick-scope-select') : null;
     if (select) {
+        select.dataset = select.dataset || {};
         select.classList?.remove?.('hidden');
         select.size = Math.min(scopes.length, 6);
-        if ((select.dataset && select.dataset.open) === 'true') {
-            if (select.dataset) select.dataset.open = 'false';
+        if (select.dataset.open === 'true') {
+            select.dataset.open = 'false';
             select.classList?.add?.('hidden');
             select.size = 1;
         } else {
-            if (select.dataset) select.dataset.open = 'true';
+            select.dataset.open = 'true';
             select.focus?.();
         }
     }
@@ -3039,6 +3040,10 @@ function quickScopeDropdownAction() {
 function quickScopeToggleMain() {
     const scopes = listScopes();
     if (!scopes.length) return;
+    if (scopes.length > 1) {
+        quickScopeDropdownAction();
+        return;
+    }
     const target = activeScopeComponent || scopes[0];
     setActiveScopeById(target.id);
     if (scopeMode) safeCall(closeScope);

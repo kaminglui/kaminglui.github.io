@@ -319,20 +319,6 @@
             gap: 6px;
             align-items: center;
         }
-        #mobile-quick-bar .scope-pair {
-            display: inline-flex;
-            align-items: stretch;
-        }
-        #mobile-quick-bar .scope-main {
-            border-top-right-radius: 0;
-            border-bottom-right-radius: 0;
-        }
-        #mobile-quick-bar .scope-dropdown {
-            border-top-left-radius: 0;
-            border-bottom-left-radius: 0;
-            padding-left: 10px;
-            padding-right: 10px;
-        }
         #mobile-quick-bar .quick-scope-select {
             position: absolute;
             top: 100%;
@@ -1009,12 +995,9 @@
                     <option value="m">mF</option>
                 </select>
             </div>
-            <div class="mini-group quick-group scope-pair" data-kind="oscilloscope">
-                <button class="sim-btn scope-main" onclick="quickScopeToggleMain()" aria-label="Toggle scope">
+            <div class="mini-group quick-group" data-kind="oscilloscope">
+                <button class="sim-btn" onclick="quickScopeToggleMain()" aria-label="Toggle scope">
                     <i class="fas fa-wave-square"></i><span class="btn-text">Scope</span>
-                </button>
-                <button class="sim-btn scope-dropdown" onclick="quickScopeDropdownAction()" aria-label="Choose scope">
-                    <i class="fas fa-caret-down"></i>
                 </button>
                 <select id="quick-scope-select"
                         class="quick-scope-select bg-gray-900 border border-gray-700 rounded px-2 py-1 text-xs text-right hidden"
