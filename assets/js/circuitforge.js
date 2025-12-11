@@ -2802,6 +2802,7 @@ function syncQuickScopeSelect() {
     });
     select.classList?.add?.('hidden');
     select.hidden = true;
+    if (select.style) select.style.display = 'none';
     if (select.dataset) select.dataset.open = 'false';
     const active = activeScopeComponent && scopes.includes(activeScopeComponent)
         ? activeScopeComponent
@@ -3034,6 +3035,7 @@ function quickScopeDropdownAction() {
             select.dataset.open = 'false';
             select.classList.add('hidden');
             select.hidden = true;
+            if (select.style) select.style.display = 'none';
             select.size = 1;
             select.removeEventListener('blur', close);
             select.removeEventListener('change', close);
@@ -3041,6 +3043,7 @@ function quickScopeDropdownAction() {
         const show = () => {
             select.classList.remove('hidden');
             select.hidden = false;
+            if (select.style) select.style.display = 'block';
             select.size = Math.min(scopes.length, 6);
             select.dataset.open = 'true';
             if (typeof select.showPicker === 'function') {

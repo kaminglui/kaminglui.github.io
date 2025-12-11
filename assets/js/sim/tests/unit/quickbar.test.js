@@ -111,6 +111,7 @@ describe('quick bar logic', () => {
     const select = store.get('quick-scope-select');
     expect(select.size).toBe(2);
     expect(select.hidden).toBe(false);
+    expect(select.dataset.open).toBe('true');
     __testSetSelected(scopes[0]);
     quickScopeToggleMain(); // should not throw
   });
@@ -127,10 +128,12 @@ describe('quick bar logic', () => {
     select.classList.remove = () => { select.hidden = false; };
     quickScopeDropdownAction();
     expect(select.hidden).toBe(false);
+    expect(select.dataset.open).toBe('true');
     quickSelectScope('S2');
     expect(__testGetActiveScope()).toBe(scopes[1]);
     quickScopeDropdownAction();
     expect(select.hidden).toBe(true);
+    expect(select.dataset.open).toBe('false');
   });
 
   it('cycles only controllable kinds in order', () => {
