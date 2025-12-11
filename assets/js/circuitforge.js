@@ -196,6 +196,15 @@ let touchMovedSinceDown = false;
 let pinchState = null;
 const cursorVisibility = { 1: true, 2: true };
 let quickSelectionIndex = -1;
+let quickBarVisible = null;
+
+function safeCall(fn) {
+    try {
+        if (typeof fn === 'function') fn();
+    } catch (_) {
+        // Swallow errors in test environments lacking DOM hooks.
+    }
+}
 
 // Canvas handles (set after DOM exists)
 let canvas = null;
@@ -1525,6 +1534,8 @@ function draw() {
     });
     drawTemplatePreview();
 
+    syncQuickBarVisibility();
+
     // selection marquee
     if (selectionBox) {
         const x1 = Math.min(selectionBox.start.x, selectionBox.current.x);
@@ -1951,6 +1962,7 @@ function setSelectedComponent(c) {
     selectionGroup    = c ? [c] : [];
     selectedWire      = null;
     quickSelectionIndex = -1;
+    syncQuickBarVisibility();
 }
 
 function rotateSelected() {
@@ -2658,9 +2670,11 @@ function quickSelect(delta) {
     quickSelectionIndex = (quickSelectionIndex + delta + list.length) % list.length;
     const target = list[quickSelectionIndex];
     setSelectedComponent(target);
+    // setSelectedComponent resets the index; restore it for cycling
+    quickSelectionIndex = list.indexOf(target);
     selectionGroup = target ? [target] : [];
-    updateProps();
-    draw();
+    safeCall(updateProps);
+    safeCall(draw);
 }
 
 function quickSelectPrev() { quickSelectionIndex = quickSelectionIndex < 0 ? 0 : quickSelectionIndex; quickSelect(-1); }
@@ -2680,8 +2694,8 @@ function quickToggleSwitchPosition() {
     sw.props.Position = sw.props.Position === 'B' ? 'A' : 'B';
     setSelectedComponent(sw);
     selectionGroup = [sw];
-    markStateDirty();
-    updateProps();
+    safeCall(markStateDirty);
+    safeCall(updateProps);
 }
 
 function quickAdjustPot(delta) {
@@ -2695,17 +2709,17 @@ function quickAdjustPot(delta) {
     pot.props.Turn = String(next);
     setSelectedComponent(pot);
     selectionGroup = [pot];
-    markStateDirty();
-    updateProps();
+    safeCall(markStateDirty);
+    safeCall(updateProps);
 }
 
 function quickToggleScopeOverlay() {
-    if (scopeMode) closeScope();
-    else openScope();
+    if (scopeMode) safeCall(closeScope);
+    else safeCall(openScope);
 }
 
 function quickToggleViewMode() {
-    toggleView();
+    safeCall(toggleView);
 }
 
 function quickSetFuncGenFreq(freq) {
@@ -2718,8 +2732,8 @@ function quickSetFuncGenFreq(freq) {
     fg.sampleAccum = 0;
     setSelectedComponent(fg);
     selectionGroup = [fg];
-    markStateDirty();
-    updateProps();
+    safeCall(markStateDirty);
+    safeCall(updateProps);
 }
 
 function quickSetFuncGenVpp(vpp) {
@@ -2732,8 +2746,34 @@ function quickSetFuncGenVpp(vpp) {
     fg.sampleAccum = 0;
     setSelectedComponent(fg);
     selectionGroup = [fg];
-    markStateDirty();
-    updateProps();
+    safeCall(markStateDirty);
+    safeCall(updateProps);
+}
+
+function syncQuickBarVisibility() {
+    const bar = document.getElementById('mobile-quick-bar');
+    if (!bar) return;
+    const hasComponents = (components?.length || 0) > 0;
+    if (quickBarVisible === hasComponents) return;
+    quickBarVisible = hasComponents;
+    bar.classList.toggle('hidden', !hasComponents);
+    bar.setAttribute('aria-hidden', (!hasComponents).toString());
+}
+
+function __testSetComponents(list = []) {
+    components = list;
+    quickSelectionIndex = -1;
+    selectedComponent = null;
+    selectionGroup = [];
+}
+
+function __testGetSelected() {
+    return selectedComponent;
+}
+
+function __testSetSelected(c) {
+    selectedComponent = c;
+    selectionGroup = c ? [c] : [];
 }
 
 function deserializeTemplate(templateObj) {
@@ -4738,6 +4778,7 @@ function reportInitError(message) {
     attachStatusHandlers();
     syncSidebarOverlayState();
     refreshSimIndicators();
+    syncQuickBarVisibility();
     if (canvas && canvas.parentElement && typeof ResizeObserver !== 'undefined') {
         const ro = new ResizeObserver(() => resize());
         ro.observe(canvas.parentElement);
@@ -4804,7 +4845,15 @@ if (typeof window !== 'undefined') {
         VoltageSource,
         FunctionGenerator,
         Ground,
-        Oscilloscope
+        Oscilloscope,
+        quickSelectPrev,
+        quickSelectNext,
+        quickToggleSwitchPosition,
+        quickAdjustPot,
+        quickToggleScopeOverlay,
+        quickToggleViewMode,
+        quickSetFuncGenFreq,
+        quickSetFuncGenVpp
     });
 }
 
@@ -4820,7 +4869,21 @@ export {
     snapToBoardPoint,
     getPinDirection,
     cursorIsVisible,
-    setCursorVisibility
+    setCursorVisibility,
+    // Test helpers
+    syncQuickBarVisibility,
+    quickSelectPrev,
+    quickSelectNext,
+    quickToggleSwitchPosition,
+    quickAdjustPot,
+    quickToggleScopeOverlay,
+    quickToggleViewMode,
+    quickSetFuncGenFreq,
+    quickSetFuncGenVpp,
+    safeCall,
+    __testSetComponents,
+    __testGetSelected,
+    __testSetSelected
 };
 
 function startCircuitForge() {

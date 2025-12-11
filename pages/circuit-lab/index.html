@@ -289,29 +289,34 @@
             display: none;
             background: var(--bg-panel);
             border-top: 1px solid var(--border-subtle);
-            padding: 8px 12px;
-            gap: 8px;
+            padding: 6px 8px;
+            gap: 6px;
             align-items: center;
             position: relative;
             z-index: 45;
+            min-height: 48px;
+            overflow-x: auto;
+            white-space: nowrap;
         }
         #mobile-quick-bar .quick-controls {
             flex: 1;
             display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
+            flex-wrap: nowrap;
+            gap: 6px;
             align-items: center;
+            min-width: 0;
         }
         #mobile-quick-bar .mini-group {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 6px;
+            display: inline-flex;
+            flex-wrap: nowrap;
+            gap: 4px;
             align-items: center;
         }
         #mobile-quick-bar .funcgen-group {
-            display: flex;
-            flex-direction: column;
-            gap: 4px;
+            display: inline-flex;
+            flex-wrap: nowrap;
+            gap: 6px;
+            align-items: center;
         }
 
         /* --- ROBUST DROPDOWNS --- */
@@ -920,19 +925,15 @@
                     <i class="fas fa-exchange-alt"></i><span class="btn-text">View</span>
                 </button>
             </div>
-            <div class="funcgen-group">
-                <div class="mini-group">
-                    <span class="text-gray-300">Freq</span>
-                    <button class="sim-btn" onclick="quickSetFuncGenFreq('110')" aria-label="Set freq 110Hz">110</button>
-                    <button class="sim-btn" onclick="quickSetFuncGenFreq('880')" aria-label="Set freq 880Hz">880</button>
-                    <button class="sim-btn" onclick="quickSetFuncGenFreq('3520')" aria-label="Set freq 3520Hz">3520</button>
-                </div>
-                <div class="mini-group">
-                    <span class="text-gray-300">Vpp</span>
-                    <button class="sim-btn" onclick="quickSetFuncGenVpp('0.5')" aria-label="Set Vpp 0.5">0.5</button>
-                    <button class="sim-btn" onclick="quickSetFuncGenVpp('1')" aria-label="Set Vpp 1">1</button>
-                    <button class="sim-btn" onclick="quickSetFuncGenVpp('2')" aria-label="Set Vpp 2">2</button>
-                </div>
+            <div class="funcgen-group mini-group">
+                <span class="text-gray-300">Freq</span>
+                <button class="sim-btn" onclick="quickSetFuncGenFreq('110')" aria-label="Set freq 110Hz">110</button>
+                <button class="sim-btn" onclick="quickSetFuncGenFreq('880')" aria-label="Set freq 880Hz">880</button>
+                <button class="sim-btn" onclick="quickSetFuncGenFreq('3520')" aria-label="Set freq 3520Hz">3520</button>
+                <span class="text-gray-300 ml-2">Vpp</span>
+                <button class="sim-btn" onclick="quickSetFuncGenVpp('0.5')" aria-label="Set Vpp 0.5">0.5</button>
+                <button class="sim-btn" onclick="quickSetFuncGenVpp('1')" aria-label="Set Vpp 1">1</button>
+                <button class="sim-btn" onclick="quickSetFuncGenVpp('2')" aria-label="Set Vpp 2">2</button>
             </div>
         </div>
         <button onclick="quickSelectNext()"
