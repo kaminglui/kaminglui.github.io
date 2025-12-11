@@ -3145,6 +3145,10 @@ function __testSetScope(scope) {
     scopeCtx = scopeCtx || {};
 }
 
+function __testGetActiveScope() {
+    return activeScopeComponent;
+}
+
 function deserializeTemplate(templateObj) {
     if (!templateObj || typeof templateObj !== 'object') throw new Error('Invalid template data');
     const clone = (typeof structuredClone === 'function')
@@ -5373,7 +5377,8 @@ export {
     quickScopeDropdownAction,
     quickScopeToggleMain,
     autoscaleScopeVoltage,
-    __testSetScope
+    __testSetScope,
+    __testGetActiveScope
 };
 
 function startCircuitForge() {

@@ -14,6 +14,8 @@ import {
   quickSetResistorValue,
   quickSetCapacitorValue,
   syncQuickBarVisibility,
+  quickSelectScope,
+  __testGetActiveScope,
   safeCall,
   __testSetComponents,
   __testGetSelected,
@@ -55,6 +57,7 @@ function stubDom(groups = []) {
     innerText: '',
     style: {},
     classList: { toggle() {}, add() {}, remove() {} },
+    hidden: true,
     addEventListener: () => {},
     removeEventListener: () => {},
     dataset: {}
@@ -95,10 +98,29 @@ describe('quick bar logic', () => {
     ];
     setComponents(scopes);
     quickScopeDropdownAction();
-    expect(store.get('quick-scope-select').classList.remove).toBeDefined();
-    expect(store.get('quick-scope-select').size).toBe(2);
+    const select = store.get('quick-scope-select');
+    expect(select.size).toBe(2);
+    expect(select.hidden).toBe(true); // dropdown handled via hidden class
     __testSetSelected(scopes[0]);
     quickScopeToggleMain(); // should not throw
+  });
+
+  it('dropdown button toggles visibility and selecting scope sets active scope', () => {
+    const { store } = stubDom();
+    const scopes = [
+      { kind: 'oscilloscope', id: 'S1', props: {} },
+      { kind: 'oscilloscope', id: 'S2', props: {} }
+    ];
+    setComponents(scopes);
+    const select = store.get('quick-scope-select');
+    select.classList.add = () => { select.hidden = true; };
+    select.classList.remove = () => { select.hidden = false; };
+    quickScopeDropdownAction();
+    expect(select.hidden).toBe(false);
+    quickSelectScope('S2');
+    expect(__testGetActiveScope()).toBe(scopes[1]);
+    quickScopeDropdownAction();
+    expect(select.hidden).toBe(true);
   });
 
   it('cycles only controllable kinds in order', () => {
