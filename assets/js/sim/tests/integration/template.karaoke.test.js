@@ -36,8 +36,8 @@ function analyzeOutput(position = 'B') {
   const sw = circuit.components.find((c) => c.kind === 'switch');
   if (sw) sw.props.Position = position;
   const op = circuit.components.find((c) => c.kind === 'lf412');
-  const rLeft = circuit.components.find((c) => c.id === 'r2');
-  const rRight = circuit.components.find((c) => c.id === 'r3');
+  const rLeft = circuit.components.find((c) => c.kind === 'resistor' && (c.id || '').toLowerCase() === 'r2');
+  const rRight = circuit.components.find((c) => c.kind === 'resistor' && (c.id || '').toLowerCase() === 'r3');
   const samples = [];
   const leftSamples = [];
   const rightSamples = [];

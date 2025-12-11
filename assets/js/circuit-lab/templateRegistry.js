@@ -3,6 +3,7 @@ import baxandallTone from './templates/baxandall-tone.js';
 
 const JSON_MANIFEST_URL = new URL('./templates/index.json', import.meta.url);
 const JSON_BASE_URL = new URL('./templates/', import.meta.url);
+const DEFAULT_ICON = 'fas fa-puzzle-piece';
 
 /**
  * @typedef {Object} CircuitTemplate
@@ -12,6 +13,8 @@ const JSON_BASE_URL = new URL('./templates/', import.meta.url);
  * @property {Array<Object>} [components]
  * @property {Array<Object>} [wires]
  */
+
+const isObject = (v) => v && typeof v === 'object' && !Array.isArray(v);
 
 function cloneTemplate(template) {
   if (!template) return null;
@@ -72,22 +75,127 @@ function normalizeTemplateShape(t) {
   };
 }
 
-const staticTemplates = [mixerKaraoke, baxandallTone].filter(Boolean).map(normalizeTemplateShape);
+function normalizeEndpoint(ep = {}) {
+  const idx = Number.isFinite(ep.index) ? ep.index : Number.isFinite(ep.i) ? ep.i : null;
+  const pin = Number.isFinite(ep.pin) ? ep.pin : Number.isFinite(ep.p) ? ep.p : 0;
+  const id = typeof ep.id === 'string' ? ep.id : null;
+  return { id, index: idx, pin };
+}
+
+function validateTemplate(template, { defaultIcon = DEFAULT_ICON } = {}) {
+  const warnings = [];
+  if (!isObject(template)) return { ok: false, template: null, warnings };
+
+  const id = (template.id || '').trim();
+  if (!id) {
+    warnings.push('Template missing id');
+    return { ok: false, template: null, warnings };
+  }
+
+  const components = [];
+  (Array.isArray(template.components) ? template.components : []).forEach((c, idx) => {
+    const type = (c?.type || c?.kind || '').trim();
+    if (!type) {
+      warnings.push(`Component ${idx} missing type; skipped`);
+      return;
+    }
+    const props = isObject(c?.props) ? c.props : {};
+    components.push({
+      id: typeof c.id === 'string' ? c.id : undefined,
+      type,
+      x: Number.isFinite(c.x) ? c.x : 0,
+      y: Number.isFinite(c.y) ? c.y : 0,
+      rotation: Number.isFinite(c.rotation) ? c.rotation : 0,
+      mirrorX: !!c.mirrorX,
+      props: { ...props }
+    });
+  });
+
+  const wires = [];
+  (Array.isArray(template.wires) ? template.wires : []).forEach((w, idx) => {
+    const from = normalizeEndpoint(w?.from || {});
+    const to = normalizeEndpoint(w?.to || {});
+    const hasAnchor = (from.id || Number.isFinite(from.index)) && (to.id || Number.isFinite(to.index));
+    if (!hasAnchor) {
+      warnings.push(`Wire ${idx} missing endpoints; skipped`);
+      return;
+    }
+    const vertices = Array.isArray(w?.vertices) ? w.vertices.map((v) => ({
+      x: Number.isFinite(v?.x) ? v.x : 0,
+      y: Number.isFinite(v?.y) ? v.y : 0
+    })) : [];
+    wires.push({ from, to, vertices });
+  });
+
+  if (!components.length) warnings.push('Template has no valid components');
+
+  const normalized = {
+    id,
+    label: template.label || id,
+    icon: template.icon || defaultIcon,
+    components,
+    wires
+  };
+
+  return { ok: !!components.length, template: normalized, warnings };
+}
+
+function mergeTemplateLists(staticList, jsonList, warn = console.warn) {
+  const byId = new Map();
+  (staticList || []).forEach((t) => {
+    if (!t?.id) return;
+    byId.set(t.id, t);
+  });
+  (jsonList || []).forEach((t) => {
+    if (!t?.id) return;
+    if (byId.has(t.id)) {
+      warn?.(`Template "${t.id}" skipped (duplicate id already loaded).`);
+      return;
+    }
+    byId.set(t.id, t);
+  });
+  return Array.from(byId.values());
+}
+
+function validateManifestEntry(entry) {
+  if (!isObject(entry)) return null;
+  if (!entry.file || !entry.id) return null;
+  return { id: entry.id, file: entry.file };
+}
+
+function logWarnings(id, warnings = [], warn = console.warn) {
+  if (!warnings.length) return;
+  const prefix = id ? `[template:${id}]` : '[template]';
+  warnings.forEach((w) => warn?.(`${prefix} ${w}`));
+}
+
+const staticTemplates = [mixerKaraoke, baxandallTone]
+  .filter(Boolean)
+  .map(normalizeTemplateShape)
+  .map((t) => {
+    const { template, warnings } = validateTemplate(t);
+    logWarnings(t?.id, warnings);
+    return template;
+  })
+  .filter(Boolean);
+
 const jsonTemplatesPromise = (async () => {
-  const manifest = await loadJsonManifest();
-  if (!Array.isArray(manifest)) return [];
+  const manifestRaw = await loadJsonManifest();
+  const manifest = Array.isArray(manifestRaw) ? manifestRaw.map(validateManifestEntry).filter(Boolean) : [];
   const loaded = await Promise.all(manifest.map((entry) => loadJsonTemplate(entry.file)));
-  return loaded.map(normalizeTemplateShape).filter(Boolean);
+  return loaded
+    .map(normalizeTemplateShape)
+    .map((t) => {
+      const { template, warnings, ok } = validateTemplate(t);
+      logWarnings(t?.id, warnings);
+      return ok ? template : null;
+    })
+    .filter(Boolean);
 })();
+
 let templates = staticTemplates.slice();
 jsonTemplatesPromise.then((jsonTemplates) => {
-  const seen = new Set(templates.map((t) => t.id));
-  jsonTemplates.forEach((t) => {
-    if (!t || !t.id) return;
-    if (seen.has(t.id)) return;
-    templates.push(t);
-    seen.add(t.id);
-  });
+  templates = mergeTemplateLists(staticTemplates, jsonTemplates);
 });
 let warnedEmptyTemplates = false;
 
@@ -120,4 +228,4 @@ if (typeof window !== 'undefined') {
   window.CIRCUIT_TEMPLATES = listTemplates();
 }
 
-export { listTemplates, loadTemplate };
+export { listTemplates, loadTemplate, validateTemplate, mergeTemplateLists, DEFAULT_ICON };

@@ -4,16 +4,29 @@
   "icon": "fas fa-sliders",
   "components": [
     {
-      "id": "U24",
-      "type": "lf412",
-      "x": 1150,
-      "y": 2430,
+      "id": "C1",
+      "type": "capacitor",
+      "x": 1550,
+      "y": 2210,
       "rotation": 0,
       "mirrorX": false,
-      "props": {}
+      "props": {
+        "C": "47n"
+      }
     },
     {
-      "id": "FG93",
+      "id": "C2",
+      "type": "capacitor",
+      "x": 1550,
+      "y": 2490,
+      "rotation": 1,
+      "mirrorX": false,
+      "props": {
+        "C": "100p"
+      }
+    },
+    {
+      "id": "FG1",
       "type": "funcGen",
       "x": 1970,
       "y": 2370,
@@ -28,7 +41,7 @@
       }
     },
     {
-      "id": "FG94",
+      "id": "FG2",
       "type": "funcGen",
       "x": 1850,
       "y": 2370,
@@ -43,18 +56,16 @@
       }
     },
     {
-      "id": "V47",
-      "type": "voltageSource",
-      "x": 1070,
-      "y": 2550,
-      "rotation": 2,
+      "id": "GND1",
+      "type": "ground",
+      "x": 1370,
+      "y": 2130,
+      "rotation": 0,
       "mirrorX": false,
-      "props": {
-        "Vdc": "15"
-      }
+      "props": {}
     },
     {
-      "id": "GND141",
+      "id": "GND2",
       "type": "ground",
       "x": 1070,
       "y": 2670,
@@ -63,18 +74,7 @@
       "props": {}
     },
     {
-      "id": "V48",
-      "type": "voltageSource",
-      "x": 1230,
-      "y": 2310,
-      "rotation": 2,
-      "mirrorX": false,
-      "props": {
-        "Vdc": "15"
-      }
-    },
-    {
-      "id": "GND142",
+      "id": "GND3",
       "type": "ground",
       "x": 1230,
       "y": 2190,
@@ -83,13 +83,107 @@
       "props": {}
     },
     {
-      "id": "GND143",
+      "id": "GND4",
       "type": "ground",
       "x": 1970,
       "y": 2450,
       "rotation": 0,
       "mirrorX": false,
       "props": {}
+    },
+    {
+      "id": "GND5",
+      "type": "ground",
+      "x": 1230,
+      "y": 2530,
+      "rotation": 0,
+      "mirrorX": false,
+      "props": {}
+    },
+    {
+      "id": "J1",
+      "type": "junction",
+      "x": 1730,
+      "y": 2430,
+      "rotation": 0,
+      "mirrorX": false,
+      "props": {}
+    },
+    {
+      "id": "J2",
+      "type": "junction",
+      "x": 1610,
+      "y": 2290,
+      "rotation": 0,
+      "mirrorX": false,
+      "props": {}
+    },
+    {
+      "id": "J3",
+      "type": "junction",
+      "x": 1770,
+      "y": 2430,
+      "rotation": 0,
+      "mirrorX": false,
+      "props": {}
+    },
+    {
+      "id": "J4",
+      "type": "junction",
+      "x": 1490,
+      "y": 2290,
+      "rotation": 0,
+      "mirrorX": false,
+      "props": {}
+    },
+    {
+      "id": "J5",
+      "type": "junction",
+      "x": 1330,
+      "y": 2410,
+      "rotation": 0,
+      "mirrorX": false,
+      "props": {}
+    },
+    {
+      "id": "J6",
+      "type": "junction",
+      "x": 1550,
+      "y": 2450,
+      "rotation": 0,
+      "mirrorX": false,
+      "props": {}
+    },
+    {
+      "id": "J7",
+      "type": "junction",
+      "x": 1290,
+      "y": 2410,
+      "rotation": 0,
+      "mirrorX": false,
+      "props": {}
+    },
+    {
+      "id": "U1",
+      "type": "lf412",
+      "x": 1150,
+      "y": 2430,
+      "rotation": 0,
+      "mirrorX": false,
+      "props": {}
+    },
+    {
+      "id": "SCOPE1",
+      "type": "oscilloscope",
+      "x": 1330,
+      "y": 2050,
+      "rotation": 0,
+      "mirrorX": false,
+      "props": {
+        "TimeDiv": "10m",
+        "VDiv1": "1",
+        "VDiv2": "1"
+      }
     },
     {
       "id": "POT1",
@@ -116,29 +210,31 @@
       }
     },
     {
-      "id": "C1",
-      "type": "capacitor",
-      "x": 1550,
-      "y": 2210,
+      "id": "R1",
+      "type": "resistor",
+      "x": 1410,
+      "y": 2570,
       "rotation": 0,
       "mirrorX": false,
       "props": {
-        "C": "47n"
+        "R": "11k",
+        "Tolerance": "5"
       }
     },
     {
-      "id": "C2",
-      "type": "capacitor",
-      "x": 1550,
-      "y": 2490,
-      "rotation": 1,
+      "id": "R2",
+      "type": "resistor",
+      "x": 1690,
+      "y": 2570,
+      "rotation": 0,
       "mirrorX": false,
       "props": {
-        "C": "100p"
+        "R": "11k",
+        "Tolerance": "5"
       }
     },
     {
-      "id": "R97",
+      "id": "R3",
       "type": "resistor",
       "x": 1550,
       "y": 2370,
@@ -150,7 +246,7 @@
       }
     },
     {
-      "id": "R98",
+      "id": "R4",
       "type": "resistor",
       "x": 1410,
       "y": 2290,
@@ -162,7 +258,7 @@
       }
     },
     {
-      "id": "R99",
+      "id": "R5",
       "type": "resistor",
       "x": 1690,
       "y": 2290,
@@ -174,132 +270,36 @@
       }
     },
     {
-      "id": "R100",
-      "type": "resistor",
-      "x": 1410,
-      "y": 2570,
-      "rotation": 0,
+      "id": "V1",
+      "type": "voltageSource",
+      "x": 1070,
+      "y": 2550,
+      "rotation": 2,
       "mirrorX": false,
       "props": {
-        "R": "11k",
-        "Tolerance": "5"
+        "Vdc": "15"
       }
     },
     {
-      "id": "R101",
-      "type": "resistor",
-      "x": 1690,
-      "y": 2570,
-      "rotation": 0,
-      "mirrorX": false,
-      "props": {
-        "R": "11k",
-        "Tolerance": "5"
-      }
-    },
-    {
-      "id": "J71",
-      "type": "junction",
-      "x": 1610,
-      "y": 2290,
-      "rotation": 0,
-      "mirrorX": false,
-      "props": {}
-    },
-    {
-      "id": "J73",
-      "type": "junction",
-      "x": 1490,
-      "y": 2290,
-      "rotation": 0,
-      "mirrorX": false,
-      "props": {}
-    },
-    {
-      "id": "J74",
-      "type": "junction",
-      "x": 1330,
-      "y": 2410,
-      "rotation": 0,
-      "mirrorX": false,
-      "props": {}
-    },
-    {
-      "id": "J75",
-      "type": "junction",
-      "x": 1550,
-      "y": 2450,
-      "rotation": 0,
-      "mirrorX": false,
-      "props": {}
-    },
-    {
-      "id": "GND145",
-      "type": "ground",
+      "id": "V2",
+      "type": "voltageSource",
       "x": 1230,
-      "y": 2530,
-      "rotation": 0,
-      "mirrorX": false,
-      "props": {}
-    },
-    {
-      "id": "SCOPE24",
-      "type": "oscilloscope",
-      "x": 1330,
-      "y": 2050,
-      "rotation": 0,
+      "y": 2310,
+      "rotation": 2,
       "mirrorX": false,
       "props": {
-        "TimeDiv": "10m",
-        "VDiv1": "1",
-        "VDiv2": "1"
+        "Vdc": "15"
       }
-    },
-    {
-      "id": "J70",
-      "type": "junction",
-      "x": 1730,
-      "y": 2430,
-      "rotation": 0,
-      "mirrorX": false,
-      "props": {}
-    },
-    {
-      "id": "GND139",
-      "type": "ground",
-      "x": 1370,
-      "y": 2130,
-      "rotation": 0,
-      "mirrorX": false,
-      "props": {}
-    },
-    {
-      "id": "J76",
-      "type": "junction",
-      "x": 1290,
-      "y": 2410,
-      "rotation": 0,
-      "mirrorX": false,
-      "props": {}
-    },
-    {
-      "id": "J72",
-      "type": "junction",
-      "x": 1770,
-      "y": 2430,
-      "rotation": 0,
-      "mirrorX": false,
-      "props": {}
     }
   ],
   "wires": [
     {
       "from": {
-        "id": "V48",
+        "id": "V2",
         "pin": 0
       },
       "to": {
-        "id": "U24",
+        "id": "U1",
         "pin": 7
       },
       "vertices": [
@@ -311,33 +311,33 @@
     },
     {
       "from": {
-        "id": "GND142",
+        "id": "GND3",
         "pin": 0
       },
       "to": {
-        "id": "V48",
+        "id": "V2",
         "pin": 1
       },
       "vertices": []
     },
     {
       "from": {
-        "id": "V47",
+        "id": "V1",
         "pin": 0
       },
       "to": {
-        "id": "GND141",
+        "id": "GND2",
         "pin": 0
       },
       "vertices": []
     },
     {
       "from": {
-        "id": "U24",
+        "id": "U1",
         "pin": 3
       },
       "to": {
-        "id": "V47",
+        "id": "V1",
         "pin": 1
       },
       "vertices": [
@@ -349,7 +349,7 @@
     },
     {
       "from": {
-        "id": "R97",
+        "id": "R3",
         "pin": 0
       },
       "to": {
@@ -360,18 +360,18 @@
     },
     {
       "from": {
-        "id": "R99",
+        "id": "R5",
         "pin": 0
       },
       "to": {
-        "id": "J71",
+        "id": "J2",
         "pin": 0
       },
       "vertices": []
     },
     {
       "from": {
-        "id": "J71",
+        "id": "J2",
         "pin": 0
       },
       "to": {
@@ -386,7 +386,7 @@
         "pin": 1
       },
       "to": {
-        "id": "J71",
+        "id": "J2",
         "pin": 0
       },
       "vertices": [
@@ -402,18 +402,18 @@
         "pin": 0
       },
       "to": {
-        "id": "J73",
+        "id": "J4",
         "pin": 0
       },
       "vertices": []
     },
     {
       "from": {
-        "id": "J73",
+        "id": "J4",
         "pin": 0
       },
       "to": {
-        "id": "R98",
+        "id": "R4",
         "pin": 1
       },
       "vertices": []
@@ -424,7 +424,7 @@
         "pin": 0
       },
       "to": {
-        "id": "J73",
+        "id": "J4",
         "pin": 0
       },
       "vertices": [
@@ -436,11 +436,11 @@
     },
     {
       "from": {
-        "id": "J74",
+        "id": "J5",
         "pin": 0
       },
       "to": {
-        "id": "R100",
+        "id": "R1",
         "pin": 0
       },
       "vertices": [
@@ -452,18 +452,18 @@
     },
     {
       "from": {
-        "id": "R97",
+        "id": "R3",
         "pin": 1
       },
       "to": {
-        "id": "J75",
+        "id": "J6",
         "pin": 0
       },
       "vertices": []
     },
     {
       "from": {
-        "id": "J75",
+        "id": "J6",
         "pin": 0
       },
       "to": {
@@ -474,22 +474,22 @@
     },
     {
       "from": {
-        "id": "U24",
+        "id": "U1",
         "pin": 5
       },
       "to": {
-        "id": "J75",
+        "id": "J6",
         "pin": 0
       },
       "vertices": []
     },
     {
       "from": {
-        "id": "GND145",
+        "id": "GND5",
         "pin": 0
       },
       "to": {
-        "id": "U24",
+        "id": "U1",
         "pin": 4
       },
       "vertices": [
@@ -501,11 +501,11 @@
     },
     {
       "from": {
-        "id": "R98",
+        "id": "R4",
         "pin": 0
       },
       "to": {
-        "id": "J74",
+        "id": "J5",
         "pin": 0
       },
       "vertices": [
@@ -517,44 +517,44 @@
     },
     {
       "from": {
-        "id": "GND143",
+        "id": "GND4",
         "pin": 0
       },
       "to": {
-        "id": "FG93",
+        "id": "FG1",
         "pin": 1
       },
       "vertices": []
     },
     {
       "from": {
-        "id": "R99",
+        "id": "R5",
         "pin": 1
       },
       "to": {
-        "id": "J70",
+        "id": "J1",
         "pin": 0
       },
       "vertices": []
     },
     {
       "from": {
-        "id": "J70",
+        "id": "J1",
         "pin": 0
       },
       "to": {
-        "id": "R101",
+        "id": "R2",
         "pin": 1
       },
       "vertices": []
     },
     {
       "from": {
-        "id": "FG94",
+        "id": "FG2",
         "pin": 1
       },
       "to": {
-        "id": "FG93",
+        "id": "FG1",
         "pin": 0
       },
       "vertices": [
@@ -570,55 +570,55 @@
     },
     {
       "from": {
-        "id": "GND139",
+        "id": "GND1",
         "pin": 0
       },
       "to": {
-        "id": "SCOPE24",
+        "id": "SCOPE1",
         "pin": 2
       },
       "vertices": []
     },
     {
       "from": {
-        "id": "U24",
+        "id": "U1",
         "pin": 6
       },
       "to": {
-        "id": "J76",
+        "id": "J7",
         "pin": 0
       },
       "vertices": []
     },
     {
       "from": {
-        "id": "J76",
+        "id": "J7",
         "pin": 0
       },
       "to": {
-        "id": "J74",
+        "id": "J5",
         "pin": 0
       },
       "vertices": []
     },
     {
       "from": {
-        "id": "SCOPE24",
+        "id": "SCOPE1",
         "pin": 0
       },
       "to": {
-        "id": "J76",
+        "id": "J7",
         "pin": 0
       },
       "vertices": []
     },
     {
       "from": {
-        "id": "FG94",
+        "id": "FG2",
         "pin": 0
       },
       "to": {
-        "id": "J72",
+        "id": "J3",
         "pin": 0
       },
       "vertices": [
@@ -630,22 +630,22 @@
     },
     {
       "from": {
-        "id": "J72",
+        "id": "J3",
         "pin": 0
       },
       "to": {
-        "id": "J70",
+        "id": "J1",
         "pin": 0
       },
       "vertices": []
     },
     {
       "from": {
-        "id": "SCOPE24",
+        "id": "SCOPE1",
         "pin": 1
       },
       "to": {
-        "id": "J72",
+        "id": "J3",
         "pin": 0
       },
       "vertices": [
@@ -665,7 +665,7 @@
         "pin": 0
       },
       "to": {
-        "id": "R100",
+        "id": "R1",
         "pin": 1
       },
       "vertices": []
@@ -676,7 +676,7 @@
         "pin": 2
       },
       "to": {
-        "id": "R101",
+        "id": "R2",
         "pin": 0
       },
       "vertices": []

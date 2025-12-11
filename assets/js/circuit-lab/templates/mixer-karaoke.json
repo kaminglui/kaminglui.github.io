@@ -4,7 +4,7 @@
   "icon": "fas fa-microphone-lines text-cyan-300",
   "components": [
     {
-      "id": "op_amp",
+      "id": "U1",
       "type": "lf412",
       "x": 730,
       "y": 2010,
@@ -13,177 +13,7 @@
       "props": {}
     },
     {
-      "id": "r1",
-      "type": "resistor",
-      "x": 570,
-      "y": 1930,
-      "rotation": 0,
-      "mirrorX": false,
-      "props": {
-        "R": "7.5k",
-        "Tolerance": "1"
-      }
-    },
-    {
-      "id": "r2",
-      "type": "resistor",
-      "x": 250,
-      "y": 1990,
-      "rotation": 0,
-      "mirrorX": false,
-      "props": {
-        "R": "7.5k",
-        "Tolerance": "1"
-      }
-    },
-    {
-      "id": "r3",
-      "type": "resistor",
-      "x": 250,
-      "y": 2070,
-      "rotation": 0,
-      "mirrorX": false,
-      "props": {
-        "R": "7.5k",
-        "Tolerance": "1"
-      }
-    },
-    {
-      "id": "r4",
-      "type": "resistor",
-      "x": 570,
-      "y": 2170,
-      "rotation": 1,
-      "mirrorX": false,
-      "props": {
-        "R": "7.5k",
-        "Tolerance": "1"
-      }
-    },
-    {
-      "id": "spdt",
-      "type": "switch",
-      "x": 390,
-      "y": 2070,
-      "rotation": 0,
-      "mirrorX": false,
-      "props": {
-        "Type": "SPDT",
-        "Position": "B"
-      }
-    },
-    {
-      "id": "gnd1",
-      "type": "ground",
-      "x": 570,
-      "y": 2250,
-      "rotation": 0,
-      "mirrorX": false,
-      "props": {}
-    },
-    {
-      "id": "fun_gen_mid1",
-      "type": "funcGen",
-      "x": 50,
-      "y": 1870,
-      "rotation": 0,
-      "mirrorX": false,
-      "props": {
-        "Vpp": "1",
-        "Freq": "880",
-        "Offset": "0",
-        "Phase": "0",
-        "Wave": "sine"
-      }
-    },
-    {
-      "id": "fun_gen_low",
-      "type": "funcGen",
-      "x": -70,
-      "y": 1870,
-      "rotation": 0,
-      "mirrorX": false,
-      "props": {
-        "Vpp": "0.5",
-        "Freq": "110",
-        "Offset": "0",
-        "Phase": "0",
-        "Wave": "sine"
-      }
-    },
-    {
-      "id": "scope",
-      "type": "oscilloscope",
-      "x": 510,
-      "y": 1750,
-      "rotation": 0,
-      "mirrorX": false,
-      "props": {
-        "TimeDiv": "10m",
-        "VDiv1": "200m",
-        "VDiv2": "200m"
-      }
-    },
-    {
-      "id": "gnd2",
-      "type": "ground",
-      "x": 550,
-      "y": 1830,
-      "rotation": 0,
-      "mirrorX": false,
-      "props": {}
-    },
-    {
-      "id": "vcc1",
-      "type": "voltageSource",
-      "x": 650,
-      "y": 2130,
-      "rotation": 2,
-      "mirrorX": false,
-      "props": {
-        "Vdc": "15"
-      }
-    },
-    {
-      "id": "gnd3",
-      "type": "ground",
-      "x": 650,
-      "y": 2250,
-      "rotation": 0,
-      "mirrorX": false,
-      "props": {}
-    },
-    {
-      "id": "vcc2",
-      "type": "voltageSource",
-      "x": 810,
-      "y": 1890,
-      "rotation": 2,
-      "mirrorX": false,
-      "props": {
-        "Vdc": "15"
-      }
-    },
-    {
-      "id": "gnd4",
-      "type": "ground",
-      "x": 810,
-      "y": 1770,
-      "rotation": 2,
-      "mirrorX": false,
-      "props": {}
-    },
-    {
-      "id": "gnd5",
-      "type": "ground",
-      "x": 50,
-      "y": 1950,
-      "rotation": 0,
-      "mirrorX": false,
-      "props": {}
-    },
-    {
-      "id": "fun_gen_high",
+      "id": "FG1",
       "type": "funcGen",
       "x": -70,
       "y": 2050,
@@ -198,7 +28,37 @@
       }
     },
     {
-      "id": "fun_gen_mid2",
+      "id": "FG2",
+      "type": "funcGen",
+      "x": -70,
+      "y": 1870,
+      "rotation": 0,
+      "mirrorX": false,
+      "props": {
+        "Vpp": "0.5",
+        "Freq": "110",
+        "Offset": "0",
+        "Phase": "0",
+        "Wave": "sine"
+      }
+    },
+    {
+      "id": "FG3",
+      "type": "funcGen",
+      "x": 50,
+      "y": 1870,
+      "rotation": 0,
+      "mirrorX": false,
+      "props": {
+        "Vpp": "1",
+        "Freq": "880",
+        "Offset": "0",
+        "Phase": "0",
+        "Wave": "sine"
+      }
+    },
+    {
+      "id": "FG4",
       "type": "funcGen",
       "x": 50,
       "y": 2050,
@@ -213,7 +73,74 @@
       }
     },
     {
-      "id": "gnd6",
+      "id": "V1",
+      "type": "voltageSource",
+      "x": 650,
+      "y": 2130,
+      "rotation": 2,
+      "mirrorX": false,
+      "props": {
+        "Vdc": "15"
+      }
+    },
+    {
+      "id": "V2",
+      "type": "voltageSource",
+      "x": 810,
+      "y": 1890,
+      "rotation": 2,
+      "mirrorX": false,
+      "props": {
+        "Vdc": "15"
+      }
+    },
+    {
+      "id": "GND1",
+      "type": "ground",
+      "x": 570,
+      "y": 2250,
+      "rotation": 0,
+      "mirrorX": false,
+      "props": {}
+    },
+    {
+      "id": "GND2",
+      "type": "ground",
+      "x": 550,
+      "y": 1830,
+      "rotation": 0,
+      "mirrorX": false,
+      "props": {}
+    },
+    {
+      "id": "GND3",
+      "type": "ground",
+      "x": 650,
+      "y": 2250,
+      "rotation": 0,
+      "mirrorX": false,
+      "props": {}
+    },
+    {
+      "id": "GND4",
+      "type": "ground",
+      "x": 810,
+      "y": 1770,
+      "rotation": 2,
+      "mirrorX": false,
+      "props": {}
+    },
+    {
+      "id": "GND5",
+      "type": "ground",
+      "x": 50,
+      "y": 1950,
+      "rotation": 0,
+      "mirrorX": false,
+      "props": {}
+    },
+    {
+      "id": "GND6",
       "type": "ground",
       "x": 50,
       "y": 2130,
@@ -222,7 +149,80 @@
       "props": {}
     },
     {
-      "id": "junction1",
+      "id": "SCOPE1",
+      "type": "oscilloscope",
+      "x": 510,
+      "y": 1750,
+      "rotation": 0,
+      "mirrorX": false,
+      "props": {
+        "TimeDiv": "10m",
+        "VDiv1": "200m",
+        "VDiv2": "200m"
+      }
+    },
+    {
+      "id": "SW1",
+      "type": "switch",
+      "x": 390,
+      "y": 2070,
+      "rotation": 0,
+      "mirrorX": false,
+      "props": {
+        "Type": "SPDT",
+        "Position": "B"
+      }
+    },
+    {
+      "id": "R1",
+      "type": "resistor",
+      "x": 570,
+      "y": 1930,
+      "rotation": 0,
+      "mirrorX": false,
+      "props": {
+        "R": "7.5k",
+        "Tolerance": "1"
+      }
+    },
+    {
+      "id": "R2",
+      "type": "resistor",
+      "x": 250,
+      "y": 1990,
+      "rotation": 0,
+      "mirrorX": false,
+      "props": {
+        "R": "7.5k",
+        "Tolerance": "1"
+      }
+    },
+    {
+      "id": "R3",
+      "type": "resistor",
+      "x": 250,
+      "y": 2070,
+      "rotation": 0,
+      "mirrorX": false,
+      "props": {
+        "R": "7.5k",
+        "Tolerance": "1"
+      }
+    },
+    {
+      "id": "R4",
+      "type": "resistor",
+      "x": 570,
+      "y": 2170,
+      "rotation": 1,
+      "mirrorX": false,
+      "props": {
+        "R": "7.5k",
+        "Tolerance": "1"
+      }
+    },
+    {
+      "id": "J1",
       "type": "junction",
       "x": 470,
       "y": 1990,
@@ -231,7 +231,7 @@
       "props": {}
     },
     {
-      "id": "junction2",
+      "id": "J2",
       "type": "junction",
       "x": 470,
       "y": 1930,
@@ -240,7 +240,7 @@
       "props": {}
     },
     {
-      "id": "junction3",
+      "id": "J3",
       "type": "junction",
       "x": 570,
       "y": 2090,
@@ -252,33 +252,33 @@
   "wires": [
     {
       "from": {
-        "id": "spdt",
+        "id": "SW1",
         "pin": 0
       },
       "to": {
-        "id": "r3",
+        "id": "R3",
         "pin": 1
       },
       "vertices": []
     },
     {
       "from": {
-        "id": "gnd2",
+        "id": "GND2",
         "pin": 0
       },
       "to": {
-        "id": "scope",
+        "id": "SCOPE1",
         "pin": 2
       },
       "vertices": []
     },
     {
       "from": {
-        "id": "vcc2",
+        "id": "V2",
         "pin": 0
       },
       "to": {
-        "id": "op_amp",
+        "id": "U1",
         "pin": 7
       },
       "vertices": [
@@ -290,22 +290,22 @@
     },
     {
       "from": {
-        "id": "gnd4",
+        "id": "GND4",
         "pin": 0
       },
       "to": {
-        "id": "vcc2",
+        "id": "V2",
         "pin": 1
       },
       "vertices": []
     },
     {
       "from": {
-        "id": "fun_gen_low",
+        "id": "FG2",
         "pin": 0
       },
       "to": {
-        "id": "r2",
+        "id": "R2",
         "pin": 0
       },
       "vertices": [
@@ -317,22 +317,22 @@
     },
     {
       "from": {
-        "id": "gnd5",
+        "id": "GND5",
         "pin": 0
       },
       "to": {
-        "id": "fun_gen_mid1",
+        "id": "FG3",
         "pin": 1
       },
       "vertices": []
     },
     {
       "from": {
-        "id": "fun_gen_mid1",
+        "id": "FG3",
         "pin": 0
       },
       "to": {
-        "id": "fun_gen_low",
+        "id": "FG2",
         "pin": 1
       },
       "vertices": [
@@ -348,11 +348,11 @@
     },
     {
       "from": {
-        "id": "fun_gen_mid2",
+        "id": "FG4",
         "pin": 0
       },
       "to": {
-        "id": "fun_gen_high",
+        "id": "FG1",
         "pin": 1
       },
       "vertices": [
@@ -368,22 +368,22 @@
     },
     {
       "from": {
-        "id": "gnd6",
+        "id": "GND6",
         "pin": 0
       },
       "to": {
-        "id": "fun_gen_mid2",
+        "id": "FG4",
         "pin": 1
       },
       "vertices": []
     },
     {
       "from": {
-        "id": "fun_gen_high",
+        "id": "FG1",
         "pin": 0
       },
       "to": {
-        "id": "r3",
+        "id": "R3",
         "pin": 0
       },
       "vertices": [
@@ -403,33 +403,33 @@
     },
     {
       "from": {
-        "id": "junction1",
+        "id": "J1",
         "pin": 0
       },
       "to": {
-        "id": "r2",
+        "id": "R2",
         "pin": 1
       },
       "vertices": []
     },
     {
       "from": {
-        "id": "op_amp",
+        "id": "U1",
         "pin": 1
       },
       "to": {
-        "id": "junction1",
+        "id": "J1",
         "pin": 0
       },
       "vertices": []
     },
     {
       "from": {
-        "id": "spdt",
+        "id": "SW1",
         "pin": 1
       },
       "to": {
-        "id": "junction1",
+        "id": "J1",
         "pin": 0
       },
       "vertices": [
@@ -441,11 +441,11 @@
     },
     {
       "from": {
-        "id": "r1",
+        "id": "R1",
         "pin": 1
       },
       "to": {
-        "id": "op_amp",
+        "id": "U1",
         "pin": 0
       },
       "vertices": [
@@ -461,22 +461,22 @@
     },
     {
       "from": {
-        "id": "r1",
+        "id": "R1",
         "pin": 0
       },
       "to": {
-        "id": "junction2",
+        "id": "J2",
         "pin": 0
       },
       "vertices": []
     },
     {
       "from": {
-        "id": "junction2",
+        "id": "J2",
         "pin": 0
       },
       "to": {
-        "id": "junction1",
+        "id": "J1",
         "pin": 0
       },
       "vertices": [
@@ -488,22 +488,22 @@
     },
     {
       "from": {
-        "id": "scope",
+        "id": "SCOPE1",
         "pin": 0
       },
       "to": {
-        "id": "op_amp",
+        "id": "U1",
         "pin": 0
       },
       "vertices": []
     },
     {
       "from": {
-        "id": "op_amp",
+        "id": "U1",
         "pin": 2
       },
       "to": {
-        "id": "junction3",
+        "id": "J3",
         "pin": 0
       },
       "vertices": [
@@ -515,11 +515,11 @@
     },
     {
       "from": {
-        "id": "junction3",
+        "id": "J3",
         "pin": 0
       },
       "to": {
-        "id": "spdt",
+        "id": "SW1",
         "pin": 2
       },
       "vertices": [
@@ -531,44 +531,44 @@
     },
     {
       "from": {
-        "id": "r4",
+        "id": "R4",
         "pin": 0
       },
       "to": {
-        "id": "junction3",
+        "id": "J3",
         "pin": 0
       },
       "vertices": []
     },
     {
       "from": {
-        "id": "r4",
+        "id": "R4",
         "pin": 1
       },
       "to": {
-        "id": "gnd1",
+        "id": "GND1",
         "pin": 0
       },
       "vertices": []
     },
     {
       "from": {
-        "id": "vcc1",
+        "id": "V1",
         "pin": 0
       },
       "to": {
-        "id": "gnd3",
+        "id": "GND3",
         "pin": 0
       },
       "vertices": []
     },
     {
       "from": {
-        "id": "op_amp",
+        "id": "U1",
         "pin": 3
       },
       "to": {
-        "id": "vcc1",
+        "id": "V1",
         "pin": 1
       },
       "vertices": [
