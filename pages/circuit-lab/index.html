@@ -284,6 +284,36 @@
             flex: 0 0 140px;
         }
 
+        /* --- MOBILE QUICK BAR --- */
+        #mobile-quick-bar {
+            display: none;
+            background: var(--bg-panel);
+            border-top: 1px solid var(--border-subtle);
+            padding: 8px 12px;
+            gap: 8px;
+            align-items: center;
+            position: relative;
+            z-index: 45;
+        }
+        #mobile-quick-bar .quick-controls {
+            flex: 1;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            align-items: center;
+        }
+        #mobile-quick-bar .mini-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            align-items: center;
+        }
+        #mobile-quick-bar .funcgen-group {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
         /* --- ROBUST DROPDOWNS --- */
         .menu-wrapper { position: relative; }
 
@@ -589,6 +619,10 @@
                 align-items: stretch;
             }
             #scope-container { margin: 0 8px; }
+            #mobile-quick-bar {
+                display: flex;
+                flex-wrap: wrap;
+            }
         }
     </style>
 
@@ -862,6 +896,51 @@
             </div>
         </div>
     </main>
+
+    <div id="mobile-quick-bar" class="text-xs font-mono text-gray-100">
+        <button onclick="quickSelectPrev()"
+                class="sim-btn mobile-icon-only"
+                aria-label="Previous component">
+            <i class="fas fa-chevron-left"></i>
+        </button>
+        <div class="quick-controls">
+            <div class="mini-group">
+                <button class="sim-btn" onclick="quickToggleSwitchPosition()" aria-label="Toggle switch">
+                    <i class="fas fa-toggle-on"></i><span class="btn-text">Switch</span>
+                </button>
+                <div class="mini-group">
+                    <span class="text-gray-300">Pot</span>
+                    <button class="sim-btn" onclick="quickAdjustPot(-10)" aria-label="Pot -10%">-10%</button>
+                    <button class="sim-btn" onclick="quickAdjustPot(10)" aria-label="Pot +10%">+10%</button>
+                </div>
+                <button class="sim-btn" onclick="quickToggleScopeOverlay()" aria-label="Toggle scope">
+                    <i class="fas fa-wave-square"></i><span class="btn-text">Scope</span>
+                </button>
+                <button class="sim-btn" onclick="quickToggleViewMode()" aria-label="Toggle view">
+                    <i class="fas fa-exchange-alt"></i><span class="btn-text">View</span>
+                </button>
+            </div>
+            <div class="funcgen-group">
+                <div class="mini-group">
+                    <span class="text-gray-300">Freq</span>
+                    <button class="sim-btn" onclick="quickSetFuncGenFreq('110')" aria-label="Set freq 110Hz">110</button>
+                    <button class="sim-btn" onclick="quickSetFuncGenFreq('880')" aria-label="Set freq 880Hz">880</button>
+                    <button class="sim-btn" onclick="quickSetFuncGenFreq('3520')" aria-label="Set freq 3520Hz">3520</button>
+                </div>
+                <div class="mini-group">
+                    <span class="text-gray-300">Vpp</span>
+                    <button class="sim-btn" onclick="quickSetFuncGenVpp('0.5')" aria-label="Set Vpp 0.5">0.5</button>
+                    <button class="sim-btn" onclick="quickSetFuncGenVpp('1')" aria-label="Set Vpp 1">1</button>
+                    <button class="sim-btn" onclick="quickSetFuncGenVpp('2')" aria-label="Set Vpp 2">2</button>
+                </div>
+            </div>
+        </div>
+        <button onclick="quickSelectNext()"
+                class="sim-btn mobile-icon-only"
+                aria-label="Next component">
+            <i class="fas fa-chevron-right"></i>
+        </button>
+    </div>
 
     <div id="sim-bar">
         <div class="sim-info text-xs font-mono" aria-live="polite">

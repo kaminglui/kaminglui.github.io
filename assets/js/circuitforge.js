@@ -195,6 +195,7 @@ let touchHoldStart = null;
 let touchMovedSinceDown = false;
 let pinchState = null;
 const cursorVisibility = { 1: true, 2: true };
+let quickSelectionIndex = -1;
 
 // Canvas handles (set after DOM exists)
 let canvas = null;
@@ -1949,6 +1950,7 @@ function setSelectedComponent(c) {
     selectedComponent = c;
     selectionGroup    = c ? [c] : [];
     selectedWire      = null;
+    quickSelectionIndex = -1;
 }
 
 function rotateSelected() {
@@ -2618,6 +2620,120 @@ function serializeTemplateLibrary(selection = null) {
         }));
 
     return { components: compEntries, wires: serialWires };
+}
+
+const QUICK_KIND_GROUPS = [
+    { key: 'switch', aliases: ['switch'] },
+    { key: 'potentiometer', aliases: ['potentiometer'] },
+    { key: 'oscilloscope', aliases: ['oscilloscope'] },
+    { key: 'funcgen', aliases: ['funcgen', 'functiongenerator'] },
+    { key: 'resistor', aliases: ['resistor'] },
+    { key: 'voltagesource', aliases: ['voltagesource'] },
+    { key: 'ground', aliases: ['ground'] }
+];
+
+function compKind(c) {
+    return (c?.kind || '').toLowerCase();
+}
+
+function matchesKind(c, group) {
+    const k = compKind(c);
+    return group.aliases.includes(k);
+}
+
+function buildQuickList() {
+    const list = [];
+    QUICK_KIND_GROUPS.forEach((group) => {
+        const bucket = components
+            .filter(c => matchesKind(c, group))
+            .sort((a, b) => (a.id || '').localeCompare(b.id || ''));
+        bucket.forEach(c => list.push(c));
+    });
+    return list;
+}
+
+function quickSelect(delta) {
+    const list = buildQuickList();
+    if (!list.length) return;
+    quickSelectionIndex = (quickSelectionIndex + delta + list.length) % list.length;
+    const target = list[quickSelectionIndex];
+    setSelectedComponent(target);
+    selectionGroup = target ? [target] : [];
+    updateProps();
+    draw();
+}
+
+function quickSelectPrev() { quickSelectionIndex = quickSelectionIndex < 0 ? 0 : quickSelectionIndex; quickSelect(-1); }
+function quickSelectNext() { quickSelectionIndex = quickSelectionIndex < 0 ? -1 : quickSelectionIndex; quickSelect(1); }
+
+function findComponentByKind(kindAlias) {
+    const aliases = Array.isArray(kindAlias) ? kindAlias : [kindAlias];
+    return components.find(c => aliases.includes(compKind(c)));
+}
+
+function quickToggleSwitchPosition() {
+    const sw = selectedComponent && compKind(selectedComponent) === 'switch'
+        ? selectedComponent
+        : findComponentByKind('switch');
+    if (!sw) return;
+    sw.props = sw.props || {};
+    sw.props.Position = sw.props.Position === 'B' ? 'A' : 'B';
+    setSelectedComponent(sw);
+    selectionGroup = [sw];
+    markStateDirty();
+    updateProps();
+}
+
+function quickAdjustPot(delta) {
+    const pot = selectedComponent && compKind(selectedComponent) === 'potentiometer'
+        ? selectedComponent
+        : findComponentByKind('potentiometer');
+    if (!pot) return;
+    const current = parseFloat(pot.props?.Turn ?? '0') || 0;
+    const next = Math.min(100, Math.max(0, current + delta));
+    pot.props = pot.props || {};
+    pot.props.Turn = String(next);
+    setSelectedComponent(pot);
+    selectionGroup = [pot];
+    markStateDirty();
+    updateProps();
+}
+
+function quickToggleScopeOverlay() {
+    if (scopeMode) closeScope();
+    else openScope();
+}
+
+function quickToggleViewMode() {
+    toggleView();
+}
+
+function quickSetFuncGenFreq(freq) {
+    const fg = selectedComponent && ['funcgen', 'functiongenerator'].includes(compKind(selectedComponent))
+        ? selectedComponent
+        : findComponentByKind(['funcgen', 'functiongenerator']);
+    if (!fg) return;
+    fg.props = fg.props || {};
+    fg.props.Freq = String(freq);
+    fg.sampleAccum = 0;
+    setSelectedComponent(fg);
+    selectionGroup = [fg];
+    markStateDirty();
+    updateProps();
+}
+
+function quickSetFuncGenVpp(vpp) {
+    const fg = selectedComponent && ['funcgen', 'functiongenerator'].includes(compKind(selectedComponent))
+        ? selectedComponent
+        : findComponentByKind(['funcgen', 'functiongenerator']);
+    if (!fg) return;
+    fg.props = fg.props || {};
+    fg.props.Vpp = String(vpp);
+    fg.sampleAccum = 0;
+    setSelectedComponent(fg);
+    selectionGroup = [fg];
+    markStateDirty();
+    updateProps();
 }
 
 function deserializeTemplate(templateObj) {
