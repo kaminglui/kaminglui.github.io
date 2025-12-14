@@ -665,8 +665,8 @@ const App: React.FC = () => {
       {/* Start Instruction */}
       {mode === 'DRAW' && points.length === 0 && (
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none text-center">
-             <h1 className="text-4xl font-bold text-slate-700 mb-2">Draw Something</h1>
-             <p className="text-slate-500">Trace a continuous line to begin</p>
+             <h1 className="text-4xl font-bold text-slate-200 mb-2 drop-shadow">Draw Something</h1>
+             <p className="text-slate-300">Trace a continuous line to begin</p>
           </div>
       )}
 
