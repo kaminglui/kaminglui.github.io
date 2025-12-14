@@ -51,6 +51,18 @@ describe('mathUtils', () => {
     const amps = spectrum.map((term) => term.amp);
     expect(amps.every((amp, idx) => idx === 0 || amp <= amps[idx - 1])).toBe(true);
   });
+
+  it('maps high DFT indices to negative frequencies', () => {
+    const N = 16;
+    const samples: Point[] = Array.from({ length: N }, (_, n) => {
+      const phi = (2 * Math.PI * (N - 1) * n) / N; // k = N-1 aliases to -1
+      return { x: Math.cos(phi), y: Math.sin(phi) };
+    });
+
+    const spectrum = dft(pointsToComplex(samples));
+    expect(spectrum[0].freq).toBe(-1);
+    expect(spectrum.every((term) => Math.abs(term.freq) <= N / 2)).toBe(true);
+  });
 });
 
 describe('fourierEngine helpers', () => {

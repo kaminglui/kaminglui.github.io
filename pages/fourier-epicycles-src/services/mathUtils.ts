@@ -32,7 +32,9 @@ export const dft = (x: Complex[]): FourierTerm[] => {
     sumRe = sumRe / N;
     sumIm = sumIm / N;
 
-    const freq = k;
+    // Treat indices above Nyquist as negative frequencies so continuous-time playback
+    // matches the standard Fourier series interpretation (reduces "wild" spinning).
+    const freq = k > N / 2 ? k - N : k;
     const amp = Math.sqrt(sumRe * sumRe + sumIm * sumIm);
     const phase = Math.atan2(sumIm, sumRe);
 

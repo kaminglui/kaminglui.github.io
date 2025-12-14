@@ -244,9 +244,16 @@ const runCase = async (browser, baseUrl, { label, viewport }) => {
   });
 
   await page.setViewport(viewport);
-  await page.goto(baseUrl, { waitUntil: 'networkidle2', timeout: 60_000 });
+  await page.goto(baseUrl, { waitUntil: 'domcontentloaded', timeout: 60_000 });
   await page.waitForSelector('.fourier-stage', { timeout: 30_000 });
   await page.waitForSelector('canvas', { timeout: 30_000 });
+  // Wait for Tailwind CDN to apply (toolbars rely on utility classes).
+  await page.waitForFunction(() => {
+    const toolbar = document.querySelector('.fourier-toolbar');
+    if (!toolbar) return false;
+    const flexCandidate = toolbar.querySelector('.flex') ?? toolbar;
+    return getComputedStyle(flexCandidate).display === 'flex';
+  }, { timeout: 30_000 });
   await delay(500);
 
   if (errors.length) {

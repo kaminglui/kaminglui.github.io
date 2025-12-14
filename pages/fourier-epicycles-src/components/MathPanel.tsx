@@ -91,7 +91,8 @@ const MathPanel: React.FC<MathPanelProps> = ({ terms, time, epicycles, metrics, 
       `,
       reconstruction: `
       \\begin{aligned}
-        x(t) &\\approx \\sum_{k=0}^{${m - 1}} \\left|X_k\\right| e^{i\\left(2\\pi kt/${n} + \\phi_k\\right)} \\\\
+        x(t) &\\approx \\sum_{j=1}^{${m}} \\left|X_{k_j}\\right| e^{i\\left(k_j t + \\phi_{k_j}\\right)} \\\\
+        t &= 2\\pi n/N,\\; k_j \\in \\left[-\\frac{N}{2}, \\frac{N}{2}\\right] \\\\
         &\\textcolor{#22c55e}{\\left|X_{${dominantFreq}}\\right| = ${domRadius.toFixed(2)}},\\;
           \\textcolor{#f472b6}{\\phi_{${dominantFreq}} = ${dominantPhase}}\\;\\text{rad}
       \\end{aligned}
@@ -100,7 +101,7 @@ const MathPanel: React.FC<MathPanelProps> = ({ terms, time, epicycles, metrics, 
       \\begin{aligned}
         \\text{Epicycle}_k(t) &= r_k e^{i(\\omega_k t + \\phi_k)} \\\\
         r_k &= \\left|X_k\\right|,\\;
-        \\omega_k = 2\\pi k / N,\\;
+        \\omega_k = k,\\;
         t = ${phaseTurns}\\,\\tau
       \\end{aligned}
       `
