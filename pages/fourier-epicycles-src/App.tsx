@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { FourierTerm, Point, InputMode } from './types';
 import { generateCircle, generateHeart, generateInfinity, generateMusicNote, generateSquare } from './services/mathUtils';
 import { processImage } from './services/imageProcessing';
-import { computeFourier, preparePoints } from './services/fourierEngine';
+import { computeFourier } from './services/fourierEngine';
 import { computeEnergyMetrics } from './services/metrics';
 import { termColor } from './services/visualUtils';
 import Toolbar from './components/Toolbar';
@@ -10,8 +10,8 @@ import MathPanel from './components/MathPanel';
 
 const MAX_FOURIER_TERMS = 1600;
 const SAFE_MAX_TERMS = 700;
-const MIN_POINT_STEP = 2.5;
-const DEFAULT_SPEED = 0.6;
+const MIN_POINT_STEP = 1.75;
+const DEFAULT_SPEED = 0.45;
 const MAX_UPLOAD_BYTES = 3_000_000;
 const AUTO_SAVE_KEY = 'fourier_viz__last_session';
 
@@ -46,6 +46,8 @@ const App: React.FC = () => {
   const requestRef = useRef<number>();
   const pointsRef = useRef<Point[]>([]); 
   const isDrawingRef = useRef(false);
+  const activePointerIdRef = useRef<number | null>(null);
+  const dprRef = useRef(1);
   
   // Optimization: Offscreen canvas for path trail
   const pathCanvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -54,7 +56,10 @@ const App: React.FC = () => {
   const clearPathCanvas = useCallback(() => {
     if (pathCanvasRef.current) {
       const ctx = pathCanvasRef.current.getContext('2d');
-      ctx?.clearRect(0, 0, pathCanvasRef.current.width, pathCanvasRef.current.height);
+      if (ctx) {
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        ctx.clearRect(0, 0, pathCanvasRef.current.width, pathCanvasRef.current.height);
+      }
     }
     prevEpicyclePointRef.current = null;
   }, []);
@@ -64,20 +69,22 @@ const App: React.FC = () => {
     const container = containerRef.current;
     if (!canvas || !container) return;
 
-    const { width, height } = container.getBoundingClientRect();
-    const safeWidth = Math.max(width, 360);
-    const safeHeight = Math.max(height, 360);
+    const { width, height } = canvas.getBoundingClientRect();
+    const cssWidth = Math.max(1, Math.floor(width));
+    const cssHeight = Math.max(1, Math.floor(height));
+    if (cssWidth <= 1 || cssHeight <= 1) return;
 
-    canvas.width = safeWidth;
-    canvas.height = safeHeight;
-    canvas.style.width = `${safeWidth}px`;
-    canvas.style.height = `${safeHeight}px`;
+    const dpr = window.devicePixelRatio || 1;
+    dprRef.current = dpr;
+
+    canvas.width = Math.round(cssWidth * dpr);
+    canvas.height = Math.round(cssHeight * dpr);
 
     if (!pathCanvasRef.current) {
       pathCanvasRef.current = document.createElement('canvas');
     }
-    pathCanvasRef.current.width = safeWidth;
-    pathCanvasRef.current.height = safeHeight;
+    pathCanvasRef.current.width = canvas.width;
+    pathCanvasRef.current.height = canvas.height;
     clearPathCanvas();
   }, [clearPathCanvas]);
 
@@ -195,14 +202,19 @@ const App: React.FC = () => {
 
   // --- Handlers ---
 
-  const handleMouseDown = (e: React.MouseEvent) => {
+  const handlePointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
     if (mode !== 'DRAW') return;
+    if (isDrawingRef.current) return;
+    if (e.pointerType === 'mouse' && e.button !== 0) return;
     isDrawingRef.current = true;
+    activePointerIdRef.current = e.pointerId;
     setIsDrawing(true);
     setPoints([]); 
     clearPathCanvas();
     setFourierX([]);
     setIsPlaying(false);
+    setStepIndex(0);
+    setStepMode(false);
     
     const rect = canvasRef.current!.getBoundingClientRect();
     const x = e.clientX - rect.left - rect.width / 2;
@@ -211,10 +223,24 @@ const App: React.FC = () => {
     const p = { x, y };
     setPoints([p]);
     pointsRef.current = [p];
+
+    try {
+      e.currentTarget.setPointerCapture(e.pointerId);
+    } catch {
+      // ignore pointer-capture failures
+    }
   };
 
-  const handleMouseMove = (e: React.MouseEvent) => {
+  const handlePointerMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
     if (!isDrawingRef.current || mode !== 'DRAW') return;
+    if (activePointerIdRef.current !== e.pointerId) return;
+    if (e.pointerType === 'mouse' && (e.buttons & 1) === 0) {
+      // Mouse button released outside canvas; stop drawing to avoid "stuck" scribbles.
+      isDrawingRef.current = false;
+      activePointerIdRef.current = null;
+      setIsDrawing(false);
+      return;
+    }
     const rect = canvasRef.current!.getBoundingClientRect();
     const x = e.clientX - rect.left - rect.width / 2;
     const y = e.clientY - rect.top - rect.height / 2;
@@ -223,34 +249,64 @@ const App: React.FC = () => {
     const last = pointsRef.current[pointsRef.current.length - 1];
     
     if (Math.hypot(p.x - last.x, p.y - last.y) > MIN_POINT_STEP) {
-        setPoints(prev => [...prev, p]);
-        pointsRef.current.push(p);
-
-        // Real-time update
-        if (pointsRef.current.length % 5 === 0 && pointsRef.current.length > 2) {
-             const currentPts = pointsRef.current;
-             const preview = computeFourier(currentPts, { smoothing, limit: MAX_FOURIER_TERMS });
-             setFourierX(preview.spectrum);
-             setNumEpicycles(preview.spectrum.length);
-             clearPathCanvas(); // Clear path because the shape definition changed
-             setIsPlaying(true);
-        }
+      pointsRef.current.push(p);
     }
   };
 
-  const handleMouseUp = () => {
+  const handlePointerUp = (e?: React.PointerEvent<HTMLCanvasElement>) => {
     if (!isDrawingRef.current) return;
+    if (typeof e?.pointerId === 'number' && activePointerIdRef.current !== e.pointerId) return;
     isDrawingRef.current = false;
+    activePointerIdRef.current = null;
     setIsDrawing(false);
     
     const pts = pointsRef.current;
-    let finalPts = pts;
-    
-    const prepared = preparePoints(pts, smoothing, MAX_FOURIER_TERMS);
-    setPoints(prepared);
-    computeDFT(prepared);
+    if (pts.length > 1) {
+      computeDFT(pts);
+    } else {
+      setPoints([]);
+      setFourierX([]);
+      setIsPlaying(false);
+    }
     // mode remains DRAW
   };
+
+  const handlePointerCancel = () => {
+    if (!isDrawingRef.current) return;
+    isDrawingRef.current = false;
+    activePointerIdRef.current = null;
+    setIsDrawing(false);
+  };
+
+  useEffect(() => {
+    const stopDrawing = (ev: Event) => {
+      if (!isDrawingRef.current) return;
+      const pointerId = (ev as PointerEvent).pointerId;
+      if (typeof pointerId === 'number' && activePointerIdRef.current !== null && pointerId !== activePointerIdRef.current) {
+        return;
+      }
+      isDrawingRef.current = false;
+      activePointerIdRef.current = null;
+      setIsDrawing(false);
+
+      const pts = pointsRef.current;
+      if (pts.length > 1) {
+        computeDFT(pts);
+      } else {
+        setPoints([]);
+        setFourierX([]);
+        setIsPlaying(false);
+      }
+    };
+    window.addEventListener('pointerup', stopDrawing);
+    window.addEventListener('pointercancel', stopDrawing);
+    window.addEventListener('blur', stopDrawing);
+    return () => {
+      window.removeEventListener('pointerup', stopDrawing);
+      window.removeEventListener('pointercancel', stopDrawing);
+      window.removeEventListener('blur', stopDrawing);
+    };
+  }, [computeDFT]);
 
   const handleClear = () => {
     setPoints([]);
@@ -418,8 +474,14 @@ const App: React.FC = () => {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    const width = canvas.width;
-    const height = canvas.height;
+    const dpr = dprRef.current || 1;
+    const width = canvas.width / dpr;
+    const height = canvas.height / dpr;
+
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.scale(dpr, dpr);
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
 
     // 1. Clear Main Screen
     ctx.fillStyle = canvasBg; 
@@ -436,35 +498,39 @@ const App: React.FC = () => {
     // 3. User Input (Ghost)
     // Only show ghost if we have points AND we are not drawing actively (cleaner look)
     // Or just always show faint
-    if (points.length > 0 && mode !== 'DRAW') {
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
-        ctx.lineWidth = 1;
-        ctx.beginPath();
-        points.forEach((p, i) => {
-            if (i === 0) ctx.moveTo(p.x + width/2, p.y + height/2);
-            else ctx.lineTo(p.x + width/2, p.y + height/2);
+     if (points.length > 0 && mode !== 'DRAW') {
+         ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+         ctx.lineWidth = 1;
+         ctx.lineCap = 'round';
+         ctx.lineJoin = 'round';
+         ctx.beginPath();
+         points.forEach((p, i) => {
+             if (i === 0) ctx.moveTo(p.x + width/2, p.y + height/2);
+             else ctx.lineTo(p.x + width/2, p.y + height/2);
         });
         ctx.stroke();
     }
     
     // 4. Drawing Mode Input (Active)
-    if (mode === 'DRAW' && isDrawingRef.current) {
-        ctx.strokeStyle = brushColor;
-        ctx.lineWidth = brushSize;
-        ctx.beginPath();
-        pointsRef.current.forEach((p, i) => {
-            if (i === 0) ctx.moveTo(p.x + width/2, p.y + height/2);
-            else ctx.lineTo(p.x + width/2, p.y + height/2);
+     if (mode === 'DRAW' && isDrawingRef.current) {
+         ctx.strokeStyle = brushColor;
+         ctx.lineWidth = brushSize;
+         ctx.lineCap = 'round';
+         ctx.lineJoin = 'round';
+         ctx.beginPath();
+         pointsRef.current.forEach((p, i) => {
+             if (i === 0) ctx.moveTo(p.x + width/2, p.y + height/2);
+             else ctx.lineTo(p.x + width/2, p.y + height/2);
         });
         ctx.stroke();
     } 
 
     // 5. Render Epicycles & Path
     if (fourierX.length > 0) {
-        // Draw accumulated path from offscreen canvas
-        if (pathCanvasRef.current) {
-            ctx.drawImage(pathCanvasRef.current, 0, 0);
-        }
+         // Draw accumulated path from offscreen canvas
+         if (pathCanvasRef.current) {
+             ctx.drawImage(pathCanvasRef.current, 0, 0, width, height);
+         }
 
         const activeLen = Math.min(Math.max(numEpicycles, 1), fourierX.length);
         const highlightIdx = Math.max(activeLen - 1, 0);
@@ -472,30 +538,32 @@ const App: React.FC = () => {
         const v = drawEpicycles(ctx, width, height, highlightIdx, maxAmp);
         
         // Update Offscreen Path with continuous strokes
-        if (pathCanvasRef.current) {
-            const pCtx = pathCanvasRef.current.getContext('2d');
-            if (pCtx) {
-                pCtx.strokeStyle = brushColor;
-                pCtx.lineWidth = brushSize;
-                pCtx.lineCap = 'round';
-                pCtx.lineJoin = 'round';
+         if (pathCanvasRef.current) {
+             const pCtx = pathCanvasRef.current.getContext('2d');
+             if (pCtx) {
+                 pCtx.setTransform(1, 0, 0, 1, 0, 0);
+                 pCtx.scale(dpr, dpr);
+                 pCtx.strokeStyle = brushColor;
+                 pCtx.lineWidth = brushSize;
+                 pCtx.lineCap = 'round';
+                 pCtx.lineJoin = 'round';
 
-                if (prevEpicyclePointRef.current) {
-                    pCtx.beginPath();
-                    pCtx.moveTo(prevEpicyclePointRef.current.x, prevEpicyclePointRef.current.y);
-                    pCtx.lineTo(v.x, v.y);
-                    pCtx.stroke();
-                }
-            }
-        }
-        prevEpicyclePointRef.current = { x: v.x, y: v.y };
+                 if (prevEpicyclePointRef.current) {
+                     pCtx.beginPath();
+                     pCtx.moveTo(prevEpicyclePointRef.current.x, prevEpicyclePointRef.current.y);
+                     pCtx.lineTo(v.x, v.y);
+                     pCtx.stroke();
+                 }
+             }
+         }
+         prevEpicyclePointRef.current = { x: v.x, y: v.y };
 
-        if (isPlaying) {
-             const effectiveTerms = Math.max(numEpicycles || fourierX.length, 1);
-             const stepAngle = (2 * Math.PI) / effectiveTerms;
-             const dt = stepAngle * speed;
-             const newTime = time + dt;
-             const willWrap = newTime >= 2 * Math.PI;
+         if (isPlaying) {
+              const sampleCount = Math.max(points.length || fourierX.length, 1);
+              const stepAngle = (2 * Math.PI) / sampleCount;
+              const dt = stepAngle * speed;
+              const newTime = time + dt;
+              const willWrap = newTime >= 2 * Math.PI;
              
              if (willWrap) {
                  setTime(0);
@@ -531,14 +599,15 @@ const App: React.FC = () => {
         ? new ResizeObserver(handleResize)
         : null;
 
-      if (observer && containerRef.current) {
-        observer.observe(containerRef.current);
+      if (observer) {
+        if (containerRef.current) observer.observe(containerRef.current);
+        if (canvasRef.current) observer.observe(canvasRef.current);
       }
 
       window.addEventListener('resize', handleResize);
       return () => {
-        window.removeEventListener('resize', handleResize);
-        observer?.disconnect();
+          window.removeEventListener('resize', handleResize);
+          observer?.disconnect();
       };
   }, [resizeCanvases]);
 
@@ -575,21 +644,20 @@ const App: React.FC = () => {
 
 
   return (
-    <div className={`fourier-stage select-none ${isFullscreen ? 'is-fullscreen' : ''}`} ref={containerRef}>
+    <div
+      className={`fourier-stage select-none ${isFullscreen ? 'is-fullscreen' : ''}`}
+      ref={containerRef}
+      data-mode={mode}
+      data-drawing={isDrawing ? 'true' : 'false'}
+      data-has-spectrum={fourierX.length > 0 ? 'true' : 'false'}
+      data-points={points.length}
+    >
       <canvas
         ref={canvasRef}
-        onMouseDown={handleMouseDown}
-        onMouseMove={handleMouseMove}
-        onMouseUp={handleMouseUp}
-        onTouchStart={(e) => {
-            const touch = e.touches[0];
-            handleMouseDown({ clientX: touch.clientX, clientY: touch.clientY } as any);
-        }}
-        onTouchMove={(e) => {
-            const touch = e.touches[0];
-            handleMouseMove({ clientX: touch.clientX, clientY: touch.clientY } as any);
-        }}
-        onTouchEnd={handleMouseUp}
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+        onPointerCancel={handlePointerCancel}
         className={`fourier-canvas cursor-${mode === 'DRAW' ? 'crosshair' : 'default'}`}
       />
 

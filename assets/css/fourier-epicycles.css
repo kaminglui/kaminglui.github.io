@@ -62,7 +62,7 @@ body.theme-dark .fourier-shell {
   width: 100%;
   height: clamp(520px, 82vh, 1280px);
   border-radius: var(--radius-lg);
-  overflow: visible;
+  overflow: hidden;
   background:
     radial-gradient(circle at 30% 20%, rgba(59, 130, 246, 0.12), transparent 35%),
     radial-gradient(circle at 80% 0%, rgba(236, 72, 153, 0.12), transparent 40%),
@@ -92,6 +92,7 @@ body.theme-dark .fourier-stage {
   height: 100%;
   display: block;
   border-radius: inherit;
+  touch-action: none;
 }
 
 .fourier-toolbar {
@@ -101,6 +102,7 @@ body.theme-dark .fourier-stage {
   display: flex;
   align-items: center;
   gap: 0.5rem;
+  flex-wrap: wrap;
   background: var(--color-bg-alt);
   border: 1px solid var(--color-border);
   border-radius: 16px;
@@ -138,6 +140,21 @@ body.theme-dark .fourier-toolbar {
   color: var(--color-text);
   backdrop-filter: blur(12px);
   z-index: 10;
+}
+
+.fourier-math-panel .katex-display {
+  margin: 0.25rem 0 0.75rem;
+  text-align: left;
+}
+
+.fourier-katex-inline {
+  overflow-x: auto;
+  overflow-y: hidden;
+  max-width: 100%;
+}
+
+.fourier-katex-inline .katex {
+  font-size: 0.95rem;
 }
 
 body.theme-dark .fourier-math-panel {
@@ -275,24 +292,17 @@ body.theme-dark .fourier-math-panel {
     height: clamp(420px, 78vh, 980px);
   }
   .fourier-toolbar {
-    position: static;
+    left: 0.75rem;
+    right: 0.75rem;
+    width: auto;
     transform: none;
-    width: 100%;
-    flex-wrap: wrap;
-    justify-content: center;
     gap: 0.35rem;
-  }
-  .fourier-toolbar--top {
-    margin-bottom: 0.5rem;
-  }
-  .fourier-toolbar--bottom {
-    bottom: auto;
-    margin-top: 0.5rem;
+    justify-content: center;
   }
   .fourier-math-panel {
-    position: static;
-    width: 100%;
-    margin-top: 0.75rem;
+    left: 0.75rem;
+    right: 0.75rem;
+    width: auto;
   }
 }
 

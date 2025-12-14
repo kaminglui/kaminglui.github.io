@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import katex from 'katex';
 import 'katex/dist/katex.min.css';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { FourierTerm } from '../types';
 import { legendGradient } from '../services/visualUtils';
 
@@ -47,6 +48,31 @@ const MathPanel: React.FC<MathPanelProps> = ({ terms, time, epicycles, metrics, 
   const inspectEnergy = metrics.breakdown
     ? metrics.breakdown[Math.min(inspectIndex, Math.max(metrics.breakdown.length - 1, 0))] ?? { energyPct: 0, cumulativePct: 0 }
     : { energyPct: 0, cumulativePct: 0 };
+
+  const inspectorKatex = useMemo(() => {
+    const opts = { throwOnError: false };
+    const n = stats.n || 1;
+    const k = inspected.freq;
+    const amp = inspected.amp.toFixed(3);
+    const phase = inspected.phase.toFixed(3);
+    const delta = inspectEnergy.energyPct.toFixed(2);
+    const cumulative = inspectEnergy.cumulativePct.toFixed(2);
+
+    return {
+      paramsHtml: katex.renderToString(
+        `k = ${k},\\quad |X_k| = ${amp},\\quad \\phi_k = ${phase}\\,\\text{rad}`,
+        opts
+      ),
+      vectorHtml: katex.renderToString(
+        `\\text{Vector}_k(t) = |X_k|\\,e^{i\\left(2\\pi k t/${n} + \\phi_k\\right)}`,
+        opts
+      ),
+      energyHtml: katex.renderToString(
+        `\\Delta\\text{energy} = ${delta}\\%\\quad \\text{cum.} = ${cumulative}\\%`,
+        opts
+      )
+    };
+  }, [inspectEnergy, inspected.amp, inspected.freq, inspected.phase, stats.n]);
 
   useEffect(() => {
     if (!latexContainerRef.current) return;
@@ -205,7 +231,7 @@ const MathPanel: React.FC<MathPanelProps> = ({ terms, time, epicycles, metrics, 
               onClick={() => setInspectIndex((i) => Math.max(0, i - 1))}
               aria-label="Previous term"
             >
-              ‹
+              <ChevronLeft size={18} aria-hidden="true" />
             </button>
             <span className="text-slate-200">{inspectIndex + 1} / {terms.length || 1}</span>
             <button
@@ -214,15 +240,19 @@ const MathPanel: React.FC<MathPanelProps> = ({ terms, time, epicycles, metrics, 
               onClick={() => setInspectIndex((i) => Math.min(terms.length - 1, i + 1))}
               aria-label="Next term"
             >
-              ›
+              <ChevronRight size={18} aria-hidden="true" />
             </button>
           </div>
         </div>
-        <div className="text-xs text-slate-200 font-mono leading-relaxed">
-          <p>k = {inspected.freq}, |X_k| = {inspected.amp.toFixed(3)}, φ_k = {inspected.phase.toFixed(3)} rad</p>
-          <p>Vector(t) = |X_k| · e<sup>i(2πkt/N + φ_k)</sup></p>
-          <p>Δenergy = {inspectEnergy.energyPct.toFixed(2)}% · Cumulative = {inspectEnergy.cumulativePct.toFixed(2)}%</p>
-          <p>{stepMode ? 'Step mode: play once to view this term, then advance.' : 'Track this circle while playing to see how its phase and magnitude shape the trace.'}</p>
+        <div className="text-xs text-slate-200 leading-relaxed space-y-2">
+          <div className="fourier-katex-inline" dangerouslySetInnerHTML={{ __html: inspectorKatex.paramsHtml }} />
+          <div className="fourier-katex-inline" dangerouslySetInnerHTML={{ __html: inspectorKatex.vectorHtml }} />
+          <div className="fourier-katex-inline" dangerouslySetInnerHTML={{ __html: inspectorKatex.energyHtml }} />
+          <p>
+            {stepMode
+              ? 'Step mode: play once to view this term, then advance.'
+              : 'Track this circle while playing to see how its phase and magnitude shape the trace.'}
+          </p>
         </div>
       </div>
 

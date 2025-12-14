@@ -1,7 +1,9 @@
 {
   "scripts": {
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "test:e2e": "node scripts/e2e-fourier.mjs",
+    "test:fourier": "npm --prefix pages/fourier-epicycles-src test && npm --prefix pages/fourier-epicycles-src run build && node scripts/e2e-fourier.mjs"
   },
   "dependencies": {
     "puppeteer-core": "^24.31.0"
