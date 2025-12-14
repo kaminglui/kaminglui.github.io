@@ -131,6 +131,15 @@ const assertKaTeXCheckpoints = async (page, label) => {
   if (inlineCount < 3) {
     throw new Error(`[${label}] expected inline KaTeX variables in page copy (count=${inlineCount})`);
   }
+
+  const reconHasGreekPhi = await page.evaluate(() => {
+    const html = document.querySelector('#math-recon .katex-html');
+    const text = html?.textContent ?? '';
+    return /[φϕ]/.test(text);
+  });
+  if (!reconHasGreekPhi) {
+    throw new Error(`[${label}] expected Greek phi (\\phi_k) in reconstruction checkpoint`);
+  }
 };
 
 const assertMobileHeaderMenuToggles = async (page, label) => {

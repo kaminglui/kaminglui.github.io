@@ -105,12 +105,16 @@
               </div>
               <div>
                 <h3>Math checkpoints</h3>
-                <p class="note math-checkpoints">
-                  DFT coefficients <span class="fourier-inline-math" data-katex="X_k"></span>:
-                  <span id="math-dft"></span>
-                  Reconstruction <span class="fourier-inline-math" data-katex="x(t)"></span>:
-                  <span id="math-recon"></span>
-                </p>
+                <div class="note math-checkpoints">
+                  <span class="math-checkpoint__label">
+                    DFT coefficients <span class="fourier-inline-math" data-katex="X_k"></span>:
+                  </span>
+                  <span id="math-dft" class="math-checkpoint__equation"></span>
+                  <span class="math-checkpoint__label">
+                    Reconstruction <span class="fourier-inline-math" data-katex="x(t)"></span>:
+                  </span>
+                  <span id="math-recon" class="math-checkpoint__equation"></span>
+                </div>
               </div>
             </div>
           </article>
@@ -131,8 +135,8 @@
 
         const dftEl = document.getElementById('math-dft');
         const reconEl = document.getElementById('math-recon');
-        render(dftEl, 'X_k = \\\\frac{1}{N}\\\\sum_{n=0}^{N-1} x_n e^{-i 2\\\\pi k n / N}', true);
-        render(reconEl, 'x(t) = \\\\sum_{k=0}^{N-1} |X_k| e^{i\\\\left(2\\\\pi kt/N + \\\\phi_k\\\\right)}', true);
+        render(dftEl, 'X_k = \\frac{1}{N}\\sum_{n=0}^{N-1} x_n e^{-i 2\\pi k n / N}', true);
+        render(reconEl, 'x(t) = \\sum_{k=0}^{N-1} |X_k| e^{i\\left(2\\pi kt/N + \\phi_k\\right)}', true);
 
         document.querySelectorAll('[data-katex]').forEach((el) => {
           const tex = el.getAttribute('data-katex');
@@ -141,13 +145,12 @@
         });
       });
     </script>
-    <script>
+    <script type="module">
       (async () => {
         try {
-          const dynamicImport = new Function('specifier', 'return import(specifier)');
-          const { initSiteShell } = await dynamicImport('../../assets/js/layout/siteShell.js');
+          const { initSiteShell } = await import(/* @vite-ignore */ '../../assets/js/layout/siteShell.js');
           initSiteShell('fourier-epicycles');
-          await dynamicImport('../../assets/js/nav.js');
+          await import(/* @vite-ignore */ '../../assets/js/nav.js');
         } catch (err) {
           console.error('Site shell failed to load:', err);
         }

@@ -7,6 +7,7 @@ export interface EdgeProcessingOptions {
   smoothingWindow?: number;
   blurRadius?: number;
   morphRadius?: number;
+  detail?: number;
 }
 
 const defaultOptions: Required<EdgeProcessingOptions> = {
@@ -15,7 +16,8 @@ const defaultOptions: Required<EdgeProcessingOptions> = {
   maxPoints: 1500,
   smoothingWindow: 4,
   blurRadius: 1,
-  morphRadius: 2
+  morphRadius: 2,
+  detail: 0.9
 };
 
 const buildPath = (points: Point[]): Point[] => {
@@ -58,6 +60,8 @@ const buildPath = (points: Point[]): Point[] => {
 };
 
 const clampInt = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value));
+const clamp01 = (value: number) => Math.max(0, Math.min(1, value));
+const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
 
 const downsampleGrayscale = (
   data: Uint8ClampedArray,
@@ -469,45 +473,498 @@ const countOn = (mask: Uint8Array) => {
   return count;
 };
 
+const buildCannyEdgeMask = (gray: Uint8Array, w: number, h: number, detail: number): Uint8Array => {
+  if (w < 3 || h < 3) return new Uint8Array(gray.length);
+
+  const mag = new Uint16Array(w * h);
+  const dir = new Uint8Array(w * h);
+
+  for (let y = 1; y < h - 1; y++) {
+    const row = y * w;
+    for (let x = 1; x < w - 1; x++) {
+      const idx = row + x;
+
+      const a00 = gray[idx - w - 1];
+      const a01 = gray[idx - w];
+      const a02 = gray[idx - w + 1];
+      const a10 = gray[idx - 1];
+      const a12 = gray[idx + 1];
+      const a20 = gray[idx + w - 1];
+      const a21 = gray[idx + w];
+      const a22 = gray[idx + w + 1];
+
+      const gx = -a00 + a02 - 2 * a10 + 2 * a12 - a20 + a22;
+      const gy = -a00 - 2 * a01 - a02 + a20 + 2 * a21 + a22;
+      const absGx = Math.abs(gx);
+      const absGy = Math.abs(gy);
+
+      const m = Math.min(1024, absGx + absGy);
+      mag[idx] = m;
+
+      let d = 0;
+      if (absGx >= absGy) {
+        if (absGy * 2 <= absGx) {
+          d = 0;
+        } else {
+          d = gx * gy >= 0 ? 1 : 3;
+        }
+      } else {
+        if (absGx * 2 <= absGy) {
+          d = 2;
+        } else {
+          d = gx * gy >= 0 ? 1 : 3;
+        }
+      }
+      dir[idx] = d;
+    }
+  }
+
+  const nms = new Uint16Array(w * h);
+  const hist = new Uint32Array(1025);
+  let nonZero = 0;
+
+  for (let y = 1; y < h - 1; y++) {
+    const row = y * w;
+    for (let x = 1; x < w - 1; x++) {
+      const idx = row + x;
+      const m = mag[idx];
+      if (m === 0) continue;
+
+      const d = dir[idx];
+      let m1 = 0;
+      let m2 = 0;
+      if (d === 0) {
+        m1 = mag[idx - 1];
+        m2 = mag[idx + 1];
+      } else if (d === 2) {
+        m1 = mag[idx - w];
+        m2 = mag[idx + w];
+      } else if (d === 1) {
+        m1 = mag[idx - w + 1];
+        m2 = mag[idx + w - 1];
+      } else {
+        m1 = mag[idx - w - 1];
+        m2 = mag[idx + w + 1];
+      }
+
+      if (m >= m1 && m >= m2) {
+        nms[idx] = m;
+        hist[m]++;
+        nonZero++;
+      }
+    }
+  }
+
+  if (nonZero === 0) return new Uint8Array(gray.length);
+
+  const strongFraction = lerp(0.02, 0.1, detail);
+  const desiredStrong = clampInt(Math.floor(nonZero * strongFraction), 1, nonZero);
+
+  let cumulative = 0;
+  let high = 1024;
+  for (let v = 1024; v >= 1; v--) {
+    cumulative += hist[v];
+    if (cumulative >= desiredStrong) {
+      high = v;
+      break;
+    }
+  }
+
+  const lowRatio = lerp(0.55, 0.25, detail);
+  const low = Math.max(1, Math.floor(high * lowRatio));
+
+  const edges = new Uint8Array(w * h);
+  const stack: number[] = [];
+
+  for (let idx = 0; idx < nms.length; idx++) {
+    if (nms[idx] >= high) {
+      edges[idx] = 1;
+      stack.push(idx);
+    }
+  }
+
+  const dx = [1, 1, 0, -1, -1, -1, 0, 1];
+  const dy = [0, 1, 1, 1, 0, -1, -1, -1];
+
+  while (stack.length) {
+    const idx = stack.pop()!;
+    const x = idx % w;
+    const y = (idx - x) / w;
+
+    for (let d = 0; d < 8; d++) {
+      const nx = x + dx[d];
+      const ny = y + dy[d];
+      if (nx < 0 || nx >= w || ny < 0 || ny >= h) continue;
+      const nIdx = ny * w + nx;
+      if (edges[nIdx]) continue;
+      if (nms[nIdx] >= low) {
+        edges[nIdx] = 1;
+        stack.push(nIdx);
+      }
+    }
+  }
+
+  return edges;
+};
+
+const edgeMaskToPolylines = (mask: Uint8Array, w: number, h: number): number[][] => {
+  const dx = [1, 1, 0, -1, -1, -1, 0, 1];
+  const dy = [0, 1, 1, 1, 0, -1, -1, -1];
+  const opp = [4, 5, 6, 7, 0, 1, 2, 3];
+
+  const degree = new Uint8Array(mask.length);
+  const edgeIndices: number[] = [];
+
+  for (let idx = 0; idx < mask.length; idx++) {
+    if (!mask[idx]) continue;
+    const x = idx % w;
+    const y = (idx - x) / w;
+    let deg = 0;
+    for (let d = 0; d < 8; d++) {
+      const nx = x + dx[d];
+      const ny = y + dy[d];
+      if (nx < 0 || nx >= w || ny < 0 || ny >= h) continue;
+      if (mask[ny * w + nx]) deg++;
+    }
+    degree[idx] = deg;
+    if (deg > 0) edgeIndices.push(idx);
+  }
+
+  const used = new Uint8Array(mask.length);
+  const polylines: number[][] = [];
+
+  const hasNeighbor = (idx: number, d: number) => {
+    const x = idx % w;
+    const y = (idx - x) / w;
+    const nx = x + dx[d];
+    const ny = y + dy[d];
+    if (nx < 0 || nx >= w || ny < 0 || ny >= h) return -1;
+    const nIdx = ny * w + nx;
+    return mask[nIdx] ? nIdx : -1;
+  };
+
+  const markUsed = (a: number, d: number, b: number) => {
+    used[a] |= 1 << d;
+    used[b] |= 1 << opp[d];
+  };
+
+  const traceChain = (startIdx: number, startDir: number, stopAtBranch: boolean) => {
+    const firstNeighbor = hasNeighbor(startIdx, startDir);
+    if (firstNeighbor < 0) return [];
+
+    const poly: number[] = [startIdx];
+    let prevDir = startDir;
+    let curIdx = firstNeighbor;
+    markUsed(startIdx, startDir, curIdx);
+    poly.push(curIdx);
+
+    const maxSteps = w * h * 2;
+    for (let steps = 0; steps < maxSteps; steps++) {
+      const deg = degree[curIdx];
+      if (stopAtBranch && deg !== 2) break;
+
+      const backDir = opp[prevDir];
+      let nextDir = -1;
+      for (let d = 0; d < 8; d++) {
+        if (d === backDir) continue;
+        const nIdx = hasNeighbor(curIdx, d);
+        if (nIdx >= 0) {
+          nextDir = d;
+          break;
+        }
+      }
+      if (nextDir < 0) break;
+      if (used[curIdx] & (1 << nextDir)) break;
+
+      const nextIdx = hasNeighbor(curIdx, nextDir);
+      if (nextIdx < 0) break;
+      markUsed(curIdx, nextDir, nextIdx);
+      curIdx = nextIdx;
+      prevDir = nextDir;
+      poly.push(curIdx);
+      if (!stopAtBranch && curIdx === startIdx) break;
+    }
+
+    return poly;
+  };
+
+  for (const idx of edgeIndices) {
+    const deg = degree[idx];
+    if (deg === 0 || deg === 2) continue;
+    for (let d = 0; d < 8; d++) {
+      const nIdx = hasNeighbor(idx, d);
+      if (nIdx < 0) continue;
+      if (used[idx] & (1 << d)) continue;
+      const poly = traceChain(idx, d, true);
+      if (poly.length > 1) polylines.push(poly);
+    }
+  }
+
+  for (const idx of edgeIndices) {
+    for (let d = 0; d < 8; d++) {
+      const nIdx = hasNeighbor(idx, d);
+      if (nIdx < 0) continue;
+      if (used[idx] & (1 << d)) continue;
+      const poly = traceChain(idx, d, false);
+      if (poly.length > 1) {
+        if (poly[0] === poly[poly.length - 1]) {
+          polylines.push(poly);
+        } else {
+          polylines.push([...poly, poly[0]]);
+        }
+      }
+    }
+  }
+
+  return polylines;
+};
+
+const idxToPoint = (idx: number, w: number, step: number, originalW: number, originalH: number): Point => {
+  const x = idx % w;
+  const y = (idx - x) / w;
+  return { x: x * step - originalW / 2, y: y * step - originalH / 2 };
+};
+
+const dedupeConsecutive = (points: Point[]): Point[] => {
+  if (points.length === 0) return [];
+  const out: Point[] = [points[0]];
+  for (let i = 1; i < points.length; i++) {
+    const prev = out[out.length - 1];
+    const p = points[i];
+    if (prev.x !== p.x || prev.y !== p.y) out.push(p);
+  }
+  return out;
+};
+
+const simplifyRDP = (points: Point[], epsilon: number): Point[] => {
+  if (points.length < 3 || epsilon <= 0) return points;
+
+  const epsilonSq = epsilon * epsilon;
+  const keep = new Uint8Array(points.length);
+  keep[0] = 1;
+  keep[points.length - 1] = 1;
+
+  const distSqPointToSegment = (p: Point, a: Point, b: Point) => {
+    const vx = b.x - a.x;
+    const vy = b.y - a.y;
+    const wx = p.x - a.x;
+    const wy = p.y - a.y;
+    const c1 = vx * wx + vy * wy;
+    if (c1 <= 0) return wx * wx + wy * wy;
+    const c2 = vx * vx + vy * vy;
+    if (c2 <= c1) {
+      const dx = p.x - b.x;
+      const dy = p.y - b.y;
+      return dx * dx + dy * dy;
+    }
+    const t = c1 / c2;
+    const projX = a.x + t * vx;
+    const projY = a.y + t * vy;
+    const dx = p.x - projX;
+    const dy = p.y - projY;
+    return dx * dx + dy * dy;
+  };
+
+  const stack: Array<[number, number]> = [[0, points.length - 1]];
+  while (stack.length) {
+    const [start, end] = stack.pop()!;
+    let maxDistSq = 0;
+    let idx = -1;
+    const a = points[start];
+    const b = points[end];
+    for (let i = start + 1; i < end; i++) {
+      const dSq = distSqPointToSegment(points[i], a, b);
+      if (dSq > maxDistSq) {
+        maxDistSq = dSq;
+        idx = i;
+      }
+    }
+    if (idx !== -1 && maxDistSq > epsilonSq) {
+      keep[idx] = 1;
+      stack.push([start, idx], [idx, end]);
+    }
+  }
+
+  const out: Point[] = [];
+  for (let i = 0; i < points.length; i++) {
+    if (keep[i]) out.push(points[i]);
+  }
+  return out;
+};
+
+const joinPolylines = (polylines: Point[][], detail: number): Point[] => {
+  if (polylines.length === 0) return [];
+  const remaining = [...polylines].sort((a, b) => b.length - a.length);
+  let path: Point[] = [...remaining.shift()!];
+
+  const distSq = (a: Point, b: Point) => {
+    const dx = a.x - b.x;
+    const dy = a.y - b.y;
+    return dx * dx + dy * dy;
+  };
+
+  const bridgeSteps = clampInt(Math.round(lerp(2, 10, detail)), 2, 12);
+
+  while (remaining.length) {
+    const end = path[path.length - 1];
+    let bestIdx = 0;
+    let bestReverse = false;
+    let bestDist = Infinity;
+
+    for (let i = 0; i < remaining.length; i++) {
+      const poly = remaining[i];
+      const dStart = distSq(end, poly[0]);
+      const dEnd = distSq(end, poly[poly.length - 1]);
+      if (dStart < bestDist) {
+        bestDist = dStart;
+        bestIdx = i;
+        bestReverse = false;
+      }
+      if (dEnd < bestDist) {
+        bestDist = dEnd;
+        bestIdx = i;
+        bestReverse = true;
+      }
+    }
+
+    const next = remaining.splice(bestIdx, 1)[0];
+    if (bestReverse) next.reverse();
+
+    const start = next[0];
+    const dx = start.x - end.x;
+    const dy = start.y - end.y;
+    const dist = Math.hypot(dx, dy);
+    if (dist > 1e-6) {
+      for (let i = 1; i <= bridgeSteps; i++) {
+        const t = i / (bridgeSteps + 1);
+        path.push({ x: end.x + dx * t, y: end.y + dy * t });
+      }
+    }
+
+    if (path[path.length - 1].x === start.x && path[path.length - 1].y === start.y) {
+      path.push(...next.slice(1));
+    } else {
+      path.push(...next);
+    }
+  }
+
+  return path;
+};
+
+const resampleClosedPath = (points: Point[], targetCount: number): Point[] => {
+  const target = Math.max(8, Math.floor(targetCount));
+  const closed = closeLoop(dedupeConsecutive(points));
+  if (closed.length < 4) return closed;
+  const loop = closed.slice(0, -1);
+  const n = loop.length;
+
+  const segLens = new Float64Array(n);
+  let total = 0;
+  for (let i = 0; i < n; i++) {
+    const a = loop[i];
+    const b = loop[(i + 1) % n];
+    const d = Math.hypot(b.x - a.x, b.y - a.y);
+    segLens[i] = d;
+    total += d;
+  }
+
+  if (!Number.isFinite(total) || total <= 0) {
+    return closeLoop(loop);
+  }
+
+  const stepLen = total / target;
+  const out: Point[] = [{ ...loop[0] }];
+  let segIdx = 0;
+  let segStart = loop[0];
+  let segEnd = loop[1 % n];
+  let segLen = segLens[0];
+  let distAcc = 0;
+  let nextDist = stepLen;
+
+  const maxIter = target * (n + 4);
+  let guard = 0;
+  while (out.length < target && guard++ < maxIter) {
+    if (segLen === 0) {
+      segIdx = (segIdx + 1) % n;
+      segStart = loop[segIdx];
+      segEnd = loop[(segIdx + 1) % n];
+      segLen = segLens[segIdx];
+      continue;
+    }
+
+    if (distAcc + segLen >= nextDist - 1e-9) {
+      const t = (nextDist - distAcc) / segLen;
+      out.push({
+        x: segStart.x + (segEnd.x - segStart.x) * t,
+        y: segStart.y + (segEnd.y - segStart.y) * t
+      });
+      nextDist += stepLen;
+    } else {
+      distAcc += segLen;
+      segIdx = (segIdx + 1) % n;
+      segStart = loop[segIdx];
+      segEnd = loop[(segIdx + 1) % n];
+      segLen = segLens[segIdx];
+    }
+  }
+
+  if (out.length > target) out.length = target;
+  return closeLoop(out);
+};
+
 export const extractEdgePath = (
   data: Uint8ClampedArray,
   width: number,
   height: number,
   opts: EdgeProcessingOptions = {}
 ): Point[] => {
-  const { threshold, sampleRate, maxPoints, smoothingWindow, blurRadius, morphRadius } = { ...defaultOptions, ...opts };
+  const merged = { ...defaultOptions, ...opts };
+  const detail = clamp01(merged.detail);
+  const sampleRate = typeof opts.sampleRate === 'number'
+    ? Math.max(1, Math.floor(merged.sampleRate))
+    : detail >= 0.88
+      ? 1
+      : detail >= 0.55
+        ? 2
+        : 3;
+  const maxPoints = Math.max(200, Math.floor(merged.maxPoints));
+  const smoothingWindow = Math.max(0, Math.floor(merged.smoothingWindow));
+  const blurRadius = Math.max(0, Math.floor(merged.blurRadius));
+  const morphRadius = Math.max(0, Math.floor(merged.morphRadius));
+  const threshold = Math.max(1, Math.floor(merged.threshold));
 
   const { gray: rawGray, w, h, step } = downsampleGrayscale(data, width, height, sampleRate);
   const gray = boxBlurGray(rawGray, w, h, blurRadius);
 
-  const candidates: Uint8Array[] = [];
-
-  const otsu = otsuThreshold(gray);
-  const maskDark = buildMaskFromOtsu(gray, otsu, true);
-  const maskLight = buildMaskFromOtsu(gray, otsu, false);
-  candidates.push(maskDark, maskLight);
-  candidates.push(buildMaskFromBackgroundDiff(gray, w, h, threshold));
-  candidates.push(buildMaskFromSobel(gray, w, h));
-
-  const total = w * h || 1;
-  let bestContour: Array<{ x: number; y: number }> = [];
-
-  for (const candidate of candidates) {
-    const filled = closeMask(candidate, w, h, morphRadius);
-    const reduced = keepLargestComponent(filled, w, h);
-    const on = countOn(reduced);
-    const ratio = on / total;
-    if (ratio < 0.002 || ratio > 0.9) continue;
-
-    const contour = traceContour(reduced, w, h);
-    if (contour.length > bestContour.length) {
-      bestContour = contour;
-    }
+  let edgeMask = buildCannyEdgeMask(gray, w, h, detail);
+  if (morphRadius > 0) {
+    edgeMask = closeMask(edgeMask, w, h, morphRadius);
   }
 
-  if (bestContour.length >= 8) {
-    const points = toPoints(bestContour, width, height, step, maxPoints);
-    return closeLoop(smoothClosed(points, smoothingWindow));
+  const polylinesIdx = edgeMaskToPolylines(edgeMask, w, h);
+  const minSegment = clampInt(Math.round(lerp(40, 10, detail)), 6, 80);
+  const epsilon = lerp(6, 1.2, detail) * step;
+
+  const polylines: Point[][] = polylinesIdx
+    .filter((poly) => poly.length >= minSegment)
+    .map((poly) => poly.map((idx) => idxToPoint(idx, w, step, width, height)))
+    .map((poly) => {
+      const cleaned = dedupeConsecutive(poly);
+      const closed = cleaned.length > 2 && cleaned[0].x === cleaned[cleaned.length - 1].x && cleaned[0].y === cleaned[cleaned.length - 1].y;
+      if (closed) {
+        const open = cleaned.slice(0, -1);
+        return closeLoop(simplifyRDP(open, epsilon));
+      }
+      return simplifyRDP(cleaned, epsilon);
+    })
+    .filter((poly) => poly.length >= 2);
+
+  if (polylines.length > 0) {
+    const joined = joinPolylines(polylines, detail);
+    const closed = closeLoop(dedupeConsecutive(joined));
+    const smoothed = smoothingWindow > 0 ? smoothClosed(closed, smoothingWindow) : closed;
+    const target = clampInt(Math.round(lerp(400, maxPoints, detail)), 120, maxPoints);
+    return resampleClosedPath(smoothed, target);
   }
 
   const legacyPoints: Point[] = [];
@@ -549,7 +1006,7 @@ export const extractEdgePath = (
     smoothedLegacy.push({ x: sumX / count, y: sumY / count });
   }
 
-  return smoothedLegacy;
+  return closeLoop(smoothedLegacy);
 };
 
 export const processImage = async (file: File, maxDimension: number = 900, opts: EdgeProcessingOptions = {}): Promise<Point[]> => {

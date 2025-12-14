@@ -15,6 +15,24 @@ const DEFAULT_SPEED = 0.45;
 const MAX_UPLOAD_BYTES = 10_000_000;
 const AUTO_SAVE_KEY = 'fourier_viz__last_session';
 
+type RenderState = {
+  mode: InputMode;
+  points: Point[];
+  fourierX: FourierTerm[];
+  time: number;
+  isPlaying: boolean;
+  numEpicycles: number;
+  showMath: boolean;
+  canvasBg: string;
+  gridColor: string;
+  speed: number;
+  brushColor: string;
+  brushSize: number;
+  stepMode: boolean;
+  safeMode: boolean;
+  stepIndex: number;
+};
+
 const App: React.FC = () => {
   // State
   const [mode, setMode] = useState<InputMode>('DRAW');
@@ -29,6 +47,7 @@ const App: React.FC = () => {
   const [gridColor, setGridColor] = useState('rgba(148, 163, 184, 0.22)');
   const [speed, setSpeed] = useState(DEFAULT_SPEED);
   const [smoothing, setSmoothing] = useState(0);
+  const [outlineDetail, setOutlineDetail] = useState(90);
   const [savedDrawings, setSavedDrawings] = useState<string[]>([]);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [safeMode, setSafeMode] = useState(false);
@@ -48,10 +67,34 @@ const App: React.FC = () => {
   const isDrawingRef = useRef(false);
   const activePointerIdRef = useRef<number | null>(null);
   const dprRef = useRef(1);
+  const lastUploadFileRef = useRef<File | null>(null);
+  const timeRef = useRef(0);
+  const lastFrameTimeRef = useRef<number | null>(null);
+  const lastUiTimeUpdateRef = useRef<number | null>(null);
+  const isAnimatingRef = useRef(false);
+  const needsRedrawRef = useRef(true);
   
   // Optimization: Offscreen canvas for path trail
   const pathCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const prevEpicyclePointRef = useRef<Point | null>(null);
+
+  const renderStateRef = useRef<RenderState>({
+    mode,
+    points,
+    fourierX,
+    time,
+    isPlaying,
+    numEpicycles,
+    showMath,
+    canvasBg,
+    gridColor,
+    speed,
+    brushColor,
+    brushSize,
+    stepMode,
+    safeMode,
+    stepIndex
+  });
 
   const clearPathCanvas = useCallback(() => {
     if (pathCanvasRef.current) {
@@ -88,10 +131,17 @@ const App: React.FC = () => {
     clearPathCanvas();
   }, [clearPathCanvas]);
 
+  const setPlaybackTime = useCallback((nextTime: number) => {
+    timeRef.current = nextTime;
+    lastFrameTimeRef.current = null;
+    lastUiTimeUpdateRef.current = null;
+    setTime(nextTime);
+  }, []);
+
   const resetSimulation = useCallback(() => {
-    setTime(0);
+    setPlaybackTime(0);
     clearPathCanvas();
-  }, [clearPathCanvas]);
+  }, [clearPathCanvas, setPlaybackTime]);
 
   const handleReset = () => {
     resetSimulation();
@@ -380,8 +430,9 @@ const App: React.FC = () => {
         return;
       }
       setIsProcessing(true);
+      lastUploadFileRef.current = file;
       try {
-        const pts = await processImage(file);
+        const pts = await processImage(file, 900, { detail: outlineDetail / 100 });
         if (pts.length > 0) {
             setPoints(pts);
             setMode('UPLOAD');
@@ -399,6 +450,29 @@ const App: React.FC = () => {
     }
   };
 
+  useEffect(() => {
+    if (mode !== 'UPLOAD') return;
+    const file = lastUploadFileRef.current;
+    if (!file) return;
+
+    const timer = window.setTimeout(async () => {
+      setIsProcessing(true);
+      try {
+        const pts = await processImage(file, 900, { detail: outlineDetail / 100 });
+        if (pts.length > 0) {
+          setPoints(pts);
+          computeDFT(pts);
+        }
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setIsProcessing(false);
+      }
+    }, 250);
+
+    return () => window.clearTimeout(timer);
+  }, [mode, outlineDetail, computeDFT]);
+
   const stepTo = (nextIndex: number) => {
     if (!fourierX.length) return;
     setStepMode(true);
@@ -408,9 +482,8 @@ const App: React.FC = () => {
     if (numEpicycles !== desired) {
       setNumEpicycles(desired);
     }
-    setTime(0);
+    setPlaybackTime(0);
     clearPathCanvas();
-    prevEpicyclePointRef.current = null;
   };
 
   const handleStepPrev = () => stepTo(stepIndex - 1);
@@ -422,182 +495,269 @@ const App: React.FC = () => {
 
   // --- Animation Loop ---
 
-  const drawEpicycles = (
-    ctx: CanvasRenderingContext2D,
-    width: number,
-    height: number,
-    highlightIdx: number,
-    maxAmp: number
-  ) => {
-    let x = width / 2;
-    let y = height / 2;
+  const drawEpicycles = useCallback(
+    (
+      ctx: CanvasRenderingContext2D,
+      width: number,
+      height: number,
+      terms: FourierTerm[],
+      termCount: number,
+      t: number,
+      stepModeActive: boolean
+    ) => {
+      let x = width / 2;
+      let y = height / 2;
 
-    const activeTerms = fourierX.slice(0, Math.max(numEpicycles, 1));
+      const activeTerms = terms.slice(0, Math.max(termCount, 1));
+      const highlightIdx = Math.max(activeTerms.length - 1, 0);
+      const maxAmp = terms[0]?.amp || 1;
 
-    for (let i = 0; i < activeTerms.length; i++) {
-      const prevX = x;
-      const prevY = y;
-      
-      const { freq, amp, phase } = activeTerms[i];
-      const angle = freq * time + phase;
-      const isHighlight = i === highlightIdx;
-      const stroke = termColor(activeTerms[i], maxAmp || amp, isHighlight);
-      const flash = stepMode && isHighlight ? 1 + 0.25 * Math.sin(time * 6) : 1;
-      
-      x += amp * Math.cos(angle);
-      y += amp * Math.sin(angle);
+      for (let i = 0; i < activeTerms.length; i++) {
+        const prevX = x;
+        const prevY = y;
 
-      // Draw Circle
-      ctx.strokeStyle = stroke;
-      ctx.lineWidth = isHighlight ? 1.6 * flash : 1;
-      ctx.beginPath();
-      ctx.arc(prevX, prevY, amp, 0, 2 * Math.PI);
-      ctx.stroke();
+        const { freq, amp, phase } = activeTerms[i];
+        const angle = freq * t + phase;
+        const isHighlight = i === highlightIdx;
+        const stroke = termColor(activeTerms[i], maxAmp || amp, isHighlight);
+        const flash = stepModeActive && isHighlight ? 1 + 0.25 * Math.sin(t * 6) : 1;
 
-      // Draw Radius Line
-      ctx.strokeStyle = stroke;
-      ctx.beginPath();
-      ctx.moveTo(prevX, prevY);
-      ctx.lineTo(x, y);
-      ctx.stroke();
-      
-      // Tip
-      if (i === activeTerms.length - 1) {
-          ctx.fillStyle = stroke; // Match dynamic stroke color for tip
+        x += amp * Math.cos(angle);
+        y += amp * Math.sin(angle);
+
+        ctx.strokeStyle = stroke;
+        ctx.lineWidth = isHighlight ? 1.6 * flash : 1;
+        ctx.beginPath();
+        ctx.arc(prevX, prevY, amp, 0, 2 * Math.PI);
+        ctx.stroke();
+
+        ctx.strokeStyle = stroke;
+        ctx.beginPath();
+        ctx.moveTo(prevX, prevY);
+        ctx.lineTo(x, y);
+        ctx.stroke();
+
+        if (i === activeTerms.length - 1) {
+          ctx.fillStyle = stroke;
           ctx.beginPath();
           ctx.arc(x, y, 3, 0, 2 * Math.PI);
           ctx.fill();
-      }
-    }
-
-    return { x, y };
-  };
-
-  const animate = useCallback(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    const dpr = dprRef.current || 1;
-    const width = canvas.width / dpr;
-    const height = canvas.height / dpr;
-
-    ctx.setTransform(1, 0, 0, 1, 0, 0);
-    ctx.scale(dpr, dpr);
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
-
-    // 1. Clear Main Screen
-    ctx.fillStyle = canvasBg; 
-    ctx.fillRect(0, 0, width, height);
-
-    // 2. Grid lines
-    ctx.strokeStyle = gridColor;
-    ctx.lineWidth = 0.5;
-    ctx.beginPath();
-    ctx.moveTo(width/2, 0); ctx.lineTo(width/2, height);
-    ctx.moveTo(0, height/2); ctx.lineTo(width, height/2);
-    ctx.stroke();
-
-    // 3. User Input (Ghost)
-    // Only show ghost if we have points AND we are not drawing actively (cleaner look)
-    // Or just always show faint
-     if (points.length > 0 && mode !== 'DRAW') {
-         ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
-         ctx.lineWidth = 1;
-         ctx.lineCap = 'round';
-         ctx.lineJoin = 'round';
-         ctx.beginPath();
-         points.forEach((p, i) => {
-             if (i === 0) ctx.moveTo(p.x + width/2, p.y + height/2);
-             else ctx.lineTo(p.x + width/2, p.y + height/2);
-        });
-        ctx.stroke();
-    }
-    
-    // 4. Drawing Mode Input (Active)
-     if (mode === 'DRAW' && isDrawingRef.current) {
-         ctx.strokeStyle = brushColor;
-         ctx.lineWidth = brushSize;
-         ctx.lineCap = 'round';
-         ctx.lineJoin = 'round';
-         ctx.beginPath();
-         pointsRef.current.forEach((p, i) => {
-             if (i === 0) ctx.moveTo(p.x + width/2, p.y + height/2);
-             else ctx.lineTo(p.x + width/2, p.y + height/2);
-        });
-        ctx.stroke();
-    } 
-
-    // 5. Render Epicycles & Path
-    if (fourierX.length > 0) {
-         // Draw accumulated path from offscreen canvas
-         if (pathCanvasRef.current) {
-             ctx.drawImage(pathCanvasRef.current, 0, 0, width, height);
-         }
-
-        const activeLen = Math.min(Math.max(numEpicycles, 1), fourierX.length);
-        const highlightIdx = Math.max(activeLen - 1, 0);
-        const maxAmp = fourierX[0]?.amp || 1;
-        const v = drawEpicycles(ctx, width, height, highlightIdx, maxAmp);
-        
-        // Update Offscreen Path with continuous strokes
-         if (pathCanvasRef.current) {
-             const pCtx = pathCanvasRef.current.getContext('2d');
-             if (pCtx) {
-                 pCtx.setTransform(1, 0, 0, 1, 0, 0);
-                 pCtx.scale(dpr, dpr);
-                 pCtx.strokeStyle = brushColor;
-                 pCtx.lineWidth = brushSize;
-                 pCtx.lineCap = 'round';
-                 pCtx.lineJoin = 'round';
-
-                 if (prevEpicyclePointRef.current) {
-                     pCtx.beginPath();
-                     pCtx.moveTo(prevEpicyclePointRef.current.x, prevEpicyclePointRef.current.y);
-                     pCtx.lineTo(v.x, v.y);
-                     pCtx.stroke();
-                 }
-             }
-         }
-         prevEpicyclePointRef.current = { x: v.x, y: v.y };
-
-         if (isPlaying) {
-              const sampleCount = Math.max(points.length || fourierX.length, 1);
-              const stepAngle = (2 * Math.PI) / sampleCount;
-              const dt = stepAngle * speed;
-              const newTime = time + dt;
-              const willWrap = newTime >= 2 * Math.PI;
-             
-             if (willWrap) {
-                 setTime(0);
-                 clearPathCanvas();
-                 prevEpicyclePointRef.current = null; // Reset prev point to avoid connecting end to start
-                 if (stepMode) {
-                   setIsPlaying(false);
-                   const cap = safeMode ? Math.min(fourierX.length, SAFE_MAX_TERMS) : fourierX.length;
-                   setStepIndex((idx) => Math.min(idx + 1, Math.max(cap - 1, 0)));
-                 }
-             } else {
-                 setTime(newTime);
-             }
         }
-    }
+      }
 
-  }, [fourierX, isPlaying, time, mode, points, numEpicycles, speed, brushColor, brushSize, canvasBg, gridColor, stepMode, safeMode]);
+      return { x, y };
+    },
+    []
+  );
 
-  // Trigger animation
+  const drawFrame = useCallback(
+    (timestamp: number) => {
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+
+      const state = renderStateRef.current;
+
+      const dpr = dprRef.current || 1;
+      const width = canvas.width / dpr;
+      const height = canvas.height / dpr;
+
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.scale(dpr, dpr);
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+
+      ctx.fillStyle = state.canvasBg;
+      ctx.fillRect(0, 0, width, height);
+
+      ctx.strokeStyle = state.gridColor;
+      ctx.lineWidth = 0.5;
+      ctx.beginPath();
+      ctx.moveTo(width / 2, 0);
+      ctx.lineTo(width / 2, height);
+      ctx.moveTo(0, height / 2);
+      ctx.lineTo(width, height / 2);
+      ctx.stroke();
+
+      if (state.points.length > 0 && state.mode !== 'DRAW') {
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        state.points.forEach((p, i) => {
+          if (i === 0) ctx.moveTo(p.x + width / 2, p.y + height / 2);
+          else ctx.lineTo(p.x + width / 2, p.y + height / 2);
+        });
+        ctx.stroke();
+      }
+
+      if (state.mode === 'DRAW' && isDrawingRef.current) {
+        ctx.strokeStyle = state.brushColor;
+        ctx.lineWidth = state.brushSize;
+        ctx.beginPath();
+        pointsRef.current.forEach((p, i) => {
+          if (i === 0) ctx.moveTo(p.x + width / 2, p.y + height / 2);
+          else ctx.lineTo(p.x + width / 2, p.y + height / 2);
+        });
+        ctx.stroke();
+      }
+
+      const t = timeRef.current;
+
+      if (state.fourierX.length > 0) {
+        if (pathCanvasRef.current) {
+          ctx.drawImage(pathCanvasRef.current, 0, 0, width, height);
+        }
+
+        const activeLen = Math.min(Math.max(state.numEpicycles, 1), state.fourierX.length);
+        const v = drawEpicycles(ctx, width, height, state.fourierX, activeLen, t, state.stepMode);
+
+        if (pathCanvasRef.current) {
+          const pCtx = pathCanvasRef.current.getContext('2d');
+          if (pCtx) {
+            pCtx.setTransform(1, 0, 0, 1, 0, 0);
+            pCtx.scale(dpr, dpr);
+            pCtx.strokeStyle = state.brushColor;
+            pCtx.lineWidth = state.brushSize;
+            pCtx.lineCap = 'round';
+            pCtx.lineJoin = 'round';
+
+            if (prevEpicyclePointRef.current) {
+              pCtx.beginPath();
+              pCtx.moveTo(prevEpicyclePointRef.current.x, prevEpicyclePointRef.current.y);
+              pCtx.lineTo(v.x, v.y);
+              pCtx.stroke();
+            }
+          }
+        }
+        prevEpicyclePointRef.current = { x: v.x, y: v.y };
+
+        if (state.isPlaying) {
+          const sampleCount = Math.max(state.points.length || state.fourierX.length, 1);
+          const stepAngle = (2 * Math.PI) / sampleCount;
+
+          const prevTs = lastFrameTimeRef.current;
+          const deltaMs = prevTs == null ? 0 : Math.min(Math.max(timestamp - prevTs, 0), 80);
+          lastFrameTimeRef.current = timestamp;
+
+          const frameScale = deltaMs / (1000 / 60);
+          const dt = stepAngle * state.speed * frameScale;
+          const newTime = t + dt;
+          const willWrap = newTime >= 2 * Math.PI;
+
+          if (willWrap) {
+            timeRef.current = 0;
+            clearPathCanvas();
+            if (state.stepMode) {
+              setIsPlaying(false);
+              const cap = state.safeMode ? Math.min(state.fourierX.length, SAFE_MAX_TERMS) : state.fourierX.length;
+              setStepIndex((idx) => Math.min(idx + 1, Math.max(cap - 1, 0)));
+            }
+          } else {
+            timeRef.current = newTime;
+          }
+        } else {
+          lastFrameTimeRef.current = timestamp;
+        }
+      } else {
+        lastFrameTimeRef.current = timestamp;
+      }
+
+      if (state.showMath) {
+        const prevUi = lastUiTimeUpdateRef.current;
+        const shouldUpdate = prevUi == null || timestamp - prevUi >= 50;
+        if (shouldUpdate) {
+          setTime(timeRef.current);
+          lastUiTimeUpdateRef.current = timestamp;
+        }
+      } else {
+        lastUiTimeUpdateRef.current = null;
+      }
+    },
+    [clearPathCanvas, drawEpicycles]
+  );
+
+  const frameLoop = useCallback(
+    (timestamp: number) => {
+      const state = renderStateRef.current;
+      const shouldAnimate = state.isPlaying || isDrawingRef.current;
+      const shouldDraw = needsRedrawRef.current || shouldAnimate;
+
+      if (shouldDraw) {
+        drawFrame(timestamp);
+        needsRedrawRef.current = false;
+      }
+
+      if (shouldAnimate) {
+        requestRef.current = requestAnimationFrame(frameLoop);
+      } else {
+        isAnimatingRef.current = false;
+        lastFrameTimeRef.current = null;
+        lastUiTimeUpdateRef.current = null;
+      }
+    },
+    [drawFrame]
+  );
+
+  const requestRedraw = useCallback(() => {
+    needsRedrawRef.current = true;
+    if (isAnimatingRef.current) return;
+    isAnimatingRef.current = true;
+    lastFrameTimeRef.current = null;
+    requestRef.current = requestAnimationFrame(frameLoop);
+  }, [frameLoop]);
+
   useEffect(() => {
-      requestRef.current = requestAnimationFrame(animate);
-      return () => {
-          if (requestRef.current) cancelAnimationFrame(requestRef.current);
-      };
-  }, [animate]);
+    renderStateRef.current = {
+      mode,
+      points,
+      fourierX,
+      time,
+      isPlaying,
+      numEpicycles,
+      showMath,
+      canvasBg,
+      gridColor,
+      speed,
+      brushColor,
+      brushSize,
+      stepMode,
+      safeMode,
+      stepIndex
+    };
+    requestRedraw();
+  }, [
+    mode,
+    points,
+    fourierX,
+    time,
+    isPlaying,
+    numEpicycles,
+    showMath,
+    canvasBg,
+    gridColor,
+    speed,
+    brushColor,
+    brushSize,
+    stepMode,
+    safeMode,
+    stepIndex,
+    requestRedraw
+  ]);
+
+  useEffect(() => {
+    requestRedraw();
+    return () => {
+      if (requestRef.current) cancelAnimationFrame(requestRef.current);
+    };
+  }, [requestRedraw]);
 
   // Window + container resize handler
   useEffect(() => {
-      const handleResize = () => resizeCanvases();
+      const handleResize = () => {
+        resizeCanvases();
+        requestRedraw();
+      };
       handleResize(); // Init with container size
 
       const observer = typeof ResizeObserver !== 'undefined'
@@ -609,12 +769,12 @@ const App: React.FC = () => {
         if (canvasRef.current) observer.observe(canvasRef.current);
       }
 
-      window.addEventListener('resize', handleResize);
-      return () => {
-          window.removeEventListener('resize', handleResize);
-          observer?.disconnect();
-      };
-  }, [resizeCanvases]);
+       window.addEventListener('resize', handleResize);
+       return () => {
+           window.removeEventListener('resize', handleResize);
+           observer?.disconnect();
+       };
+  }, [resizeCanvases, requestRedraw]);
 
   // Clear path when parameters that change the shape trajectory change
   useEffect(() => {
@@ -688,6 +848,8 @@ const App: React.FC = () => {
         setBrushSize={setBrushSize}
         smoothing={smoothing}
         setSmoothing={setSmoothing}
+        outlineDetail={outlineDetail}
+        setOutlineDetail={setOutlineDetail}
         isDrawing={isDrawing}
         onSave={handleSave}
         onLoad={handleLoad}

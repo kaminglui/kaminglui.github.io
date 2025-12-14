@@ -1249,7 +1249,7 @@ body.theme-dark .project-card {
 }
 
 .lab-hero__inner {
-  width: min(840px, 92vw);
+  width: min(980px, 92vw);
   margin: 0 auto;
   display: grid;
   gap: 1.35rem;
@@ -1280,7 +1280,7 @@ body.theme-dark .project-card {
 }
 
 .lab-card {
-  max-width: 960px;
+  max-width: 1280px;
   margin: 0 auto;
   display: grid;
   gap: 1.75rem;

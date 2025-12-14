@@ -34,8 +34,23 @@ function setupNav() {
     typeof window !== 'undefined' && typeof window.matchMedia === 'function'
       ? window.matchMedia('(hover: none)')
       : null;
-  // Always use click to open/close dropdowns for consistent behavior across devices.
-  const shouldUseClickToggle = () => true;
+
+  const hoverCapableQuery =
+    typeof window !== 'undefined' && typeof window.matchMedia === 'function'
+      ? window.matchMedia('(hover: hover)')
+      : null;
+  const finePointerQuery =
+    typeof window !== 'undefined' && typeof window.matchMedia === 'function'
+      ? window.matchMedia('(pointer: fine)')
+      : null;
+
+  const shouldUseClickToggle = () => {
+    const hoverNone = hoverNoneQuery?.matches ?? false;
+    const hoverCapable = hoverCapableQuery?.matches ?? false;
+    const finePointer = finePointerQuery?.matches ?? false;
+    // Prefer hover-open menus on desktops; fall back to click on touch / coarse pointers.
+    return hoverNone || !hoverCapable || !finePointer;
+  };
 
   const closeAllDropdowns = ({ except } = {}) => {
     let changed = false;

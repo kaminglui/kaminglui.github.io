@@ -104,4 +104,32 @@ describe('fourierEngine helpers', () => {
     expect(prepared).toEqual([]);
     expect(spectrum).toEqual([]);
   });
+
+  it('resamples short open paths to a stable length', () => {
+    const shortLine: Point[] = Array.from({ length: 5 }, (_, i) => ({ x: i * 10, y: 0 }));
+    const prepared = preparePoints(shortLine, 0, 500);
+    expect(prepared.length).toBeGreaterThanOrEqual(100);
+    expect(prepared.length).toBeLessThanOrEqual(500);
+    expect(prepared[0].x).toBeCloseTo(shortLine[0].x);
+    expect(prepared[0].y).toBeCloseTo(shortLine[0].y);
+    expect(prepared.at(-1)?.x).toBeCloseTo(shortLine.at(-1)?.x ?? 0);
+    expect(prepared.at(-1)?.y).toBeCloseTo(shortLine.at(-1)?.y ?? 0);
+  });
+
+  it('treats nearly-closed inputs as loops when limiting', () => {
+    const square: Point[] = [
+      { x: 0, y: 0 },
+      { x: 100, y: 0 },
+      { x: 100, y: 100 },
+      { x: 0, y: 100 },
+      { x: 0, y: 0 }
+    ];
+
+    const preparedWide = preparePoints(square, 0, 800);
+    expect(preparedWide.length).toBeGreaterThanOrEqual(180);
+    expect(preparedWide.every((p) => Number.isFinite(p.x) && Number.isFinite(p.y))).toBe(true);
+
+    const preparedLimited = preparePoints(square, 0, 50);
+    expect(preparedLimited.length).toBeLessThanOrEqual(50);
+  });
 });

@@ -46,6 +46,8 @@ interface ToolbarProps {
   setBrushSize: (s: number) => void;
   smoothing: number;
   setSmoothing: (s: number) => void;
+  outlineDetail: number;
+  setOutlineDetail: (v: number) => void;
   isDrawing: boolean;
   onSave: () => void;
   onLoad: (name: string) => void;
@@ -85,6 +87,8 @@ const Toolbar: React.FC<ToolbarProps> = ({
   setBrushSize,
   smoothing,
   setSmoothing,
+  outlineDetail,
+  setOutlineDetail,
   isDrawing,
   onSave,
   onLoad,
@@ -316,7 +320,7 @@ const Toolbar: React.FC<ToolbarProps> = ({
             </div>
 
             {/* Sliders Container */}
-            <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 w-full">
+            <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 w-full">
                 {/* Epicycles / Precision */}
                 <div className="flex flex-col justify-center gap-2">
                     <div className="flex justify-between text-xs font-semibold uppercase tracking-wider text-slate-400">
@@ -372,6 +376,26 @@ const Toolbar: React.FC<ToolbarProps> = ({
                         value={smoothing} 
                         onChange={(e) => setSmoothing(parseInt(e.target.value))}
                         className="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-emerald-500"
+                    />
+                </div>
+
+                {/* Outline Detail Control */}
+                <div className="flex flex-col justify-center gap-2">
+                    <div className="flex justify-between text-xs font-semibold uppercase tracking-wider text-slate-400">
+                        <div className="flex items-center gap-1">
+                             <ChevronsRight size={12} />
+                             <span>Outline detail</span>
+                        </div>
+                        <span className="text-violet-300">{outlineDetail}%</span>
+                    </div>
+                    <input
+                        type="range"
+                        min="10"
+                        max="100"
+                        step="1"
+                        value={outlineDetail}
+                        onChange={(e) => setOutlineDetail(parseInt(e.target.value))}
+                        className="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-violet-400"
                     />
                 </div>
             </div>
