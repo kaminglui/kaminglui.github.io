@@ -10,6 +10,7 @@
       href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fira+Code:wght@400;500&display=swap"
       rel="stylesheet"
     />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" />
     <link rel="stylesheet" href="../../assets/css/style.css" />
     <link rel="stylesheet" href="../../assets/css/fourier-epicycles.css" />
     <script src="https://cdn.tailwindcss.com"></script>
@@ -80,9 +81,9 @@
                 <h3>Math checkpoints</h3>
                 <p class="note">
                   DFT:
-                  <code>X_k = \\frac{1}{N}\\sum_{n=0}^{N-1} x_n e^{-i 2\\pi kn / N}</code>
+                  <span id="math-dft"></span>
                   Reconstruction:
-                  <code>x(t) = \\sum_{k=0}^{N-1} |X_k| e^{i\\left(2\\pi kt/N + \\phi_k\\right)}</code>
+                  <span id="math-recon"></span>
                 </p>
               </div>
             </div>
@@ -93,6 +94,20 @@
 
     <div id="site-footer"></div>
 
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+    <script>
+      document.addEventListener('DOMContentLoaded', () => {
+        const dft = 'X_k = \\\\frac{1}{N}\\\\sum_{n=0}^{N-1} x_n e^{-i 2\\\\pi k n / N}';
+        const recon = 'x(t) = \\\\sum_{k=0}^{N-1} |X_k| e^{i\\\\left(2\\\\pi kt/N + \\\\phi_k\\\\right)}';
+        if (window.katex) {
+          const opts = { throwOnError: false, displayMode: true };
+          const dftEl = document.getElementById('math-dft');
+          const reconEl = document.getElementById('math-recon');
+          dftEl && window.katex.render(dft, dftEl, opts);
+          reconEl && window.katex.render(recon, reconEl, opts);
+        }
+      });
+    </script>
     <script type="module" src="./index.tsx"></script>
   </body>
 </html>

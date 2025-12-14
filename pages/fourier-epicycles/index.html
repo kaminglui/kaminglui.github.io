@@ -10,14 +10,15 @@
       href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fira+Code:wght@400;500&display=swap"
       rel="stylesheet"
     />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" />
     <script src="https://cdn.tailwindcss.com"></script>
-    <script type="module" crossorigin src="./assets/index-BK3t3itC.js"></script>
+    <script type="module" crossorigin src="./assets/index-DKPYGAlx.js"></script>
     <link rel="modulepreload" crossorigin href="./assets/vendor-Bb8JjhAW.js">
     <link rel="modulepreload" crossorigin href="./assets/react-vendor-CkISVyWX.js">
     <link rel="modulepreload" crossorigin href="./assets/icons-vendor-7VGIiVdl.js">
     <link rel="modulepreload" crossorigin href="./assets/math-vendor-Ca7EfnBD.js">
     <link rel="stylesheet" crossorigin href="./assets/math-vendor-CcXVtVH8.css">
-    <link rel="stylesheet" crossorigin href="./assets/index-gfAshrmE.css">
+    <link rel="stylesheet" crossorigin href="./assets/index-DIKcXOGa.css">
   </head>
   <body class="theme-light">
     <div id="site-header"></div>
@@ -85,9 +86,9 @@
                 <h3>Math checkpoints</h3>
                 <p class="note">
                   DFT:
-                  <code>X_k = \\frac{1}{N}\\sum_{n=0}^{N-1} x_n e^{-i 2\\pi kn / N}</code>
+                  <span id="math-dft"></span>
                   Reconstruction:
-                  <code>x(t) = \\sum_{k=0}^{N-1} |X_k| e^{i\\left(2\\pi kt/N + \\phi_k\\right)}</code>
+                  <span id="math-recon"></span>
                 </p>
               </div>
             </div>
@@ -98,5 +99,19 @@
 
     <div id="site-footer"></div>
 
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+    <script>
+      document.addEventListener('DOMContentLoaded', () => {
+        const dft = 'X_k = \\\\frac{1}{N}\\\\sum_{n=0}^{N-1} x_n e^{-i 2\\\\pi k n / N}';
+        const recon = 'x(t) = \\\\sum_{k=0}^{N-1} |X_k| e^{i\\\\left(2\\\\pi kt/N + \\\\phi_k\\\\right)}';
+        if (window.katex) {
+          const opts = { throwOnError: false, displayMode: true };
+          const dftEl = document.getElementById('math-dft');
+          const reconEl = document.getElementById('math-recon');
+          dftEl && window.katex.render(dft, dftEl, opts);
+          reconEl && window.katex.render(recon, reconEl, opts);
+        }
+      });
+    </script>
   </body>
 </html>
