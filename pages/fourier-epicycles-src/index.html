@@ -11,8 +11,8 @@
       rel="stylesheet"
     />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" />
-    <link rel="stylesheet" href="../../assets/css/style.css" />
-    <link rel="stylesheet" href="../../assets/css/fourier-epicycles.css" />
+    <link rel="stylesheet" href="../../assets/css/style.css" data-vite-ignore />
+    <link rel="stylesheet" href="../../assets/css/fourier-epicycles.css" data-vite-ignore />
     <script src="https://cdn.tailwindcss.com"></script>
   </head>
   <body class="theme-light">
@@ -118,6 +118,18 @@
           reconEl && window.katex.render(recon, reconEl, opts);
         }
       });
+    </script>
+    <script>
+      (async () => {
+        try {
+          const dynamicImport = new Function('specifier', 'return import(specifier)');
+          const { initSiteShell } = await dynamicImport('../../assets/js/layout/siteShell.js');
+          initSiteShell('fourier-epicycles');
+          await dynamicImport('../../assets/js/nav.js');
+        } catch (err) {
+          console.error('Site shell failed to load:', err);
+        }
+      })();
     </script>
     <script type="module" src="./index.tsx"></script>
   </body>

@@ -137,14 +137,14 @@ const Toolbar: React.FC<ToolbarProps> = ({
             <Shapes size={20} />
             </button>
             {/* Dropdown for presets */}
-            <div className="absolute top-full left-0 mt-2 w-32 bg-slate-900 border border-slate-700 rounded-lg shadow-xl overflow-hidden hidden group-hover:block">
-                <button onClick={() => onPreset('circle')} className="w-full text-left px-4 py-2 text-sm text-slate-300 hover:bg-slate-800 hover:text-cyan-400">Circle</button>
-                <button onClick={() => onPreset('square')} className="w-full text-left px-4 py-2 text-sm text-slate-300 hover:bg-slate-800 hover:text-cyan-400">Square</button>
-                <button onClick={() => onPreset('heart')} className="w-full text-left px-4 py-2 text-sm text-slate-300 hover:bg-slate-800 hover:text-cyan-400">Heart</button>
-                <button onClick={() => onPreset('infinity')} className="w-full text-left px-4 py-2 text-sm text-slate-300 hover:bg-slate-800 hover:text-cyan-400">Infinity</button>
-                <button onClick={() => onPreset('note')} className="w-full text-left px-4 py-2 text-sm text-slate-300 hover:bg-slate-800 hover:text-cyan-400">Note</button>
-            </div>
-        </div>
+            <div className="absolute top-full left-0 w-32 bg-slate-900 border border-slate-700 rounded-lg shadow-xl overflow-hidden hidden group-hover:block group-focus-within:block z-50">
+                 <button onClick={() => onPreset('circle')} className="w-full text-left px-4 py-2 text-sm text-slate-300 hover:bg-slate-800 hover:text-cyan-400">Circle</button>
+                 <button onClick={() => onPreset('square')} className="w-full text-left px-4 py-2 text-sm text-slate-300 hover:bg-slate-800 hover:text-cyan-400">Square</button>
+                 <button onClick={() => onPreset('heart')} className="w-full text-left px-4 py-2 text-sm text-slate-300 hover:bg-slate-800 hover:text-cyan-400">Heart</button>
+                 <button onClick={() => onPreset('infinity')} className="w-full text-left px-4 py-2 text-sm text-slate-300 hover:bg-slate-800 hover:text-cyan-400">Infinity</button>
+                 <button onClick={() => onPreset('note')} className="w-full text-left px-4 py-2 text-sm text-slate-300 hover:bg-slate-800 hover:text-cyan-400">Note</button>
+             </div>
+         </div>
 
         {/* Load Saved Dropdown */}
         <div className="relative group">
@@ -154,10 +154,10 @@ const Toolbar: React.FC<ToolbarProps> = ({
             >
                 <FolderOpen size={20} />
             </button>
-            <div className="absolute top-full left-0 mt-2 w-48 bg-slate-900 border border-slate-700 rounded-lg shadow-xl overflow-hidden hidden group-hover:block max-h-60 overflow-y-auto custom-scrollbar">
-                {savedDrawings.length === 0 ? (
-                    <div className="px-4 py-2 text-sm text-slate-500 italic">No saved drawings</div>
-                ) : (
+            <div className="absolute top-full left-0 w-48 bg-slate-900 border border-slate-700 rounded-lg shadow-xl overflow-hidden hidden group-hover:block group-focus-within:block max-h-60 overflow-y-auto custom-scrollbar z-50">
+                 {savedDrawings.length === 0 ? (
+                     <div className="px-4 py-2 text-sm text-slate-500 italic">No saved drawings</div>
+                 ) : (
                     savedDrawings.map(name => (
                         <button 
                             key={name} 

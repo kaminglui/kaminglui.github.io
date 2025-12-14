@@ -128,6 +128,61 @@ const assertKaTeXCheckpoints = async (page, label) => {
   }
 };
 
+const assertMobileHeaderMenuToggles = async (page, label) => {
+  const toggle = await page.$('.nav-toggle');
+  if (!toggle) throw new Error(`[${label}] missing .nav-toggle`);
+
+  const navLinks = await page.$('.nav-links');
+  if (!navLinks) throw new Error(`[${label}] missing .nav-links`);
+
+  await toggle.click();
+  await page.waitForFunction(
+    () => document.querySelector('.nav-links')?.getAttribute('data-visible') === 'true',
+    { timeout: 5_000 }
+  );
+
+  await toggle.click();
+  await page.waitForFunction(
+    () => document.querySelector('.nav-links')?.getAttribute('data-visible') === 'false',
+    { timeout: 5_000 }
+  );
+};
+
+const assertToolbarDropdownHoverStable = async (page, label) => {
+  const buttonSelector = '.fourier-toolbar--top button[title="Presets"]';
+  const menuSelector = `${buttonSelector} + div`;
+
+  const button = await page.$(buttonSelector);
+  if (!button) throw new Error(`[${label}] missing presets dropdown button`);
+
+  await page.hover(buttonSelector);
+  await page.waitForFunction(
+    (selector) => {
+      const menu = document.querySelector(selector);
+      return !!menu && getComputedStyle(menu).display !== 'none';
+    },
+    { timeout: 5_000 },
+    menuSelector
+  );
+
+  const menu = await page.$(menuSelector);
+  if (!menu) throw new Error(`[${label}] missing presets dropdown menu`);
+  const box = await menu.boundingBox();
+  if (!box) throw new Error(`[${label}] missing presets dropdown menu bounding box`);
+
+  await page.mouse.move(box.x + Math.min(12, box.width / 2), box.y + Math.min(12, box.height / 2));
+  await delay(200);
+
+  const stillVisible = await page.evaluate((selector) => {
+    const menu = document.querySelector(selector);
+    return !!menu && getComputedStyle(menu).display !== 'none';
+  }, menuSelector);
+
+  if (!stillVisible) {
+    throw new Error(`[${label}] presets dropdown collapsed while hovering menu`);
+  }
+};
+
 const drawAndAssertFinalizes = async (page, label) => {
   const canvas = await page.$('canvas');
   if (!canvas) throw new Error(`[${label}] missing canvas`);
@@ -263,6 +318,11 @@ const runCase = async (browser, baseUrl, { label, viewport }) => {
   await assertNoHorizontalOverflow(page, label);
   await assertToolbarsInViewport(page, label);
   await assertKaTeXCheckpoints(page, label);
+  if (label === 'mobile') {
+    await assertMobileHeaderMenuToggles(page, label);
+  } else {
+    await assertToolbarDropdownHoverStable(page, label);
+  }
   await drawAndAssertFinalizes(page, label);
 
   await page.close();

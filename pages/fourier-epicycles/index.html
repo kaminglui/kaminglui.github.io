@@ -12,13 +12,13 @@
     />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" />
     <script src="https://cdn.tailwindcss.com"></script>
-    <script type="module" crossorigin src="./assets/index-BneoYLew.js"></script>
+    <script type="module" crossorigin src="./assets/index-D5i-HiGm.js"></script>
     <link rel="modulepreload" crossorigin href="./assets/vendor-Bb8JjhAW.js">
     <link rel="modulepreload" crossorigin href="./assets/react-vendor-CkISVyWX.js">
     <link rel="modulepreload" crossorigin href="./assets/icons-vendor-D7oP6Icu.js">
     <link rel="modulepreload" crossorigin href="./assets/math-vendor-Ca7EfnBD.js">
     <link rel="stylesheet" crossorigin href="./assets/math-vendor-CcXVtVH8.css">
-    <link rel="stylesheet" crossorigin href="./assets/index-Z9A1_eJA.css">
+    <link rel="stylesheet" crossorigin href="./assets/index-DUmoWu4H.css">
   </head>
   <body class="theme-light">
     <div id="site-header"></div>
@@ -123,6 +123,18 @@
           reconEl && window.katex.render(recon, reconEl, opts);
         }
       });
+    </script>
+    <script>
+      (async () => {
+        try {
+          const dynamicImport = new Function('specifier', 'return import(specifier)');
+          const { initSiteShell } = await dynamicImport('../../assets/js/layout/siteShell.js');
+          initSiteShell('fourier-epicycles');
+          await dynamicImport('../../assets/js/nav.js');
+        } catch (err) {
+          console.error('Site shell failed to load:', err);
+        }
+      })();
     </script>
   </body>
 </html>
