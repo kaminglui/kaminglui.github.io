@@ -2,16 +2,26 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import katex from 'katex';
 import 'katex/dist/katex.min.css';
 import { FourierTerm } from '../types';
+import { legendGradient } from '../services/visualUtils';
 
 interface MathPanelProps {
   terms: FourierTerm[];
   time: number;
   epicycles: number;
+  metrics: {
+    energyPct: number;
+    rmsError: number;
+    topTerms: { freq: number; amp: number; phase: number; energyPct: number; cumulativePct: number }[];
+    breakdown: { energyPct: number; cumulativePct: number }[];
+  };
+  focusIndex?: number;
+  stepMode?: boolean;
 }
 
-const MathPanel: React.FC<MathPanelProps> = ({ terms, time, epicycles }) => {
+const MathPanel: React.FC<MathPanelProps> = ({ terms, time, epicycles, metrics, focusIndex, stepMode = false }) => {
   const latexContainerRef = useRef<HTMLDivElement>(null);
   const [activeView, setActiveView] = useState<'dft' | 'reconstruction' | 'phasor'>('dft');
+  const [inspectIndex, setInspectIndex] = useState(0);
 
   const stats = useMemo(() => {
     const largest = terms[0];
@@ -25,6 +35,18 @@ const MathPanel: React.FC<MathPanelProps> = ({ terms, time, epicycles }) => {
       dominantPhase: largest ? largest.phase.toFixed(2) : '0.00'
     };
   }, [terms, time]);
+
+  const inspected = useMemo(() => {
+    const t = terms[Math.min(inspectIndex, Math.max(terms.length - 1, 0))];
+    if (!t) {
+      return { freq: 0, amp: 0, phase: 0 };
+    }
+    return t;
+  }, [inspectIndex, terms]);
+
+  const inspectEnergy = metrics.breakdown
+    ? metrics.breakdown[Math.min(inspectIndex, Math.max(metrics.breakdown.length - 1, 0))] ?? { energyPct: 0, cumulativePct: 0 }
+    : { energyPct: 0, cumulativePct: 0 };
 
   useEffect(() => {
     if (!latexContainerRef.current) return;
@@ -66,7 +88,15 @@ const MathPanel: React.FC<MathPanelProps> = ({ terms, time, epicycles }) => {
 
   useEffect(() => {
     setActiveView('dft');
+    setInspectIndex(0);
   }, [terms.length]);
+
+  useEffect(() => {
+    if (typeof focusIndex === 'number' && terms.length > 0) {
+      const clamped = Math.min(Math.max(focusIndex, 0), terms.length - 1);
+      setInspectIndex(clamped);
+    }
+  }, [focusIndex, terms.length]);
 
   return (
     <div className="fourier-math-panel">
@@ -116,6 +146,83 @@ const MathPanel: React.FC<MathPanelProps> = ({ terms, time, epicycles }) => {
             <span className="text-emerald-400">
                 {terms.length > 0 ? terms[0].amp.toFixed(1) : '0.0'} px
             </span>
+        </div>
+      </div>
+
+      <div className="mt-4">
+        <p className="text-xs uppercase tracking-wide text-slate-400 mb-2">Amplitude color map</p>
+        <div
+          className="fourier-legend"
+          style={{ backgroundImage: legendGradient(terms[0]?.amp || 1) }}
+          aria-label="Amplitude legend from low to high magnitude"
+        ></div>
+        <div className="flex justify-between text-[11px] text-slate-500 mt-1">
+          <span>low |X_k|</span>
+          <span>high |X_k|</span>
+        </div>
+      </div>
+
+      <div className="mt-4 space-y-2 text-sm font-mono">
+        <div className="flex justify-between border-b border-slate-800 pb-2">
+          <span className="text-slate-400">Energy captured (M terms)</span>
+          <span className="text-cyan-300">{metrics.energyPct.toFixed(2)}%</span>
+        </div>
+        <div className="flex justify-between">
+          <span className="text-slate-400">RMS error vs. original path</span>
+          <span className="text-amber-300">{metrics.rmsError.toFixed(2)} px</span>
+        </div>
+      </div>
+
+      {metrics.topTerms.length > 0 && (
+        <div className="mt-4">
+          <p className="text-xs uppercase tracking-wide text-slate-400 mb-2">Top terms (by amplitude)</p>
+          <div className="grid grid-cols-5 text-[11px] text-slate-300 gap-2 border border-slate-800 rounded-lg p-2">
+            <span className="font-semibold text-slate-200">k</span>
+            <span className="font-semibold text-slate-200">|X_k|</span>
+            <span className="font-semibold text-slate-200">phase</span>
+            <span className="font-semibold text-slate-200">energy</span>
+            <span className="font-semibold text-slate-200">cum.</span>
+            {metrics.topTerms.map((t, idx) => (
+              <React.Fragment key={idx}>
+                <span>{t.freq}</span>
+                <span>{t.amp.toFixed(2)}</span>
+                <span>{t.phase.toFixed(2)} rad</span>
+                <span>{t.energyPct.toFixed(1)}%</span>
+                <span>{t.cumulativePct.toFixed(1)}%</span>
+              </React.Fragment>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div className="mt-5 border border-slate-800 rounded-lg p-3 space-y-2 bg-slate-900/40">
+        <div className="flex items-center justify-between text-xs uppercase tracking-wide text-slate-400">
+          <span>Term inspector</span>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              className="text-cyan-300 hover:text-cyan-100"
+              onClick={() => setInspectIndex((i) => Math.max(0, i - 1))}
+              aria-label="Previous term"
+            >
+              ‹
+            </button>
+            <span className="text-slate-200">{inspectIndex + 1} / {terms.length || 1}</span>
+            <button
+              type="button"
+              className="text-cyan-300 hover:text-cyan-100"
+              onClick={() => setInspectIndex((i) => Math.min(terms.length - 1, i + 1))}
+              aria-label="Next term"
+            >
+              ›
+            </button>
+          </div>
+        </div>
+        <div className="text-xs text-slate-200 font-mono leading-relaxed">
+          <p>k = {inspected.freq}, |X_k| = {inspected.amp.toFixed(3)}, φ_k = {inspected.phase.toFixed(3)} rad</p>
+          <p>Vector(t) = |X_k| · e<sup>i(2πkt/N + φ_k)</sup></p>
+          <p>Δenergy = {inspectEnergy.energyPct.toFixed(2)}% · Cumulative = {inspectEnergy.cumulativePct.toFixed(2)}%</p>
+          <p>{stepMode ? 'Step mode: play once to view this term, then advance.' : 'Track this circle while playing to see how its phase and magnitude shape the trace.'}</p>
         </div>
       </div>
 

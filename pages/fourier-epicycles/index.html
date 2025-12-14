@@ -11,8 +11,13 @@
       rel="stylesheet"
     />
     <script src="https://cdn.tailwindcss.com"></script>
-    <script type="module" crossorigin src="./assets/index-BfsRiTsM.js"></script>
-    <link rel="stylesheet" crossorigin href="./assets/index-CNKFqG58.css">
+    <script type="module" crossorigin src="./assets/index-BK3t3itC.js"></script>
+    <link rel="modulepreload" crossorigin href="./assets/vendor-Bb8JjhAW.js">
+    <link rel="modulepreload" crossorigin href="./assets/react-vendor-CkISVyWX.js">
+    <link rel="modulepreload" crossorigin href="./assets/icons-vendor-7VGIiVdl.js">
+    <link rel="modulepreload" crossorigin href="./assets/math-vendor-Ca7EfnBD.js">
+    <link rel="stylesheet" crossorigin href="./assets/math-vendor-CcXVtVH8.css">
+    <link rel="stylesheet" crossorigin href="./assets/index-gfAshrmE.css">
   </head>
   <body class="theme-light">
     <div id="site-header"></div>
@@ -79,8 +84,10 @@
               <div>
                 <h3>Math checkpoints</h3>
                 <p class="note">
-                  DFT: <code>X_k = \\frac{1}{N}\\sum x_n e^{-i2\\pi kn/N}</code> · Reconstruction:
-                  <code>x(t) = \\sum |X_k|e^{i(2\\pi kt/N + \\phi_k)}</code>
+                  DFT:
+                  <code>X_k = \\frac{1}{N}\\sum_{n=0}^{N-1} x_n e^{-i 2\\pi kn / N}</code>
+                  Reconstruction:
+                  <code>x(t) = \\sum_{k=0}^{N-1} |X_k| e^{i\\left(2\\pi kt/N + \\phi_k\\right)}</code>
                 </p>
               </div>
             </div>

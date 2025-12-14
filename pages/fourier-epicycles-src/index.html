@@ -79,8 +79,10 @@
               <div>
                 <h3>Math checkpoints</h3>
                 <p class="note">
-                  DFT: <code>X_k = \\frac{1}{N}\\sum x_n e^{-i2\\pi kn/N}</code> · Reconstruction:
-                  <code>x(t) = \\sum |X_k|e^{i(2\\pi kt/N + \\phi_k)}</code>
+                  DFT:
+                  <code>X_k = \\frac{1}{N}\\sum_{n=0}^{N-1} x_n e^{-i 2\\pi kn / N}</code>
+                  Reconstruction:
+                  <code>x(t) = \\sum_{k=0}^{N-1} |X_k| e^{i\\left(2\\pi kt/N + \\phi_k\\right)}</code>
                 </p>
               </div>
             </div>

@@ -1,6 +1,7 @@
 import path from 'path';
 import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
+import { chunkSplit } from './services/chunking';
 
 export default defineConfig(({ mode }) => {
     const env = loadEnv(mode, '.', '');
@@ -15,7 +16,12 @@ export default defineConfig(({ mode }) => {
       },
       build: {
         outDir: '../fourier-epicycles',
-        emptyOutDir: true
+        emptyOutDir: true,
+        rollupOptions: {
+          output: {
+            manualChunks: chunkSplit
+          }
+        }
       },
       plugins: [react()],
       define: {
