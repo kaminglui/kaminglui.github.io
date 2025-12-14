@@ -81,14 +81,31 @@ const App: React.FC = () => {
     clearPathCanvas();
   }, [clearPathCanvas]);
 
-  const resetSimulation = () => {
+  const resetSimulation = useCallback(() => {
     setTime(0);
     clearPathCanvas();
-  };
+  }, [clearPathCanvas]);
 
   const handleReset = () => {
     resetSimulation();
   };
+
+  const computeDFT = useCallback((pts: Point[]) => {
+    if (pts.length === 0) return;
+    const limit = safeMode ? SAFE_MAX_TERMS : MAX_FOURIER_TERMS;
+    const { prepared, spectrum } = computeFourier(pts, { smoothing, limit });
+    setPoints(prepared);
+    setFourierX(spectrum);
+    setNumEpicycles(Math.min(spectrum.length, limit));
+    try {
+      localStorage.setItem(AUTO_SAVE_KEY, JSON.stringify(prepared));
+    } catch {
+      // ignore autosave failures
+    }
+    resetSimulation();
+    setIsPlaying(true);
+    setStepIndex(0);
+  }, [resetSimulation, safeMode, smoothing]);
 
   useEffect(() => {
     // Load saved drawings list on mount
@@ -112,7 +129,7 @@ const App: React.FC = () => {
         // ignore corrupted autosave
       }
     }
-  }, [computeDFT]);
+  }, []);
 
   useEffect(() => {
     const updateColors = () => {
@@ -170,23 +187,6 @@ const App: React.FC = () => {
       });
     }
   }, []);
-
-  const computeDFT = useCallback((pts: Point[]) => {
-    if (pts.length === 0) return;
-    const limit = safeMode ? SAFE_MAX_TERMS : MAX_FOURIER_TERMS;
-    const { prepared, spectrum } = computeFourier(pts, { smoothing, limit });
-    setPoints(prepared);
-    setFourierX(spectrum);
-    setNumEpicycles(Math.min(spectrum.length, limit)); 
-    try {
-      localStorage.setItem(AUTO_SAVE_KEY, JSON.stringify(prepared));
-    } catch {
-      // ignore autosave failures
-    }
-    resetSimulation();
-    setIsPlaying(true);
-    setStepIndex(0);
-  }, [smoothing, safeMode]);
 
   const metrics = React.useMemo(
     () => computeEnergyMetrics(fourierX, points, numEpicycles),
@@ -503,7 +503,8 @@ const App: React.FC = () => {
                  prevEpicyclePointRef.current = null; // Reset prev point to avoid connecting end to start
                  if (stepMode) {
                    setIsPlaying(false);
-                   setStepIndex((idx) => Math.min(idx + 1, Math.max(effectiveMax - 1, 0)));
+                   const cap = safeMode ? Math.min(fourierX.length, SAFE_MAX_TERMS) : fourierX.length;
+                   setStepIndex((idx) => Math.min(idx + 1, Math.max(cap - 1, 0)));
                  }
              } else {
                  setTime(newTime);
@@ -511,7 +512,7 @@ const App: React.FC = () => {
         }
     }
 
-  }, [fourierX, isPlaying, time, mode, points, numEpicycles, speed, brushColor, brushSize, canvasBg, gridColor, stepMode, effectiveMax]);
+  }, [fourierX, isPlaying, time, mode, points, numEpicycles, speed, brushColor, brushSize, canvasBg, gridColor, stepMode, safeMode]);
 
   // Trigger animation
   useEffect(() => {
