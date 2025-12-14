@@ -12,6 +12,7 @@ const NAV_LABS = [
   { id: 'circuit-lab', label: 'Circuit Lab', href: 'pages/circuit-lab/' },
   { id: 'transformer-lab', label: 'Transformer Lab', href: 'pages/transformer-lab/' },
   { id: 'ml-playground', label: 'ML Playground', href: 'pages/ml-playground/' },
+  { id: 'fourier-epicycles', label: 'Fourier Epicycles', href: 'pages/fourier-epicycles/' },
   { id: 'endless-depths', label: 'Endless Depths', href: 'pages/endless-depths/' }
 ];
 

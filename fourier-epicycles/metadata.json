@@ -1,0 +1,5 @@
+{
+  "name": "Fourier Epicycles",
+  "description": "An interactive Discrete Fourier Transform visualization. Draw shapes, upload images, or use presets to see them reconstructed with rotating epicycles.",
+  "requestFramePermissions": []
+}

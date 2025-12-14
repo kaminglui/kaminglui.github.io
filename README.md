@@ -6,6 +6,7 @@
   - `pages/circuit-lab/`
 - `pages/transformer-lab/`
 - `pages/ml-playground/`
+- `pages/fourier-epicycles/`
 - `pages/endless-depths/`
 - `assets/` holds shared styles, scripts, and media used across the site and labs.
 

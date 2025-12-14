@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Fourier Epicycles Lab · Ka Ming Lui</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fira+Code:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="../../assets/css/style.css" />
+    <link rel="stylesheet" href="../../assets/css/fourier-epicycles.css" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css"
+      integrity="sha384-n8MVd4RsNIU0tAv4ct0nTaAbDJwPJzDEaqSD1odI+WdtXRGWt2kTvGFasHpSy3SV"
+      crossorigin="anonymous"
+    />
+    <script
+      defer
+      src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"
+      integrity="sha384-XjKyJYlKg34BSPcxdltfJB+uhZyue8o6VbA722LY5r4B3NHh7f8a6rXl5PrpdjSQ"
+      crossorigin="anonymous"
+    ></script>
+    <script type="module" crossorigin src="./assets/index-CTlIXGsW.js"></script>
+  </head>
+  <body class="theme-light">
+    <div id="site-header"></div>
+
+    <main class="lab-main">
+      <section class="lab-hero">
+        <div class="container">
+          <div class="lab-hero__inner">
+            <p class="lab-hero__eyebrow">Interactive lab</p>
+            <h1 class="lab-hero__title">Fourier Epicycles Visualizer</h1>
+            <p class="lab-hero__lead">
+              Draw freehand paths or load presets to see how the discrete Fourier transform rebuilds your strokes with
+              spinning vectors.
+            </p>
+            <p class="lab-panel__note">
+              Everything runs client-side - no API keys or uploads - so GitHub Pages can host it as a static experience.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section class="lab-section" aria-labelledby="fourier-title">
+        <div class="container">
+          <article class="card lab-card fourier-card">
+            <header class="lab-card__header">
+              <p class="lab-card__eyebrow">Signals into circles</p>
+              <div class="lab-card__title-row">
+                <h2 class="lab-card__title" id="fourier-title">Sketch, transform, and watch the epicycles trace back</h2>
+                <div class="lab-card__chips">
+                  <span class="lab-chip">DFT</span>
+                  <span class="lab-chip">Client-only</span>
+                  <span class="lab-chip">Canvas</span>
+                </div>
+              </div>
+              <p class="lab-card__lead">
+                Use the toolbar to swap between presets, adjust speed, smoothness, and stroke styling, or save and reload
+                your own drawings. The math panel is always one toggle away if you want to see the series details.
+              </p>
+            </header>
+
+            <div class="fourier-shell">
+              <div id="fourier-root" class="fourier-root"></div>
+            </div>
+
+            <div class="fourier-notes">
+              <div>
+                <h3>How it works</h3>
+                <ul>
+                  <li>Draw or upload a shape - the path is sampled into points and smoothed.</li>
+                  <li>The Discrete Fourier Transform turns those points into rotating vectors.</li>
+                  <li>Epicycles are drawn largest-to-smallest so you can follow the contribution of each term.</li>
+                  <li>Toggle formulas in the math panel to see the current <code>X_k</code> values and reconstruction.</li>
+                </ul>
+              </div>
+              <div>
+                <h3>What to try</h3>
+                <ul>
+                  <li>Switch to presets to see classic shapes rebuilt by the series.</li>
+                  <li>Drag "Precision" to limit how many epicycles you keep in the partial sum.</li>
+                  <li>Experiment with "Smoothness" to reduce drawing noise before the transform.</li>
+                  <li>Save a drawing, reload it, then compare with a different speed factor.</li>
+                </ul>
+              </div>
+              <div>
+                <h3>Math checkpoints</h3>
+                <p class="note">
+                  DFT: <code>X_k = \\frac{1}{N}\\sum x_n e^{-i2\\pi kn/N}</code> · Reconstruction:
+                  <code>x(t) = \\sum |X_k|e^{i(2\\pi kt/N + \\phi_k)}</code>
+                </p>
+              </div>
+            </div>
+          </article>
+        </div>
+      </section>
+    </main>
+
+    <div id="site-footer"></div>
+
+  </body>
+</html>
