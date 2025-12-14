@@ -1,4 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import katex from 'katex';
+import 'katex/dist/katex.min.css';
 import { FourierTerm } from '../types';
 
 interface MathPanelProps {
@@ -25,8 +27,7 @@ const MathPanel: React.FC<MathPanelProps> = ({ terms, time, epicycles }) => {
   }, [terms, time]);
 
   useEffect(() => {
-    const katex = (window as any).katex;
-    if (!latexContainerRef.current || !katex) return;
+    if (!latexContainerRef.current) return;
 
     const { n, phaseTurns, dominantPhase } = stats;
     const m = Math.max(epicycles, 1);

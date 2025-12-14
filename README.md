@@ -8,6 +8,7 @@
 - `pages/ml-playground/`
 - `pages/fourier-epicycles/`
 - `pages/endless-depths/`
+- The Fourier Epicycles source lives in `pages/fourier-epicycles-src/` and builds into `pages/fourier-epicycles/`.
 - `assets/` holds shared styles, scripts, and media used across the site and labs.
 
 ## Circuit Lab simulation + tests

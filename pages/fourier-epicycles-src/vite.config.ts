@@ -10,11 +10,11 @@ export default defineConfig(({ mode }) => {
         port: 3000,
         host: '0.0.0.0',
         fs: {
-          allow: [path.resolve(__dirname, '..')]
+          allow: [path.resolve(__dirname, '..'), path.resolve(__dirname, '../..')]
         }
       },
       build: {
-        outDir: '../pages/fourier-epicycles',
+        outDir: '../fourier-epicycles',
         emptyOutDir: true
       },
       plugins: [react()],

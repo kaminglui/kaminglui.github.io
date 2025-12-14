@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { extractEdgePath, processImage } from '../imageProcessing';
 
 const buildBrightnessData = (width: number, height: number, brightCoords: Array<[number, number]>) => {
@@ -13,6 +13,10 @@ const buildBrightnessData = (width: number, height: number, brightCoords: Array<
   return data;
 };
 
+afterEach(() => {
+  vi.restoreAllMocks();
+});
+
 describe('extractEdgePath', () => {
   it('detects edge points from image data', () => {
     const width = 4;
@@ -26,6 +30,15 @@ describe('extractEdgePath', () => {
     expect(points.length).toBeGreaterThan(0);
     const maxDisplacement = Math.max(...points.map((p) => Math.hypot(p.x, p.y)));
     expect(maxDisplacement).toBeGreaterThan(0);
+  });
+
+  it('returns empty when no strong edges exist', () => {
+    const width = 4;
+    const height = 4;
+    const data = buildBrightnessData(width, height, []);
+
+    const points = extractEdgePath(data, width, height, { threshold: 200, sampleRate: 1 });
+    expect(points).toEqual([]);
   });
 });
 
@@ -68,5 +81,39 @@ describe('processImage', () => {
 
     const result = await processImage(new File([''], 'test.png'), 10, { sampleRate: 1, threshold: 5, smoothingWindow: 1 });
     expect(result.length).toBeGreaterThan(0);
+  });
+
+  it('rejects when a canvas context cannot be created', async () => {
+    const width = 2;
+    const height = 2;
+
+    class MockImage {
+      width = width;
+      height = height;
+      onload: (() => void) | null = null;
+      onerror: ((err: unknown) => void) | null = null;
+      set src(_val: string) {
+        setTimeout(() => this.onload && this.onload());
+      }
+    }
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (global as any).Image = MockImage as any;
+
+    const originalCreate = document.createElement.bind(document);
+    vi.spyOn(document, 'createElement').mockImplementation((tag: string) => {
+      if (tag === 'canvas') {
+        return {
+          width: 0,
+          height: 0,
+          getContext: () => null
+        } as unknown as HTMLCanvasElement;
+      }
+      return originalCreate(tag);
+    });
+
+    await expect(
+      processImage(new File([''], 'broken.png'), 10, { sampleRate: 1, threshold: 5, smoothingWindow: 1 })
+    ).rejects.toBeInstanceOf(Error);
   });
 });

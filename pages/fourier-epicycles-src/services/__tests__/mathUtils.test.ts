@@ -44,6 +44,13 @@ describe('mathUtils', () => {
     expect(generateInfinity().length).toBeGreaterThan(100);
     expect(generateMusicNote().length).toBeGreaterThan(50);
   });
+
+  it('keeps spectrum amplitudes sorted from largest to smallest', () => {
+    const samples = generateInfinity().slice(0, 80);
+    const spectrum = dft(pointsToComplex(samples));
+    const amps = spectrum.map((term) => term.amp);
+    expect(amps.every((amp, idx) => idx === 0 || amp <= amps[idx - 1])).toBe(true);
+  });
 });
 
 describe('fourierEngine helpers', () => {
@@ -66,5 +73,23 @@ describe('fourierEngine helpers', () => {
     const { prepared, spectrum } = computeFourier(path, { smoothing: 1, limit: 60 });
     expect(spectrum.length).toBe(prepared.length);
     expect(spectrum[0].amp).toBeGreaterThan(0);
+  });
+
+  it('does not mutate original input when preparing points', () => {
+    const original = [
+      { x: 0, y: 0 },
+      { x: 5, y: 5 },
+      { x: 10, y: -5 }
+    ];
+    const snapshot = original.map((p) => ({ ...p }));
+    const prepared = preparePoints(original, -2, 10);
+    expect(original).toEqual(snapshot);
+    expect(prepared).not.toBe(original);
+  });
+
+  it('handles empty inputs gracefully', () => {
+    const { prepared, spectrum } = computeFourier([], { smoothing: 1, limit: 20 });
+    expect(prepared).toEqual([]);
+    expect(spectrum).toEqual([]);
   });
 });

@@ -31,7 +31,7 @@ body.theme-dark .fourier-shell {
 .fourier-stage {
   position: relative;
   width: 100%;
-  height: clamp(620px, 74vh, 960px);
+  height: clamp(820px, 86vh, 1280px);
   border-radius: var(--radius-lg);
   overflow: visible;
   background:
@@ -222,7 +222,7 @@ body.theme-dark .fourier-notes {
 
 @media (max-width: 900px) {
   .fourier-stage {
-    height: clamp(560px, 76vh, 860px);
+    height: clamp(680px, 88vh, 1080px);
   }
 
   .fourier-math-panel {
@@ -235,7 +235,7 @@ body.theme-dark .fourier-notes {
 
 @media (max-width: 720px) {
   .fourier-stage {
-    height: 540px;
+    height: 640px;
   }
 
   .fourier-toolbar {
