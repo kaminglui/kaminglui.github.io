@@ -14,6 +14,10 @@
     <link rel="stylesheet" href="../../assets/css/style.css" data-vite-ignore />
     <link rel="stylesheet" href="../../assets/css/fourier-epicycles.css" data-vite-ignore />
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      window.tailwind = window.tailwind || {};
+      tailwind.config = { darkMode: 'class' };
+    </script>
   </head>
   <body class="theme-light">
     <div id="site-header"></div>
@@ -146,16 +150,10 @@
       });
     </script>
     <script type="module">
-      (async () => {
-        try {
-          const { initSiteShell } = await import(/* @vite-ignore */ '../../assets/js/layout/siteShell.js');
-          initSiteShell('fourier-epicycles');
-          await import(/* @vite-ignore */ '../../assets/js/nav.js');
-        } catch (err) {
-          console.error('Site shell failed to load:', err);
-        }
-      })();
+      import { initSiteShell } from '../../assets/js/layout/siteShell.js';
+      initSiteShell('fourier-epicycles');
     </script>
+    <script type="module" src="../../assets/js/nav.js"></script>
     <script type="module" src="./index.tsx"></script>
   </body>
 </html>

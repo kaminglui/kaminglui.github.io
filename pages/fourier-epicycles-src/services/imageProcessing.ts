@@ -473,6 +473,176 @@ const countOn = (mask: Uint8Array) => {
   return count;
 };
 
+const gaussianKernel1D = (sigma: number): Float32Array => {
+  const s = Math.max(0.01, sigma);
+  const radius = Math.max(1, Math.ceil(3 * s));
+  const size = radius * 2 + 1;
+  const kernel = new Float32Array(size);
+  const denom = 2 * s * s;
+  let sum = 0;
+
+  for (let i = -radius; i <= radius; i++) {
+    const weight = Math.exp(-(i * i) / denom);
+    kernel[i + radius] = weight;
+    sum += weight;
+  }
+
+  if (sum > 0) {
+    for (let i = 0; i < kernel.length; i++) kernel[i] /= sum;
+  }
+
+  return kernel;
+};
+
+const gaussianBlurGray = (src: Uint8Array, w: number, h: number, sigma: number): Float32Array => {
+  const n = w * h;
+  const s = Math.max(0, sigma);
+  if (n === 0) return new Float32Array(0);
+
+  if (s <= 0.01) {
+    const out = new Float32Array(n);
+    for (let i = 0; i < n; i++) out[i] = src[i];
+    return out;
+  }
+
+  const kernel = gaussianKernel1D(s);
+  const radius = (kernel.length - 1) / 2;
+  const tmp = new Float32Array(n);
+  const out = new Float32Array(n);
+
+  for (let y = 0; y < h; y++) {
+    const row = y * w;
+    for (let x = 0; x < w; x++) {
+      let acc = 0;
+      for (let k = -radius; k <= radius; k++) {
+        const xx = clampInt(x + k, 0, w - 1);
+        acc += kernel[k + radius] * (src[row + xx] ?? 0);
+      }
+      tmp[row + x] = acc;
+    }
+  }
+
+  for (let y = 0; y < h; y++) {
+    const row = y * w;
+    for (let x = 0; x < w; x++) {
+      let acc = 0;
+      for (let k = -radius; k <= radius; k++) {
+        const yy = clampInt(y + k, 0, h - 1);
+        acc += kernel[k + radius] * (tmp[yy * w + x] ?? 0);
+      }
+      out[row + x] = acc;
+    }
+  }
+
+  return out;
+};
+
+const buildDoGEdgeMask = (
+  gray: Uint8Array,
+  w: number,
+  h: number,
+  detail: number,
+  blurRadius: number
+): Uint8Array => {
+  const n = w * h;
+  if (w < 3 || h < 3 || n === 0) return new Uint8Array(n);
+
+  const minDim = Math.min(w, h);
+  const blurScale = Math.max(0.35, blurRadius || 1);
+  const baseSigma = lerp(2.4, 0.7, detail) * blurScale;
+  const maxSigma = Math.max(0.35, minDim / 4);
+  const sigma1 = Math.min(Math.max(0.35, baseSigma), maxSigma);
+  const sigma2 = Math.min(Math.max(sigma1 * 1.6, sigma1 + 0.15), maxSigma * 1.6);
+
+  const b1 = gaussianBlurGray(gray, w, h, sigma1);
+  const b2 = gaussianBlurGray(gray, w, h, sigma2);
+  const dog = new Float32Array(n);
+  for (let i = 0; i < n; i++) dog[i] = b1[i] - b2[i];
+
+  const strength = new Uint16Array(n);
+  const hist = new Uint32Array(1025);
+  let nonZero = 0;
+
+  const qScale = 4;
+  const offsets = [-w - 1, -w, -w + 1, -1, 1, w - 1, w, w + 1];
+
+  for (let y = 1; y < h - 1; y++) {
+    const row = y * w;
+    for (let x = 1; x < w - 1; x++) {
+      const idx = row + x;
+      const v = dog[idx];
+      const s0 = v >= 0;
+      let best = 0;
+
+      for (let i = 0; i < offsets.length; i++) {
+        const nIdx = idx + offsets[i];
+        const nv = dog[nIdx];
+        if ((nv >= 0) === s0) continue;
+        const diff = Math.abs(v - nv);
+        if (diff > best) best = diff;
+      }
+
+      if (best > 0) {
+        const q = clampInt(Math.round(best * qScale), 0, 1024);
+        strength[idx] = q;
+        hist[q]++;
+        nonZero++;
+      }
+    }
+  }
+
+  if (nonZero === 0) return new Uint8Array(n);
+
+  const strongFraction = lerp(0.02, 0.08, detail);
+  const desiredStrong = clampInt(Math.floor(nonZero * strongFraction), 1, nonZero);
+
+  let cumulative = 0;
+  let high = 1024;
+  for (let v = 1024; v >= 1; v--) {
+    cumulative += hist[v];
+    if (cumulative >= desiredStrong) {
+      high = v;
+      break;
+    }
+  }
+
+  const lowRatio = lerp(0.6, 0.22, detail);
+  const low = Math.max(1, Math.floor(high * lowRatio));
+
+  const edges = new Uint8Array(n);
+  const stack: number[] = [];
+
+  for (let idx = 0; idx < n; idx++) {
+    if (strength[idx] >= high) {
+      edges[idx] = 1;
+      stack.push(idx);
+    }
+  }
+
+  const dx = [1, 1, 0, -1, -1, -1, 0, 1];
+  const dy = [0, 1, 1, 1, 0, -1, -1, -1];
+
+  while (stack.length) {
+    const idx = stack.pop()!;
+    const x = idx % w;
+    const y = (idx - x) / w;
+
+    for (let d = 0; d < 8; d++) {
+      const nx = x + dx[d];
+      const ny = y + dy[d];
+      if (nx < 0 || nx >= w || ny < 0 || ny >= h) continue;
+      const nIdx = ny * w + nx;
+      if (edges[nIdx]) continue;
+      if (strength[nIdx] >= low) {
+        edges[nIdx] = 1;
+        stack.push(nIdx);
+      }
+    }
+  }
+
+  return edges;
+};
+
 const buildCannyEdgeMask = (gray: Uint8Array, w: number, h: number, detail: number): Uint8Array => {
   if (w < 3 || h < 3) return new Uint8Array(gray.length);
 
@@ -934,9 +1104,12 @@ export const extractEdgePath = (
   const threshold = Math.max(1, Math.floor(merged.threshold));
 
   const { gray: rawGray, w, h, step } = downsampleGrayscale(data, width, height, sampleRate);
-  const gray = boxBlurGray(rawGray, w, h, blurRadius);
+  const gray = rawGray;
 
-  let edgeMask = buildCannyEdgeMask(gray, w, h, detail);
+  let edgeMask = buildDoGEdgeMask(gray, w, h, detail, blurRadius);
+  if (countOn(edgeMask) < Math.max(10, Math.floor(w * h * 0.001))) {
+    edgeMask = buildMaskFromSobel(gray, w, h);
+  }
   if (morphRadius > 0) {
     edgeMask = closeMask(edgeMask, w, h, morphRadius);
   }

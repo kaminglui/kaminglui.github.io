@@ -155,6 +155,36 @@ const assertMobileHeaderMenuToggles = async (page, label) => {
     { timeout: 5_000 }
   );
 
+  const assertDropdownToggle = async (controlsId) => {
+    const btnSelector = `.nav-dropdown-toggle[aria-controls="${controlsId}"]`;
+    const menuSelector = `#${controlsId}`;
+    const btn = await page.$(btnSelector);
+    if (!btn) throw new Error(`[${label}] missing ${btnSelector}`);
+
+    await btn.click();
+    await page.waitForFunction(
+      (selector) => {
+        const menu = document.querySelector(selector);
+        return menu instanceof HTMLElement && menu.hidden === false;
+      },
+      { timeout: 5_000 },
+      menuSelector
+    );
+
+    await btn.click();
+    await page.waitForFunction(
+      (selector) => {
+        const menu = document.querySelector(selector);
+        return menu instanceof HTMLElement && menu.hidden === true;
+      },
+      { timeout: 5_000 },
+      menuSelector
+    );
+  };
+
+  await assertDropdownToggle('labs-menu');
+  await assertDropdownToggle('section-menu');
+
   await toggle.click();
   await page.waitForFunction(
     () => document.querySelector('.nav-links')?.getAttribute('data-visible') === 'false',
@@ -339,6 +369,67 @@ const assertMathPanelToggleFits = async (page, label) => {
       `[${label}] math panel out of stage bounds: panel=(${info.left.toFixed(1)},${info.top.toFixed(1)})-(${info.right.toFixed(1)},${info.bottom.toFixed(1)}) stage=(${info.stageLeft.toFixed(1)},${info.stageTop.toFixed(1)})-(${info.stageRight.toFixed(1)},${info.stageBottom.toFixed(1)})`
     );
   }
+
+  const cumPct = await page.evaluate(() => {
+    const blocks = Array.from(document.querySelectorAll('.fourier-math-panel .fourier-katex-inline'));
+    const energyBlock = blocks.find((el) => (el.textContent ?? '').toLowerCase().includes('cum'));
+    if (!energyBlock) return null;
+    const text = energyBlock.textContent ?? '';
+    const html = energyBlock.innerHTML ?? '';
+    const match = `${text}\n${html}`.match(/cum[^0-9]*([0-9]+(?:\\.[0-9]+)?)/i);
+    return match ? Number(match[1]) : null;
+  });
+
+  if (cumPct === null) {
+    throw new Error(`[${label}] could not parse cum. percentage from term inspector`);
+  }
+  if (cumPct < 95) {
+    throw new Error(`[${label}] expected default cum. near 100%, got ${cumPct.toFixed(2)}%`);
+  }
+};
+
+const assertFullscreenToggleWorks = async (page, label) => {
+  const enterSelector = '.fourier-toolbar--top button[title="Fullscreen Play"]';
+  const exitSelector = '.fourier-toolbar--top button[title="Exit Fullscreen"]';
+
+  const enter = await page.$(enterSelector);
+  if (!enter) throw new Error(`[${label}] missing fullscreen toggle button`);
+  await enter.click();
+
+  await page.waitForFunction(() => {
+    const stage = document.querySelector('.fourier-stage');
+    if (!(stage instanceof HTMLElement)) return false;
+    return stage.classList.contains('is-pseudo-fullscreen') || document.fullscreenElement === stage;
+  }, { timeout: 5_000 });
+
+  const fit = await page.evaluate(() => {
+    const stage = document.querySelector('.fourier-stage');
+    if (!(stage instanceof HTMLElement)) return null;
+    const r = stage.getBoundingClientRect();
+    return {
+      w: r.width,
+      h: r.height,
+      vw: document.documentElement.clientWidth,
+      vh: document.documentElement.clientHeight
+    };
+  });
+
+  if (!fit) throw new Error(`[${label}] missing stage for fullscreen fit check`);
+  const tolerance = 6;
+  if (Math.abs(fit.w - fit.vw) > tolerance || Math.abs(fit.h - fit.vh) > tolerance) {
+    throw new Error(
+      `[${label}] fullscreen stage does not fit viewport: stage=${fit.w.toFixed(1)}x${fit.h.toFixed(1)} viewport=${fit.vw}x${fit.vh}`
+    );
+  }
+
+  await page.waitForSelector(exitSelector, { timeout: 5_000 });
+  await page.click(exitSelector);
+
+  await page.waitForFunction(() => {
+    const stage = document.querySelector('.fourier-stage');
+    if (!(stage instanceof HTMLElement)) return false;
+    return !stage.classList.contains('is-pseudo-fullscreen') && document.fullscreenElement === null;
+  }, { timeout: 5_000 });
 };
 
 const runCase = async (browser, baseUrl, { label, viewport }) => {
@@ -375,6 +466,7 @@ const runCase = async (browser, baseUrl, { label, viewport }) => {
   await assertKaTeXCheckpoints(page, label);
   if (label === 'mobile') {
     await assertMobileHeaderMenuToggles(page, label);
+    await assertFullscreenToggleWorks(page, label);
   } else {
     await assertToolbarDropdownHoverStable(page, label);
   }
@@ -408,7 +500,7 @@ const run = async () => {
 
     await runCase(browser, baseUrl, {
       label: 'mobile',
-      viewport: { width: 390, height: 844, deviceScaleFactor: 2, isMobile: true }
+      viewport: { width: 390, height: 844, deviceScaleFactor: 2, isMobile: true, hasTouch: true }
     });
 
     console.log(JSON.stringify({ ok: true, url: baseUrl }, null, 2));

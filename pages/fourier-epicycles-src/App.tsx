@@ -50,6 +50,7 @@ const App: React.FC = () => {
   const [outlineDetail, setOutlineDetail] = useState(90);
   const [savedDrawings, setSavedDrawings] = useState<string[]>([]);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isPseudoFullscreen, setIsPseudoFullscreen] = useState(false);
   const [safeMode, setSafeMode] = useState(false);
   const [stepMode, setStepMode] = useState(false);
   const [stepIndex, setStepIndex] = useState(0);
@@ -225,25 +226,63 @@ const App: React.FC = () => {
   useEffect(() => {
     const handleFullscreenChange = () => {
       setIsFullscreen(document.fullscreenElement === containerRef.current);
+      if (document.fullscreenElement) {
+        setIsPseudoFullscreen(false);
+      }
       resizeCanvases();
     };
     document.addEventListener('fullscreenchange', handleFullscreenChange);
     return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
   }, [resizeCanvases]);
 
+  useEffect(() => {
+    document.body.classList.toggle('fourier-pseudo-fullscreen', isPseudoFullscreen);
+    const raf = window.requestAnimationFrame(() => {
+      resizeCanvases();
+    });
+    return () => {
+      window.cancelAnimationFrame(raf);
+      document.body.classList.remove('fourier-pseudo-fullscreen');
+    };
+  }, [isPseudoFullscreen, resizeCanvases]);
+
+  useEffect(() => {
+    if (!isPseudoFullscreen) return;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setIsPseudoFullscreen(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isPseudoFullscreen]);
+
   const toggleFullscreen = useCallback(() => {
     const stage = containerRef.current;
     if (!stage) return;
-    if (!document.fullscreenElement) {
-      stage.requestFullscreen().catch(() => {
-        // noop – fullscreen can be blocked by the browser
-      });
-    } else {
-      document.exitFullscreen().catch(() => {
-        // noop – exiting fullscreen failed
-      });
+    const nativeActive = document.fullscreenElement === stage;
+
+    if (nativeActive || isPseudoFullscreen) {
+      if (nativeActive) {
+        document.exitFullscreen().catch(() => {
+          // noop – exiting fullscreen failed
+        });
+      } else {
+        setIsPseudoFullscreen(false);
+      }
+      return;
     }
-  }, []);
+
+    if (typeof stage.requestFullscreen === 'function') {
+      stage.requestFullscreen().catch(() => {
+        // Fullscreen can be blocked on iOS Safari; fall back to CSS fullscreen.
+        setIsPseudoFullscreen(true);
+      });
+      return;
+    }
+
+    setIsPseudoFullscreen(true);
+  }, [isPseudoFullscreen]);
 
   const metrics = React.useMemo(
     () => computeEnergyMetrics(fourierX, points, numEpicycles),
@@ -793,6 +832,7 @@ const App: React.FC = () => {
   const focusIdx = Math.max(Math.min(numEpicycles - 1, (metrics.breakdown?.length || 1) - 1), 0);
   const deltaEnergy = metrics.breakdown?.[focusIdx]?.energyPct ?? 0;
   const cumulativeEnergy = metrics.breakdown?.[focusIdx]?.cumulativePct ?? metrics.energyPct;
+  const fullscreenActive = isFullscreen || isPseudoFullscreen;
 
   useEffect(() => {
     if (!stepMode) return;
@@ -810,7 +850,7 @@ const App: React.FC = () => {
 
   return (
     <div
-      className={`fourier-stage select-none ${isFullscreen ? 'is-fullscreen' : ''}`}
+      className={`fourier-stage select-none ${fullscreenActive ? 'is-fullscreen' : ''} ${isPseudoFullscreen ? 'is-pseudo-fullscreen' : ''}`}
       ref={containerRef}
       data-mode={mode}
       data-drawing={isDrawing ? 'true' : 'false'}
@@ -854,7 +894,7 @@ const App: React.FC = () => {
         onSave={handleSave}
         onLoad={handleLoad}
         savedDrawings={savedDrawings}
-        isFullscreen={isFullscreen}
+        isFullscreen={fullscreenActive}
         onToggleFullscreen={toggleFullscreen}
         safeMode={safeMode}
         onToggleSafeMode={() => setSafeMode((s) => !s)}

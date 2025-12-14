@@ -87,6 +87,32 @@ body.theme-dark .fourier-stage {
   border-radius: 0;
 }
 
+.fourier-stage.is-pseudo-fullscreen {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  border-radius: 0;
+  z-index: 2000;
+}
+
+body.fourier-pseudo-fullscreen {
+  overflow: hidden;
+}
+
+.fourier-stage.is-pseudo-fullscreen .fourier-toolbar--top {
+  top: max(16px, env(safe-area-inset-top));
+}
+
+.fourier-stage.is-pseudo-fullscreen .fourier-toolbar--bottom {
+  bottom: max(18px, env(safe-area-inset-bottom));
+}
+
+.fourier-stage.is-pseudo-fullscreen .fourier-math-panel {
+  top: max(88px, calc(env(safe-area-inset-top) + 72px));
+  right: max(18px, env(safe-area-inset-right));
+}
+
 .fourier-canvas {
   width: 100%;
   height: 100%;

@@ -22,7 +22,7 @@ interface MathPanelProps {
 const MathPanel: React.FC<MathPanelProps> = ({ terms, time, epicycles, metrics, focusIndex, stepMode = false }) => {
   const latexContainerRef = useRef<HTMLDivElement>(null);
   const [activeView, setActiveView] = useState<'dft' | 'reconstruction' | 'phasor'>('dft');
-  const [inspectIndex, setInspectIndex] = useState(0);
+  const [inspectIndex, setInspectIndex] = useState(() => Math.max(Math.min(epicycles - 1, terms.length - 1), 0));
 
   const stats = useMemo(() => {
     const largest = terms[0];
@@ -115,7 +115,7 @@ const MathPanel: React.FC<MathPanelProps> = ({ terms, time, epicycles, metrics, 
 
   useEffect(() => {
     setActiveView('dft');
-    setInspectIndex(0);
+    setInspectIndex(Math.max(Math.min(epicycles - 1, terms.length - 1), 0));
   }, [terms.length]);
 
   useEffect(() => {
