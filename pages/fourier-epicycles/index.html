@@ -12,13 +12,13 @@
     />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" />
     <script src="https://cdn.tailwindcss.com"></script>
-    <script type="module" crossorigin src="./assets/index-DKPYGAlx.js"></script>
+    <script type="module" crossorigin src="./assets/index-COQaVrdt.js"></script>
     <link rel="modulepreload" crossorigin href="./assets/vendor-Bb8JjhAW.js">
     <link rel="modulepreload" crossorigin href="./assets/react-vendor-CkISVyWX.js">
     <link rel="modulepreload" crossorigin href="./assets/icons-vendor-7VGIiVdl.js">
     <link rel="modulepreload" crossorigin href="./assets/math-vendor-Ca7EfnBD.js">
     <link rel="stylesheet" crossorigin href="./assets/math-vendor-CcXVtVH8.css">
-    <link rel="stylesheet" crossorigin href="./assets/index-DIKcXOGa.css">
+    <link rel="stylesheet" crossorigin href="./assets/index-Dqz6580L.css">
   </head>
   <body class="theme-light">
     <div id="site-header"></div>
@@ -60,7 +60,12 @@
             </header>
 
             <div class="fourier-shell">
-              <div id="fourier-root" class="fourier-root"></div>
+              <div id="fourier-root" class="fourier-root" aria-live="polite">
+                <div class="fourier-placeholder">
+                  <p class="placeholder-title">Loading playground…</p>
+                  <p class="placeholder-body">If it does not appear, refresh or enable JavaScript.</p>
+                </div>
+              </div>
             </div>
 
             <div class="fourier-notes">
@@ -84,7 +89,7 @@
               </div>
               <div>
                 <h3>Math checkpoints</h3>
-                <p class="note">
+                <p class="note math-checkpoints">
                   DFT:
                   <span id="math-dft"></span>
                   Reconstruction:

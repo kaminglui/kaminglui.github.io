@@ -55,7 +55,12 @@
             </header>
 
             <div class="fourier-shell">
-              <div id="fourier-root" class="fourier-root"></div>
+              <div id="fourier-root" class="fourier-root" aria-live="polite">
+                <div class="fourier-placeholder">
+                  <p class="placeholder-title">Loading playground…</p>
+                  <p class="placeholder-body">If it does not appear, refresh or enable JavaScript.</p>
+                </div>
+              </div>
             </div>
 
             <div class="fourier-notes">
@@ -79,7 +84,7 @@
               </div>
               <div>
                 <h3>Math checkpoints</h3>
-                <p class="note">
+                <p class="note math-checkpoints">
                   DFT:
                   <span id="math-dft"></span>
                   Reconstruction:
