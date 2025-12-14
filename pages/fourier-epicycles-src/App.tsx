@@ -546,6 +546,14 @@ const App: React.FC = () => {
       clearPathCanvas();
   }, [numEpicycles, fourierX]);
 
+  useEffect(() => {
+    const host = document.getElementById('fourier-root');
+    host?.classList.add('is-mounted');
+    return () => {
+      host?.classList.remove('is-mounted');
+    };
+  }, []);
+
   const effectiveMax = safeMode ? Math.min(fourierX.length, SAFE_MAX_TERMS) : fourierX.length;
   const focusIdx = Math.max(Math.min(numEpicycles - 1, (metrics.breakdown?.length || 1) - 1), 0);
   const deltaEnergy = metrics.breakdown?.[focusIdx]?.energyPct ?? 0;
