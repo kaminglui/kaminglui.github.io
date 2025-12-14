@@ -140,6 +140,11 @@ body.theme-dark .fourier-toolbar {
   color: var(--color-text);
   backdrop-filter: blur(12px);
   z-index: 10;
+  max-height: calc(100% - 210px);
+  overflow: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-gutter: stable;
 }
 
 .fourier-math-panel .katex-display {
@@ -155,6 +160,16 @@ body.theme-dark .fourier-toolbar {
 
 .fourier-katex-inline .katex {
   font-size: 0.95rem;
+}
+
+.fourier-inline-math {
+  display: inline-flex;
+  align-items: baseline;
+  padding: 0 0.05em;
+}
+
+.fourier-inline-math .katex {
+  font-size: 1em;
 }
 
 body.theme-dark .fourier-math-panel {

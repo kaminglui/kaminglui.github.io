@@ -12,7 +12,7 @@ const MAX_FOURIER_TERMS = 1600;
 const SAFE_MAX_TERMS = 700;
 const MIN_POINT_STEP = 1.75;
 const DEFAULT_SPEED = 0.45;
-const MAX_UPLOAD_BYTES = 3_000_000;
+const MAX_UPLOAD_BYTES = 10_000_000;
 const AUTO_SAVE_KEY = 'fourier_viz__last_session';
 
 const App: React.FC = () => {
@@ -23,7 +23,7 @@ const App: React.FC = () => {
   const [time, setTime] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [numEpicycles, setNumEpicycles] = useState(0);
-  const [showMath, setShowMath] = useState(true);
+  const [showMath, setShowMath] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [canvasBg, setCanvasBg] = useState('#0f172a');
   const [gridColor, setGridColor] = useState('rgba(148, 163, 184, 0.22)');
@@ -371,8 +371,12 @@ const App: React.FC = () => {
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
+      if (file.type && !file.type.startsWith('image/')) {
+        alert('Please upload an image file.');
+        return;
+      }
       if (file.size > MAX_UPLOAD_BYTES) {
-        alert("File too large for browser processing. Please pick an image under 3MB.");
+        alert("File too large for in-browser processing. Please pick an image under 10MB.");
         return;
       }
       setIsProcessing(true);
@@ -390,6 +394,7 @@ const App: React.FC = () => {
         alert("Error processing image.");
       } finally {
         setIsProcessing(false);
+        e.target.value = '';
       }
     }
   };

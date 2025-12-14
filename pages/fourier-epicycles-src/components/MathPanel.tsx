@@ -126,7 +126,7 @@ const MathPanel: React.FC<MathPanelProps> = ({ terms, time, epicycles, metrics, 
   }, [focusIndex, terms.length]);
 
   return (
-    <div className="fourier-math-panel">
+    <div className="fourier-math-panel custom-scrollbar">
       <h3 className="text-xl font-bold mb-4 text-cyan-400">Fourier Engine</h3>
 
       <div className="fourier-math-toggle" role="group" aria-label="Toggle formulas">

@@ -13,6 +13,65 @@ const buildBrightnessData = (width: number, height: number, brightCoords: Array<
   return data;
 };
 
+const buildSolidRectData = (
+  width: number,
+  height: number,
+  rect: { x0: number; y0: number; x1: number; y1: number },
+  colors: { bg: number; fg: number }
+) => {
+  const data = new Uint8ClampedArray(width * height * 4);
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const idx = (y * width + x) * 4;
+      const inRect = x >= rect.x0 && x <= rect.x1 && y >= rect.y0 && y <= rect.y1;
+      const v = inRect ? colors.fg : colors.bg;
+      data[idx] = v;
+      data[idx + 1] = v;
+      data[idx + 2] = v;
+      data[idx + 3] = 255;
+    }
+  }
+  return data;
+};
+
+const buildRectOutlineData = (
+  width: number,
+  height: number,
+  rect: { x0: number; y0: number; x1: number; y1: number },
+  gap?: { x: number; y: number }
+) => {
+  const data = new Uint8ClampedArray(width * height * 4);
+  const setPixel = (x: number, y: number, v: number) => {
+    const idx = (y * width + x) * 4;
+    data[idx] = v;
+    data[idx + 1] = v;
+    data[idx + 2] = v;
+    data[idx + 3] = 255;
+  };
+
+  for (let i = 0; i < width * height; i++) {
+    const idx = i * 4;
+    data[idx] = 255;
+    data[idx + 1] = 255;
+    data[idx + 2] = 255;
+    data[idx + 3] = 255;
+  }
+
+  for (let x = rect.x0; x <= rect.x1; x++) {
+    setPixel(x, rect.y0, 0);
+    setPixel(x, rect.y1, 0);
+  }
+  for (let y = rect.y0; y <= rect.y1; y++) {
+    setPixel(rect.x0, y, 0);
+    setPixel(rect.x1, y, 0);
+  }
+  if (gap) {
+    setPixel(gap.x, gap.y, 255);
+  }
+
+  return data;
+};
+
 afterEach(() => {
   vi.restoreAllMocks();
 });
@@ -39,6 +98,60 @@ describe('extractEdgePath', () => {
 
     const points = extractEdgePath(data, width, height, { threshold: 200, sampleRate: 1 });
     expect(points).toEqual([]);
+  });
+
+  it('extracts a connected outline from a simple silhouette', () => {
+    const width = 64;
+    const height = 64;
+    const data = buildSolidRectData(width, height, { x0: 14, y0: 10, x1: 50, y1: 52 }, { bg: 255, fg: 0 });
+
+    const points = extractEdgePath(data, width, height, {
+      sampleRate: 1,
+      maxPoints: 1500,
+      smoothingWindow: 2,
+      morphRadius: 2,
+      blurRadius: 1,
+      threshold: 24
+    });
+
+    expect(points.length).toBeGreaterThan(80);
+    expect(points.every((p) => Number.isFinite(p.x) && Number.isFinite(p.y))).toBe(true);
+    expect(points[0]).toEqual(points[points.length - 1]);
+
+    const maxStep = Math.max(
+      ...points.slice(1).map((p, i) => {
+        const prev = points[i];
+        return Math.hypot(p.x - prev.x, p.y - prev.y);
+      })
+    );
+    expect(maxStep).toBeLessThan(40);
+  });
+
+  it('bridges small gaps to keep the outline connected', () => {
+    const width = 64;
+    const height = 64;
+    const rect = { x0: 12, y0: 12, x1: 52, y1: 52 };
+    const data = buildRectOutlineData(width, height, rect, { x: 32, y: rect.y0 });
+
+    const points = extractEdgePath(data, width, height, {
+      sampleRate: 1,
+      maxPoints: 1500,
+      smoothingWindow: 1,
+      morphRadius: 2,
+      blurRadius: 1,
+      threshold: 24
+    });
+
+    expect(points.length).toBeGreaterThan(40);
+    expect(points[0]).toEqual(points[points.length - 1]);
+
+    const maxStep = Math.max(
+      ...points.slice(1).map((p, i) => {
+        const prev = points[i];
+        return Math.hypot(p.x - prev.x, p.y - prev.y);
+      })
+    );
+    expect(maxStep).toBeLessThan(60);
   });
 });
 

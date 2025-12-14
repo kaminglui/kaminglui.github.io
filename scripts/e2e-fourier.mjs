@@ -126,6 +126,11 @@ const assertKaTeXCheckpoints = async (page, label) => {
     }));
     throw new Error(`[${label}] KaTeX checkpoints not rendered (dft=${info.dft} recon=${info.recon})`);
   }
+
+  const inlineCount = await page.evaluate(() => document.querySelectorAll('.fourier-inline-math .katex').length);
+  if (inlineCount < 3) {
+    throw new Error(`[${label}] expected inline KaTeX variables in page copy (count=${inlineCount})`);
+  }
 };
 
 const assertMobileHeaderMenuToggles = async (page, label) => {
@@ -279,10 +284,51 @@ const drawAndAssertFinalizes = async (page, label) => {
   if (drawingAfterMove !== 'false') {
     throw new Error(`[${label}] drawing resumed without button pressed (data-drawing=${drawingAfterMove})`);
   }
+};
 
-  const mathPanelPresent = await page.$('.fourier-math-panel .katex-display');
-  if (!mathPanelPresent) {
-    throw new Error(`[${label}] expected KaTeX math panel after drawing`);
+const assertMathPanelToggleFits = async (page, label) => {
+  const toggleSelector = '.fourier-toolbar--top button[title="Toggle Math Panel"]';
+  const panelSelector = '.fourier-math-panel';
+
+  const existing = await page.$(panelSelector);
+  if (existing) {
+    throw new Error(`[${label}] math panel should be hidden by default`);
+  }
+
+  const toggle = await page.$(toggleSelector);
+  if (!toggle) throw new Error(`[${label}] missing math toggle button`);
+  await toggle.click();
+
+  await page.waitForSelector(panelSelector, { timeout: 10_000 });
+
+  const info = await page.evaluate(() => {
+    const panel = document.querySelector('.fourier-math-panel');
+    const stage = document.querySelector('.fourier-stage');
+    if (!panel || !stage) return null;
+    const pr = panel.getBoundingClientRect();
+    const sr = stage.getBoundingClientRect();
+    const style = getComputedStyle(panel);
+    return {
+      overflowY: style.overflowY,
+      top: pr.top,
+      left: pr.left,
+      right: pr.right,
+      bottom: pr.bottom,
+      stageTop: sr.top,
+      stageLeft: sr.left,
+      stageRight: sr.right,
+      stageBottom: sr.bottom
+    };
+  });
+
+  if (!info) throw new Error(`[${label}] missing math panel/stage for fit check`);
+  if (info.overflowY !== 'auto' && info.overflowY !== 'scroll') {
+    throw new Error(`[${label}] expected math panel overflow-y auto/scroll (got ${info.overflowY})`);
+  }
+  if (info.top < info.stageTop - 1 || info.left < info.stageLeft - 1 || info.right > info.stageRight + 1 || info.bottom > info.stageBottom + 1) {
+    throw new Error(
+      `[${label}] math panel out of stage bounds: panel=(${info.left.toFixed(1)},${info.top.toFixed(1)})-(${info.right.toFixed(1)},${info.bottom.toFixed(1)}) stage=(${info.stageLeft.toFixed(1)},${info.stageTop.toFixed(1)})-(${info.stageRight.toFixed(1)},${info.stageBottom.toFixed(1)})`
+    );
   }
 };
 
@@ -324,6 +370,7 @@ const runCase = async (browser, baseUrl, { label, viewport }) => {
     await assertToolbarDropdownHoverStable(page, label);
   }
   await drawAndAssertFinalizes(page, label);
+  await assertMathPanelToggleFits(page, label);
 
   await page.close();
 };

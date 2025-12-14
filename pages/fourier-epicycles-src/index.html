@@ -73,10 +73,25 @@
               <div>
                 <h3>How it works</h3>
                 <ul>
-                  <li>Draw or upload a shape - the path is sampled into points and smoothed.</li>
-                  <li>The Discrete Fourier Transform turns those points into rotating vectors.</li>
-                  <li>Epicycles are drawn largest-to-smallest so you can follow the contribution of each term.</li>
-                  <li>Toggle formulas in the math panel to see the current <code>X_k</code> values and reconstruction.</li>
+                  <li>
+                    Draw or upload a shape - the path is sampled into points
+                    <span class="fourier-inline-math" data-katex="x_n"></span>
+                    and smoothed.
+                  </li>
+                  <li>
+                    The Discrete Fourier Transform (DFT) converts those points into complex coefficients
+                    <span class="fourier-inline-math" data-katex="X_k"></span>.
+                  </li>
+                  <li>
+                    Epicycles are drawn largest-to-smallest so you can see how each term changes the reconstruction
+                    <span class="fourier-inline-math" data-katex="x(t)"></span>.
+                  </li>
+                  <li>
+                    Toggle the math panel to inspect coefficient magnitude
+                    <span class="fourier-inline-math" data-katex="|X_k|"></span>
+                    and phase
+                    <span class="fourier-inline-math" data-katex="\phi_k"></span>.
+                  </li>
                 </ul>
               </div>
               <div>
@@ -91,9 +106,9 @@
               <div>
                 <h3>Math checkpoints</h3>
                 <p class="note math-checkpoints">
-                  DFT:
+                  DFT coefficients <span class="fourier-inline-math" data-katex="X_k"></span>:
                   <span id="math-dft"></span>
-                  Reconstruction:
+                  Reconstruction <span class="fourier-inline-math" data-katex="x(t)"></span>:
                   <span id="math-recon"></span>
                 </p>
               </div>
@@ -108,15 +123,22 @@
     <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
     <script>
       document.addEventListener('DOMContentLoaded', () => {
-        const dft = 'X_k = \\\\frac{1}{N}\\\\sum_{n=0}^{N-1} x_n e^{-i 2\\\\pi k n / N}';
-        const recon = 'x(t) = \\\\sum_{k=0}^{N-1} |X_k| e^{i\\\\left(2\\\\pi kt/N + \\\\phi_k\\\\right)}';
-        if (window.katex) {
-          const opts = { throwOnError: false, displayMode: true };
-          const dftEl = document.getElementById('math-dft');
-          const reconEl = document.getElementById('math-recon');
-          dftEl && window.katex.render(dft, dftEl, opts);
-          reconEl && window.katex.render(recon, reconEl, opts);
-        }
+        if (!window.katex) return;
+        const render = (el, tex, displayMode) => {
+          if (!el) return;
+          window.katex.render(tex, el, { throwOnError: false, displayMode });
+        };
+
+        const dftEl = document.getElementById('math-dft');
+        const reconEl = document.getElementById('math-recon');
+        render(dftEl, 'X_k = \\\\frac{1}{N}\\\\sum_{n=0}^{N-1} x_n e^{-i 2\\\\pi k n / N}', true);
+        render(reconEl, 'x(t) = \\\\sum_{k=0}^{N-1} |X_k| e^{i\\\\left(2\\\\pi kt/N + \\\\phi_k\\\\right)}', true);
+
+        document.querySelectorAll('[data-katex]').forEach((el) => {
+          const tex = el.getAttribute('data-katex');
+          if (!tex) return;
+          render(el, tex, false);
+        });
       });
     </script>
     <script>
