@@ -1,4 +1,4 @@
-import React, { ChangeEvent, useRef } from 'react';
+import React, { ChangeEvent, useCallback, useEffect, useRef, useState } from 'react';
 import { 
   Play, 
   Pause, 
@@ -106,6 +106,87 @@ const Toolbar: React.FC<ToolbarProps> = ({
   onStepPlayOnce
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const presetsWrapperRef = useRef<HTMLDivElement>(null);
+  const loadWrapperRef = useRef<HTMLDivElement>(null);
+  const [openDropdown, setOpenDropdown] = useState<null | 'presets' | 'load'>(null);
+  const [useClickToggle, setUseClickToggle] = useState(() => {
+    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return true;
+    const hoverNone = window.matchMedia('(hover: none)').matches;
+    const hoverCapable = window.matchMedia('(hover: hover)').matches;
+    const finePointer = window.matchMedia('(pointer: fine)').matches;
+    return hoverNone || !hoverCapable || !finePointer;
+  });
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return;
+
+    const hoverNoneQuery = window.matchMedia('(hover: none)');
+    const hoverCapableQuery = window.matchMedia('(hover: hover)');
+    const finePointerQuery = window.matchMedia('(pointer: fine)');
+
+    const update = () => {
+      const hoverNone = hoverNoneQuery.matches;
+      const hoverCapable = hoverCapableQuery.matches;
+      const finePointer = finePointerQuery.matches;
+      setUseClickToggle(hoverNone || !hoverCapable || !finePointer);
+    };
+
+    const add = (query: MediaQueryList) => {
+      if (typeof query.addEventListener === 'function') {
+        query.addEventListener('change', update);
+      } else if (typeof query.addListener === 'function') {
+        query.addListener(update);
+      }
+    };
+    const remove = (query: MediaQueryList) => {
+      if (typeof query.removeEventListener === 'function') {
+        query.removeEventListener('change', update);
+      } else if (typeof query.removeListener === 'function') {
+        query.removeListener(update);
+      }
+    };
+
+    add(hoverNoneQuery);
+    add(hoverCapableQuery);
+    add(finePointerQuery);
+    update();
+    return () => {
+      remove(hoverNoneQuery);
+      remove(hoverCapableQuery);
+      remove(finePointerQuery);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!openDropdown) return;
+
+    const handlePointerDown = (event: PointerEvent) => {
+      const target = event.target;
+      if (!(target instanceof Node)) return;
+
+      if (presetsWrapperRef.current?.contains(target)) return;
+      if (loadWrapperRef.current?.contains(target)) return;
+
+      setOpenDropdown(null);
+    };
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setOpenDropdown(null);
+      }
+    };
+
+    document.addEventListener('pointerdown', handlePointerDown);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDown);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [openDropdown]);
+
+  const toggleDropdown = useCallback((id: 'presets' | 'load') => {
+    setOpenDropdown((current) => (current === id ? null : id));
+  }, []);
 
   const btnClass = (active: boolean) => `
     p-2.5 rounded-lg transition-all duration-200 flex items-center justify-center
@@ -133,46 +214,140 @@ const Toolbar: React.FC<ToolbarProps> = ({
           <PenTool size={20} />
         </button>
 
-        <div className="relative group">
-            <button 
+        <div
+          className="relative"
+          ref={presetsWrapperRef}
+          onPointerEnter={() => {
+            if (useClickToggle) return;
+            setOpenDropdown('presets');
+          }}
+          onPointerLeave={() => {
+            if (useClickToggle) return;
+            setOpenDropdown((current) => (current === 'presets' ? null : current));
+          }}
+        >
+          <button
+            type="button"
             className={btnClass(mode === 'PRESET')}
             title="Presets"
-            >
+            aria-expanded={openDropdown === 'presets'}
+            aria-controls="fourier-presets-menu"
+            onClick={() => toggleDropdown('presets')}
+          >
             <Shapes size={20} />
+          </button>
+          <div
+            id="fourier-presets-menu"
+            role="menu"
+            style={{ display: openDropdown === 'presets' ? 'block' : 'none' }}
+            className="absolute top-full left-0 w-32 bg-slate-900 border border-slate-700 rounded-lg shadow-xl overflow-hidden z-50"
+          >
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => {
+                onPreset('circle');
+                setOpenDropdown(null);
+              }}
+              className="w-full text-left px-4 py-2 text-sm text-slate-300 hover:bg-slate-800 hover:text-cyan-400"
+            >
+              Circle
             </button>
-            {/* Dropdown for presets */}
-            <div className="absolute top-full left-0 w-32 bg-slate-900 border border-slate-700 rounded-lg shadow-xl overflow-hidden hidden group-hover:block group-focus-within:block z-50">
-                 <button onClick={() => onPreset('circle')} className="w-full text-left px-4 py-2 text-sm text-slate-300 hover:bg-slate-800 hover:text-cyan-400">Circle</button>
-                 <button onClick={() => onPreset('square')} className="w-full text-left px-4 py-2 text-sm text-slate-300 hover:bg-slate-800 hover:text-cyan-400">Square</button>
-                 <button onClick={() => onPreset('heart')} className="w-full text-left px-4 py-2 text-sm text-slate-300 hover:bg-slate-800 hover:text-cyan-400">Heart</button>
-                 <button onClick={() => onPreset('infinity')} className="w-full text-left px-4 py-2 text-sm text-slate-300 hover:bg-slate-800 hover:text-cyan-400">Infinity</button>
-                 <button onClick={() => onPreset('note')} className="w-full text-left px-4 py-2 text-sm text-slate-300 hover:bg-slate-800 hover:text-cyan-400">Note</button>
-             </div>
-         </div>
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => {
+                onPreset('square');
+                setOpenDropdown(null);
+              }}
+              className="w-full text-left px-4 py-2 text-sm text-slate-300 hover:bg-slate-800 hover:text-cyan-400"
+            >
+              Square
+            </button>
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => {
+                onPreset('heart');
+                setOpenDropdown(null);
+              }}
+              className="w-full text-left px-4 py-2 text-sm text-slate-300 hover:bg-slate-800 hover:text-cyan-400"
+            >
+              Heart
+            </button>
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => {
+                onPreset('infinity');
+                setOpenDropdown(null);
+              }}
+              className="w-full text-left px-4 py-2 text-sm text-slate-300 hover:bg-slate-800 hover:text-cyan-400"
+            >
+              Infinity
+            </button>
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => {
+                onPreset('note');
+                setOpenDropdown(null);
+              }}
+              className="w-full text-left px-4 py-2 text-sm text-slate-300 hover:bg-slate-800 hover:text-cyan-400"
+            >
+              Note
+            </button>
+          </div>
+        </div>
 
         {/* Load Saved Dropdown */}
-        <div className="relative group">
-            <button 
-                className={btnClass(false)}
-                title="Load Saved Drawing"
-            >
-                <FolderOpen size={20} />
-            </button>
-            <div className="absolute top-full left-0 w-48 bg-slate-900 border border-slate-700 rounded-lg shadow-xl overflow-hidden hidden group-hover:block group-focus-within:block max-h-60 overflow-y-auto custom-scrollbar z-50">
-                 {savedDrawings.length === 0 ? (
-                     <div className="px-4 py-2 text-sm text-slate-500 italic">No saved drawings</div>
-                 ) : (
-                    savedDrawings.map(name => (
-                        <button 
-                            key={name} 
-                            onClick={() => onLoad(name)} 
-                            className="w-full text-left px-4 py-2 text-sm text-slate-300 hover:bg-slate-800 hover:text-cyan-400 truncate border-b border-slate-800 last:border-0"
-                        >
-                            {name}
-                        </button>
-                    ))
-                )}
-            </div>
+        <div
+          className="relative"
+          ref={loadWrapperRef}
+          onPointerEnter={() => {
+            if (useClickToggle) return;
+            setOpenDropdown('load');
+          }}
+          onPointerLeave={() => {
+            if (useClickToggle) return;
+            setOpenDropdown((current) => (current === 'load' ? null : current));
+          }}
+        >
+          <button
+            type="button"
+            className={btnClass(false)}
+            title="Load Saved Drawing"
+            aria-expanded={openDropdown === 'load'}
+            aria-controls="fourier-load-menu"
+            onClick={() => toggleDropdown('load')}
+          >
+            <FolderOpen size={20} />
+          </button>
+          <div
+            id="fourier-load-menu"
+            role="menu"
+            style={{ display: openDropdown === 'load' ? 'block' : 'none' }}
+            className="absolute top-full left-0 w-48 bg-slate-900 border border-slate-700 rounded-lg shadow-xl overflow-hidden max-h-60 overflow-y-auto custom-scrollbar z-50"
+          >
+            {savedDrawings.length === 0 ? (
+              <div className="px-4 py-2 text-sm text-slate-500 italic">No saved drawings</div>
+            ) : (
+              savedDrawings.map((name) => (
+                <button
+                  type="button"
+                  role="menuitem"
+                  key={name}
+                  onClick={() => {
+                    onLoad(name);
+                    setOpenDropdown(null);
+                  }}
+                  className="w-full text-left px-4 py-2 text-sm text-slate-300 hover:bg-slate-800 hover:text-cyan-400 truncate border-b border-slate-800 last:border-0"
+                >
+                  {name}
+                </button>
+              ))
+            )}
+          </div>
         </div>
 
         {/* Save Button */}

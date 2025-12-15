@@ -21,8 +21,10 @@ interface MathPanelProps {
 
 const MathPanel: React.FC<MathPanelProps> = ({ terms, time, epicycles, metrics, focusIndex, stepMode = false }) => {
   const latexContainerRef = useRef<HTMLDivElement>(null);
+  const computeAutoIndex = (count: number, total: number) => Math.max(Math.min(count - 1, total - 1), 0);
   const [activeView, setActiveView] = useState<'dft' | 'reconstruction' | 'phasor'>('dft');
-  const [inspectIndex, setInspectIndex] = useState(() => Math.max(Math.min(epicycles - 1, terms.length - 1), 0));
+  const [inspectIndex, setInspectIndex] = useState(() => computeAutoIndex(epicycles, terms.length));
+  const prevAutoIndexRef = useRef(computeAutoIndex(epicycles, terms.length));
 
   const stats = useMemo(() => {
     const largest = terms[0];
@@ -99,10 +101,11 @@ const MathPanel: React.FC<MathPanelProps> = ({ terms, time, epicycles, metrics, 
       `,
       phasor: `
       \\begin{aligned}
-        \\text{Epicycle}_k(t) &= r_k e^{i(\\omega_k t + \\phi_k)} \\\\
-        r_k &= \\left|X_k\\right|,\\;
-        \\omega_k = k,\\;
-        t = ${phaseTurns}\\,\\tau
+        \\text{Epicycle}_k(t) &= r_k \\\\
+        &\\cdot e^{i(\\omega_k t + \\phi_k)} \\\\
+        r_k &= \\left|X_k\\right| \\\\
+        \\omega_k &= k \\\\
+        t &= ${phaseTurns}\\,\\tau
       \\end{aligned}
       `
     };
@@ -115,8 +118,18 @@ const MathPanel: React.FC<MathPanelProps> = ({ terms, time, epicycles, metrics, 
 
   useEffect(() => {
     setActiveView('dft');
-    setInspectIndex(Math.max(Math.min(epicycles - 1, terms.length - 1), 0));
+    const nextAuto = computeAutoIndex(epicycles, terms.length);
+    prevAutoIndexRef.current = nextAuto;
+    setInspectIndex(nextAuto);
   }, [terms.length]);
+
+  useEffect(() => {
+    const nextAuto = computeAutoIndex(epicycles, terms.length);
+    const prevAuto = prevAutoIndexRef.current;
+    prevAutoIndexRef.current = nextAuto;
+    if (typeof focusIndex === 'number') return;
+    setInspectIndex((current) => (current === prevAuto ? nextAuto : current));
+  }, [epicycles, focusIndex, terms.length]);
 
   useEffect(() => {
     if (typeof focusIndex === 'number' && terms.length > 0) {

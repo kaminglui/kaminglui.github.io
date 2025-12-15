@@ -227,6 +227,46 @@ const assertToolbarDropdownHoverStable = async (page, label) => {
   }
 };
 
+const assertMobileToolbarDropdownToggles = async (page, label) => {
+  const cases = [
+    {
+      name: 'presets',
+      buttonSelector: '.fourier-toolbar--top button[title="Presets"]',
+      menuSelector: '#fourier-presets-menu'
+    },
+    {
+      name: 'load',
+      buttonSelector: '.fourier-toolbar--top button[title="Load Saved Drawing"]',
+      menuSelector: '#fourier-load-menu'
+    }
+  ];
+
+  for (const { name, buttonSelector, menuSelector } of cases) {
+    const btn = await page.$(buttonSelector);
+    if (!btn) throw new Error(`[${label}] missing ${name} dropdown button`);
+
+    await btn.click();
+    await page.waitForFunction(
+      (selector) => {
+        const el = document.querySelector(selector);
+        return !!el && getComputedStyle(el).display !== 'none';
+      },
+      { timeout: 5_000 },
+      menuSelector
+    );
+
+    await btn.click();
+    await page.waitForFunction(
+      (selector) => {
+        const el = document.querySelector(selector);
+        return !!el && getComputedStyle(el).display === 'none';
+      },
+      { timeout: 5_000 },
+      menuSelector
+    );
+  }
+};
+
 const drawAndAssertFinalizes = async (page, label) => {
   const canvas = await page.$('canvas');
   if (!canvas) throw new Error(`[${label}] missing canvas`);
@@ -383,8 +423,48 @@ const assertMathPanelToggleFits = async (page, label) => {
   if (cumPct === null) {
     throw new Error(`[${label}] could not parse cum. percentage from term inspector`);
   }
-  if (cumPct < 95) {
-    throw new Error(`[${label}] expected default cum. near 100%, got ${cumPct.toFixed(2)}%`);
+  if (cumPct < 99.5) {
+    const debug = await page.evaluate(() => {
+      const stage = document.querySelector('.fourier-stage');
+      const inspector = document.querySelector('.fourier-math-panel [aria-label="Previous term"]')?.closest('div');
+      const inspectorText = inspector?.textContent ?? '';
+      const match = inspectorText.match(/([0-9]+)\s*\/\s*([0-9]+)/);
+      return {
+        epicycles: stage?.getAttribute('data-epicycles') ?? null,
+        terms: stage?.getAttribute('data-terms') ?? null,
+        points: stage?.getAttribute('data-points') ?? null,
+        inspectorIndex: match ? Number(match[1]) : null,
+        inspectorTotal: match ? Number(match[2]) : null
+      };
+    });
+
+    throw new Error(
+      `[${label}] expected default cum. near 100%, got ${cumPct.toFixed(2)}% (epicycles=${debug.epicycles} terms=${debug.terms} points=${debug.points} inspector=${debug.inspectorIndex}/${debug.inspectorTotal})`
+    );
+  }
+
+  // Phasor anatomy should be legible without horizontal scrolling (especially on mobile).
+  await page.evaluate(() => {
+    const buttons = Array.from(document.querySelectorAll('.fourier-math-toggle button'));
+    const target = buttons.find((btn) => (btn.textContent ?? '').toLowerCase().includes('phasor'));
+    (target instanceof HTMLElement ? target : null)?.click();
+  });
+  await delay(150);
+
+  const latexOverflow = await page.evaluate(() => {
+    const host = document.querySelector('.fourier-math-panel [aria-live="polite"]');
+    if (!(host instanceof HTMLElement)) return null;
+    return {
+      clientWidth: host.clientWidth,
+      scrollWidth: host.scrollWidth
+    };
+  });
+
+  if (!latexOverflow) throw new Error(`[${label}] missing KaTeX host for overflow check`);
+  if (latexOverflow.scrollWidth > latexOverflow.clientWidth + 4) {
+    throw new Error(
+      `[${label}] phasor equation overflows horizontally: scrollWidth=${latexOverflow.scrollWidth} clientWidth=${latexOverflow.clientWidth}`
+    );
   }
 };
 
@@ -466,6 +546,7 @@ const runCase = async (browser, baseUrl, { label, viewport }) => {
   await assertKaTeXCheckpoints(page, label);
   if (label === 'mobile') {
     await assertMobileHeaderMenuToggles(page, label);
+    await assertMobileToolbarDropdownToggles(page, label);
     await assertFullscreenToggleWorks(page, label);
   } else {
     await assertToolbarDropdownHoverStable(page, label);

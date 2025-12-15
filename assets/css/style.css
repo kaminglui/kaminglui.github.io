@@ -82,7 +82,7 @@ img {
 }
 
 .container {
-  width: min(1560px, 96vw);
+  width: min(1800px, 96vw);
   margin: 0 auto;
 }
 
@@ -96,7 +96,7 @@ img {
 }
 
 .site-header .container {
-  width: min(1560px, 98vw);
+  width: min(1800px, 98vw);
   padding: 0 1.25rem;
 }
 
@@ -1280,7 +1280,7 @@ body.theme-dark .project-card {
 }
 
 .lab-card {
-  max-width: 1560px;
+  max-width: 1800px;
   margin: 0 auto;
   display: grid;
   gap: 1.75rem;

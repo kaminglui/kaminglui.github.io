@@ -2,8 +2,8 @@ import { Complex, FourierTerm, Point } from '../types';
 import { dft, smoothPoints } from './mathUtils';
 
 const DEFAULT_LIMIT = 1500;
-const MIN_RESAMPLE_OPEN = 120;
-const MIN_RESAMPLE_CLOSED = 200;
+const MIN_RESAMPLE_OPEN = 300;
+const MIN_RESAMPLE_CLOSED = 600;
 
 const toComplex = (pts: Point[]): Complex[] =>
   pts.map((p) => ({ re: p.x, im: p.y }));

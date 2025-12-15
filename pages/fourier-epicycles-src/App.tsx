@@ -8,7 +8,7 @@ import { termColor } from './services/visualUtils';
 import Toolbar from './components/Toolbar';
 import MathPanel from './components/MathPanel';
 
-const MAX_FOURIER_TERMS = 1600;
+const MAX_FOURIER_TERMS = 2400;
 const SAFE_MAX_TERMS = 700;
 const MIN_POINT_STEP = 1.75;
 const DEFAULT_SPEED = 0.45;
@@ -154,7 +154,10 @@ const App: React.FC = () => {
     const { prepared, spectrum } = computeFourier(pts, { smoothing, limit });
     setPoints(prepared);
     setFourierX(spectrum);
-    setNumEpicycles(Math.min(spectrum.length, limit));
+    const cap = Math.min(spectrum.length, limit);
+    // Default to the highest precision we can afford so the initial reconstruction
+    // captures ~100% of the available energy (users can dial it back with the slider).
+    setNumEpicycles(Math.max(1, cap));
     try {
       localStorage.setItem(AUTO_SAVE_KEY, JSON.stringify(prepared));
     } catch {
@@ -856,6 +859,8 @@ const App: React.FC = () => {
       data-drawing={isDrawing ? 'true' : 'false'}
       data-has-spectrum={fourierX.length > 0 ? 'true' : 'false'}
       data-points={points.length}
+      data-epicycles={numEpicycles}
+      data-terms={fourierX.length}
     >
       <canvas
         ref={canvasRef}

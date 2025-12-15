@@ -12,6 +12,30 @@ export interface EnergyMetrics {
   breakdown: EnergyBreakdown[];
 }
 
+export const pickEpicycleCountForEnergy = (
+  terms: FourierTerm[],
+  targetPct: number,
+  maxCount?: number
+): number => {
+  if (terms.length === 0) return 0;
+  const cap = Math.max(1, Math.min(maxCount ?? terms.length, terms.length));
+  const clampedTarget = Math.max(0, Math.min(100, targetPct));
+  if (clampedTarget <= 0) return 1;
+  if (clampedTarget >= 100) return cap;
+
+  const energies = terms.map((t) => t.amp * t.amp);
+  const totalEnergy = energies.reduce((acc, e) => acc + e, 0);
+  if (!Number.isFinite(totalEnergy) || totalEnergy <= 0) return 1;
+
+  const desired = (clampedTarget / 100) * totalEnergy;
+  let cumulative = 0;
+  for (let i = 0; i < cap; i++) {
+    cumulative += energies[i];
+    if (cumulative >= desired) return i + 1;
+  }
+  return cap;
+};
+
 export const computeEnergyMetrics = (
   terms: FourierTerm[],
   points: Point[],
