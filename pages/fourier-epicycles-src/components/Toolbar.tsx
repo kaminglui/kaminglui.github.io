@@ -20,7 +20,12 @@ import {
   Shield,
   SkipForward,
   SkipBack,
-  ChevronsRight
+  ChevronsRight,
+  ZoomIn,
+  ZoomOut,
+  LocateFixed,
+  Home,
+  SlidersHorizontal
 } from 'lucide-react';
 import { InputMode } from '../types';
 
@@ -63,6 +68,11 @@ interface ToolbarProps {
   onStepPrev: () => void;
   onStepNext: () => void;
   onStepPlayOnce: () => void;
+  viewScale: number;
+  onZoomIn: () => void;
+  onZoomOut: () => void;
+  onFitView: () => void;
+  onResetView: () => void;
 }
 
 const Toolbar: React.FC<ToolbarProps> = ({
@@ -103,12 +113,18 @@ const Toolbar: React.FC<ToolbarProps> = ({
   stepMax,
   onStepPrev,
   onStepNext,
-  onStepPlayOnce
+  onStepPlayOnce,
+  viewScale,
+  onZoomIn,
+  onZoomOut,
+  onFitView,
+  onResetView
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const presetsWrapperRef = useRef<HTMLDivElement>(null);
   const loadWrapperRef = useRef<HTMLDivElement>(null);
   const [openDropdown, setOpenDropdown] = useState<null | 'presets' | 'load'>(null);
+  const [slidersOpen, setSlidersOpen] = useState(true);
   const [useClickToggle, setUseClickToggle] = useState(() => {
     if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return true;
     const hoverNone = window.matchMedia('(hover: none)').matches;
@@ -437,6 +453,42 @@ const Toolbar: React.FC<ToolbarProps> = ({
         </button>
 
         <button
+          onClick={onZoomOut}
+          className={btnClass(false)}
+          title="Zoom Out"
+          aria-label="Zoom out"
+        >
+          <ZoomOut size={20} />
+        </button>
+
+        <button
+          onClick={onZoomIn}
+          className={btnClass(false)}
+          title="Zoom In"
+          aria-label="Zoom in"
+        >
+          <ZoomIn size={20} />
+        </button>
+
+        <button
+          onClick={onFitView}
+          className={btnClass(false)}
+          title="Fit View"
+          aria-label="Fit view to drawing"
+        >
+          <LocateFixed size={20} />
+        </button>
+
+        <button
+          onClick={onResetView}
+          className={btnClass(false)}
+          title="Reset View"
+          aria-label={`Reset view (${Math.round(viewScale * 100)}%)`}
+        >
+          <Home size={20} />
+        </button>
+
+        <button
           onClick={onToggleFullscreen}
           className={btnClass(isFullscreen)}
           title={isFullscreen ? 'Exit Fullscreen' : 'Fullscreen Play'}
@@ -450,8 +502,9 @@ const Toolbar: React.FC<ToolbarProps> = ({
          <div className="flex flex-col md:flex-row items-center gap-6">
             
             {/* Controls */}
-            <div className="flex items-center gap-3">
-                 <button 
+            <div className="flex items-center justify-between w-full md:w-auto gap-3">
+              <div className="flex items-center gap-3">
+                <button 
                     onClick={onReset}
                     className="p-3 rounded-full bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white transition-all"
                     title="Reset Animation"
@@ -492,10 +545,26 @@ const Toolbar: React.FC<ToolbarProps> = ({
                     <span className="text-xs text-slate-300 font-semibold ml-1">Term {stepIndex + 1} / {Math.max(stepMax, 1)}</span>
                   </div>
                 )}
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setSlidersOpen((open) => !open)}
+                className={`md:hidden ${btnClass(slidersOpen)}`}
+                title="Toggle sliders"
+                aria-label="Toggle sliders"
+                aria-controls="fourier-sliders"
+                aria-expanded={slidersOpen}
+              >
+                <SlidersHorizontal size={20} />
+              </button>
             </div>
 
             {/* Sliders Container */}
-            <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 w-full">
+            <div
+              id="fourier-sliders"
+              className={`${slidersOpen ? 'grid' : 'hidden'} md:grid flex-1 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 w-full`}
+            >
                 {/* Epicycles / Precision */}
                 <div className="flex flex-col justify-center gap-2">
                     <div className="flex justify-between text-xs font-semibold uppercase tracking-wider text-slate-400">

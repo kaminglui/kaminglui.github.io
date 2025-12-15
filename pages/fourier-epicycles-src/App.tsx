@@ -4,6 +4,7 @@ import { generateCircle, generateHeart, generateInfinity, generateMusicNote, gen
 import { processImage } from './services/imageProcessing';
 import { computeFourier } from './services/fourierEngine';
 import { computeEnergyMetrics } from './services/metrics';
+import { DEFAULT_VIEW, fitViewToPoints, isValidViewport, screenToWorld, Viewport, ViewState, viewFromWorldAnchor, zoomViewByFactorAt } from './services/viewTransform';
 import { termColor } from './services/visualUtils';
 import Toolbar from './components/Toolbar';
 import MathPanel from './components/MathPanel';
@@ -14,6 +15,9 @@ const MIN_POINT_STEP = 1.75;
 const DEFAULT_SPEED = 0.45;
 const MAX_UPLOAD_BYTES = 10_000_000;
 const AUTO_SAVE_KEY = 'fourier_viz__last_session';
+const MIN_VIEW_SCALE = 0.25;
+const MAX_VIEW_SCALE = 6;
+const ZOOM_BUTTON_FACTOR = 1.25;
 
 type RenderState = {
   mode: InputMode;
@@ -31,6 +35,7 @@ type RenderState = {
   stepMode: boolean;
   safeMode: boolean;
   stepIndex: number;
+  view: ViewState;
 };
 
 const App: React.FC = () => {
@@ -54,6 +59,7 @@ const App: React.FC = () => {
   const [safeMode, setSafeMode] = useState(false);
   const [stepMode, setStepMode] = useState(false);
   const [stepIndex, setStepIndex] = useState(0);
+  const [view, setView] = useState<ViewState>(DEFAULT_VIEW);
   
   // Brush Settings
   const [brushColor, setBrushColor] = useState('#ec4899'); // Default pink
@@ -78,6 +84,30 @@ const App: React.FC = () => {
   // Optimization: Offscreen canvas for path trail
   const pathCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const prevEpicyclePointRef = useRef<Point | null>(null);
+  const tracePointsRef = useRef<Point[]>([]);
+  const traceNeedsRedrawRef = useRef(false);
+
+  type ScreenPoint = { x: number; y: number };
+  type PanState = { pointerId: number; start: ScreenPoint; startOffsetX: number; startOffsetY: number };
+  type TouchDrawState = {
+    pointerId: number;
+    start: ScreenPoint;
+    viewport: Viewport;
+    startView: ViewState;
+  };
+  type PinchState = {
+    ids: [number, number];
+    startDist: number;
+    startView: ViewState;
+    worldAtMid: Point;
+    viewport: Viewport;
+  };
+
+  const panRef = useRef<PanState | null>(null);
+  const touchDrawRef = useRef<TouchDrawState | null>(null);
+  const touchPointsRef = useRef<Map<number, ScreenPoint>>(new Map());
+  const pinchRef = useRef<PinchState | null>(null);
+  const spacePressedRef = useRef(false);
 
   const renderStateRef = useRef<RenderState>({
     mode,
@@ -94,7 +124,8 @@ const App: React.FC = () => {
     brushSize,
     stepMode,
     safeMode,
-    stepIndex
+    stepIndex,
+    view
   });
 
   const clearPathCanvas = useCallback(() => {
@@ -106,6 +137,8 @@ const App: React.FC = () => {
       }
     }
     prevEpicyclePointRef.current = null;
+    tracePointsRef.current = [];
+    traceNeedsRedrawRef.current = false;
   }, []);
 
   const resizeCanvases = useCallback(() => {
@@ -148,6 +181,37 @@ const App: React.FC = () => {
     resetSimulation();
   };
 
+  const resetView = useCallback(() => {
+    setView(DEFAULT_VIEW);
+  }, []);
+
+  const fitView = useCallback(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const rect = canvas.getBoundingClientRect();
+    const viewport: Viewport = { width: rect.width, height: rect.height };
+    if (!isValidViewport(viewport)) return;
+    const pts = pointsRef.current.length ? pointsRef.current : points;
+    if (!pts.length) {
+      setView(DEFAULT_VIEW);
+      return;
+    }
+    setView(fitViewToPoints(pts, viewport, { padding: 0.9, minScale: MIN_VIEW_SCALE, maxScale: MAX_VIEW_SCALE }));
+  }, [points]);
+
+  const zoomAtCenter = useCallback((factor: number) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const rect = canvas.getBoundingClientRect();
+    const viewport: Viewport = { width: rect.width, height: rect.height };
+    if (!isValidViewport(viewport)) return;
+    const screen = { x: viewport.width / 2, y: viewport.height / 2 };
+    setView((prev) => zoomViewByFactorAt(prev, viewport, screen, factor, MIN_VIEW_SCALE, MAX_VIEW_SCALE));
+  }, []);
+
+  const zoomIn = useCallback(() => zoomAtCenter(ZOOM_BUTTON_FACTOR), [zoomAtCenter]);
+  const zoomOut = useCallback(() => zoomAtCenter(1 / ZOOM_BUTTON_FACTOR), [zoomAtCenter]);
+
   const computeDFT = useCallback((pts: Point[]) => {
     if (pts.length === 0) return;
     const limit = safeMode ? SAFE_MAX_TERMS : MAX_FOURIER_TERMS;
@@ -158,6 +222,14 @@ const App: React.FC = () => {
     // Default to the highest precision we can afford so the initial reconstruction
     // captures ~100% of the available energy (users can dial it back with the slider).
     setNumEpicycles(Math.max(1, cap));
+
+    const rect = canvasRef.current?.getBoundingClientRect();
+    const viewport = rect ? { width: rect.width, height: rect.height } : null;
+    setView(
+      viewport && isValidViewport(viewport)
+        ? fitViewToPoints(prepared, viewport, { padding: 0.9, minScale: MIN_VIEW_SCALE, maxScale: MAX_VIEW_SCALE })
+        : DEFAULT_VIEW
+    );
     try {
       localStorage.setItem(AUTO_SAVE_KEY, JSON.stringify(prepared));
     } catch {
@@ -277,9 +349,33 @@ const App: React.FC = () => {
     }
 
     if (typeof stage.requestFullscreen === 'function') {
-      stage.requestFullscreen().catch(() => {
-        // Fullscreen can be blocked on iOS Safari; fall back to CSS fullscreen.
+      // Some environments (notably iOS Safari + certain embedded/webview contexts)
+      // expose requestFullscreen but never actually enter fullscreen. Detect that and
+      // fall back to CSS fullscreen so mobile always has a working "fullscreen" mode.
+      const fallbackTimer = window.setTimeout(() => {
+        if (document.fullscreenElement !== stage) {
+          setIsPseudoFullscreen(true);
+        }
+      }, 450);
+
+      let nativeRequest: Promise<void> | null = null;
+      try {
+        nativeRequest = stage.requestFullscreen();
+      } catch {
+        window.clearTimeout(fallbackTimer);
         setIsPseudoFullscreen(true);
+        return;
+      }
+
+      Promise.resolve(nativeRequest).catch(() => {
+        // Fullscreen can be blocked; fall back to CSS fullscreen.
+        setIsPseudoFullscreen(true);
+      }).finally(() => {
+        window.clearTimeout(fallbackTimer);
+        // If the promise resolved but fullscreen was not entered, keep the CSS fallback.
+        if (document.fullscreenElement !== stage) {
+          setIsPseudoFullscreen(true);
+        }
       });
       return;
     }
@@ -294,27 +390,129 @@ const App: React.FC = () => {
 
   // --- Handlers ---
 
+  const getPointerContext = (clientX: number, clientY: number) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return null;
+    const rect = canvas.getBoundingClientRect();
+    const viewport: Viewport = { width: rect.width, height: rect.height };
+    if (!isValidViewport(viewport)) return null;
+    return { viewport, screen: { x: clientX - rect.left, y: clientY - rect.top } };
+  };
+
+  const beginPan = (pointerId: number, start: ScreenPoint) => {
+    const startView = renderStateRef.current.view;
+    panRef.current = {
+      pointerId,
+      start,
+      startOffsetX: startView.offsetX,
+      startOffsetY: startView.offsetY
+    };
+  };
+
+  const beginPinch = (viewport: Viewport) => {
+    const entries = Array.from(touchPointsRef.current.entries());
+    if (entries.length < 2) return;
+    const [a, b] = entries;
+    const id1 = a[0];
+    const id2 = b[0];
+    const p1 = a[1];
+    const p2 = b[1];
+    const dx = p2.x - p1.x;
+    const dy = p2.y - p1.y;
+    const dist = Math.hypot(dx, dy);
+    if (!Number.isFinite(dist) || dist < 2) return;
+
+    const startView = renderStateRef.current.view;
+    const mid = { x: (p1.x + p2.x) / 2, y: (p1.y + p2.y) / 2 };
+    pinchRef.current = {
+      ids: [id1, id2],
+      startDist: dist,
+      startView,
+      worldAtMid: screenToWorld(mid, viewport, startView),
+      viewport
+    };
+    panRef.current = null;
+  };
+
   const handlePointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    const ctx = getPointerContext(e.clientX, e.clientY);
+    if (!ctx) return;
+
+    const { viewport, screen } = ctx;
+
+    if (e.pointerType === 'touch') {
+      if (isDrawingRef.current && activePointerIdRef.current !== e.pointerId) {
+        return;
+      }
+      touchPointsRef.current.set(e.pointerId, screen);
+      if (touchPointsRef.current.size === 2) {
+        touchDrawRef.current = null;
+        beginPinch(viewport);
+        try {
+          e.currentTarget.setPointerCapture(e.pointerId);
+        } catch {
+          // ignore pointer-capture failures
+        }
+        return;
+      }
+
+      if (touchPointsRef.current.size > 1) return;
+
+      if (mode !== 'DRAW') {
+        touchDrawRef.current = null;
+        beginPan(e.pointerId, screen);
+        try {
+          e.currentTarget.setPointerCapture(e.pointerId);
+        } catch {
+          // ignore pointer-capture failures
+        }
+        return;
+      }
+
+      // In DRAW mode, delay starting the stroke until the finger actually moves.
+      // This prevents accidental dots/strokes when the user is trying to pinch-zoom.
+      touchDrawRef.current = {
+        pointerId: e.pointerId,
+        start: screen,
+        viewport,
+        startView: renderStateRef.current.view
+      };
+      try {
+        e.currentTarget.setPointerCapture(e.pointerId);
+      } catch {
+        // ignore pointer-capture failures
+      }
+      return;
+    }
+
+    if (e.pointerType === 'mouse' && e.button === 0 && spacePressedRef.current) {
+      beginPan(e.pointerId, screen);
+      try {
+        e.currentTarget.setPointerCapture(e.pointerId);
+      } catch {
+        // ignore pointer-capture failures
+      }
+      return;
+    }
+
     if (mode !== 'DRAW') return;
     if (isDrawingRef.current) return;
     if (e.pointerType === 'mouse' && e.button !== 0) return;
+
     isDrawingRef.current = true;
     activePointerIdRef.current = e.pointerId;
     setIsDrawing(true);
-    setPoints([]); 
+    setPoints([]);
     clearPathCanvas();
     setFourierX([]);
     setIsPlaying(false);
     setStepIndex(0);
     setStepMode(false);
-    
-    const rect = canvasRef.current!.getBoundingClientRect();
-    const x = e.clientX - rect.left - rect.width / 2;
-    const y = e.clientY - rect.top - rect.height / 2;
-    
-    const p = { x, y };
-    setPoints([p]);
-    pointsRef.current = [p];
+
+    const world = screenToWorld(screen, viewport, renderStateRef.current.view);
+    setPoints([world]);
+    pointsRef.current = [world];
+    touchDrawRef.current = null;
 
     try {
       e.currentTarget.setPointerCapture(e.pointerId);
@@ -324,6 +522,63 @@ const App: React.FC = () => {
   };
 
   const handlePointerMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    const ctx = getPointerContext(e.clientX, e.clientY);
+    if (!ctx) return;
+
+    const { viewport, screen } = ctx;
+
+    if (e.pointerType === 'touch' && touchPointsRef.current.has(e.pointerId)) {
+      touchPointsRef.current.set(e.pointerId, screen);
+
+      const pinch = pinchRef.current;
+      if (pinch && (e.pointerId === pinch.ids[0] || e.pointerId === pinch.ids[1])) {
+        const p1 = touchPointsRef.current.get(pinch.ids[0]);
+        const p2 = touchPointsRef.current.get(pinch.ids[1]);
+        if (!p1 || !p2) return;
+        const dx = p2.x - p1.x;
+        const dy = p2.y - p1.y;
+        const dist = Math.hypot(dx, dy);
+        if (!Number.isFinite(dist) || dist < 2) return;
+        const mid = { x: (p1.x + p2.x) / 2, y: (p1.y + p2.y) / 2 };
+        const factor = dist / pinch.startDist;
+        const targetScale = pinch.startView.scale * factor;
+        setView(() => viewFromWorldAnchor(pinch.worldAtMid, pinch.viewport, mid, targetScale, MIN_VIEW_SCALE, MAX_VIEW_SCALE));
+        return;
+      }
+    }
+
+    const pan = panRef.current;
+    if (pan && pan.pointerId === e.pointerId) {
+      const dx = screen.x - pan.start.x;
+      const dy = screen.y - pan.start.y;
+      setView((prev) => ({ ...prev, offsetX: pan.startOffsetX + dx, offsetY: pan.startOffsetY + dy }));
+      return;
+    }
+
+    if (e.pointerType === 'touch' && mode === 'DRAW' && !isDrawingRef.current) {
+      const pending = touchDrawRef.current;
+      if (pending && pending.pointerId === e.pointerId && touchPointsRef.current.size === 1) {
+        const moved = Math.hypot(screen.x - pending.start.x, screen.y - pending.start.y);
+        if (moved < 3) {
+          return;
+        }
+
+        isDrawingRef.current = true;
+        activePointerIdRef.current = e.pointerId;
+        setIsDrawing(true);
+        clearPathCanvas();
+        setFourierX([]);
+        setIsPlaying(false);
+        setStepIndex(0);
+        setStepMode(false);
+
+        const startWorld = screenToWorld(pending.start, pending.viewport, pending.startView);
+        pointsRef.current = [startWorld];
+        setPoints([startWorld]);
+        touchDrawRef.current = null;
+      }
+    }
+
     if (!isDrawingRef.current || mode !== 'DRAW') return;
     if (activePointerIdRef.current !== e.pointerId) return;
     if (e.pointerType === 'mouse' && (e.buttons & 1) === 0) {
@@ -333,25 +588,42 @@ const App: React.FC = () => {
       setIsDrawing(false);
       return;
     }
-    const rect = canvasRef.current!.getBoundingClientRect();
-    const x = e.clientX - rect.left - rect.width / 2;
-    const y = e.clientY - rect.top - rect.height / 2;
-    
-    const p = { x, y };
+
+    const activeView = renderStateRef.current.view;
+    const world = screenToWorld(screen, viewport, activeView);
     const last = pointsRef.current[pointsRef.current.length - 1];
-    
-    if (Math.hypot(p.x - last.x, p.y - last.y) > MIN_POINT_STEP) {
-      pointsRef.current.push(p);
+    const minStep = MIN_POINT_STEP / Math.max(activeView.scale, 0.001);
+
+    if (Math.hypot(world.x - last.x, world.y - last.y) > minStep) {
+      pointsRef.current.push(world);
     }
   };
 
   const handlePointerUp = (e?: React.PointerEvent<HTMLCanvasElement>) => {
+    if (!e) return;
+
+    if (e.pointerType === 'touch') {
+      touchPointsRef.current.delete(e.pointerId);
+      if (pinchRef.current && (pinchRef.current.ids[0] === e.pointerId || pinchRef.current.ids[1] === e.pointerId)) {
+        pinchRef.current = null;
+      }
+      if (!isDrawingRef.current && touchDrawRef.current?.pointerId === e.pointerId) {
+        touchDrawRef.current = null;
+        return;
+      }
+    }
+
+    if (panRef.current?.pointerId === e.pointerId) {
+      panRef.current = null;
+    }
+
     if (!isDrawingRef.current) return;
-    if (typeof e?.pointerId === 'number' && activePointerIdRef.current !== e.pointerId) return;
+    if (typeof e.pointerId === 'number' && activePointerIdRef.current !== e.pointerId) return;
+
     isDrawingRef.current = false;
     activePointerIdRef.current = null;
     setIsDrawing(false);
-    
+
     const pts = pointsRef.current;
     if (pts.length > 1) {
       computeDFT(pts);
@@ -360,23 +632,75 @@ const App: React.FC = () => {
       setFourierX([]);
       setIsPlaying(false);
     }
-    // mode remains DRAW
   };
 
-  const handlePointerCancel = () => {
+  const handlePointerCancel = (e?: React.PointerEvent<HTMLCanvasElement>) => {
+    if (e?.pointerType === 'touch') {
+      touchPointsRef.current.delete(e.pointerId);
+      pinchRef.current = null;
+      if (typeof e.pointerId === 'number' && touchDrawRef.current?.pointerId === e.pointerId) {
+        touchDrawRef.current = null;
+      }
+    }
+    if (typeof e?.pointerId === 'number' && panRef.current?.pointerId === e.pointerId) {
+      panRef.current = null;
+    }
     if (!isDrawingRef.current) return;
     isDrawingRef.current = false;
     activePointerIdRef.current = null;
     setIsDrawing(false);
   };
 
+  const handleWheel = useCallback(
+    (event: WheelEvent) => {
+      // Trackpad "pinch" on desktop typically arrives as Ctrl+wheel.
+      if (!event.ctrlKey && !event.metaKey) return;
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+      const rect = canvas.getBoundingClientRect();
+      const viewport: Viewport = { width: rect.width, height: rect.height };
+      if (!isValidViewport(viewport)) return;
+      const screen = { x: event.clientX - rect.left, y: event.clientY - rect.top };
+
+      event.preventDefault();
+      const factor = Math.exp(-event.deltaY * 0.0015);
+      setView((prev) => zoomViewByFactorAt(prev, viewport, screen, factor, MIN_VIEW_SCALE, MAX_VIEW_SCALE));
+    },
+    []
+  );
+
   useEffect(() => {
-    const stopDrawing = (ev: Event) => {
-      if (!isDrawingRef.current) return;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    canvas.addEventListener('wheel', handleWheel, { passive: false });
+    return () => {
+      canvas.removeEventListener('wheel', handleWheel);
+    };
+  }, [handleWheel]);
+
+  useEffect(() => {
+    const handleGlobalEnd = (ev: Event) => {
       const pointerId = (ev as PointerEvent).pointerId;
+
+      if (typeof pointerId === 'number') {
+        touchPointsRef.current.delete(pointerId);
+        if (touchDrawRef.current?.pointerId === pointerId) {
+          touchDrawRef.current = null;
+        }
+        if (panRef.current?.pointerId === pointerId) {
+          panRef.current = null;
+        }
+        if (pinchRef.current && (pinchRef.current.ids[0] === pointerId || pinchRef.current.ids[1] === pointerId)) {
+          pinchRef.current = null;
+        }
+      }
+
+      if (!isDrawingRef.current) return;
       if (typeof pointerId === 'number' && activePointerIdRef.current !== null && pointerId !== activePointerIdRef.current) {
         return;
       }
+
       isDrawingRef.current = false;
       activePointerIdRef.current = null;
       setIsDrawing(false);
@@ -390,15 +714,53 @@ const App: React.FC = () => {
         setIsPlaying(false);
       }
     };
-    window.addEventListener('pointerup', stopDrawing);
-    window.addEventListener('pointercancel', stopDrawing);
-    window.addEventListener('blur', stopDrawing);
+
+    const handleBlur = () => {
+      panRef.current = null;
+      pinchRef.current = null;
+      touchPointsRef.current.clear();
+      touchDrawRef.current = null;
+      spacePressedRef.current = false;
+      handleGlobalEnd(new Event('blur'));
+    };
+
+    window.addEventListener('pointerup', handleGlobalEnd);
+    window.addEventListener('pointercancel', handleGlobalEnd);
+    window.addEventListener('blur', handleBlur);
     return () => {
-      window.removeEventListener('pointerup', stopDrawing);
-      window.removeEventListener('pointercancel', stopDrawing);
-      window.removeEventListener('blur', stopDrawing);
+      window.removeEventListener('pointerup', handleGlobalEnd);
+      window.removeEventListener('pointercancel', handleGlobalEnd);
+      window.removeEventListener('blur', handleBlur);
     };
   }, [computeDFT]);
+
+  useEffect(() => {
+    const isTypingTarget = (target: EventTarget | null) => {
+      if (!(target instanceof HTMLElement)) return false;
+      const tag = target.tagName.toLowerCase();
+      if (tag === 'input' || tag === 'textarea' || tag === 'select') return true;
+      return target.isContentEditable;
+    };
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.code !== 'Space') return;
+      if (isTypingTarget(event.target)) return;
+      spacePressedRef.current = true;
+      event.preventDefault();
+    };
+
+    const onKeyUp = (event: KeyboardEvent) => {
+      if (event.code !== 'Space') return;
+      spacePressedRef.current = false;
+    };
+
+    window.addEventListener('keydown', onKeyDown);
+    window.addEventListener('keyup', onKeyUp);
+    return () => {
+      window.removeEventListener('keydown', onKeyDown);
+      window.removeEventListener('keyup', onKeyUp);
+    };
+  }, []);
 
   const handleClear = () => {
     setPoints([]);
@@ -408,6 +770,7 @@ const App: React.FC = () => {
     setMode('DRAW');
     setStepIndex(0);
     setStepMode(false);
+    setView(DEFAULT_VIEW);
     pointsRef.current = [];
   };
 
@@ -540,19 +903,19 @@ const App: React.FC = () => {
   const drawEpicycles = useCallback(
     (
       ctx: CanvasRenderingContext2D,
-      width: number,
-      height: number,
       terms: FourierTerm[],
       termCount: number,
       t: number,
-      stepModeActive: boolean
+      stepModeActive: boolean,
+      viewScale: number
     ) => {
-      let x = width / 2;
-      let y = height / 2;
+      let x = 0;
+      let y = 0;
 
       const activeTerms = terms.slice(0, Math.max(termCount, 1));
       const highlightIdx = Math.max(activeTerms.length - 1, 0);
       const maxAmp = terms[0]?.amp || 1;
+      const invScale = 1 / Math.max(viewScale, 0.001);
 
       for (let i = 0; i < activeTerms.length; i++) {
         const prevX = x;
@@ -568,7 +931,7 @@ const App: React.FC = () => {
         y += amp * Math.sin(angle);
 
         ctx.strokeStyle = stroke;
-        ctx.lineWidth = isHighlight ? 1.6 * flash : 1;
+        ctx.lineWidth = (isHighlight ? 1.6 * flash : 1) * invScale;
         ctx.beginPath();
         ctx.arc(prevX, prevY, amp, 0, 2 * Math.PI);
         ctx.stroke();
@@ -582,7 +945,7 @@ const App: React.FC = () => {
         if (i === activeTerms.length - 1) {
           ctx.fillStyle = stroke;
           ctx.beginPath();
-          ctx.arc(x, y, 3, 0, 2 * Math.PI);
+          ctx.arc(x, y, 3 * invScale, 0, 2 * Math.PI);
           ctx.fill();
         }
       }
@@ -604,6 +967,9 @@ const App: React.FC = () => {
       const dpr = dprRef.current || 1;
       const width = canvas.width / dpr;
       const height = canvas.height / dpr;
+      const viewScale = Math.max(state.view.scale, 0.001);
+      const originX = width / 2 + state.view.offsetX;
+      const originY = height / 2 + state.view.offsetY;
 
       ctx.setTransform(1, 0, 0, 1, 0, 0);
       ctx.scale(dpr, dpr);
@@ -616,63 +982,113 @@ const App: React.FC = () => {
       ctx.strokeStyle = state.gridColor;
       ctx.lineWidth = 0.5;
       ctx.beginPath();
-      ctx.moveTo(width / 2, 0);
-      ctx.lineTo(width / 2, height);
-      ctx.moveTo(0, height / 2);
-      ctx.lineTo(width, height / 2);
+      ctx.moveTo(originX, 0);
+      ctx.lineTo(originX, height);
+      ctx.moveTo(0, originY);
+      ctx.lineTo(width, originY);
       ctx.stroke();
 
       if (state.points.length > 0 && state.mode !== 'DRAW') {
+        ctx.save();
+        ctx.translate(originX, originY);
+        ctx.scale(viewScale, viewScale);
         ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
-        ctx.lineWidth = 1;
+        ctx.lineWidth = 1 / viewScale;
         ctx.beginPath();
         state.points.forEach((p, i) => {
-          if (i === 0) ctx.moveTo(p.x + width / 2, p.y + height / 2);
-          else ctx.lineTo(p.x + width / 2, p.y + height / 2);
+          if (i === 0) ctx.moveTo(p.x, p.y);
+          else ctx.lineTo(p.x, p.y);
         });
         ctx.stroke();
+        ctx.restore();
       }
 
       if (state.mode === 'DRAW' && isDrawingRef.current) {
+        ctx.save();
+        ctx.translate(originX, originY);
+        ctx.scale(viewScale, viewScale);
         ctx.strokeStyle = state.brushColor;
-        ctx.lineWidth = state.brushSize;
+        ctx.lineWidth = state.brushSize / viewScale;
         ctx.beginPath();
         pointsRef.current.forEach((p, i) => {
-          if (i === 0) ctx.moveTo(p.x + width / 2, p.y + height / 2);
-          else ctx.lineTo(p.x + width / 2, p.y + height / 2);
+          if (i === 0) ctx.moveTo(p.x, p.y);
+          else ctx.lineTo(p.x, p.y);
         });
         ctx.stroke();
+        ctx.restore();
       }
 
       const t = timeRef.current;
 
       if (state.fourierX.length > 0) {
         if (pathCanvasRef.current) {
+          const pCtx = pathCanvasRef.current.getContext('2d');
+          if (pCtx && traceNeedsRedrawRef.current) {
+            traceNeedsRedrawRef.current = false;
+            pCtx.setTransform(1, 0, 0, 1, 0, 0);
+            pCtx.clearRect(0, 0, pathCanvasRef.current.width, pathCanvasRef.current.height);
+            const trace = tracePointsRef.current;
+            if (trace.length > 1) {
+              pCtx.setTransform(1, 0, 0, 1, 0, 0);
+              pCtx.scale(dpr, dpr);
+              pCtx.lineCap = 'round';
+              pCtx.lineJoin = 'round';
+              pCtx.translate(originX, originY);
+              pCtx.scale(viewScale, viewScale);
+              pCtx.strokeStyle = state.brushColor;
+              pCtx.lineWidth = state.brushSize / viewScale;
+              pCtx.beginPath();
+              pCtx.moveTo(trace[0].x, trace[0].y);
+              for (let i = 1; i < trace.length; i++) {
+                pCtx.lineTo(trace[i].x, trace[i].y);
+              }
+              pCtx.stroke();
+            }
+          }
+
           ctx.drawImage(pathCanvasRef.current, 0, 0, width, height);
         }
 
         const activeLen = Math.min(Math.max(state.numEpicycles, 1), state.fourierX.length);
-        const v = drawEpicycles(ctx, width, height, state.fourierX, activeLen, t, state.stepMode);
+        ctx.save();
+        ctx.translate(originX, originY);
+        ctx.scale(viewScale, viewScale);
+        const v = drawEpicycles(ctx, state.fourierX, activeLen, t, state.stepMode, viewScale);
+        ctx.restore();
 
-        if (pathCanvasRef.current) {
-          const pCtx = pathCanvasRef.current.getContext('2d');
-          if (pCtx) {
-            pCtx.setTransform(1, 0, 0, 1, 0, 0);
-            pCtx.scale(dpr, dpr);
-            pCtx.strokeStyle = state.brushColor;
-            pCtx.lineWidth = state.brushSize;
-            pCtx.lineCap = 'round';
-            pCtx.lineJoin = 'round';
+        if (state.isPlaying) {
+          const worldPoint = { x: v.x, y: v.y };
+          const trace = tracePointsRef.current;
 
-            if (prevEpicyclePointRef.current) {
-              pCtx.beginPath();
-              pCtx.moveTo(prevEpicyclePointRef.current.x, prevEpicyclePointRef.current.y);
-              pCtx.lineTo(v.x, v.y);
-              pCtx.stroke();
+          if (trace.length === 0) {
+            trace.push(worldPoint);
+          } else {
+            const prev = trace[trace.length - 1];
+            if (prev.x !== worldPoint.x || prev.y !== worldPoint.y) {
+              trace.push(worldPoint);
+              if (pathCanvasRef.current) {
+                const pCtx = pathCanvasRef.current.getContext('2d');
+                if (pCtx) {
+                  pCtx.setTransform(1, 0, 0, 1, 0, 0);
+                  pCtx.scale(dpr, dpr);
+                  pCtx.lineCap = 'round';
+                  pCtx.lineJoin = 'round';
+                  pCtx.translate(originX, originY);
+                  pCtx.scale(viewScale, viewScale);
+                  pCtx.strokeStyle = state.brushColor;
+                  pCtx.lineWidth = state.brushSize / viewScale;
+                  pCtx.beginPath();
+                  pCtx.moveTo(prev.x, prev.y);
+                  pCtx.lineTo(worldPoint.x, worldPoint.y);
+                  pCtx.stroke();
+                }
+              }
             }
           }
+          prevEpicyclePointRef.current = worldPoint;
+        } else {
+          prevEpicyclePointRef.current = { x: v.x, y: v.y };
         }
-        prevEpicyclePointRef.current = { x: v.x, y: v.y };
 
         if (state.isPlaying) {
           const sampleCount = Math.max(state.points.length || state.fourierX.length, 1);
@@ -765,7 +1181,8 @@ const App: React.FC = () => {
       brushSize,
       stepMode,
       safeMode,
-      stepIndex
+      stepIndex,
+      view
     };
     requestRedraw();
   }, [
@@ -784,8 +1201,13 @@ const App: React.FC = () => {
     stepMode,
     safeMode,
     stepIndex,
+    view,
     requestRedraw
   ]);
+
+  useEffect(() => {
+    traceNeedsRedrawRef.current = true;
+  }, [view.offsetX, view.offsetY, view.scale]);
 
   useEffect(() => {
     requestRedraw();
@@ -861,6 +1283,7 @@ const App: React.FC = () => {
       data-points={points.length}
       data-epicycles={numEpicycles}
       data-terms={fourierX.length}
+      data-view-scale={view.scale.toFixed(4)}
     >
       <canvas
         ref={canvasRef}
@@ -910,6 +1333,11 @@ const App: React.FC = () => {
         onStepPrev={handleStepPrev}
         onStepNext={handleStepNext}
         onStepPlayOnce={handleStepPlayOnce}
+        viewScale={view.scale}
+        onZoomIn={zoomIn}
+        onZoomOut={zoomOut}
+        onFitView={fitView}
+        onResetView={resetView}
       />
 
       {showMath && fourierX.length > 0 && (

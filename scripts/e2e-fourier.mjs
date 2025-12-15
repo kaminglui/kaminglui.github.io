@@ -267,6 +267,53 @@ const assertMobileToolbarDropdownToggles = async (page, label) => {
   }
 };
 
+const assertMobileSliderToggleWorks = async (page, label) => {
+  const toggleSelector = '.fourier-toolbar--bottom button[title="Toggle sliders"]';
+  const slidersSelector = '#fourier-sliders';
+
+  const toggle = await page.$(toggleSelector);
+  if (!toggle) throw new Error(`[${label}] missing slider toggle button`);
+
+  const initialVisible = await page.evaluate((selector) => {
+    const el = document.querySelector(selector);
+    if (!el) return null;
+    return getComputedStyle(el).display !== 'none';
+  }, slidersSelector);
+
+  if (initialVisible === null) throw new Error(`[${label}] missing sliders container`);
+
+  // Trigger the toggle without scrolling the page (page.click scrolls elements into view).
+  await page.evaluate((selector) => {
+    const el = document.querySelector(selector);
+    (el instanceof HTMLElement ? el : null)?.click();
+  }, toggleSelector);
+  await page.waitForFunction(
+    (selector, expected) => {
+      const el = document.querySelector(selector);
+      if (!el) return false;
+      return (getComputedStyle(el).display !== 'none') === expected;
+    },
+    { timeout: 5_000 },
+    slidersSelector,
+    !initialVisible
+  );
+
+  await page.evaluate((selector) => {
+    const el = document.querySelector(selector);
+    (el instanceof HTMLElement ? el : null)?.click();
+  }, toggleSelector);
+  await page.waitForFunction(
+    (selector, expected) => {
+      const el = document.querySelector(selector);
+      if (!el) return false;
+      return (getComputedStyle(el).display !== 'none') === expected;
+    },
+    { timeout: 5_000 },
+    slidersSelector,
+    initialVisible
+  );
+};
+
 const drawAndAssertFinalizes = async (page, label) => {
   const canvas = await page.$('canvas');
   if (!canvas) throw new Error(`[${label}] missing canvas`);
@@ -363,6 +410,64 @@ const drawAndAssertFinalizes = async (page, label) => {
   if (drawingAfterMove !== 'false') {
     throw new Error(`[${label}] drawing resumed without button pressed (data-drawing=${drawingAfterMove})`);
   }
+};
+
+const assertZoomButtonsWork = async (page, label) => {
+  const stageSelector = '.fourier-stage';
+  const zoomInSelector = '.fourier-toolbar--top button[title="Zoom In"]';
+  const zoomOutSelector = '.fourier-toolbar--top button[title="Zoom Out"]';
+  const resetSelector = '.fourier-toolbar--top button[title="Reset View"]';
+
+  const readScale = () =>
+    page.$eval(stageSelector, (el) => Number(el.getAttribute('data-view-scale') ?? 'NaN'));
+
+  const zoomIn = await page.$(zoomInSelector);
+  const zoomOut = await page.$(zoomOutSelector);
+  const reset = await page.$(resetSelector);
+
+  if (!zoomIn) throw new Error(`[${label}] missing zoom in button`);
+  if (!zoomOut) throw new Error(`[${label}] missing zoom out button`);
+  if (!reset) throw new Error(`[${label}] missing reset view button`);
+
+  const initial = await readScale();
+  await zoomIn.click();
+  await page.waitForFunction(
+    (selector, prev) => {
+      const el = document.querySelector(selector);
+      if (!el) return false;
+      const next = Number(el.getAttribute('data-view-scale') ?? 'NaN');
+      return Number.isFinite(next) && Number.isFinite(prev) && next > prev + 0.01;
+    },
+    { timeout: 5_000 },
+    stageSelector,
+    initial
+  );
+
+  const afterIn = await readScale();
+  await zoomOut.click();
+  await page.waitForFunction(
+    (selector, prev) => {
+      const el = document.querySelector(selector);
+      if (!el) return false;
+      const next = Number(el.getAttribute('data-view-scale') ?? 'NaN');
+      return Number.isFinite(next) && Number.isFinite(prev) && next < prev - 0.01;
+    },
+    { timeout: 5_000 },
+    stageSelector,
+    afterIn
+  );
+
+  await reset.click();
+  await page.waitForFunction(
+    (selector) => {
+      const el = document.querySelector(selector);
+      if (!el) return false;
+      const next = Number(el.getAttribute('data-view-scale') ?? 'NaN');
+      return Number.isFinite(next) && Math.abs(next - 1) < 0.02;
+    },
+    { timeout: 5_000 },
+    stageSelector
+  );
 };
 
 const assertMathPanelToggleFits = async (page, label) => {
@@ -547,11 +652,13 @@ const runCase = async (browser, baseUrl, { label, viewport }) => {
   if (label === 'mobile') {
     await assertMobileHeaderMenuToggles(page, label);
     await assertMobileToolbarDropdownToggles(page, label);
+    await assertMobileSliderToggleWorks(page, label);
     await assertFullscreenToggleWorks(page, label);
   } else {
     await assertToolbarDropdownHoverStable(page, label);
   }
   await drawAndAssertFinalizes(page, label);
+  await assertZoomButtonsWork(page, label);
   await assertMathPanelToggleFits(page, label);
 
   await page.close();
