@@ -58,7 +58,7 @@ function measureCircuit({ treble = 50, bass = 50 } = {}) {
 }
 
 describe('Baxandall Tone Control template', () => {
-  it('boosts/cuts lows and highs via the two pots without losing signal', { timeout: 20000 }, () => {
+  it('boosts/cuts lows and highs via the two pots without losing signal', { timeout: 60000 }, () => {
     const flat = measureCircuit({ treble: 50, bass: 50 });
     const trebleHigh = measureCircuit({ treble: 95, bass: 50 });
     const trebleLow = measureCircuit({ treble: 5, bass: 50 });

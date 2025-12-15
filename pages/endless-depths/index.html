@@ -151,26 +151,6 @@
       import { initSiteShell } from '../../assets/js/layout/siteShell.js';
       initSiteShell('endless-depths');
     </script>
-    <script type="module" src="../../assets/js/nav.js"></script>
-    <script type="module">
-      const body = document.body;
-      const themeToggle = document.querySelector('.theme-toggle');
-      const yearElement = document.getElementById('year');
-      const THEME_KEY = 'kaminglui-theme';
-
-      yearElement.textContent = new Date().getFullYear();
-
-      const savedTheme = localStorage.getItem(THEME_KEY);
-      if (savedTheme) {
-        body.classList.toggle('theme-dark', savedTheme === 'dark');
-      }
-
-      themeToggle?.addEventListener('click', () => {
-        body.classList.toggle('theme-dark');
-        const next = body.classList.contains('theme-dark') ? 'dark' : 'light';
-        localStorage.setItem(THEME_KEY, next);
-      });
-    </script>
 
     <script src="../../assets/js/endless-depths.js" type="module"></script>
   </body>

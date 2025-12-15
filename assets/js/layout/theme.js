@@ -1,4 +1,7 @@
-const THEME_KEYS = ['theme', 'circuitforge-theme'];
+const THEME_KEYS = ['theme', 'circuitforge-theme', 'kaminglui-theme'];
+
+const themeListeners = new Set();
+let mediaListenerBound = false;
 
 function readStoredTheme() {
   if (typeof localStorage === 'undefined') return null;
@@ -48,27 +51,37 @@ function resolveInitialTheme() {
   return 'light';
 }
 
+function notifyThemeChange(theme) {
+  themeListeners.forEach((listener) => {
+    try {
+      listener(theme);
+    } catch (error) {
+      console.warn('Theme change listener failed', error);
+    }
+  });
+}
+
 function initThemeControls({ onChange } = {}) {
   const toggle = document.querySelector('.theme-toggle');
-  const alreadyBound = toggle?.dataset.themeBound === 'true';
   const initial = applyTheme(resolveInitialTheme());
   updateThemeToggle(toggle, initial);
 
-  const notify = (theme) => {
-    if (typeof onChange === 'function') onChange(theme);
-  };
+  if (typeof onChange === 'function') {
+    themeListeners.add(onChange);
+  }
 
   const handleMedia = (event) => {
-    if (typeof localStorage !== 'undefined' && localStorage.getItem(THEME_KEYS[0])) return;
+    if (readStoredTheme()) return;
     const next = applyTheme(event.matches ? 'dark' : 'light');
     updateThemeToggle(toggle, next);
-    notify(next);
+    notifyThemeChange(next);
   };
 
   const media = (typeof window !== 'undefined' && typeof window.matchMedia === 'function')
     ? window.matchMedia('(prefers-color-scheme: dark)')
     : null;
-  if (media) {
+  if (media && !mediaListenerBound) {
+    mediaListenerBound = true;
     if (typeof media.addEventListener === 'function') {
       media.addEventListener('change', handleMedia);
     } else if (typeof media.addListener === 'function') {
@@ -76,17 +89,18 @@ function initThemeControls({ onChange } = {}) {
     }
   }
 
+  const alreadyBound = toggle?.dataset.themeBound === 'true';
   if (toggle && !alreadyBound) {
     toggle.dataset.themeBound = 'true';
     toggle.addEventListener('click', () => {
       const current = document.body.classList.contains('theme-dark') ? 'dark' : 'light';
       const next = applyTheme(current === 'dark' ? 'light' : 'dark');
       updateThemeToggle(toggle, next);
-      notify(next);
+      notifyThemeChange(next);
     });
   }
 
-  notify(initial);
+  notifyThemeChange(initial);
   return initial;
 }
 

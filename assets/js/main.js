@@ -1,7 +1,5 @@
 // Restored main interaction script after asset cleanup.
 import { defaultContent } from './content.js';
-import { setupNav } from './nav.js';
-import { initThemeControls } from './layout/theme.js';
 
 const STORAGE_KEY = 'kaminglui-site-content-v1';
 const EDIT_VISIBILITY_KEY = 'kaminglui-site-edit-visible';
@@ -631,10 +629,6 @@ function renderAll() {
   renderProjects();
   renderSidebar();
   renderContact();
-}
-
-function setupTheme() {
-  initThemeControls();
 }
 
 function setupBackToTop() {
@@ -1335,9 +1329,7 @@ if (yearElement) {
   yearElement.textContent = String(new Date().getFullYear());
 }
 
-setupNav();
 editToggle = document.querySelector('.edit-toggle');
-setupTheme();
 setupBackToTop();
 
 if (hasContentScaffold) {
@@ -1346,4 +1338,3 @@ if (hasContentScaffold) {
   setupEditors();
   populateExperienceFromLinkedIn();
 }
-

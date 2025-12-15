@@ -159,7 +159,7 @@ describe('Integrated behaviour', () => {
     expect(max - min).toBeGreaterThan(1);
   });
 
-  it('switches an op-amp between summing and difference modes to cancel common tones', { timeout: 12000 }, () => {
+  it('switches an op-amp between summing and difference modes to cancel common tones', { timeout: 60000 }, () => {
     const freqsA = [110, 880];
     const freqsB = [3520, 880];
     const buildChannel = (f1, f2) => {

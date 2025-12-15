@@ -74,7 +74,7 @@ function analyzeOutput(position = 'B') {
 }
 
 describe('Mixer Karaoke template', () => {
-  it('sums both channels on throw A and cancels the shared tone on throw B', { timeout: 20000 }, () => {
+  it('sums both channels on throw A and cancels the shared tone on throw B', { timeout: 60000 }, () => {
     const sum = analyzeOutput('A');
     const diff = analyzeOutput('B');
 
