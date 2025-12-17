@@ -30,7 +30,7 @@ Footer opt-out is centralized:
   - `shouldRenderFooter(pageId)`
 
 Footer variants are preset-driven:
-- `assets/js/config/footerPresets.js` (`FOOTER_PRESETS` for `transformer-lab`, `ml-playground`, `endless-depths`, and the `home` default)
+- `assets/js/config/footerPresets.js` (`FOOTER_PRESETS` for `transformer-lab`, `ml-playground`, and the `home` default)
 
 ## Shared configuration sources
 - Header/nav links: `assets/js/config/navigation.js` (`NAV_SECTIONS`, `NAV_LABS`, `LOGO_TEXT`)

@@ -10,7 +10,7 @@ const FOOTER_PRESETS = {
   },
   'ml-playground': {
     layoutClass: 'footer__layout',
-    heading: 'Want to explore more ML demos?',
+    heading: 'Want to explore more clustering demos?',
     body: 'Try the transformer lab or reach out to share your favorite visualization ideas.',
     actions: [
       { label: 'Visit Transformer Lab', href: 'pages/transformer-lab/', variant: 'primary' },
@@ -34,21 +34,7 @@ const FOOTER_PRESETS = {
       'Enjoyed the walkthrough? Share it with fellow ML explorers.',
       DEFAULT_META
     ]
-  },
-  'endless-depths': {
-    layoutClass: 'footer__layout',
-    heading: 'Back to the main site?',
-    body: 'Check out projects, posts, and the ML roadmap that inspired this mini-game.',
-    actions: [
-      { label: 'View projects', href: 'index.html#projects', variant: 'primary' },
-      { label: 'Get in touch', href: 'index.html#contact', variant: 'ghost' }
-    ],
-    meta: [
-      'Progress saves to your browser so you can pick up where you left off.',
-      '&copy; <span id="year"></span> Ka Ming Lui. Built for performance and accessibility.'
-    ]
   }
 };
 
 export { DEFAULT_META, FOOTER_PRESETS };
-

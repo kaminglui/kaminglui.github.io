@@ -5,9 +5,8 @@
 - `pages/` contains standalone interactive experiences grouped by lab:
   - `pages/circuit-lab/`
 - `pages/transformer-lab/`
-- `pages/ml-playground/`
+- `pages/ml-playground/` (Clustering Playground)
 - `pages/fourier-epicycles/`
-- `pages/endless-depths/`
 - The Fourier Epicycles source lives in `pages/fourier-epicycles-src/` and builds into `pages/fourier-epicycles/`.
 - `assets/` holds shared styles, scripts, and media used across the site and labs.
 

@@ -41,7 +41,7 @@ describe('layout root prefix helpers', () => {
   });
 
   it('falls back to window location when no overrides are provided', () => {
-    window.history.replaceState({}, '', '/pages/endless-depths/');
+    window.history.replaceState({}, '', '/pages/transformer-lab/');
     expect(resolveRootPrefix()).toBe('../../');
   });
 });
