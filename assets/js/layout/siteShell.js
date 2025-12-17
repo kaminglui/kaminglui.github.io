@@ -1,8 +1,9 @@
-import { renderSiteHeader as buildHeader, computeRootPrefix } from '../site-header.js';
+import { renderSiteHeader as buildHeader } from '../site-header.js';
 import { renderSiteFooter as buildFooter, updateFooterYear } from '../site-footer.js';
 import { setupNav } from '../nav.js';
 import { shouldRenderFooter } from '../config/layout.js';
 import { initThemeControls } from './theme.js';
+import { resolveRootPrefix } from './rootPrefix.js';
 
 function setHeaderVars(header) {
   if (!header || !header.getBoundingClientRect) return;
@@ -25,14 +26,6 @@ function observeHeader(header) {
   return null;
 }
 
-function resolveRootPrefix(explicit) {
-  if (typeof explicit === 'string' && explicit.trim()) return explicit.trim();
-  if (typeof document !== 'undefined') {
-    return computeRootPrefix(window.location?.pathname);
-  }
-  return '';
-}
-
 function renderSiteHeader(options = {}) {
   const headerTarget =
     options.target ??
@@ -41,7 +34,11 @@ function renderSiteHeader(options = {}) {
   if (!headerTarget) return null;
 
   const pageId = options.pageId || options.currentLab || headerTarget.dataset.currentLab;
-  const rootPrefix = resolveRootPrefix(options.rootPrefix || headerTarget.dataset.navRoot);
+  const rootPrefix = resolveRootPrefix({
+    explicitPrefix: options.rootPrefix || headerTarget.dataset.navRoot,
+    element: headerTarget,
+    fallbackPathname: window.location?.pathname
+  });
   const showEditToggle = options.showEditToggle ??
     headerTarget.dataset.showEditToggle === 'true';
   const useLocalAnchors = options.useLocalAnchors ?? pageId === 'home';
@@ -73,7 +70,11 @@ function renderSiteFooter(options = {}) {
   if (!footerTarget) return null;
 
   const pageId = options.pageId || options.preset || footerTarget.dataset.footerId;
-  const rootPrefix = resolveRootPrefix(options.rootPrefix || footerTarget.dataset.footerRoot);
+  const rootPrefix = resolveRootPrefix({
+    explicitPrefix: options.rootPrefix || footerTarget.dataset.footerRoot,
+    element: footerTarget,
+    fallbackPathname: window.location?.pathname
+  });
 
   footerTarget.dataset.siteFooter = 'true';
   footerTarget.dataset.footerId = pageId || 'home';
@@ -90,7 +91,10 @@ function renderSiteFooter(options = {}) {
 
 function initSiteShell(pageId = 'home', opts = {}) {
   const resolvedId = pageId || document.body?.dataset?.currentLab || 'home';
-  const rootPrefix = resolveRootPrefix(opts.rootPrefix);
+  const rootPrefix = resolveRootPrefix({
+    explicitPrefix: opts.rootPrefix,
+    fallbackPathname: window.location?.pathname
+  });
 
   renderSiteHeader({
     pageId: resolvedId,

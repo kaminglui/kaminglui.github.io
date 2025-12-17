@@ -42,8 +42,8 @@ describe('assets/js/nav.js', () => {
       '(pointer: fine)': false
     });
 
-    const { initSiteShell } = await import('../siteShell.js');
-    initSiteShell('transformer-lab');
+    const { initMainLayout } = await import('../mainLayout.js');
+    initMainLayout('transformer-lab');
 
     const navToggle = document.querySelector('.nav-toggle');
     const navLinks = document.querySelector('.nav-links');
@@ -68,8 +68,8 @@ describe('assets/js/nav.js', () => {
       '(pointer: fine)': false
     });
 
-    const { initSiteShell } = await import('../siteShell.js');
-    initSiteShell('transformer-lab');
+    const { initMainLayout } = await import('../mainLayout.js');
+    initMainLayout('transformer-lab');
 
     const wrapper = document.querySelector('.nav-item--dropdown');
     const toggle = wrapper?.querySelector('.nav-dropdown-toggle');
@@ -98,8 +98,8 @@ describe('assets/js/nav.js', () => {
       '(pointer: fine)': false
     });
 
-    const { initSiteShell } = await import('../siteShell.js');
-    initSiteShell('transformer-lab');
+    const { initMainLayout } = await import('../mainLayout.js');
+    initMainLayout('transformer-lab');
 
     const navToggle = document.querySelector('.nav-toggle');
     const navLinks = document.querySelector('.nav-links');
@@ -113,5 +113,25 @@ describe('assets/js/nav.js', () => {
     expect(navLinks?.getAttribute('data-visible')).toBe('false');
     expect(document.body.classList.contains('nav-open')).toBe(false);
   });
-});
 
+  it('opens dropdown via keyboard and focuses the first link', async () => {
+    stubMatchMedia({
+      '(hover: none)': true,
+      '(hover: hover)': false,
+      '(pointer: fine)': false
+    });
+
+    const { initMainLayout } = await import('../mainLayout.js');
+    initMainLayout('home', { useLocalAnchors: true });
+
+    const toggle = document.querySelector('.nav-item--dropdown .nav-dropdown-toggle');
+    const menu = document.querySelector('.nav-item--dropdown .nav-dropdown-menu');
+    const firstLink = menu?.querySelector('a');
+
+    toggle?.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }));
+
+    expect(toggle?.getAttribute('aria-expanded')).toBe('true');
+    expect(menu?.hasAttribute('hidden')).toBe(false);
+    expect(document.activeElement).toBe(firstLink);
+  });
+});

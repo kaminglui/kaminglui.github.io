@@ -5,14 +5,14 @@ import App from './App';
 async function initSharedSiteShell() {
   try {
     if (import.meta.env.DEV) {
-      const { initSiteShell } = await import('../../assets/js/layout/siteShell.js');
-      initSiteShell('fourier-epicycles');
+      const { initMainLayout } = await import('../../assets/js/layout/mainLayout.js');
+      initMainLayout('fourier-epicycles');
       return;
     }
 
-    const siteShellUrl = new URL('../../assets/js/layout/siteShell.js', window.location.href).toString();
-    const { initSiteShell } = await import(/* @vite-ignore */ siteShellUrl);
-    initSiteShell('fourier-epicycles');
+    const siteShellUrl = new URL('../../assets/js/layout/mainLayout.js', window.location.href).toString();
+    const { initMainLayout } = await import(/* @vite-ignore */ siteShellUrl);
+    initMainLayout('fourier-epicycles');
   } catch (error) {
     console.error('Site shell failed to initialize:', error);
   }

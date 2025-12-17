@@ -1,24 +1,5 @@
-import { computeRootPrefix } from './site-header.js';
 import { DEFAULT_META, FOOTER_PRESETS } from './config/footerPresets.js';
-
-function normalizeRootPrefix(prefix) {
-  if (!prefix) return '';
-  if (prefix === '/') return '/';
-  return prefix.endsWith('/') ? prefix : `${prefix}/`;
-}
-
-function resolveRootPrefix(footer, explicitPrefix) {
-  if (typeof explicitPrefix === 'string' && explicitPrefix.trim()) {
-    return normalizeRootPrefix(explicitPrefix.trim());
-  }
-
-  const attr = footer?.dataset?.footerRoot || footer?.dataset?.navRoot;
-  if (typeof attr === 'string' && attr.trim()) {
-    return normalizeRootPrefix(attr.trim());
-  }
-
-  return normalizeRootPrefix(computeRootPrefix(window.location?.pathname));
-}
+import { normalizeRootPrefix, resolveRootPrefix } from './layout/rootPrefix.js';
 
 function resolvePreset(footer, presetId) {
   const id = presetId || footer?.dataset?.footerId || footer?.dataset?.footerPreset || 'home';
@@ -61,7 +42,11 @@ function renderSiteFooter(options = {}) {
   }
 
   const preset = resolvePreset(footer, options.preset);
-  const rootPrefix = resolveRootPrefix(footer, options.rootPrefix);
+  const rootPrefix = resolveRootPrefix({
+    explicitPrefix: options.rootPrefix,
+    element: footer,
+    fallbackPathname: window.location?.pathname
+  });
   const layoutClass = preset.layoutClass || 'footer__layout';
 
   let headingMarkup = '';

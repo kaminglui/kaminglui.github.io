@@ -1,34 +1,23 @@
 # Testing
 
-## What’s in the test suite
+Last updated: 2025-12-15
 
-### Unit tests (Vitest)
-- Root test runner: `vitest` (invoked via `npm test`)
-- Coverage includes:
-  - Circuit Lab simulation tests under `assets/js/sim/tests/`
-  - Site shell/layout tests under `assets/js/layout/tests/` (JSDOM environment)
+## Tooling
+- **Unit/integration:** [Vitest](https://vitest.dev/) with the `jsdom` environment (`vitest.config.js` includes all tests under `assets/js/**/*.test.js`).
+- **Headless browser/E2E (Fourier lab):** `scripts/e2e-fourier.mjs` (driven via Puppeteer) invoked by `npm run test:e2e` or `npm run test:fourier`.
 
-### Integration/E2E (Puppeteer)
-- Fourier Epicycles headless checks: `scripts/e2e-fourier.mjs`
-  - Validates the built lab (`pages/fourier-epicycles/`) including header mobile menu behavior, toolbars, KaTeX rendering, and fullscreen/pseudo-fullscreen flows.
+## Commands
+- Root layout + shared JS tests: `npm test`
+- Watch mode: `npm run test:watch`
+- Fourier Epicycles sub-app tests (from repo root): `npm --prefix pages/fourier-epicycles-src test`
+- Full Fourier pipeline (sub-app tests + build + e2e): `npm run test:fourier`
 
-## How to run
+## Coverage focus (current suite)
+- Header/Footer rendering via `initMainLayout` across home/lab/exception pages.
+- Navigation responsiveness: mobile toggle, dropdown toggles, keyboard access (ArrowDown focus, Escape close).
+- Root prefix utilities to keep cross-page links correct from nested `/pages/*` routes.
+- Footer presets, back-to-top link, and footer opt-out allowlist behavior.
 
-### Repo-level (recommended)
-- Install: `npm install`
-- Unit tests: `npm test`
-- Fourier end-to-end (requires Chrome/Edge):
-  - `npm run test:e2e` (E2E only)
-  - `npm run test:fourier` (Fourier unit tests + build + E2E)
-
-### Chrome/Edge requirement for E2E
-`puppeteer-core` needs a local browser binary. The E2E script auto-detects common Windows installs, or you can set:
-- `CHROME_PATH=<path to chrome.exe or msedge.exe>`
-
-## Test strategy notes
-- Layout tests validate the **contract** of the shared site shell:
-  - header/footer render
-  - Circuit Lab is an explicit **no-footer** exception
-  - nav interactions work in touch-mode (click-to-toggle) and remain keyboard closable (Escape)
-- Fourier E2E intentionally runs against the built output under `pages/fourier-epicycles/` to catch regressions in the deployable artifact.
-
+## Notes
+- Tests rely on jsdom; avoid accessing `window`/`document` outside guarded contexts in modules to preserve SSR-safety.
+- Module state (e.g., nav initialization flags) is reset between tests via `vi.resetModules()` in the suite helpers.

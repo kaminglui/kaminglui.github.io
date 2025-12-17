@@ -13,16 +13,16 @@ const resetDom = () => {
   localStorage.clear();
 };
 
-describe('assets/js/layout/siteShell.js', () => {
+describe('assets/js/layout/mainLayout.js', () => {
   beforeEach(() => {
     vi.resetModules();
     resetDom();
   });
 
   it('renders standardized header/footer for home', async () => {
-    const { initSiteShell } = await import('../siteShell.js');
+    const { initMainLayout } = await import('../mainLayout.js');
 
-    initSiteShell('home', { showEditToggle: true, useLocalAnchors: true });
+    initMainLayout('home', { showEditToggle: true, useLocalAnchors: true });
 
     const header = document.querySelector('[data-site-header]');
     expect(header).not.toBeNull();
@@ -39,9 +39,9 @@ describe('assets/js/layout/siteShell.js', () => {
 
   it('does not render footer for circuit-lab', async () => {
     window.history.replaceState({}, '', '/pages/circuit-lab/');
-    const { initSiteShell } = await import('../siteShell.js');
+    const { initMainLayout } = await import('../mainLayout.js');
 
-    initSiteShell('circuit-lab');
+    initMainLayout('circuit-lab');
 
     const footerTarget = document.getElementById('site-footer');
     expect(footerTarget?.classList.contains('site-footer')).toBe(false);
@@ -50,13 +50,12 @@ describe('assets/js/layout/siteShell.js', () => {
 
   it('uses transformer-lab footer preset content and rootPrefix', async () => {
     window.history.replaceState({}, '', '/pages/transformer-lab/');
-    const { initSiteShell } = await import('../siteShell.js');
+    const { initMainLayout } = await import('../mainLayout.js');
 
-    initSiteShell('transformer-lab');
+    initMainLayout('transformer-lab');
 
     const footer = document.querySelector('[data-site-footer]');
     expect(footer?.textContent).toContain('Ready for more machine learning stories?');
     expect(footer?.querySelector('a[href="../../index.html#projects"]')).not.toBeNull();
   });
 });
-

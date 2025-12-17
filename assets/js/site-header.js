@@ -1,33 +1,5 @@
 import { LOGO_TEXT, NAV_LABS, NAV_SECTIONS } from './config/navigation.js';
-
-function normalizeRootPrefix(prefix) {
-  if (!prefix) return '';
-  if (prefix === '/') return '/';
-  return prefix.endsWith('/') ? prefix : `${prefix}/`;
-}
-
-function computeRootPrefix(pathname = '') {
-  const rootAttr =
-    document.documentElement?.dataset.navRoot ??
-    document.body?.dataset.navRoot ??
-    null;
-
-  if (typeof rootAttr === 'string' && rootAttr.trim()) {
-    return normalizeRootPrefix(rootAttr.trim());
-  }
-
-  const safePath = typeof pathname === 'string' ? pathname : '';
-  const cleanPath = safePath.split(/[?#]/)[0].replace(/\\/g, '/');
-  const segments = cleanPath.split('/').filter(Boolean);
-
-  if (segments.length && segments[segments.length - 1].includes('.')) {
-    segments.pop();
-  }
-
-  if (segments.length === 0) return '';
-
-  return '../'.repeat(segments.length);
-}
+import { computeRootPrefix, resolveRootPrefix } from './layout/rootPrefix.js';
 
 function detectCurrentLabId(pathname = '') {
   const explicit =
@@ -89,9 +61,11 @@ function renderSiteHeader(options = {}) {
     (typeof options.rootPrefix === 'string' && options.rootPrefix.trim()) ||
     (typeof header?.dataset?.navRoot === 'string' && header.dataset.navRoot.trim());
 
-  const rootPrefix = normalizeRootPrefix(
-    explicitRoot ?? computeRootPrefix(window.location?.pathname)
-  );
+  const rootPrefix = resolveRootPrefix({
+    explicitPrefix: explicitRoot,
+    element: header,
+    fallbackPathname: window.location?.pathname
+  });
   const useLocalAnchors =
     options.useLocalAnchors ??
     (rootPrefix === '' || header.dataset.useLocalAnchors === 'true');
