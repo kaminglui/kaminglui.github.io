@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { FourierTerm, Point, InputMode } from './types';
 import { generateCircle, generateHeart, generateInfinity, generateMusicNote, generateSquare } from './services/mathUtils';
-import { processImage } from './services/imageProcessing';
+import { processImage, type EdgeProcessingOptions } from './services/imageProcessing';
 import { computeFourier } from './services/fourierEngine';
 import { computeEnergyMetrics } from './services/metrics';
 import { DEFAULT_VIEW, fitViewToPoints, isValidViewport, screenToWorld, Viewport, ViewState, viewFromWorldAnchor, zoomViewByFactorAt } from './services/viewTransform';
@@ -823,6 +823,16 @@ const App: React.FC = () => {
     }
   };
 
+  const buildUploadEdgeOptions = (detailValue: number, relaxed = false): EdgeProcessingOptions => {
+    const detail = detailValue / 100;
+    if (!relaxed) return { detail };
+    return {
+      detail,
+      highPercentile: 80,
+      lowRatio: 0.35
+    };
+  };
+
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
@@ -837,7 +847,11 @@ const App: React.FC = () => {
       setIsProcessing(true);
       lastUploadFileRef.current = file;
       try {
-        const pts = await processImage(file, 900, { detail: outlineDetail / 100 });
+        let pts = await processImage(file, 900, buildUploadEdgeOptions(outlineDetail));
+        if (pts.length === 0) {
+          alert("No clear edges detected. Retrying with higher sensitivity.");
+          pts = await processImage(file, 900, buildUploadEdgeOptions(outlineDetail, true));
+        }
         if (pts.length > 0) {
             setPoints(pts);
             setMode('UPLOAD');
@@ -863,7 +877,10 @@ const App: React.FC = () => {
     const timer = window.setTimeout(async () => {
       setIsProcessing(true);
       try {
-        const pts = await processImage(file, 900, { detail: outlineDetail / 100 });
+        let pts = await processImage(file, 900, buildUploadEdgeOptions(outlineDetail));
+        if (pts.length === 0) {
+          pts = await processImage(file, 900, buildUploadEdgeOptions(outlineDetail, true));
+        }
         if (pts.length > 0) {
           setPoints(pts);
           computeDFT(pts);

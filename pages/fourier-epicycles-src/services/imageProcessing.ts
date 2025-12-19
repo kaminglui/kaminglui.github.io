@@ -1,22 +1,43 @@
 import { Point } from '../types';
 
-export interface EdgeProcessingOptions {
-  threshold?: number;
+export type EdgeMethod = 'canny' | 'dog' | 'sobel' | 'legacy';
+
+export interface EdgeOptions {
+  method?: EdgeMethod;
+  sigma?: number;
+  lowRatio?: number;
+  highPercentile?: number;
+  minEdgeFrac?: number;
+  maxEdgeFrac?: number;
   sampleRate?: number;
+  morphRadius?: number;
+}
+
+export interface EdgeProcessingOptions extends EdgeOptions {
+  threshold?: number;
   maxPoints?: number;
   smoothingWindow?: number;
   blurRadius?: number;
-  morphRadius?: number;
   detail?: number;
 }
 
+const defaultEdgeOptions: Required<EdgeOptions> = {
+  method: 'canny',
+  sigma: 1.2,
+  lowRatio: 0.4,
+  highPercentile: 90,
+  minEdgeFrac: 0.001,
+  maxEdgeFrac: 0.15,
+  sampleRate: 1,
+  morphRadius: 1
+};
+
 const defaultOptions: Required<EdgeProcessingOptions> = {
+  ...defaultEdgeOptions,
   threshold: 30,
-  sampleRate: 2,
   maxPoints: 1500,
   smoothingWindow: 4,
   blurRadius: 1,
-  morphRadius: 2,
   detail: 0.9
 };
 
@@ -177,7 +198,7 @@ const dilateMask = (mask: Uint8Array, w: number, h: number, radius: number): Uin
           const xx = x + dx;
           if (xx < 0 || xx >= w) continue;
           if (mask[yy * w + xx]) {
-            on = 1;
+            on = 255;
             break;
           }
         }
@@ -193,7 +214,7 @@ const erodeMask = (mask: Uint8Array, w: number, h: number, radius: number): Uint
   const out = new Uint8Array(mask.length);
   for (let y = 0; y < h; y++) {
     for (let x = 0; x < w; x++) {
-      let on = 1;
+      let on = 255;
       for (let dy = -r; dy <= r && on; dy++) {
         const yy = y + dy;
         if (yy < 0 || yy >= h) {
@@ -255,7 +276,7 @@ const keepLargestComponent = (mask: Uint8Array, w: number, h: number): Uint8Arra
 
   const out = new Uint8Array(mask.length);
   best.forEach((idx) => {
-    out[idx] = 1;
+    out[idx] = 255;
   });
   return out;
 };
@@ -303,7 +324,7 @@ const traceContour = (mask: Uint8Array, w: number, h: number): Array<{ x: number
 
   const isOn = (x: number, y: number) => {
     if (x < 0 || x >= w || y < 0 || y >= h) return false;
-    return mask[y * w + x] === 1;
+    return mask[y * w + x] !== 0;
   };
 
   const start = { x: startX, y: startY };
@@ -402,7 +423,7 @@ const buildMaskFromOtsu = (gray: Uint8Array, thr: number, pickDark: boolean): Ui
   const out = new Uint8Array(gray.length);
   for (let i = 0; i < gray.length; i++) {
     const v = gray[i];
-    out[i] = pickDark ? (v <= thr ? 1 : 0) : (v >= thr ? 1 : 0);
+    out[i] = pickDark ? (v <= thr ? 255 : 0) : (v >= thr ? 255 : 0);
   }
   return out;
 };
@@ -417,7 +438,7 @@ const buildMaskFromBackgroundDiff = (
   const d = Math.max(1, Math.floor(delta));
   const out = new Uint8Array(gray.length);
   for (let i = 0; i < gray.length; i++) {
-    out[i] = Math.abs(gray[i] - border) >= d ? 1 : 0;
+    out[i] = Math.abs(gray[i] - border) >= d ? 255 : 0;
   }
   return out;
 };
@@ -462,7 +483,7 @@ const buildMaskFromSobel = (gray: Uint8Array, w: number, h: number): Uint8Array 
 
   const out = new Uint8Array(gray.length);
   for (let i = 0; i < mag.length; i++) {
-    out[i] = mag[i] >= threshold && mag[i] > 0 ? 1 : 0;
+    out[i] = mag[i] >= threshold && mag[i] > 0 ? 255 : 0;
   }
   return out;
 };
@@ -494,21 +515,19 @@ const gaussianKernel1D = (sigma: number): Float32Array => {
   return kernel;
 };
 
-const gaussianBlurGray = (src: Uint8Array, w: number, h: number, sigma: number): Float32Array => {
+export const gaussianBlurGray = (src: Uint8Array, w: number, h: number, sigma: number): Uint8Array => {
   const n = w * h;
   const s = Math.max(0, sigma);
-  if (n === 0) return new Float32Array(0);
+  if (n === 0) return new Uint8Array(0);
 
   if (s <= 0.01) {
-    const out = new Float32Array(n);
-    for (let i = 0; i < n; i++) out[i] = src[i];
-    return out;
+    return src.slice();
   }
 
   const kernel = gaussianKernel1D(s);
   const radius = (kernel.length - 1) / 2;
   const tmp = new Float32Array(n);
-  const out = new Float32Array(n);
+  const out = new Uint8Array(n);
 
   for (let y = 0; y < h; y++) {
     const row = y * w;
@@ -530,7 +549,8 @@ const gaussianBlurGray = (src: Uint8Array, w: number, h: number, sigma: number):
         const yy = clampInt(y + k, 0, h - 1);
         acc += kernel[k + radius] * (tmp[yy * w + x] ?? 0);
       }
-      out[row + x] = acc;
+      const v = Math.round(acc);
+      out[row + x] = v < 0 ? 0 : v > 255 ? 255 : v;
     }
   }
 
@@ -614,7 +634,7 @@ const buildDoGEdgeMask = (
 
   for (let idx = 0; idx < n; idx++) {
     if (strength[idx] >= high) {
-      edges[idx] = 1;
+      edges[idx] = 255;
       stack.push(idx);
     }
   }
@@ -634,7 +654,7 @@ const buildDoGEdgeMask = (
       const nIdx = ny * w + nx;
       if (edges[nIdx]) continue;
       if (strength[nIdx] >= low) {
-        edges[nIdx] = 1;
+        edges[nIdx] = 255;
         stack.push(nIdx);
       }
     }
@@ -643,12 +663,15 @@ const buildDoGEdgeMask = (
   return edges;
 };
 
-const buildCannyEdgeMask = (gray: Uint8Array, w: number, h: number, detail: number): Uint8Array => {
-  if (w < 3 || h < 3) return new Uint8Array(gray.length);
+const CANNY_HIST_BINS = 2048;
 
-  const mag = new Uint16Array(w * h);
-  const dir = new Uint8Array(w * h);
+export const sobelGradients = (gray: Uint8Array, w: number, h: number): { mag: Uint16Array; dir: Uint8Array } => {
+  const n = w * h;
+  const mag = new Uint16Array(n);
+  const dir = new Uint8Array(n);
+  if (w < 3 || h < 3) return { mag, dir };
 
+  const magMax = CANNY_HIST_BINS - 1;
   for (let y = 1; y < h - 1; y++) {
     const row = y * w;
     for (let x = 1; x < w - 1; x++) {
@@ -668,7 +691,7 @@ const buildCannyEdgeMask = (gray: Uint8Array, w: number, h: number, detail: numb
       const absGx = Math.abs(gx);
       const absGy = Math.abs(gy);
 
-      const m = Math.min(1024, absGx + absGy);
+      const m = Math.min(magMax, absGx + absGy);
       mag[idx] = m;
 
       let d = 0;
@@ -689,9 +712,12 @@ const buildCannyEdgeMask = (gray: Uint8Array, w: number, h: number, detail: numb
     }
   }
 
+  return { mag, dir };
+};
+
+export const nonMaxSuppression = (mag: Uint16Array, dir: Uint8Array, w: number, h: number): Uint16Array => {
   const nms = new Uint16Array(w * h);
-  const hist = new Uint32Array(1025);
-  let nonZero = 0;
+  if (w < 3 || h < 3) return nms;
 
   for (let y = 1; y < h - 1; y++) {
     const row = y * w;
@@ -719,39 +745,100 @@ const buildCannyEdgeMask = (gray: Uint8Array, w: number, h: number, detail: numb
 
       if (m >= m1 && m >= m2) {
         nms[idx] = m;
-        hist[m]++;
-        nonZero++;
       }
     }
   }
 
-  if (nonZero === 0) return new Uint8Array(gray.length);
+  return nms;
+};
 
-  const strongFraction = lerp(0.02, 0.1, detail);
-  const desiredStrong = clampInt(Math.floor(nonZero * strongFraction), 1, nonZero);
+const buildNmsHistogram = (nms: Uint16Array) => {
+  const hist = new Uint32Array(CANNY_HIST_BINS);
+  let nonZero = 0;
+  let maxVal = 0;
+  for (let i = 0; i < nms.length; i++) {
+    const v = nms[i];
+    if (v === 0) continue;
+    nonZero++;
+    if (v > maxVal) maxVal = v;
+    const bin = v < CANNY_HIST_BINS ? v : CANNY_HIST_BINS - 1;
+    hist[bin]++;
+  }
+  return { hist, nonZero, maxVal };
+};
 
+const thresholdFromPercentile = (hist: Uint32Array, nonZero: number, percentile: number) => {
+  if (nonZero <= 0) return Number.POSITIVE_INFINITY;
+  const pct = Math.max(50, Math.min(99, percentile));
+  const targetStrong = Math.max(1, Math.floor(nonZero * (1 - pct / 100)));
   let cumulative = 0;
-  let high = 1024;
-  for (let v = 1024; v >= 1; v--) {
+  for (let v = hist.length - 1; v >= 1; v--) {
     cumulative += hist[v];
-    if (cumulative >= desiredStrong) {
-      high = v;
-      break;
-    }
+    if (cumulative >= targetStrong) return v;
+  }
+  return 1;
+};
+
+const countHistAbove = (hist: Uint32Array, threshold: number) => {
+  const start = clampInt(Math.floor(threshold), 1, hist.length - 1);
+  let count = 0;
+  for (let v = start; v < hist.length; v++) count += hist[v];
+  return count;
+};
+
+export const pickCannyThresholds = (nms: Uint16Array, w: number, h: number, options: EdgeOptions = {}) => {
+  const { hist, nonZero } = buildNmsHistogram(nms);
+  if (nonZero === 0) {
+    return { low: Number.POSITIVE_INFINITY, high: Number.POSITIVE_INFINITY };
   }
 
-  const lowRatio = lerp(0.55, 0.25, detail);
-  const low = Math.max(1, Math.floor(high * lowRatio));
+  const lowRatio = Math.max(0.05, Math.min(0.9, options.lowRatio ?? defaultEdgeOptions.lowRatio));
+  const minEdgeFrac = Math.max(0, Math.min(1, options.minEdgeFrac ?? defaultEdgeOptions.minEdgeFrac));
+  const maxEdgeFrac = Math.max(minEdgeFrac, Math.min(1, options.maxEdgeFrac ?? defaultEdgeOptions.maxEdgeFrac));
+  let highPercentile = Math.max(50, Math.min(99, options.highPercentile ?? defaultEdgeOptions.highPercentile));
 
-  const edges = new Uint8Array(w * h);
+  const totalPixels = Math.max(1, w * h);
+  let high = Number.POSITIVE_INFINITY;
+  let low = Number.POSITIVE_INFINITY;
+
+  for (let attempt = 0; attempt < 3; attempt++) {
+    high = thresholdFromPercentile(hist, nonZero, highPercentile);
+    const highFloor = Math.max(1, Math.floor(high));
+    low = Math.max(1, Math.floor(highFloor * lowRatio));
+
+    const edgeCount = countHistAbove(hist, low);
+    const edgeFrac = edgeCount / totalPixels;
+    if (edgeFrac < minEdgeFrac) {
+      highPercentile = Math.max(50, highPercentile - 7);
+      continue;
+    }
+    if (edgeFrac > maxEdgeFrac) {
+      highPercentile = Math.min(99, highPercentile + 5);
+      continue;
+    }
+    break;
+  }
+
+  return { low, high };
+};
+
+export const hysteresis = (nms: Uint16Array, w: number, h: number, low: number, high: number): Uint8Array => {
+  const n = w * h;
+  const edges = new Uint8Array(n);
+  if (!Number.isFinite(low) || !Number.isFinite(high) || n === 0) return edges;
+
+  const lowThr = Math.max(1, Math.floor(low));
+  const highThr = Math.max(lowThr, Math.floor(high));
   const stack: number[] = [];
 
-  for (let idx = 0; idx < nms.length; idx++) {
-    if (nms[idx] >= high) {
-      edges[idx] = 1;
+  for (let idx = 0; idx < n; idx++) {
+    if (nms[idx] >= highThr) {
+      edges[idx] = 255;
       stack.push(idx);
     }
   }
+
+  if (stack.length === 0) return edges;
 
   const dx = [1, 1, 0, -1, -1, -1, 0, 1];
   const dy = [0, 1, 1, 1, 0, -1, -1, -1];
@@ -767,14 +854,181 @@ const buildCannyEdgeMask = (gray: Uint8Array, w: number, h: number, detail: numb
       if (nx < 0 || nx >= w || ny < 0 || ny >= h) continue;
       const nIdx = ny * w + nx;
       if (edges[nIdx]) continue;
-      if (nms[nIdx] >= low) {
-        edges[nIdx] = 1;
+      if (nms[nIdx] >= lowThr) {
+        edges[nIdx] = 255;
         stack.push(nIdx);
       }
     }
   }
 
   return edges;
+};
+
+const buildLegacyEdgeMaskFromGray = (gray: Uint8Array, w: number, h: number, threshold: number): Uint8Array => {
+  const out = new Uint8Array(gray.length);
+  const thr = Math.max(1, Math.floor(threshold));
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      if (x <= 0 || y <= 0) continue;
+      const idx = y * w + x;
+      const leftIdx = idx - 1;
+      const topIdx = idx - w;
+      const v = gray[idx];
+      const diff = Math.abs(v - gray[leftIdx]) + Math.abs(v - gray[topIdx]);
+      if (diff > thr) out[idx] = 255;
+    }
+  }
+  return out;
+};
+
+const downsampleGray = (
+  gray: Uint8Array,
+  width: number,
+  height: number,
+  sampleRate: number
+): { gray: Uint8Array; w: number; h: number; step: number } => {
+  const step = Math.max(1, Math.floor(sampleRate || 1));
+  const w = Math.max(1, Math.floor(width / step));
+  const h = Math.max(1, Math.floor(height / step));
+  if (step <= 1) return { gray, w: width, h: height, step: 1 };
+
+  const out = new Uint8Array(w * h);
+  for (let y = 0; y < h; y++) {
+    const srcY = clampInt(y * step, 0, height - 1);
+    for (let x = 0; x < w; x++) {
+      const srcX = clampInt(x * step, 0, width - 1);
+      out[y * w + x] = gray[srcY * width + srcX] ?? 0;
+    }
+  }
+
+  return { gray: out, w, h, step };
+};
+
+const upsampleMask = (
+  mask: Uint8Array,
+  srcW: number,
+  srcH: number,
+  width: number,
+  height: number,
+  step: number
+): Uint8Array => {
+  const out = new Uint8Array(width * height);
+  for (let y = 0; y < srcH; y++) {
+    const dstY = y * step;
+    if (dstY >= height) break;
+    for (let x = 0; x < srcW; x++) {
+      const v = mask[y * srcW + x];
+      if (!v) continue;
+      const dstX = x * step;
+      if (dstX >= width) continue;
+      const maxY = Math.min(height, dstY + step);
+      const maxX = Math.min(width, dstX + step);
+      for (let yy = dstY; yy < maxY; yy++) {
+        const row = yy * width;
+        for (let xx = dstX; xx < maxX; xx++) {
+          out[row + xx] = v;
+        }
+      }
+    }
+  }
+  return out;
+};
+
+const buildCannyEdgeMaskFromGray = (gray: Uint8Array, w: number, h: number, options: EdgeOptions): Uint8Array => {
+  if (w < 3 || h < 3) return new Uint8Array(gray.length);
+
+  const sigma = Math.max(0, options.sigma ?? defaultEdgeOptions.sigma);
+  const blurred = sigma > 0 ? gaussianBlurGray(gray, w, h, sigma) : gray;
+  const { mag, dir } = sobelGradients(blurred, w, h);
+  const nms = nonMaxSuppression(mag, dir, w, h);
+  const { hist, nonZero } = buildNmsHistogram(nms);
+
+  if (nonZero === 0) return new Uint8Array(gray.length);
+
+  const lowRatio = Math.max(0.05, Math.min(0.9, options.lowRatio ?? defaultEdgeOptions.lowRatio));
+  const minEdgeFrac = Math.max(0, Math.min(1, options.minEdgeFrac ?? defaultEdgeOptions.minEdgeFrac));
+  const maxEdgeFrac = Math.max(minEdgeFrac, Math.min(1, options.maxEdgeFrac ?? defaultEdgeOptions.maxEdgeFrac));
+  let highPercentile = Math.max(50, Math.min(99, options.highPercentile ?? defaultEdgeOptions.highPercentile));
+
+  const totalPixels = Math.max(1, w * h);
+  let edges = new Uint8Array(w * h);
+
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const high = thresholdFromPercentile(hist, nonZero, highPercentile);
+    const highFloor = Math.max(1, Math.floor(high));
+    const low = Math.max(1, Math.floor(highFloor * lowRatio));
+    edges = hysteresis(nms, w, h, low, highFloor);
+
+    const edgeCount = countOn(edges);
+    const edgeFrac = edgeCount / totalPixels;
+    if (edgeCount === 0 && attempt < 2) {
+      highPercentile = Math.max(50, highPercentile - 10);
+      continue;
+    }
+    if (edgeFrac < minEdgeFrac && attempt < 2) {
+      highPercentile = Math.max(50, highPercentile - 7);
+      continue;
+    }
+    if (edgeFrac > maxEdgeFrac && attempt < 2) {
+      highPercentile = Math.min(99, highPercentile + 5);
+      continue;
+    }
+    break;
+  }
+
+  return edges;
+};
+
+export const buildEdgeMaskFromGray = (
+  gray: Uint8Array,
+  width: number,
+  height: number,
+  options: EdgeOptions = {}
+): Uint8Array => {
+  const merged = { ...defaultEdgeOptions, ...options };
+  const sampleRate = Math.max(1, Math.floor(merged.sampleRate || 1));
+  const morphRadius = Math.max(0, Math.floor(merged.morphRadius || 0));
+
+  if (sampleRate > 1 && width > 0 && height > 0) {
+    const down = downsampleGray(gray, width, height, sampleRate);
+    const smallMask = buildEdgeMaskFromGray(down.gray, down.w, down.h, {
+      ...merged,
+      sampleRate: 1,
+      morphRadius: 0
+    });
+    const upsampled = upsampleMask(smallMask, down.w, down.h, width, height, sampleRate);
+    return morphRadius > 0
+      ? closeMask(upsampled, width, height, morphRadius)
+      : upsampled;
+  }
+
+  let mask: Uint8Array;
+  switch (merged.method) {
+    case 'dog': {
+      const detail = clamp01((options as EdgeProcessingOptions).detail ?? defaultOptions.detail);
+      const blurRadius = Math.max(0, Math.floor((options as EdgeProcessingOptions).blurRadius ?? defaultOptions.blurRadius));
+      mask = buildDoGEdgeMask(gray, width, height, detail, blurRadius);
+      break;
+    }
+    case 'sobel':
+      mask = buildMaskFromSobel(gray, width, height);
+      break;
+    case 'legacy': {
+      const threshold = Math.max(1, Math.floor((options as EdgeProcessingOptions).threshold ?? defaultOptions.threshold));
+      mask = buildLegacyEdgeMaskFromGray(gray, width, height, threshold);
+      break;
+    }
+    case 'canny':
+    default:
+      mask = buildCannyEdgeMaskFromGray(gray, width, height, merged);
+      break;
+  }
+
+  if (morphRadius > 0) {
+    mask = closeMask(mask, width, height, morphRadius);
+  }
+
+  return mask;
 };
 
 const edgeMaskToPolylines = (mask: Uint8Array, w: number, h: number): number[][] => {
@@ -1106,13 +1360,33 @@ export const extractEdgePath = (
   const { gray: rawGray, w, h, step } = downsampleGrayscale(data, width, height, sampleRate);
   const gray = rawGray;
 
-  let edgeMask = buildDoGEdgeMask(gray, w, h, detail, blurRadius);
-  if (countOn(edgeMask) < Math.max(10, Math.floor(w * h * 0.001))) {
-    edgeMask = buildMaskFromSobel(gray, w, h);
-  }
-  if (morphRadius > 0) {
-    edgeMask = closeMask(edgeMask, w, h, morphRadius);
-  }
+  const method = merged.method ?? 'canny';
+  const sigmaBase = lerp(2.2, 0.75, detail);
+  const sigma = typeof opts.sigma === 'number'
+    ? Math.max(0, opts.sigma)
+    : blurRadius <= 0
+      ? 0
+      : sigmaBase * Math.max(0.5, blurRadius);
+  const highPercentile = typeof opts.highPercentile === 'number'
+    ? opts.highPercentile
+    : lerp(95, 85, detail);
+  const lowRatio = typeof opts.lowRatio === 'number'
+    ? opts.lowRatio
+    : lerp(0.5, 0.3, detail);
+
+  const edgeMask = buildEdgeMaskFromGray(gray, w, h, {
+    method,
+    sigma,
+    lowRatio,
+    highPercentile,
+    minEdgeFrac: opts.minEdgeFrac ?? merged.minEdgeFrac,
+    maxEdgeFrac: opts.maxEdgeFrac ?? merged.maxEdgeFrac,
+    morphRadius,
+    sampleRate: 1,
+    detail,
+    blurRadius,
+    threshold
+  } as EdgeProcessingOptions);
 
   const polylinesIdx = edgeMaskToPolylines(edgeMask, w, h);
   const minSegment = clampInt(Math.round(lerp(40, 10, detail)), 6, 80);
