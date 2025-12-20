@@ -14,20 +14,20 @@ export interface EnergyMetrics {
 
 export const pickEpicycleCountForEnergy = (
   terms: FourierTerm[],
-  targetPct: number,
+  targetRatio: number,
   maxCount?: number
 ): number => {
   if (terms.length === 0) return 0;
   const cap = Math.max(1, Math.min(maxCount ?? terms.length, terms.length));
-  const clampedTarget = Math.max(0, Math.min(100, targetPct));
+  const clampedTarget = Math.max(0, Math.min(1, targetRatio));
   if (clampedTarget <= 0) return 1;
-  if (clampedTarget >= 100) return cap;
+  if (clampedTarget >= 1) return cap;
 
   const energies = terms.map((t) => t.amp * t.amp);
   const totalEnergy = energies.reduce((acc, e) => acc + e, 0);
   if (!Number.isFinite(totalEnergy) || totalEnergy <= 0) return 1;
 
-  const desired = (clampedTarget / 100) * totalEnergy;
+  const desired = clampedTarget * totalEnergy;
   let cumulative = 0;
   for (let i = 0; i < cap; i++) {
     cumulative += energies[i];

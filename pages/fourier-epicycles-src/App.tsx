@@ -1,9 +1,9 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { FourierTerm, Point, InputMode } from './types';
 import { generateCircle, generateHeart, generateInfinity, generateMusicNote, generateSquare } from './services/mathUtils';
-import { processImage, type EdgeProcessingOptions } from './services/imageProcessing';
+import { extractPathFromImage, type ExtractPathOptions, type OutlinePolarity } from './services/imageProcessing';
 import { computeFourier } from './services/fourierEngine';
-import { computeEnergyMetrics } from './services/metrics';
+import { computeEnergyMetrics, pickEpicycleCountForEnergy } from './services/metrics';
 import { DEFAULT_VIEW, fitViewToPoints, isValidViewport, screenToWorld, Viewport, ViewState, viewFromWorldAnchor, zoomViewByFactorAt } from './services/viewTransform';
 import { termColor } from './services/visualUtils';
 import Toolbar from './components/Toolbar';
@@ -13,11 +13,27 @@ const MAX_FOURIER_TERMS = 2400;
 const SAFE_MAX_TERMS = 700;
 const MIN_POINT_STEP = 1.75;
 const DEFAULT_SPEED = 0.45;
+const SPEED_MIN = 0.05;
+const SPEED_MAX = 3;
+const MIN_POINT_LIMIT = 900;
+const DEFAULT_SMOOTHING = 0;
+const ENERGY_TARGET = 0.9999;
 const MAX_UPLOAD_BYTES = 10_000_000;
 const AUTO_SAVE_KEY = 'fourier_viz__last_session';
 const MIN_VIEW_SCALE = 0.25;
 const MAX_VIEW_SCALE = 6;
 const ZOOM_BUTTON_FACTOR = 1.25;
+
+const clamp01 = (value: number) => Math.max(0, Math.min(1, value));
+const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
+
+const getPerformanceConfig = (speed: number, safeMode: boolean) => {
+  const t = clamp01((speed - SPEED_MIN) / (SPEED_MAX - SPEED_MIN));
+  const quality = 1 - t;
+  const baseLimit = Math.round(lerp(MIN_POINT_LIMIT, MAX_FOURIER_TERMS, quality));
+  const cap = safeMode ? Math.min(baseLimit, SAFE_MAX_TERMS) : baseLimit;
+  return { pointLimit: cap, maxEpicycles: cap };
+};
 
 type RenderState = {
   mode: InputMode;
@@ -51,8 +67,7 @@ const App: React.FC = () => {
   const [canvasBg, setCanvasBg] = useState('#0f172a');
   const [gridColor, setGridColor] = useState('rgba(148, 163, 184, 0.22)');
   const [speed, setSpeed] = useState(DEFAULT_SPEED);
-  const [smoothing, setSmoothing] = useState(0);
-  const [outlineDetail, setOutlineDetail] = useState(90);
+  const [outlinePolarity, setOutlinePolarity] = useState<OutlinePolarity>('auto');
   const [savedDrawings, setSavedDrawings] = useState<string[]>([]);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isPseudoFullscreen, setIsPseudoFullscreen] = useState(false);
@@ -60,6 +75,8 @@ const App: React.FC = () => {
   const [stepMode, setStepMode] = useState(false);
   const [stepIndex, setStepIndex] = useState(0);
   const [view, setView] = useState<ViewState>(DEFAULT_VIEW);
+
+  const perf = useMemo(() => getPerformanceConfig(speed, safeMode), [speed, safeMode]);
   
   // Brush Settings
   const [brushColor, setBrushColor] = useState('#ec4899'); // Default pink
@@ -72,6 +89,7 @@ const App: React.FC = () => {
   const requestRef = useRef<number>();
   const pointsRef = useRef<Point[]>([]); 
   const isDrawingRef = useRef(false);
+  const perfRef = useRef(perf);
   const activePointerIdRef = useRef<number | null>(null);
   const dprRef = useRef(1);
   const lastUploadFileRef = useRef<File | null>(null);
@@ -127,6 +145,10 @@ const App: React.FC = () => {
     stepIndex,
     view
   });
+
+  useEffect(() => {
+    perfRef.current = perf;
+  }, [perf]);
 
   const clearPathCanvas = useCallback(() => {
     if (pathCanvasRef.current) {
@@ -214,14 +236,13 @@ const App: React.FC = () => {
 
   const computeDFT = useCallback((pts: Point[]) => {
     if (pts.length === 0) return;
-    const limit = safeMode ? SAFE_MAX_TERMS : MAX_FOURIER_TERMS;
-    const { prepared, spectrum } = computeFourier(pts, { smoothing, limit });
+    const perf = getPerformanceConfig(speed, safeMode);
+    const { prepared, spectrum } = computeFourier(pts, { smoothing: DEFAULT_SMOOTHING, limit: perf.pointLimit });
     setPoints(prepared);
     setFourierX(spectrum);
-    const cap = Math.min(spectrum.length, limit);
-    // Default to the highest precision we can afford so the initial reconstruction
-    // captures ~100% of the available energy (users can dial it back with the slider).
-    setNumEpicycles(Math.max(1, cap));
+    const cap = Math.min(spectrum.length, perf.maxEpicycles);
+    const desired = pickEpicycleCountForEnergy(spectrum, ENERGY_TARGET, cap);
+    setNumEpicycles(Math.max(1, desired));
 
     const rect = canvasRef.current?.getBoundingClientRect();
     const viewport = rect ? { width: rect.width, height: rect.height } : null;
@@ -238,7 +259,7 @@ const App: React.FC = () => {
     resetSimulation();
     setIsPlaying(true);
     setStepIndex(0);
-  }, [resetSimulation, safeMode, smoothing]);
+  }, [resetSimulation, safeMode, speed]);
 
   useEffect(() => {
     // Load saved drawings list on mount
@@ -285,12 +306,6 @@ const App: React.FC = () => {
 
     return () => observer?.disconnect();
   }, []);
-
-  useEffect(() => {
-    const max = safeMode ? Math.min(fourierX.length, SAFE_MAX_TERMS) : fourierX.length;
-    if (max === 0) return;
-    setNumEpicycles((prev) => Math.min(Math.max(prev || 1, 1), max));
-  }, [fourierX.length, safeMode]);
 
   useEffect(() => {
     if (!stepMode && stepIndex !== 0) {
@@ -823,16 +838,6 @@ const App: React.FC = () => {
     }
   };
 
-  const buildUploadEdgeOptions = (detailValue: number, relaxed = false): EdgeProcessingOptions => {
-    const detail = detailValue / 100;
-    if (!relaxed) return { detail };
-    return {
-      detail,
-      highPercentile: 80,
-      lowRatio: 0.35
-    };
-  };
-
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
@@ -847,10 +852,10 @@ const App: React.FC = () => {
       setIsProcessing(true);
       lastUploadFileRef.current = file;
       try {
-        let pts = await processImage(file, 900, buildUploadEdgeOptions(outlineDetail));
-        if (pts.length === 0) {
-          alert("No clear edges detected. Retrying with higher sensitivity.");
-          pts = await processImage(file, 900, buildUploadEdgeOptions(outlineDetail, true));
+        const opts: ExtractPathOptions = { polarity: outlinePolarity, targetPoints: perf.pointLimit };
+        let pts = await extractPathFromImage(file, opts);
+        if (pts.length === 0 && outlinePolarity === 'auto') {
+          pts = await extractPathFromImage(file, { ...opts, polarity: 'invert' });
         }
         if (pts.length > 0) {
             setPoints(pts);
@@ -877,9 +882,11 @@ const App: React.FC = () => {
     const timer = window.setTimeout(async () => {
       setIsProcessing(true);
       try {
-        let pts = await processImage(file, 900, buildUploadEdgeOptions(outlineDetail));
-        if (pts.length === 0) {
-          pts = await processImage(file, 900, buildUploadEdgeOptions(outlineDetail, true));
+        const perfLive = perfRef.current;
+        const opts: ExtractPathOptions = { polarity: outlinePolarity, targetPoints: perfLive.pointLimit };
+        let pts = await extractPathFromImage(file, opts);
+        if (pts.length === 0 && outlinePolarity === 'auto') {
+          pts = await extractPathFromImage(file, { ...opts, polarity: 'invert' });
         }
         if (pts.length > 0) {
           setPoints(pts);
@@ -893,7 +900,7 @@ const App: React.FC = () => {
     }, 250);
 
     return () => window.clearTimeout(timer);
-  }, [mode, outlineDetail, computeDFT]);
+  }, [mode, outlinePolarity, computeDFT]);
 
   const stepTo = (nextIndex: number) => {
     if (!fourierX.length) return;
@@ -1125,7 +1132,7 @@ const App: React.FC = () => {
             clearPathCanvas();
             if (state.stepMode) {
               setIsPlaying(false);
-              const cap = state.safeMode ? Math.min(state.fourierX.length, SAFE_MAX_TERMS) : state.fourierX.length;
+              const cap = Math.min(state.fourierX.length, perfRef.current.maxEpicycles);
               setStepIndex((idx) => Math.min(idx + 1, Math.max(cap - 1, 0)));
             }
           } else {
@@ -1270,11 +1277,17 @@ const App: React.FC = () => {
     };
   }, []);
 
-  const effectiveMax = safeMode ? Math.min(fourierX.length, SAFE_MAX_TERMS) : fourierX.length;
+  const effectiveMax = Math.min(fourierX.length, perf.maxEpicycles);
   const focusIdx = Math.max(Math.min(numEpicycles - 1, (metrics.breakdown?.length || 1) - 1), 0);
   const deltaEnergy = metrics.breakdown?.[focusIdx]?.energyPct ?? 0;
   const cumulativeEnergy = metrics.breakdown?.[focusIdx]?.cumulativePct ?? metrics.energyPct;
   const fullscreenActive = isFullscreen || isPseudoFullscreen;
+
+  useEffect(() => {
+    if (!fourierX.length) return;
+    const capped = Math.min(Math.max(numEpicycles, 1), Math.max(effectiveMax, 1));
+    if (capped !== numEpicycles) setNumEpicycles(capped);
+  }, [effectiveMax, numEpicycles, fourierX.length]);
 
   useEffect(() => {
     if (!stepMode) return;
@@ -1331,10 +1344,8 @@ const App: React.FC = () => {
         setBrushColor={setBrushColor}
         brushSize={brushSize}
         setBrushSize={setBrushSize}
-        smoothing={smoothing}
-        setSmoothing={setSmoothing}
-        outlineDetail={outlineDetail}
-        setOutlineDetail={setOutlineDetail}
+        outlinePolarity={outlinePolarity}
+        setOutlinePolarity={setOutlinePolarity}
         isDrawing={isDrawing}
         onSave={handleSave}
         onLoad={handleLoad}

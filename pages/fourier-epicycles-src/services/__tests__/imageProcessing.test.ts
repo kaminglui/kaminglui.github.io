@@ -157,9 +157,9 @@ describe('extractEdgePath', () => {
 
 describe('processImage', () => {
   it('processes an uploaded image into points', async () => {
-    const width = 4;
-    const height = 4;
-    const data = buildBrightnessData(width, height, [[1, 1]]);
+    const width = 64;
+    const height = 64;
+    const data = buildRectOutlineData(width, height, { x0: 12, y0: 12, x1: 52, y1: 52 });
 
     class MockImage {
       width = width;
@@ -192,7 +192,7 @@ describe('processImage', () => {
       return originalCreate(tag);
     });
 
-    const result = await processImage(new File([''], 'test.png'), 10, { sampleRate: 1, threshold: 5, smoothingWindow: 1 });
+    const result = await processImage(new File([''], 'test.png'));
     expect(result.length).toBeGreaterThan(0);
   });
 
@@ -226,7 +226,7 @@ describe('processImage', () => {
     });
 
     await expect(
-      processImage(new File([''], 'broken.png'), 10, { sampleRate: 1, threshold: 5, smoothingWindow: 1 })
+      processImage(new File([''], 'broken.png'))
     ).rejects.toBeInstanceOf(Error);
   });
 });

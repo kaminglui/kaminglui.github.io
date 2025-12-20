@@ -21,6 +21,16 @@ export interface EdgeProcessingOptions extends EdgeOptions {
   detail?: number;
 }
 
+export type OutlinePolarity = 'auto' | 'normal' | 'invert';
+
+export interface ExtractPathOptions {
+  polarity?: OutlinePolarity;
+  targetPoints?: number;
+  speed?: number;
+}
+
+export const WORK_SIZE = 768;
+
 const defaultEdgeOptions: Required<EdgeOptions> = {
   method: 'canny',
   sigma: 1.2,
@@ -40,6 +50,16 @@ const defaultOptions: Required<EdgeProcessingOptions> = {
   blurRadius: 1,
   detail: 0.9
 };
+
+const DEFAULT_DENOISE_SIGMA = 1.3;
+const POLARITY_DELTA = 12;
+const INK_CLOSE_RADIUS = 1;
+const INK_DILATE_RADIUS = 2;
+const JOIN_EPS_RATIO = 0.003;
+const SIMPLIFY_EPS_RATIO = 0.002;
+const MIN_COMPONENT_LEN_RATIO = 0.01;
+const RESAMPLE_MIN = 900;
+const RESAMPLE_MAX = 2600;
 
 const buildPath = (points: Point[]): Point[] => {
   if (points.length === 0) return [];
@@ -83,6 +103,7 @@ const buildPath = (points: Point[]): Point[] => {
 const clampInt = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value));
 const clamp01 = (value: number) => Math.max(0, Math.min(1, value));
 const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
+const clampByte = (value: number) => (value < 0 ? 0 : value > 255 ? 255 : value);
 
 const downsampleGrayscale = (
   data: Uint8ClampedArray,
@@ -134,7 +155,40 @@ const boxBlurGray = (src: Uint8Array, w: number, h: number, radius: number): Uin
   return dst;
 };
 
-const otsuThreshold = (gray: Uint8Array): number => {
+export const median3x3 = (src: Uint8Array, w: number, h: number): Uint8Array => {
+  if (w * h === 0) return new Uint8Array(0);
+  const out = new Uint8Array(src.length);
+  const window = new Uint8Array(9);
+
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      let k = 0;
+      for (let dy = -1; dy <= 1; dy++) {
+        const yy = clampInt(y + dy, 0, h - 1);
+        const row = yy * w;
+        for (let dx = -1; dx <= 1; dx++) {
+          const xx = clampInt(x + dx, 0, w - 1);
+          window[k++] = src[row + xx] ?? 0;
+        }
+      }
+
+      for (let i = 1; i < window.length; i++) {
+        const v = window[i];
+        let j = i - 1;
+        while (j >= 0 && window[j] > v) {
+          window[j + 1] = window[j];
+          j--;
+        }
+        window[j + 1] = v;
+      }
+      out[y * w + x] = window[4];
+    }
+  }
+
+  return out;
+};
+
+export const otsuThreshold = (gray: Uint8Array): number => {
   const hist = new Uint32Array(256);
   for (let i = 0; i < gray.length; i++) hist[gray[i]]++;
 
@@ -146,6 +200,8 @@ const otsuThreshold = (gray: Uint8Array): number => {
   let wB = 0;
   let maxBetween = -1;
   let threshold = 128;
+  let bestSum = 0;
+  let bestCount = 0;
 
   for (let t = 0; t < 256; t++) {
     const count = hist[t];
@@ -159,12 +215,20 @@ const otsuThreshold = (gray: Uint8Array): number => {
     const mB = sumB / wB;
     const mF = (sumAll - sumB) / wF;
     const between = wB * wF * (mB - mF) * (mB - mF);
-    if (between > maxBetween) {
+    if (between > maxBetween + 1e-6) {
       maxBetween = between;
       threshold = t;
+      bestSum = t;
+      bestCount = 1;
+    } else if (Math.abs(between - maxBetween) <= 1e-6) {
+      bestSum += t;
+      bestCount += 1;
     }
   }
 
+  if (bestCount > 1) {
+    threshold = Math.round(bestSum / bestCount);
+  }
   return threshold;
 };
 
@@ -183,6 +247,42 @@ const meanBorderGray = (gray: Uint8Array, w: number, h: number) => {
     count += 2;
   }
   return count > 0 ? sum / count : 0;
+};
+
+const meanRegionGray = (
+  gray: Uint8Array,
+  w: number,
+  h: number,
+  x0: number,
+  y0: number,
+  x1: number,
+  y1: number
+) => {
+  const xs = clampInt(Math.min(x0, x1), 0, w - 1);
+  const xe = clampInt(Math.max(x0, x1), 0, w - 1);
+  const ys = clampInt(Math.min(y0, y1), 0, h - 1);
+  const ye = clampInt(Math.max(y0, y1), 0, h - 1);
+  let sum = 0;
+  let count = 0;
+  for (let y = ys; y <= ye; y++) {
+    const row = y * w;
+    for (let x = xs; x <= xe; x++) {
+      sum += gray[row + x] ?? 0;
+      count++;
+    }
+  }
+  return count > 0 ? sum / count : 0;
+};
+
+export const decidePolarity = (gray: Uint8Array, w: number, h: number): 'normal' | 'invert' => {
+  if (w === 0 || h === 0) return 'normal';
+  const borderMean = meanBorderGray(gray, w, h);
+  const cx0 = Math.floor(w * 0.25);
+  const cy0 = Math.floor(h * 0.25);
+  const cx1 = Math.floor(w * 0.75);
+  const cy1 = Math.floor(h * 0.75);
+  const centerMean = meanRegionGray(gray, w, h, cx0, cy0, cx1, cy1);
+  return borderMean + POLARITY_DELTA < centerMean ? 'invert' : 'normal';
 };
 
 const dilateMask = (mask: Uint8Array, w: number, h: number, radius: number): Uint8Array => {
@@ -1336,6 +1436,571 @@ const resampleClosedPath = (points: Point[], targetCount: number): Point[] => {
   return closeLoop(out);
 };
 
+type ResizeResult = {
+  gray: Uint8Array;
+  w: number;
+  h: number;
+  scale: number;
+  offsetX: number;
+  offsetY: number;
+  innerW: number;
+  innerH: number;
+};
+
+const rgbaToGray = (r: number, g: number, b: number) => 0.2126 * r + 0.7152 * g + 0.0722 * b;
+
+const estimateBorderGrayFromRGBA = (data: Uint8ClampedArray, w: number, h: number) => {
+  if (w === 0 || h === 0) return 255;
+  let sum = 0;
+  let count = 0;
+  const rowStride = w * 4;
+
+  const add = (idx: number) => {
+    const r = data[idx] ?? 0;
+    const g = data[idx + 1] ?? 0;
+    const b = data[idx + 2] ?? 0;
+    sum += rgbaToGray(r, g, b);
+    count++;
+  };
+
+  for (let x = 0; x < w; x++) {
+    add(x * 4);
+    add((h - 1) * rowStride + x * 4);
+  }
+  for (let y = 1; y < h - 1; y++) {
+    const row = y * rowStride;
+    add(row);
+    add(row + (w - 1) * 4);
+  }
+
+  return count > 0 ? sum / count : 255;
+};
+
+export class ImageResizer {
+  static resizeToSquareGray(
+    data: Uint8ClampedArray,
+    srcW: number,
+    srcH: number,
+    size: number,
+    fillGray: number
+  ): ResizeResult {
+    const safeSize = Math.max(1, Math.floor(size));
+    const out = new Uint8Array(safeSize * safeSize);
+    const fill = clampByte(Math.round(fillGray));
+    out.fill(fill);
+
+    if (srcW <= 0 || srcH <= 0) {
+      return {
+        gray: out,
+        w: safeSize,
+        h: safeSize,
+        scale: 1,
+        offsetX: 0,
+        offsetY: 0,
+        innerW: 0,
+        innerH: 0
+      };
+    }
+
+    const scale = Math.min(safeSize / srcW, safeSize / srcH);
+    const innerW = Math.max(1, Math.round(srcW * scale));
+    const innerH = Math.max(1, Math.round(srcH * scale));
+    const offsetX = Math.floor((safeSize - innerW) / 2);
+    const offsetY = Math.floor((safeSize - innerH) / 2);
+    const invScale = 1 / scale;
+    const rowStride = srcW * 4;
+
+    for (let y = 0; y < innerH; y++) {
+      const sy = (y + 0.5) * invScale - 0.5;
+      const y0 = clampInt(Math.floor(sy), 0, srcH - 1);
+      const y1 = clampInt(y0 + 1, 0, srcH - 1);
+      const wy = sy - y0;
+      const row0 = y0 * rowStride;
+      const row1 = y1 * rowStride;
+      const dstRow = (y + offsetY) * safeSize + offsetX;
+
+      for (let x = 0; x < innerW; x++) {
+        const sx = (x + 0.5) * invScale - 0.5;
+        const x0 = clampInt(Math.floor(sx), 0, srcW - 1);
+        const x1 = clampInt(x0 + 1, 0, srcW - 1);
+        const wx = sx - x0;
+
+        const idx00 = row0 + x0 * 4;
+        const idx10 = row0 + x1 * 4;
+        const idx01 = row1 + x0 * 4;
+        const idx11 = row1 + x1 * 4;
+
+        const g00 = rgbaToGray(data[idx00] ?? 0, data[idx00 + 1] ?? 0, data[idx00 + 2] ?? 0);
+        const g10 = rgbaToGray(data[idx10] ?? 0, data[idx10 + 1] ?? 0, data[idx10 + 2] ?? 0);
+        const g01 = rgbaToGray(data[idx01] ?? 0, data[idx01 + 1] ?? 0, data[idx01 + 2] ?? 0);
+        const g11 = rgbaToGray(data[idx11] ?? 0, data[idx11 + 1] ?? 0, data[idx11 + 2] ?? 0);
+
+        const g0 = g00 + (g10 - g00) * wx;
+        const g1 = g01 + (g11 - g01) * wx;
+        const g = g0 + (g1 - g0) * wy;
+
+        out[dstRow + x] = clampByte(Math.round(g));
+      }
+    }
+
+    return {
+      gray: out,
+      w: safeSize,
+      h: safeSize,
+      scale,
+      offsetX,
+      offsetY,
+      innerW,
+      innerH
+    };
+  }
+}
+
+export class PolarityDetector {
+  static decide(gray: Uint8Array, w: number, h: number) {
+    return decidePolarity(gray, w, h);
+  }
+}
+
+const applyPolarity = (gray: Uint8Array, invert: boolean) => {
+  if (!invert) return gray;
+  const out = new Uint8Array(gray.length);
+  for (let i = 0; i < gray.length; i++) out[i] = 255 - gray[i];
+  return out;
+};
+
+export class Denoiser {
+  static apply(gray: Uint8Array, w: number, h: number): Uint8Array {
+    const medianed = median3x3(gray, w, h);
+    return gaussianBlurGray(medianed, w, h, DEFAULT_DENOISE_SIGMA);
+  }
+}
+
+export class InkMaskExtractor {
+  static extract(gray: Uint8Array, w: number, h: number, borderMean: number): Uint8Array {
+    const otsu = otsuThreshold(gray);
+    let threshold = otsu;
+    if (borderMean > 128) {
+      threshold = Math.min(otsu, borderMean - 18);
+    }
+    threshold = clampInt(Math.round(threshold), 0, 255);
+    const mask = new Uint8Array(gray.length);
+    for (let i = 0; i < gray.length; i++) {
+      mask[i] = gray[i] <= threshold ? 255 : 0;
+    }
+    return INK_CLOSE_RADIUS > 0 ? closeMask(mask, w, h, INK_CLOSE_RADIUS) : mask;
+  }
+}
+
+export class EdgeExtractor {
+  static extract(gray: Uint8Array, w: number, h: number): Uint8Array {
+    return buildEdgeMaskFromGray(gray, w, h, {
+      method: 'canny',
+      sigma: 0.6,
+      highPercentile: 90,
+      lowRatio: 0.4,
+      minEdgeFrac: 0.001,
+      maxEdgeFrac: 0.12,
+      morphRadius: 0,
+      sampleRate: 1
+    });
+  }
+}
+
+export const thinZhangSuen = (mask: Uint8Array, w: number, h: number): Uint8Array => {
+  const n = w * h;
+  if (n === 0) return new Uint8Array(0);
+
+  const src = new Uint8Array(n);
+  for (let i = 0; i < n; i++) src[i] = mask[i] ? 1 : 0;
+  const toRemove = new Uint8Array(n);
+  let changed = true;
+  let iterations = 0;
+  const maxIter = 100;
+
+  const neighbors = (idx: number) => {
+    const p2 = src[idx - w];
+    const p3 = src[idx - w + 1];
+    const p4 = src[idx + 1];
+    const p5 = src[idx + w + 1];
+    const p6 = src[idx + w];
+    const p7 = src[idx + w - 1];
+    const p8 = src[idx - 1];
+    const p9 = src[idx - w - 1];
+    return { p2, p3, p4, p5, p6, p7, p8, p9 };
+  };
+
+  while (changed && iterations++ < maxIter) {
+    changed = false;
+    toRemove.fill(0);
+
+    for (let y = 1; y < h - 1; y++) {
+      const row = y * w;
+      for (let x = 1; x < w - 1; x++) {
+        const idx = row + x;
+        if (!src[idx]) continue;
+        const { p2, p3, p4, p5, p6, p7, p8, p9 } = neighbors(idx);
+        const bp = p2 + p3 + p4 + p5 + p6 + p7 + p8 + p9;
+        if (bp < 2 || bp > 6) continue;
+        const ap =
+          (p2 === 0 && p3 === 1 ? 1 : 0) +
+          (p3 === 0 && p4 === 1 ? 1 : 0) +
+          (p4 === 0 && p5 === 1 ? 1 : 0) +
+          (p5 === 0 && p6 === 1 ? 1 : 0) +
+          (p6 === 0 && p7 === 1 ? 1 : 0) +
+          (p7 === 0 && p8 === 1 ? 1 : 0) +
+          (p8 === 0 && p9 === 1 ? 1 : 0) +
+          (p9 === 0 && p2 === 1 ? 1 : 0);
+        if (ap !== 1) continue;
+        if (p2 * p4 * p6 !== 0) continue;
+        if (p4 * p6 * p8 !== 0) continue;
+        toRemove[idx] = 1;
+      }
+    }
+
+    for (let i = 0; i < n; i++) {
+      if (toRemove[i]) {
+        src[i] = 0;
+        changed = true;
+      }
+    }
+
+    toRemove.fill(0);
+    for (let y = 1; y < h - 1; y++) {
+      const row = y * w;
+      for (let x = 1; x < w - 1; x++) {
+        const idx = row + x;
+        if (!src[idx]) continue;
+        const { p2, p3, p4, p5, p6, p7, p8, p9 } = neighbors(idx);
+        const bp = p2 + p3 + p4 + p5 + p6 + p7 + p8 + p9;
+        if (bp < 2 || bp > 6) continue;
+        const ap =
+          (p2 === 0 && p3 === 1 ? 1 : 0) +
+          (p3 === 0 && p4 === 1 ? 1 : 0) +
+          (p4 === 0 && p5 === 1 ? 1 : 0) +
+          (p5 === 0 && p6 === 1 ? 1 : 0) +
+          (p6 === 0 && p7 === 1 ? 1 : 0) +
+          (p7 === 0 && p8 === 1 ? 1 : 0) +
+          (p8 === 0 && p9 === 1 ? 1 : 0) +
+          (p9 === 0 && p2 === 1 ? 1 : 0);
+        if (ap !== 1) continue;
+        if (p2 * p4 * p8 !== 0) continue;
+        if (p2 * p6 * p8 !== 0) continue;
+        toRemove[idx] = 1;
+      }
+    }
+
+    for (let i = 0; i < n; i++) {
+      if (toRemove[i]) {
+        src[i] = 0;
+        changed = true;
+      }
+    }
+  }
+
+  const out = new Uint8Array(n);
+  for (let i = 0; i < n; i++) out[i] = src[i] ? 255 : 0;
+  return out;
+};
+
+export class StrokeMerger {
+  static merge(edges: Uint8Array, inkMask: Uint8Array, w: number, h: number): Uint8Array {
+    const n = w * h;
+    const inkCount = countOn(inkMask);
+    const edgesCount = countOn(edges);
+    const useInkGate = inkCount > 0;
+    const inkDilated = useInkGate && INK_DILATE_RADIUS > 0 ? dilateMask(inkMask, w, h, INK_DILATE_RADIUS) : inkMask;
+    const gated = new Uint8Array(n);
+    if (useInkGate) {
+      for (let i = 0; i < n; i++) {
+        gated[i] = edges[i] && inkDilated[i] ? 255 : 0;
+      }
+    } else {
+      for (let i = 0; i < n; i++) gated[i] = edges[i] ? 255 : 0;
+    }
+
+    const combined = new Uint8Array(n);
+    if (useInkGate) {
+      for (let i = 0; i < n; i++) {
+        combined[i] = gated[i] || inkMask[i] ? 255 : 0;
+      }
+    } else {
+      for (let i = 0; i < n; i++) combined[i] = gated[i];
+    }
+
+    let thinned = thinZhangSuen(combined, w, h);
+    if (countOn(thinned) === 0) {
+      if (countOn(gated) > 0) thinned = gated;
+      else if (edgesCount > 0) thinned = edges;
+      else if (inkCount > 0) thinned = inkMask;
+    }
+    return thinned;
+  }
+}
+
+export class PolylineTracer {
+  static trace(mask: Uint8Array, w: number, h: number): Point[][] {
+    const polylinesIdx = edgeMaskToPolylines(mask, w, h);
+    const minSegment = Math.max(12, Math.round(Math.min(w, h) * MIN_COMPONENT_LEN_RATIO));
+    return polylinesIdx
+      .filter((poly) => poly.length >= minSegment)
+      .map((poly) => poly.map((idx) => idxToPoint(idx, w, 1, w, h)))
+      .map((poly) => dedupeConsecutive(poly))
+      .filter((poly) => poly.length >= 2);
+  }
+}
+
+export const joinPolylinesByEps = (polylines: Point[][], eps: number): Point[][] => {
+  if (polylines.length < 2 || eps <= 0) return polylines.map((poly) => [...poly]);
+  const epsSq = eps * eps;
+  const cellSize = eps;
+
+  const makeGrid = (input: Point[][]) => {
+    type Endpoint = { polyIndex: number; isStart: boolean; point: Point };
+    const grid = new Map<string, Endpoint[]>();
+    const add = (endpoint: Endpoint) => {
+      const gx = Math.floor(endpoint.point.x / cellSize);
+      const gy = Math.floor(endpoint.point.y / cellSize);
+      const key = `${gx},${gy}`;
+      const list = grid.get(key);
+      if (list) list.push(endpoint);
+      else grid.set(key, [endpoint]);
+    };
+
+    input.forEach((poly, index) => {
+      if (poly.length < 2) return;
+      add({ polyIndex: index, isStart: true, point: poly[0] });
+      add({ polyIndex: index, isStart: false, point: poly[poly.length - 1] });
+    });
+
+    return grid;
+  };
+
+  const collectNeighbors = (grid: Map<string, { polyIndex: number; isStart: boolean; point: Point }[]>, p: Point) => {
+    const gx = Math.floor(p.x / cellSize);
+    const gy = Math.floor(p.y / cellSize);
+    const candidates: { polyIndex: number; isStart: boolean; point: Point }[] = [];
+    for (let dy = -1; dy <= 1; dy++) {
+      for (let dx = -1; dx <= 1; dx++) {
+        const key = `${gx + dx},${gy + dy}`;
+        const list = grid.get(key);
+        if (list) candidates.push(...list);
+      }
+    }
+    return candidates;
+  };
+
+  const mergePair = (a: Point[], aIsStart: boolean, b: Point[], bIsStart: boolean) => {
+    const aOriented = aIsStart ? [...a].reverse() : [...a];
+    const bOriented = bIsStart ? [...b] : [...b].reverse();
+    const aEnd = aOriented[aOriented.length - 1];
+    const bStart = bOriented[0];
+    const dx = aEnd.x - bStart.x;
+    const dy = aEnd.y - bStart.y;
+    const distSq = dx * dx + dy * dy;
+    const mergeTolerance = 1e-6;
+    const merged = distSq <= mergeTolerance ? aOriented.concat(bOriented.slice(1)) : aOriented.concat(bOriented);
+    return dedupeConsecutive(merged);
+  };
+
+  const result = polylines.map((poly) => [...poly]);
+  let merged = true;
+
+  while (merged) {
+    merged = false;
+    const grid = makeGrid(result);
+
+    for (let i = 0; i < result.length; i++) {
+      const poly = result[i];
+      if (poly.length < 2) continue;
+      const endpoints = [
+        { point: poly[0], isStart: true },
+        { point: poly[poly.length - 1], isStart: false }
+      ];
+
+      let didMerge = false;
+      for (const endpoint of endpoints) {
+        const candidates = collectNeighbors(grid, endpoint.point);
+        let best: { polyIndex: number; isStart: boolean; point: Point } | null = null;
+        let bestDist = Infinity;
+
+        for (const candidate of candidates) {
+          if (candidate.polyIndex === i) continue;
+          const dx = endpoint.point.x - candidate.point.x;
+          const dy = endpoint.point.y - candidate.point.y;
+          const dSq = dx * dx + dy * dy;
+          if (dSq <= epsSq && dSq < bestDist) {
+            bestDist = dSq;
+            best = candidate;
+          }
+        }
+
+        if (best) {
+          const other = result[best.polyIndex];
+          const mergedPoly = mergePair(poly, endpoint.isStart, other, best.isStart);
+          const removeIndex = Math.max(i, best.polyIndex);
+          const keepIndex = Math.min(i, best.polyIndex);
+          result[keepIndex] = mergedPoly;
+          result.splice(removeIndex, 1);
+          merged = true;
+          didMerge = true;
+          break;
+        }
+      }
+      if (didMerge) break;
+    }
+  }
+
+  return result;
+};
+
+const isClosedLoop = (points: Point[], eps: number) => {
+  if (points.length < 3) return false;
+  const a = points[0];
+  const b = points[points.length - 1];
+  return Math.hypot(a.x - b.x, a.y - b.y) <= eps;
+};
+
+const resamplePathEven = (points: Point[], targetCount: number, closed: boolean): Point[] => {
+  const n = points.length;
+  if (n === 0) return [];
+  if (n === 1) return [{ ...points[0] }];
+
+  const target = clampInt(Math.round(targetCount), 8, 10_000);
+  const segCount = closed ? n : n - 1;
+  const segLens = new Float64Array(segCount);
+  let total = 0;
+  for (let i = 0; i < segCount; i++) {
+    const a = points[i];
+    const b = points[(i + 1) % n];
+    const d = Math.hypot(b.x - a.x, b.y - a.y);
+    segLens[i] = d;
+    total += d;
+  }
+
+  if (!Number.isFinite(total) || total <= 0) {
+    return Array.from({ length: target }, () => ({ ...points[0] }));
+  }
+
+  const step = total / (closed ? target : target - 1);
+  const sampleAt = (distanceAlong: number) => {
+    let segIdx = 0;
+    let acc = 0;
+    while (segIdx < segCount - 1 && acc + segLens[segIdx] < distanceAlong) {
+      acc += segLens[segIdx];
+      segIdx++;
+    }
+
+    const a = points[segIdx];
+    const b = points[(segIdx + 1) % n];
+    const segLen = segLens[segIdx] || 1;
+    const t = Math.max(0, Math.min(1, (distanceAlong - acc) / segLen));
+    return { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t };
+  };
+
+  if (closed) {
+    const out: Point[] = [];
+    for (let i = 0; i < target; i++) out.push(sampleAt(step * i));
+    return out;
+  }
+
+  const out: Point[] = [{ ...points[0] }];
+  for (let i = 1; i < target - 1; i++) out.push(sampleAt(step * i));
+  out.push({ ...points[n - 1] });
+  return out;
+};
+
+const targetPointsFromSpeed = (speed?: number) => {
+  if (!Number.isFinite(speed)) return RESAMPLE_MAX;
+  const minSpeed = 0.05;
+  const maxSpeed = 3;
+  const t = clamp01((speed - minSpeed) / (maxSpeed - minSpeed));
+  const quality = 1 - t;
+  return clampInt(Math.round(lerp(RESAMPLE_MIN, RESAMPLE_MAX, quality)), RESAMPLE_MIN, RESAMPLE_MAX);
+};
+
+export class PolylineOptimizer {
+  static optimize(polylines: Point[][], w: number, h: number, targetPoints: number): Point[] {
+    if (!polylines.length) return [];
+    const minDim = Math.min(w, h);
+    const minSegment = Math.max(12, Math.round(minDim * MIN_COMPONENT_LEN_RATIO));
+    const filtered = polylines.filter((poly) => poly.length >= minSegment);
+    if (!filtered.length) return [];
+
+    const joinEps = Math.max(1, minDim * JOIN_EPS_RATIO);
+    const simplifyEps = Math.max(0.75, minDim * SIMPLIFY_EPS_RATIO);
+    const merged = joinPolylinesByEps(filtered, joinEps);
+    const path = merged.length === 1 ? merged[0] : joinPolylines(merged, 0.6);
+    const cleaned = simplifyRDP(dedupeConsecutive(path), simplifyEps);
+    const closed = isClosedLoop(cleaned, joinEps * 1.5);
+    const target = clampInt(targetPoints, RESAMPLE_MIN, RESAMPLE_MAX);
+    return resamplePathEven(cleaned, target, closed);
+  }
+}
+
+export const extractPathFromGray = (
+  gray: Uint8Array,
+  w: number,
+  h: number,
+  options: ExtractPathOptions = {}
+): Point[] => {
+  if (!gray.length || w <= 0 || h <= 0) return [];
+  const polarity = options.polarity ?? 'auto';
+  const autoDecision = polarity === 'auto' ? PolarityDetector.decide(gray, w, h) : polarity;
+  const normalized = applyPolarity(gray, autoDecision === 'invert');
+  const borderMean = meanBorderGray(normalized, w, h);
+  const denoised = Denoiser.apply(normalized, w, h);
+  const inkMask = InkMaskExtractor.extract(normalized, w, h, borderMean);
+  const edges = EdgeExtractor.extract(denoised, w, h);
+  const merged = StrokeMerger.merge(edges, inkMask, w, h);
+  const polylines = PolylineTracer.trace(merged, w, h);
+  const targetPoints = options.targetPoints ?? targetPointsFromSpeed(options.speed);
+  return PolylineOptimizer.optimize(polylines, w, h, targetPoints);
+};
+
+export const extractPathFromImage = async (
+  file: File,
+  options: ExtractPathOptions = {}
+): Promise<Point[]> => {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      if (!ctx) {
+        URL.revokeObjectURL(url);
+        reject(new Error('Could not get canvas context'));
+        return;
+      }
+
+      const width = Math.max(1, Math.floor(img.width));
+      const height = Math.max(1, Math.floor(img.height));
+      canvas.width = width;
+      canvas.height = height;
+      ctx.imageSmoothingEnabled = true;
+      (ctx as unknown as { imageSmoothingQuality?: string }).imageSmoothingQuality = 'high';
+      ctx.drawImage(img, 0, 0, width, height);
+
+      const imageData = ctx.getImageData(0, 0, width, height);
+      const borderMean = estimateBorderGrayFromRGBA(imageData.data, width, height);
+      const resized = ImageResizer.resizeToSquareGray(imageData.data, width, height, WORK_SIZE, borderMean);
+      const points = extractPathFromGray(resized.gray, resized.w, resized.h, options);
+
+      URL.revokeObjectURL(url);
+      resolve(points);
+    };
+
+    img.onerror = (err) => {
+      URL.revokeObjectURL(url);
+      reject(err);
+    };
+
+    img.src = url;
+  });
+};
+
 export const extractEdgePath = (
   data: Uint8ClampedArray,
   width: number,
@@ -1456,44 +2121,10 @@ export const extractEdgePath = (
   return closeLoop(smoothedLegacy);
 };
 
-export const processImage = async (file: File, maxDimension: number = 900, opts: EdgeProcessingOptions = {}): Promise<Point[]> => {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    const url = URL.createObjectURL(file);
-    
-    img.onload = () => {
-      const canvas = document.createElement('canvas');
-      const ctx = canvas.getContext('2d');
-      if (!ctx) {
-        reject(new Error('Could not get canvas context'));
-        return;
-      }
-
-      let width = img.width;
-      let height = img.height;
-      const maxSide = Math.max(width, height);
-      const safeMax = maxDimension && maxDimension > 0 ? maxDimension : 900;
-      if (maxSide > safeMax) {
-        const ratio = safeMax / maxSide;
-        width = Math.round(width * ratio);
-        height = Math.round(height * ratio);
-      }
-      
-      canvas.width = width;
-      canvas.height = height;
-      ctx.imageSmoothingEnabled = true;
-      (ctx as unknown as { imageSmoothingQuality?: string }).imageSmoothingQuality = 'high';
-      ctx.drawImage(img, 0, 0, width, height);
-      
-      const imageData = ctx.getImageData(0, 0, width, height);
-      const points = extractEdgePath(imageData.data, width, height, opts);
-
-      URL.revokeObjectURL(url);
-      resolve(points);
-    };
-
-    img.onerror = (err) => reject(err);
-
-    img.src = url;
-  });
+export const processImage = async (
+  file: File,
+  _maxDimension: number = WORK_SIZE,
+  opts: ExtractPathOptions = {}
+): Promise<Point[]> => {
+  return extractPathFromImage(file, opts);
 };

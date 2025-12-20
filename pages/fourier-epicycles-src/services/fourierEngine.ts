@@ -1,5 +1,6 @@
 import { Complex, FourierTerm, Point } from '../types';
 import { dft, smoothPoints } from './mathUtils';
+import { pickEpicycleCountForEnergy } from './metrics';
 
 const DEFAULT_LIMIT = 1500;
 const MIN_RESAMPLE_OPEN = 300;
@@ -162,3 +163,16 @@ export const computeFourier = (
 };
 
 export { toComplex as pointsToComplex };
+
+export class FourierCompressor {
+  static compress(
+    points: Point[],
+    options: { smoothing?: number; limit?: number; energyTarget?: number; maxEpicycles?: number } = {}
+  ): { prepared: Point[]; spectrum: FourierTerm[]; numEpicycles: number } {
+    const { smoothing = 0, limit = DEFAULT_LIMIT, energyTarget = 0.9999, maxEpicycles } = options;
+    const { prepared, spectrum } = computeFourier(points, { smoothing, limit });
+    const cap = Math.min(spectrum.length, maxEpicycles ?? spectrum.length);
+    const numEpicycles = pickEpicycleCountForEnergy(spectrum, energyTarget, cap);
+    return { prepared, spectrum, numEpicycles };
+  }
+}

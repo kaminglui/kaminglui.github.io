@@ -44,13 +44,13 @@ describe('computeEnergyMetrics', () => {
 
 describe('pickEpicycleCountForEnergy', () => {
   it('returns 0 for empty terms', () => {
-    expect(pickEpicycleCountForEnergy([], 99.99)).toBe(0);
+    expect(pickEpicycleCountForEnergy([], 0.9999)).toBe(0);
   });
 
   it('clamps target <= 0 to 1 term', () => {
     const terms: FourierTerm[] = [{ re: 0, im: 0, freq: 0, amp: 2, phase: 0 }];
     expect(pickEpicycleCountForEnergy(terms, 0)).toBe(1);
-    expect(pickEpicycleCountForEnergy(terms, -5)).toBe(1);
+    expect(pickEpicycleCountForEnergy(terms, -0.5)).toBe(1);
   });
 
   it('clamps target >= 100 to the provided cap', () => {
@@ -59,8 +59,8 @@ describe('pickEpicycleCountForEnergy', () => {
       { re: 0, im: 0, freq: 1, amp: 1, phase: 0 },
       { re: 0, im: 0, freq: 2, amp: 1, phase: 0 }
     ];
-    expect(pickEpicycleCountForEnergy(terms, 100, 2)).toBe(2);
-    expect(pickEpicycleCountForEnergy(terms, 120, 2)).toBe(2);
+    expect(pickEpicycleCountForEnergy(terms, 1, 2)).toBe(2);
+    expect(pickEpicycleCountForEnergy(terms, 1.2, 2)).toBe(2);
   });
 
   it('returns the smallest term count that reaches the target energy', () => {
@@ -69,12 +69,12 @@ describe('pickEpicycleCountForEnergy', () => {
       { re: 0, im: 0, freq: 1, amp: 1, phase: 0 },  // energy=1
       { re: 0, im: 0, freq: 2, amp: 1, phase: 0 }   // energy=1
     ];
-    // total=102; 98% => 99.96, first term alone is enough
-    expect(pickEpicycleCountForEnergy(terms, 98)).toBe(1);
-    // 99% => 100.98, need one more term
-    expect(pickEpicycleCountForEnergy(terms, 99)).toBe(2);
-    // 99.99% => 101.9898, need all 3
-    expect(pickEpicycleCountForEnergy(terms, 99.99)).toBe(3);
+    // total=102; 0.98 => 99.96, first term alone is enough
+    expect(pickEpicycleCountForEnergy(terms, 0.98)).toBe(1);
+    // 0.99 => 100.98, need one more term
+    expect(pickEpicycleCountForEnergy(terms, 0.99)).toBe(2);
+    // 0.9999 => 101.9898, need all 3
+    expect(pickEpicycleCountForEnergy(terms, 0.9999)).toBe(3);
   });
 
   it('honors maxCount when the target cannot be reached within the cap', () => {
@@ -83,6 +83,6 @@ describe('pickEpicycleCountForEnergy', () => {
       { re: 0, im: 0, freq: 1, amp: 3, phase: 0 }  // 9
     ];
     // Need both terms to reach 100%, but cap=1 forces return=1.
-    expect(pickEpicycleCountForEnergy(terms, 99.99, 1)).toBe(1);
+    expect(pickEpicycleCountForEnergy(terms, 0.9999, 1)).toBe(1);
   });
 });

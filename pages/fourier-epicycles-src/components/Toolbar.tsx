@@ -12,7 +12,6 @@ import {
   Gauge,
   Palette,
   Circle,
-  Waves,
   Save,
   FolderOpen,
   Maximize2,
@@ -20,7 +19,6 @@ import {
   Shield,
   SkipForward,
   SkipBack,
-  ChevronsRight,
   ZoomIn,
   ZoomOut,
   LocateFixed,
@@ -28,6 +26,7 @@ import {
   SlidersHorizontal
 } from 'lucide-react';
 import { InputMode } from '../types';
+import type { OutlinePolarity } from '../services/imageProcessing';
 
 interface ToolbarProps {
   mode: InputMode;
@@ -49,10 +48,8 @@ interface ToolbarProps {
   setBrushColor: (c: string) => void;
   brushSize: number;
   setBrushSize: (s: number) => void;
-  smoothing: number;
-  setSmoothing: (s: number) => void;
-  outlineDetail: number;
-  setOutlineDetail: (v: number) => void;
+  outlinePolarity: OutlinePolarity;
+  setOutlinePolarity: (v: OutlinePolarity) => void;
   isDrawing: boolean;
   onSave: () => void;
   onLoad: (name: string) => void;
@@ -95,10 +92,8 @@ const Toolbar: React.FC<ToolbarProps> = ({
   setBrushColor,
   brushSize,
   setBrushSize,
-  smoothing,
-  setSmoothing,
-  outlineDetail,
-  setOutlineDetail,
+  outlinePolarity,
+  setOutlinePolarity,
   isDrawing,
   onSave,
   onLoad,
@@ -563,7 +558,7 @@ const Toolbar: React.FC<ToolbarProps> = ({
             {/* Sliders Container */}
             <div
               id="fourier-sliders"
-              className={`${slidersOpen ? 'grid' : 'hidden'} md:grid flex-1 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 w-full`}
+              className={`${slidersOpen ? 'grid' : 'hidden'} md:grid flex-1 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 w-full`}
             >
                 {/* Epicycles / Precision */}
                 <div className="flex flex-col justify-center gap-2">
@@ -603,44 +598,26 @@ const Toolbar: React.FC<ToolbarProps> = ({
                     />
                 </div>
 
-                {/* Smoothing Control */}
+                {/* Outline Polarity */}
                 <div className="flex flex-col justify-center gap-2">
                     <div className="flex justify-between text-xs font-semibold uppercase tracking-wider text-slate-400">
                         <div className="flex items-center gap-1">
-                             <Waves size={12} />
-                             <span>Smoothness</span>
+                             <Circle size={12} />
+                             <span>Outline polarity</span>
                         </div>
-                        <span className="text-emerald-400">{smoothing}px</span>
+                        <span className="text-slate-300">
+                          {outlinePolarity === 'auto' ? 'Auto' : outlinePolarity === 'invert' ? 'Invert' : 'Normal'}
+                        </span>
                     </div>
-                    <input 
-                        type="range" 
-                        min="0" 
-                        max="20" 
-                        step="1"
-                        value={smoothing} 
-                        onChange={(e) => setSmoothing(parseInt(e.target.value))}
-                        className="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-emerald-500"
-                    />
-                </div>
-
-                {/* Outline Detail Control */}
-                <div className="flex flex-col justify-center gap-2">
-                    <div className="flex justify-between text-xs font-semibold uppercase tracking-wider text-slate-400">
-                        <div className="flex items-center gap-1">
-                             <ChevronsRight size={12} />
-                             <span>Outline detail</span>
-                        </div>
-                        <span className="text-violet-300">{outlineDetail}%</span>
-                    </div>
-                    <input
-                        type="range"
-                        min="10"
-                        max="100"
-                        step="1"
-                        value={outlineDetail}
-                        onChange={(e) => setOutlineDetail(parseInt(e.target.value))}
-                        className="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-violet-400"
-                    />
+                    <select
+                        value={outlinePolarity}
+                        onChange={(e) => setOutlinePolarity(e.target.value as OutlinePolarity)}
+                        className="w-full h-9 bg-slate-700 rounded-lg text-slate-100 px-3 text-sm border border-slate-600 focus:outline-none focus:ring-2 focus:ring-cyan-500/60"
+                    >
+                        <option value="auto">Auto</option>
+                        <option value="normal">Normal</option>
+                        <option value="invert">Invert</option>
+                    </select>
                 </div>
             </div>
 
