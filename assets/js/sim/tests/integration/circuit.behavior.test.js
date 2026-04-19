@@ -8,6 +8,8 @@ import {
   makeVoltageSource,
   makeResistor,
   makeCapacitor,
+  makeInductor,
+  makeBjt,
   makeLED,
   makeMosfet,
   makeOpAmp,
@@ -301,6 +303,70 @@ describe('Op-amp input offset', () => {
     // Expect ~6 mV; accept [2, 20] mV to absorb the small inputLeak / outputLeak terms.
     expect(Math.abs(vOut)).toBeGreaterThan(2e-3);
     expect(Math.abs(vOut)).toBeLessThan(0.02);
+  });
+});
+
+describe('Inductor transient', () => {
+  it('resists sudden current change: an RL step ramps toward Vs/R with tau = L/R', () => {
+    // 5 V through 100 Ω in series with a 10 mH inductor. tau = L/R = 100 µs.
+    // After 5·tau the current should be within a few percent of 50 mA.
+    const circuit = buildCircuit();
+    const gnd = makeGround();
+    const src = makeVoltageSource(5);
+    const r = makeResistor(100);
+    const ind = makeInductor(10e-3);
+    circuit.add(gnd, src, r, ind);
+    circuit.connect(src, 1, gnd, 0);
+    circuit.connect(src, 0, r, 0);
+    circuit.connect(r, 1, ind, 0);
+    circuit.connect(ind, 1, gnd, 0);
+
+    let iFinal = 0;
+    runTransient(circuit, {
+      duration: 1e-3, // 10·tau
+      dt: 5e-7,
+      sampleInterval: 1e-4,
+      measure: ({ sim }) => { iFinal = resistorCurrent(r, sim.voltage); }
+    });
+    expect(iFinal).toBeGreaterThan(0.045); // within 10% of 50 mA steady state
+    expect(iFinal).toBeLessThan(0.055);
+  });
+});
+
+describe('BJT (NPN) common-emitter amplifier', () => {
+  it('puts the transistor into the active region and mirrors Ic ≈ β·Ib', () => {
+    // Base drive via a resistor sets Ib; collector load drops Ic·Rc. For a
+    // base voltage of 1.2 V, Vbe_on = 0.7, Rbe = 1k → Ib = 0.5 mA and
+    // Ic = 100·0.5 mA = 50 mA ideally. With Rc = 100 Ω and Vcc = 5 V, Ic is
+    // collector-load limited to ~50 mA → Vce ≈ 0.2 V (saturation edge).
+    const circuit = buildCircuit();
+    const gnd = makeGround();
+    const vcc = makeVoltageSource(5);
+    const vbb = makeVoltageSource(1.2);
+    const rc = makeResistor(100);
+    const q = makeBjt('NPN', { Beta: '100', VbeOn: '0.7', VceSat: '0.2', Rbe: '1k' });
+    circuit.add(gnd, vcc, vbb, rc, q);
+    circuit.connect(vcc, 1, gnd, 0);
+    circuit.connect(vbb, 1, gnd, 0);
+    circuit.connect(vbb, 0, q, 0);     // base
+    circuit.connect(vcc, 0, rc, 0);
+    circuit.connect(rc, 1, q, 1);      // collector via Rc
+    circuit.connect(q, 2, gnd, 0);     // emitter
+
+    let iC = 0;
+    let vCE = 0;
+    runTransient(circuit, {
+      duration: 1e-3,
+      dt: 1e-5,
+      sampleInterval: 1e-4,
+      measure: ({ sim }) => {
+        iC = resistorCurrent(rc, sim.voltage);
+        vCE = sim.voltage(q, 1) - sim.voltage(q, 2);
+      }
+    });
+    // Significant collector current (well above leakage) and Vce down near saturation.
+    expect(iC).toBeGreaterThan(5e-3);
+    expect(vCE).toBeLessThan(4); // some drop; active region or near saturation
   });
 });
 

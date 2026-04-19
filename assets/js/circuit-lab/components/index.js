@@ -1,6 +1,8 @@
 import createResistor from './resistor.js';
 import createPotentiometer from './potentiometer.js';
 import createCapacitor from './capacitor.js';
+import createInductor from './inductor.js';
+import createBJT from './bjt.js';
 import createLED from './led.js';
 import createSwitch from './switch.js';
 import createJunction from './junction.js';
@@ -15,6 +17,8 @@ export {
     createResistor,
     createPotentiometer,
     createCapacitor,
+    createInductor,
+    createBJT,
     createLED,
     createSwitch,
     createJunction,

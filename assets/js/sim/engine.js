@@ -2,6 +2,8 @@ import { MNASystem } from './MNASystem.js';
 import {
   Resistor,
   Capacitor,
+  Inductor,
+  BJT,
   Potentiometer,
   VoltageSource,
   FunctionGenerator,
@@ -163,8 +165,10 @@ function buildMapping({ components, wires }) {
 
   const rootToNode = new Map();
   const pinToNode = new Map();
-  if (groundRoot != null) rootToNode.set(groundRoot, -1);
   let nodeCount = 0;
+  if (groundRoot != null) {
+    rootToNode.set(groundRoot, -1);
+  }
   const seen = new Set();
   components.forEach((c) => {
     c.pins.forEach((_, i) => {
@@ -234,6 +238,22 @@ function updateComponentState({ components, solution, getNodeIndex, parseUnit: p
       c._lastVd = (nD === -1 ? 0 : solution[nD]);
       c._lastVs = (nS === -1 ? 0 : solution[nS]);
       c._lastVb = (nB === -1 ? c._lastVs : solution[nB]);
+    } else if (kind === 'inductor') {
+      const n1 = getNodeIndex(c, 0);
+      const n2 = getNodeIndex(c, 1);
+      const v1 = (n1 === -1 ? 0 : solution[n1]);
+      const v2 = (n2 === -1 ? 0 : solution[n2]);
+      const L = parse(c.props?.L || '1m') || 1e-3;
+      const dt = c._simDt || 1e-5;
+      // I_now = (dt/L) · V + I_prev from the backward-Euler companion.
+      c._lastI = (c._lastI || 0) + (dt / L) * (v1 - v2);
+    } else if (kind === 'bjt') {
+      const nB = getNodeIndex(c, 0);
+      const nC = getNodeIndex(c, 1);
+      const nE = getNodeIndex(c, 2);
+      c._lastVb = (nB === -1 ? 0 : solution[nB]);
+      c._lastVc = (nC === -1 ? 0 : solution[nC]);
+      c._lastVe = (nE === -1 ? 0 : solution[nE]);
     }
   });
 }
@@ -376,6 +396,27 @@ function buildSimulationComponents({
       const rLeakRaw = parse(c.props?.Rleak || '');
       const rLeak = Number.isFinite(rLeakRaw) && rLeakRaw > 0 ? rLeakRaw : Infinity;
       simComponents.push(new Capacitor(n1, n2, C, dt, c._lastV || 0, rLeak));
+    } else if (kind === 'inductor') {
+      const n1 = getNodeIndex(c, 0);
+      const n2 = getNodeIndex(c, 1);
+      const L = parse(c.props?.L || '1m') || 1e-3;
+      const dcr = Math.max(0, parse(c.props?.DCR || '0'));
+      c._simDt = dt; // updateComponentState needs dt to integrate I_prev
+      simComponents.push(new Inductor(n1, n2, L, dt, c._lastI || 0, dcr));
+    } else if (kind === 'bjt') {
+      const nB = getNodeIndex(c, 0);
+      const nC = getNodeIndex(c, 1);
+      const nE = getNodeIndex(c, 2);
+      simComponents.push(new BJT(nB, nC, nE, {
+        type: c.props?.Type || 'NPN',
+        beta: parseFloat(c.props?.Beta || '100') || 100,
+        vbeOn: Math.max(0, parse(c.props?.VbeOn || '0.7')),
+        vceSat: Math.max(0, parse(c.props?.VceSat || '0.2')),
+        rBe: Math.max(1, parse(c.props?.Rbe || '1k')),
+        lastVb: c._lastVb ?? 0,
+        lastVc: c._lastVc ?? 0,
+        lastVe: c._lastVe ?? 0
+      }));
     } else if (kind === 'led') {
       const nA = getNodeIndex(c, 0);
       const nK = getNodeIndex(c, 1);
@@ -540,7 +581,6 @@ function runSimulation(opts = {}) {
   const funcGenSeriesRes = opts.funcGenSeriesRes ?? DEFAULTS.funcGenSeriesRes;
   const maxOutputClamp = opts.maxOutputClamp ?? DEFAULTS.maxOutputClamp;
   const maxDiodeIterations = opts.maxDiodeIterations ?? DEFAULTS.maxDiodeIterations;
-
   if (!components.length) {
     const getNodeIndex = () => -1;
     return {

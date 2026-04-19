@@ -108,6 +108,20 @@ function makeOscilloscope(props = {}, id) {
   }, id);
 }
 
+function makeInductor(value, id) {
+  return makeComponent('inductor', 2, { L: String(value), DCR: '0' }, id);
+}
+
+function makeBjt(type = 'NPN', props = {}, id) {
+  return makeComponent('bjt', 3, {
+    Type: type || 'NPN',
+    Beta: props.Beta || '100',
+    VbeOn: props.VbeOn || '0.7',
+    VceSat: props.VceSat || '0.2',
+    Rbe: props.Rbe || '1k'
+  }, id);
+}
+
 function makeMosfet(type = 'NMOS', props = {}, id) {
   return makeComponent('mosfet', 4, {
     Type: type || 'NMOS',
@@ -302,6 +316,8 @@ export {
   makeOpAmp,
   makeOscilloscope,
   makeMosfet,
+  makeInductor,
+  makeBjt,
   wire,
   simulateCircuit,
   runSimulation,
