@@ -3062,6 +3062,29 @@ function updatePinch(e) {
 }
 
 // find a pin under mouse
+// Strip middle vertices whose inclusion adds no bend: i.e. the prev/curr/next triplet
+// is collinear horizontally or vertically. User-placed vertices are preserved so the
+// router's 1-grid pin stubs can be cleaned up without erasing the user's drag targets.
+function dropCollinearVerts(verts, startPos, endPos) {
+    if (!Array.isArray(verts) || verts.length === 0) return verts ? verts.slice() : [];
+    const poly = [startPos, ...verts, endPos];
+    const out = [];
+    for (let i = 1; i < poly.length - 1; i++) {
+        const curr = poly[i];
+        const prev = out.length > 0 ? out[out.length - 1] : poly[i - 1];
+        const next = poly[i + 1];
+        if (curr && curr.userPlaced === true) {
+            out.push(curr);
+            continue;
+        }
+        const collinearH = prev.y === curr.y && curr.y === next.y;
+        const collinearV = prev.x === curr.x && curr.x === next.x;
+        if (collinearH || collinearV) continue;
+        out.push(curr);
+    }
+    return out;
+}
+
 function findPinAt(m, radius = PIN_HIT_RADIUS) {
     for (const c of components) {
         for (let i = 0; i < c.pins.length; i++) {
@@ -3401,15 +3424,52 @@ function onDown(e) {
         }
         const snap = snapToBoardPoint(best.proj.x, best.proj.y);
         const verts = draggingWire.origVerts.map(v => ({ ...v }));
-        let movingIdx = verts.findIndex(v => Math.hypot(v.x - snap.x, v.y - snap.y) <= GRID * 0.25);
-        if (movingIdx === -1) {
-            const insertAt = Math.min(best.idx, verts.length);
-            verts.splice(insertAt, 0, { ...snap, userPlaced: true });
-            movingIdx = insertAt;
-            draggingWire.insertedIdx = insertAt;
+
+        // If the click lands on an existing vertex, drag just that one (free move).
+        // Otherwise, grab the whole segment: both endpoints (if they're vertices) translate
+        // together on the axis perpendicular to the segment, so the grabbed line stays
+        // parallel to itself. Pin-connected ends stay pinned; routeManhattan inserts a
+        // one-grid stub so the wire re-anchors cleanly (Cadence/Multisim style).
+        let movingIdx = verts.findIndex(
+            v => Math.hypot(v.x - snap.x, v.y - snap.y) <= GRID * 0.4
+        );
+        let movedIndices = [];
+        let segmentOrientation = null;
+
+        if (movingIdx >= 0) {
+            movedIndices = [movingIdx];
+        } else {
+            const segStart = polyline[best.idx];
+            const segEnd = polyline[best.idx + 1];
+            const horizontal = segStart.y === segEnd.y && segStart.x !== segEnd.x;
+            const vertical = segStart.x === segEnd.x && segStart.y !== segEnd.y;
+            segmentOrientation = horizontal ? 'H' : (vertical ? 'V' : null);
+
+            // polyline[0] is the from-pin, polyline[n] is the to-pin; everything between
+            // maps to wire.vertices by index-1.
+            const startVertIdx = best.idx - 1;
+            const endVertIdx = best.idx;
+            if (startVertIdx >= 0 && startVertIdx < verts.length) movedIndices.push(startVertIdx);
+            if (endVertIdx >= 0 && endVertIdx < verts.length) movedIndices.push(endVertIdx);
+
+            if (movedIndices.length === 0) {
+                // Pin-to-pin segment with no interior vertices: fall back to the old
+                // "insert a vertex at click" behaviour so a straight wire is still draggable.
+                const insertAt = Math.min(best.idx, verts.length);
+                verts.splice(insertAt, 0, { ...snap, userPlaced: true });
+                movingIdx = insertAt;
+                movedIndices = [insertAt];
+                draggingWire.insertedIdx = insertAt;
+                segmentOrientation = null;
+            } else {
+                movingIdx = movedIndices[0];
+            }
         }
+
         draggingWire.verts = verts;
         draggingWire.movingIdx = movingIdx;
+        draggingWire.movedIndices = movedIndices;
+        draggingWire.segmentOrientation = segmentOrientation;
         wireHit.vertices = verts;
         wireDragStart = snap;
         wireDragMoved = false;
@@ -3589,34 +3649,45 @@ function onMove(e) {
     }
 
     if (draggingWire) {
-        const dx = m.x - wireDragStart.x;
-        const dy = m.y - wireDragStart.y;
+        let dx = m.x - wireDragStart.x;
+        let dy = m.y - wireDragStart.y;
+        // Segment drags lock to the perpendicular axis so the grabbed line translates
+        // without tilting. Vertex drags (segmentOrientation === null) stay free.
+        if (draggingWire.segmentOrientation === 'H') dx = 0;
+        else if (draggingWire.segmentOrientation === 'V') dy = 0;
+
         const moved = Math.hypot(dx, dy) > 0;
         wireDragMoved = wireDragMoved || moved;
 
-        const newVerts = draggingWire.verts.map((v, idx) => {
-            if (idx !== draggingWire.movingIdx) return { ...v };
-            const snapped = snapToBoardPoint(v.x + dx, v.y + dy);
-            return { ...snapped, userPlaced: v.userPlaced };
-        });
+        if (moved) {
+            const indices = draggingWire.movedIndices || [draggingWire.movingIdx];
+            const movedSet = new Set(indices);
+            const newVerts = draggingWire.verts.map((v, idx) => {
+                if (!movedSet.has(idx)) return { ...v };
+                const snapped = snapToBoardPoint(v.x + dx, v.y + dy);
+                // Mark the user's drag targets so dropCollinearVerts won't erase them later.
+                return { ...snapped, userPlaced: true };
+            });
 
-        // Re-route through routeManhattan so the pin-connected segments keep a one-grid
-        // stub instead of slicing diagonally into the pin. This gives Multisim/Cadence-style
-        // "corner after one step" behavior automatically as the user drags.
-        const wire = draggingWire.wire;
-        const startPos = wire.from.c.getPinPos(wire.from.p);
-        const endPos = wire.to.c.getPinPos(wire.to.p);
-        const startDir = getPinDirection(wire.from.c, wire.from.p);
-        const endDir = getPinDirection(wire.to.c, wire.to.p);
-        const routedPath = routeManhattan(
-            startPos,
-            newVerts,
-            endPos,
-            startDir,
-            endDir,
-            { preferredOrientation: wire.routePref || null }
-        );
-        wire.vertices = routedPath.slice(1, Math.max(1, routedPath.length - 1));
+            // Route through routeManhattan so pin-connected ends get a one-grid stub, then
+            // strip router-added stubs that are collinear with their neighbours so the wire
+            // state doesn't accumulate noise across repeated drags.
+            const wire = draggingWire.wire;
+            const startPos = wire.from.c.getPinPos(wire.from.p);
+            const endPos = wire.to.c.getPinPos(wire.to.p);
+            const startDir = getPinDirection(wire.from.c, wire.from.p);
+            const endDir = getPinDirection(wire.to.c, wire.to.p);
+            const routedPath = routeManhattan(
+                startPos,
+                newVerts,
+                endPos,
+                startDir,
+                endDir,
+                { preferredOrientation: wire.routePref || null }
+            );
+            const routedMids = routedPath.slice(1, Math.max(1, routedPath.length - 1));
+            wire.vertices = dropCollinearVerts(routedMids, startPos, endPos);
+        }
     }
 
     updatePointerContext(m);

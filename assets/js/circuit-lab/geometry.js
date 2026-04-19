@@ -175,7 +175,12 @@ export function routeManhattan(start, midPoints, end, startDir = null, endDir = 
     const preferredOrientation = opts.preferredOrientation || null;
     const stickiness = Number.isFinite(opts.stickiness) ? opts.stickiness : 0.6;
     let orientationHint = preferredOrientation;
-    const targets = [...(midPoints || []), end].map(p => snapToBoardPoint(p.x, p.y));
+    // Preserve userPlaced so callers can distinguish the user's targets from router-added stubs.
+    const targets = [...(midPoints || []), end].map((p) => {
+        const snapped = snapToBoardPoint(p.x, p.y);
+        if (p && p.userPlaced) snapped.userPlaced = true;
+        return snapped;
+    });
 
     function stubFrom(p, dir, toward) {
         if (dir) return snapToBoardPoint(p.x + dir.x * GRID, p.y + dir.y * GRID);
