@@ -14,8 +14,11 @@ export default function createResistor({
         }
 
         drawSym(ctx) {
+            ctx.save();
             ctx.strokeStyle = '#e0e0e0';
             ctx.lineWidth = 2;
+            ctx.lineJoin = 'round';
+            ctx.lineCap = 'round';
             ctx.beginPath();
             ctx.moveTo(-40, 0);
             ctx.lineTo(-24, 0);
@@ -25,27 +28,42 @@ export default function createResistor({
             ctx.lineTo(24, 0);
             ctx.lineTo(40, 0);
             ctx.stroke();
+            ctx.restore();
         }
 
         drawPhys(ctx) {
-            ctx.strokeStyle = '#ccc';
-            ctx.lineWidth = 3;
+            ctx.save();
+            // Metal leads.
+            ctx.strokeStyle = '#d0d5dc';
+            ctx.lineWidth = 2;
             ctx.beginPath();
             ctx.moveTo(-40, 0);
+            ctx.lineTo(-22, 0);
+            ctx.moveTo(22, 0);
             ctx.lineTo(40, 0);
             ctx.stroke();
 
+            // Ceramic body — beige with rounded end caps instead of hard rectangle.
             const g = ctx.createLinearGradient(0, -7, 0, 7);
-            g.addColorStop(0, '#e8cfa1');
-            g.addColorStop(1, '#cbb286');
+            g.addColorStop(0, '#ecd4a8');
+            g.addColorStop(0.5, '#d8bc85');
+            g.addColorStop(1, '#b39965');
             ctx.fillStyle = g;
-            ctx.fillRect(-22, -7, 44, 14);
+            ctx.strokeStyle = 'rgba(0,0,0,0.25)';
+            ctx.lineWidth = 0.8;
+            ctx.beginPath();
+            if (ctx.roundRect) ctx.roundRect(-22, -7, 44, 14, 3);
+            else ctx.rect(-22, -7, 44, 14);
+            ctx.fill();
+            ctx.stroke();
 
+            // Color bands for the resistance value.
             const bands = getResColor(this.props.R, this.props.Tolerance);
             bands.forEach((c, i) => {
                 ctx.fillStyle = c;
-                ctx.fillRect(-18 + i * 8, -7, 4, 14);
+                ctx.fillRect(-17 + i * 8, -7, 3.5, 14);
             });
+            ctx.restore();
         }
 
         drawLabels(ctx, mode) {
