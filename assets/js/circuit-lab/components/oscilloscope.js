@@ -1,3 +1,5 @@
+import { circuitInk } from '../inks.js';
+
 export default function createOscilloscope({
     Component,
     HISTORY_SIZE,
@@ -30,12 +32,12 @@ export default function createOscilloscope({
         }
 
         drawSym(ctx) {
-            ctx.strokeStyle = '#ffffff';
+            ctx.strokeStyle = circuitInk.primary;
             ctx.lineWidth = 2;
             ctx.strokeRect(-50, -40, 100, 80);
 
             // screen window (slightly inset)
-            ctx.strokeStyle = '#ffffff';
+            ctx.strokeStyle = circuitInk.primary;
             ctx.lineWidth = 2;
             ctx.strokeRect(-42, -30, 84, 52);
         }

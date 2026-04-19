@@ -1,3 +1,5 @@
+import { circuitInk } from '../inks.js';
+
 export default function createGround({ Component }) {
     return class Ground extends Component {
         setup() {
@@ -7,7 +9,7 @@ export default function createGround({ Component }) {
         }
 
         drawSym(ctx) {
-            ctx.strokeStyle = '#ffffff';
+            ctx.strokeStyle = circuitInk.primary;
             ctx.lineWidth = 2;
 
             ctx.beginPath();

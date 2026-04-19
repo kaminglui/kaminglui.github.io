@@ -1,3 +1,5 @@
+import { circuitInk } from '../inks.js';
+
 export default function createLED({ Component, parseUnit }) {
     function getLEDColor(name, lastI = 0, IfStr = '10m') {
         const palette = {
@@ -48,7 +50,7 @@ export default function createLED({ Component, parseUnit }) {
 
             ctx.save();
             ctx.lineWidth = 2;
-            ctx.strokeStyle = '#ffffff';
+            ctx.strokeStyle = circuitInk.primary;
             ctx.fillStyle = 'rgba(255,255,255,0.06)';
 
             // leads

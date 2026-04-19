@@ -104,4 +104,10 @@ function initThemeControls({ onChange } = {}) {
   return initial;
 }
 
-export { applyTheme, initThemeControls, readStoredTheme };
+function subscribeTheme(listener) {
+  if (typeof listener !== 'function') return () => {};
+  themeListeners.add(listener);
+  return () => themeListeners.delete(listener);
+}
+
+export { applyTheme, initThemeControls, readStoredTheme, subscribeTheme };

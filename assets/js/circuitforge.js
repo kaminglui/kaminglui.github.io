@@ -49,6 +49,8 @@ import {
     formatSignedUnit,
     getResColor
 } from './circuit-lab/units.js';
+import { subscribeTheme } from './layout/theme.js';
+import { setCircuitInk } from './circuit-lab/inks.js';
 import {
     GRID,
     DT,
@@ -131,6 +133,9 @@ function reassignComponentId(comp, newId) {
 let boardBgColor = '#020617';
 let gridHoleColor = '#1f2937';
 let canvasBgColor = '#1a1a1a';
+let wireOutlineColor = '#1f2937';
+let wireActiveColor = '#ffffff';
+let pinHeadColor = '#e5e7eb';
 
 // View / zoom
 let zoom     = 1.0;
@@ -566,7 +571,7 @@ class Component {
             ctx.stroke();
 
             // pin head (exactly over hole)
-            ctx.fillStyle = '#e5e7eb';
+            ctx.fillStyle = pinHeadColor;
             ctx.beginPath();
             ctx.arc(pos.x, pos.y, PIN_HEAD_RADIUS, 0, Math.PI * 2);
             ctx.fill();
@@ -766,15 +771,26 @@ function updateBoardThemeColors() {
     const boardBg = style.getPropertyValue('--board-bg').trim();
     const boardHole = style.getPropertyValue('--board-hole').trim();
     const canvasBg = style.getPropertyValue('--canvas-bg').trim();
+    const wireOutline = style.getPropertyValue('--wire-outline').trim();
+    const wireActive = style.getPropertyValue('--wire-active').trim();
+    const pinHead = style.getPropertyValue('--pin-head').trim();
 
     if (boardBg) boardBgColor = boardBg;
     if (boardHole) gridHoleColor = boardHole;
+    if (wireOutline) wireOutlineColor = wireOutline;
+    if (wireActive) wireActiveColor = wireActive;
+    if (pinHead) pinHeadColor = pinHead;
     if (canvasBg) {
         canvasBgColor = canvasBg;
         if (canvas) {
             canvas.style.backgroundColor = canvasBgColor;
         }
     }
+
+    // Schematic ink (used by component drawSym): flip with theme so outlines
+    // stay visible against the board. drawPhys keeps its own hardware colors.
+    const isLight = document.body.classList.contains('theme-light');
+    setCircuitInk({ primary: isLight ? '#0f172a' : '#ffffff' });
 }
 
 function drawGrid() {
@@ -944,7 +960,7 @@ function drawWires() {
         const width      = isSelected ? WIRE_WIDTH_SELECTED : (isHover ? WIRE_WIDTH_HOVER : WIRE_WIDTH_DEFAULT);
 
         // outline for stability (no flashing)
-        drawWirePolyline(pts, '#1f2937', width + WIRE_OUTLINE_PADDING, false);
+        drawWirePolyline(pts, wireOutlineColor, width + WIRE_OUTLINE_PADDING, false);
 
         let color = '#3aa86b';
         if (v > 0.01) color = '#34d399';
@@ -968,7 +984,7 @@ function drawWires() {
         );
         const previewOrientation = firstSegmentOrientation(pts);
         if (!activeWire.routePref && previewOrientation) activeWire.routePref = previewOrientation;
-        drawWirePolyline(pts, '#ffffff', ACTIVE_WIRE_WIDTH, true);
+        drawWirePolyline(pts, wireActiveColor, ACTIVE_WIRE_WIDTH, true);
     }
 }
 
@@ -4524,7 +4540,12 @@ function reportInitError(message) {
       }
   
       updateBoardThemeColors();
-  
+      subscribeTheme(() => {
+          updateBoardThemeColors();
+          safeCall(renderToolIcons);
+          safeCall(draw);
+      });
+
       window.addEventListener('resize', resize);
     window.addEventListener('orientationchange', resize);
     if (window.visualViewport) {

@@ -1,3 +1,5 @@
+import { circuitInk } from '../inks.js';
+
 export default function createPotentiometer({
     Component,
     LABEL_FONT_MEDIUM,
@@ -29,7 +31,7 @@ export default function createPotentiometer({
             const t = this.getTurnFraction();
             const yOff = 20;
 
-            ctx.strokeStyle = '#ffffff';
+            ctx.strokeStyle = circuitInk.primary;
             ctx.lineWidth = 2;
 
             // resistor body
@@ -82,7 +84,7 @@ export default function createPotentiometer({
             ctx.lineTo(bx1, by1);
             ctx.lineTo(bx2, by2);
             ctx.closePath();
-            ctx.fillStyle = '#ffffff';
+            ctx.fillStyle = circuitInk.primary;
             ctx.fill();
         }
 

@@ -21,21 +21,29 @@
             --bg-app: #09090b;       /* Zinc-950 */
             --bg-panel: #18181b;     /* Zinc-900 */
             --bg-surface: #27272a;   /* Zinc-800 */
-            
+
             --border-subtle: #27272a;
             --border-focus: #3f3f46;
-            
+
             --text-primary: #e4e4e7; /* Zinc-200 */
             --text-secondary: #a1a1aa; /* Zinc-400 */
             --text-muted: #52525b;   /* Zinc-600 */
-            
+
             --accent: #3b82f6;       /* Blue-500 */
             --accent-glow: rgba(59, 130, 246, 0.15);
             --danger: #ef4444;
             --success: #10b981;
-            
+
+            /* Canvas / breadboard palette, read by updateBoardThemeColors() */
+            --board-bg: #020617;
+            --board-hole: #1f2937;
+            --canvas-bg: #1a1a1a;
+            --wire-outline: #1f2937; /* Halo around wires for legibility */
+            --wire-active: #ffffff;  /* Wire being drawn (preview) */
+            --pin-head: #e5e7eb;     /* Dot at the hole where a pin lands */
+
             /* Layout Dimensions */
-            --header-h: 0px; 
+            --header-h: 0px;
             --simbar-h: 52px; /* Slightly more compact */
             --simbar-height: var(--simbar-h);
             --sidebar-w: 260px;
@@ -50,7 +58,39 @@
             --text-primary: #0f172a;
             --text-secondary: #64748b;
             --text-muted: #94a3b8;
+            --accent-glow: rgba(59, 130, 246, 0.12);
+
+            --board-bg: #e2e8f0;   /* Slate-200, clearly lifted off the canvas */
+            --board-hole: #64748b; /* Slate-500, visible against a light board */
+            --canvas-bg: #f8fafc;  /* Slate-50, brightest surface */
+            --wire-outline: #cbd5e1; /* Slate-300, soft halo against slate-200 board */
+            --wire-active: #0f172a;  /* Slate-900, high-contrast preview wire */
+            --pin-head: #334155;     /* Slate-700, visible dot */
         }
+
+        /* ------------------------------------------------------------------
+           Light-mode overrides for hardcoded dark Tailwind utilities used
+           across Circuit Lab. The markup stays dark-leaning (e.g. bg-gray-800)
+           and these rules win under .theme-light via !important, so every
+           inspector panel and dynamically-built chrome tracks the theme.
+           ------------------------------------------------------------------ */
+        .theme-light .bg-gray-800,
+        .theme-light .bg-gray-900 { background-color: var(--bg-panel) !important; }
+        .theme-light .bg-gray-700 { background-color: var(--bg-surface) !important; }
+        .theme-light .bg-gray-800\/50 { background-color: rgba(255, 255, 255, 0.7) !important; }
+        .theme-light .bg-gray-700\/50 { background-color: rgba(241, 245, 249, 0.7) !important; }
+        .theme-light .hover\:bg-gray-700:hover { background-color: var(--bg-surface) !important; }
+
+        .theme-light .text-white,
+        .theme-light .text-gray-100,
+        .theme-light .text-gray-200 { color: var(--text-primary) !important; }
+        .theme-light .text-gray-300,
+        .theme-light .text-gray-400 { color: var(--text-secondary) !important; }
+        .theme-light .text-gray-500 { color: var(--text-muted) !important; }
+        .theme-light .hover\:text-white:hover { color: var(--text-primary) !important; }
+
+        .theme-light .border-gray-700,
+        .theme-light .border-gray-600 { border-color: var(--border-subtle) !important; }
 
         /* --- BASE RESET --- */
         html, body { height: 100%; width: 100%; overflow: hidden; margin: 0; }
