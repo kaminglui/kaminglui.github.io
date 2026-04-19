@@ -3606,7 +3606,24 @@ function onMove(e) {
             const snapped = snapToBoardPoint(v.x + dx, v.y + dy);
             return { ...snapped, userPlaced: v.userPlaced };
         });
-        draggingWire.wire.vertices = newVerts;
+
+        // Re-route through routeManhattan so the pin-connected segments keep a one-grid
+        // stub instead of slicing diagonally into the pin. This gives Multisim/Cadence-style
+        // "corner after one step" behavior automatically as the user drags.
+        const wire = draggingWire.wire;
+        const startPos = wire.from.c.getPinPos(wire.from.p);
+        const endPos = wire.to.c.getPinPos(wire.to.p);
+        const startDir = getPinDirection(wire.from.c, wire.from.p);
+        const endDir = getPinDirection(wire.to.c, wire.to.p);
+        const routedPath = routeManhattan(
+            startPos,
+            newVerts,
+            endPos,
+            startDir,
+            endDir,
+            { preferredOrientation: wire.routePref || null }
+        );
+        wire.vertices = routedPath.slice(1, Math.max(1, routedPath.length - 1));
     }
 
     updatePointerContext(m);
