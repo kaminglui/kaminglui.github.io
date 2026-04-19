@@ -9,6 +9,7 @@ export default function createFunctionGenerator({
             // Align body/pins to GRID like the scope so rotation stays centered
             this.body = { x1: -40, x2: 40, y1: -25, y2: 40 };
             const pinY = this.body.y2; // pins sit on bottom edge
+            this.pinNames = ['+', 'COM', '−'];
             this.pins = [
                 { x: -20, y: pinY }, // +
                 { x: 0, y: pinY }, // COM

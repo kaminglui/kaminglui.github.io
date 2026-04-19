@@ -25,6 +25,7 @@ export default function createLED({ Component, parseUnit }) {
     return class LED extends Component {
         setup() {
             // Anode (left), Cathode (right)
+            this.pinNames = ['A', 'K'];
             this.pins = [
                 { x: -20, y: 0 }, // 0: Anode
                 { x: 20, y: 0 } // 1: Cathode

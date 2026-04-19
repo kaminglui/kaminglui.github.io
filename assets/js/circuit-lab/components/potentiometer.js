@@ -9,6 +9,7 @@ export default function createPotentiometer({
 }) {
     return class Potentiometer extends Component {
         setup() {
+            this.pinNames = ['1', 'W', '3'];
             this.pins = [
                 { x: -40, y: 20 },
                 { x: 0, y: 20 }, // wiper

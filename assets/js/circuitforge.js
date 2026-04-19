@@ -1020,14 +1020,57 @@ function drawPinAffordance() {
     const pinToHighlight = activeTarget || hoveredPin;
     if (!pinToHighlight) return;
 
-    const pos = pinToHighlight.c.getPinPos(pinToHighlight.p);
+    const comp = pinToHighlight.c;
+    const pinIdx = pinToHighlight.p;
+    const pos = comp.getPinPos(pinIdx);
     const isValidWireTarget = !!activeTarget;
+    const ringColor = isValidWireTarget ? '#22c55e' : '#60a5fa';
+
     ctx.save();
-    ctx.strokeStyle = isValidWireTarget ? '#22c55e' : '#60a5fa';
+    ctx.strokeStyle = ringColor;
     ctx.lineWidth = isValidWireTarget ? 2 : 1.4;
     ctx.beginPath();
     ctx.arc(pos.x, pos.y, PIN_HIT_RADIUS * (isValidWireTarget ? 1.35 : 1.15), 0, Math.PI * 2);
     ctx.stroke();
+
+    // Pin role label (e.g. "G", "Out", "CH1"). Only shown when the component declares
+    // meaningful pin names; otherwise the plain hover ring already tells you it's a pin.
+    const label = Array.isArray(comp.pinNames) ? comp.pinNames[pinIdx] : null;
+    if (label) {
+        const dir = getPinDirection(comp, pinIdx) || { x: 0, y: 1 };
+        const offset = PIN_LABEL_OFFSET;
+        const tx = pos.x + dir.x * offset;
+        const ty = pos.y + dir.y * offset;
+        ctx.font = LABEL_FONT_BOLD;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        const metrics = ctx.measureText(label);
+        const padX = 5;
+        const padY = 3;
+        const w = metrics.width + padX * 2;
+        const h = 14 + padY * 2 - 6;
+        ctx.fillStyle = 'rgba(15, 23, 42, 0.94)'; // slate-900, nearly opaque
+        ctx.strokeStyle = ringColor;
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        const r = 3;
+        const x0 = tx - w / 2;
+        const y0 = ty - h / 2;
+        ctx.moveTo(x0 + r, y0);
+        ctx.lineTo(x0 + w - r, y0);
+        ctx.quadraticCurveTo(x0 + w, y0, x0 + w, y0 + r);
+        ctx.lineTo(x0 + w, y0 + h - r);
+        ctx.quadraticCurveTo(x0 + w, y0 + h, x0 + w - r, y0 + h);
+        ctx.lineTo(x0 + r, y0 + h);
+        ctx.quadraticCurveTo(x0, y0 + h, x0, y0 + h - r);
+        ctx.lineTo(x0, y0 + r);
+        ctx.quadraticCurveTo(x0, y0, x0 + r, y0);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+        ctx.fillStyle = '#f1f5f9';
+        ctx.fillText(label, tx, ty);
+    }
     ctx.restore();
 }
 

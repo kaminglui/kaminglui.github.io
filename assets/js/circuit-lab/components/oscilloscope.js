@@ -7,6 +7,7 @@ export default function createOscilloscope({
     return class Oscilloscope extends Component {
         setup() {
             // 0: CH1, 1: CH2, 2: GND
+            this.pinNames = ['CH1', 'CH2', 'GND'];
             this.pins = [
                 { x: -40, y: 40 },
                 { x: 0, y: 40 },

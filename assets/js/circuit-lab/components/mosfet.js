@@ -12,6 +12,7 @@ export default function createMOSFET({
     return class MOSFET extends Component {
         setup() {
             // Gate, Drain (top), Source (bottom), Body
+            this.pinNames = ['G', 'D', 'S', 'B'];
             this.pins = [
                 { x: -20, y: 0 }, // 0: Gate
                 { x: 20, y: -20 }, // 1: Drain (top right)

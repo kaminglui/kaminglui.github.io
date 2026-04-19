@@ -1,6 +1,7 @@
 export default function createGround({ Component }) {
     return class Ground extends Component {
         setup() {
+            this.pinNames = ['GND'];
             this.pins = [{ x: 0, y: -20 }];
             this.w = 30;
             this.h = 40;

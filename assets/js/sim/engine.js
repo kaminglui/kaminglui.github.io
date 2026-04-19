@@ -23,7 +23,7 @@ const DEFAULTS = {
   funcGenRefRes: 1,
   funcGenSeriesRes: 1,
   maxOutputClamp: 100,
-  maxDiodeIterations: 2
+  maxDiodeIterations: 3
 };
 
 function parseUnit(str) {
@@ -209,8 +209,19 @@ function updateComponentState({ components, solution, getNodeIndex, parseUnit: p
       const If = parse(c.props?.If || '10m') || 0.01;
       let R = Math.abs(Vf / If);
       if (!Number.isFinite(R) || R <= 0) R = 330;
-      c._lastI = (vA - vK) / R;
-      c._forwardOn = (vA - vK) > Vf * 0.8;
+      const vD = vA - vK;
+      // Effective current for the UI's brightness indicator. In the knee region
+      // conductance is ~12% of gOn around a lower Vf, so the current rises smoothly.
+      if (vD <= 0) c._lastI = 0;
+      else if (vD >= Vf * 0.95) c._lastI = vD / R;
+      else if (vD >= Vf * 0.75) c._lastI = (0.12 / R) * Math.max(0, vD - Vf * 0.8);
+      else c._lastI = 0;
+      // Cache the four-state machine so the next solve starts where we left off.
+      c._ledState =
+        vD < -0.1 ? 'reverse' :
+        vD > Vf * 0.95 ? 'on' :
+        vD > Vf * 0.75 ? 'knee' : 'off';
+      c._forwardOn = c._ledState === 'on' || c._ledState === 'knee';
     } else if (kind === 'mosfet') {
       const nG = getNodeIndex(c, 0);
       const nD = getNodeIndex(c, 1);
@@ -357,7 +368,7 @@ function buildSimulationComponents({
       const nK = getNodeIndex(c, 1);
       const Vf = Math.max(0, parse(c.props?.Vf || '3.3'));
       const If = parse(c.props?.If || '10m') || 0.01;
-      const led = new LED(nA, nK, { Vf, If, forwardOn: !!c._forwardOn });
+      const led = new LED(nA, nK, { Vf, If, state: c._ledState, forwardOn: !!c._forwardOn });
       diodeComponents.push(led);
       simComponents.push(led);
     } else if (kind === 'switch') {

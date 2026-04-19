@@ -2,6 +2,7 @@ export default function createVoltageSource({ Component }) {
     return class VoltageSource extends Component {
         setup() {
             // pin0 = +, pin1 = -
+            this.pinNames = ['+', '−'];
             this.pins = [{ x: 0, y: -40 }, { x: 0, y: 40 }];
             this.w = 40;
             this.h = 90;
