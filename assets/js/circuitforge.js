@@ -49,8 +49,6 @@ import {
     formatSignedUnit,
     getResColor
 } from './circuit-lab/units.js';
-import { subscribeTheme } from './layout/theme.js';
-import { setCircuitInk } from './circuit-lab/inks.js';
 import {
     GRID,
     DT,
@@ -791,11 +789,6 @@ function updateBoardThemeColors() {
             canvas.style.backgroundColor = canvasBgColor;
         }
     }
-
-    // Schematic ink (used by component drawSym): flip with theme so outlines
-    // stay visible against the board. drawPhys keeps its own hardware colors.
-    const isLight = document.body.classList.contains('theme-light');
-    setCircuitInk({ primary: isLight ? '#0f172a' : '#ffffff' });
 }
 
 function drawGrid() {
@@ -4654,11 +4647,6 @@ function reportInitError(message) {
       }
   
       updateBoardThemeColors();
-      subscribeTheme(() => {
-          updateBoardThemeColors();
-          safeCall(renderToolIcons);
-          safeCall(draw);
-      });
 
       window.addEventListener('resize', resize);
     window.addEventListener('orientationchange', resize);

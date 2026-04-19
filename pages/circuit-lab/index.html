@@ -49,48 +49,8 @@
             --sidebar-w: 260px;
         }
 
-        .theme-light {
-            --bg-app: #f8fafc;
-            --bg-panel: #ffffff;
-            --bg-surface: #f1f5f9;
-            --border-subtle: #e2e8f0;
-            --border-focus: #cbd5e1;
-            --text-primary: #0f172a;
-            --text-secondary: #64748b;
-            --text-muted: #94a3b8;
-            --accent-glow: rgba(59, 130, 246, 0.12);
-
-            --board-bg: #e2e8f0;   /* Slate-200, clearly lifted off the canvas */
-            --board-hole: #64748b; /* Slate-500, visible against a light board */
-            --canvas-bg: #f8fafc;  /* Slate-50, brightest surface */
-            --wire-outline: #cbd5e1; /* Slate-300, soft halo against slate-200 board */
-            --wire-active: #0f172a;  /* Slate-900, high-contrast preview wire */
-            --pin-head: #334155;     /* Slate-700, visible dot */
-        }
-
-        /* ------------------------------------------------------------------
-           Light-mode overrides for hardcoded dark Tailwind utilities used
-           across Circuit Lab. The markup stays dark-leaning (e.g. bg-gray-800)
-           and these rules win under .theme-light via !important, so every
-           inspector panel and dynamically-built chrome tracks the theme.
-           ------------------------------------------------------------------ */
-        .theme-light .bg-gray-800,
-        .theme-light .bg-gray-900 { background-color: var(--bg-panel) !important; }
-        .theme-light .bg-gray-700 { background-color: var(--bg-surface) !important; }
-        .theme-light .bg-gray-800\/50 { background-color: rgba(255, 255, 255, 0.7) !important; }
-        .theme-light .bg-gray-700\/50 { background-color: rgba(241, 245, 249, 0.7) !important; }
-        .theme-light .hover\:bg-gray-700:hover { background-color: var(--bg-surface) !important; }
-
-        .theme-light .text-white,
-        .theme-light .text-gray-100,
-        .theme-light .text-gray-200 { color: var(--text-primary) !important; }
-        .theme-light .text-gray-300,
-        .theme-light .text-gray-400 { color: var(--text-secondary) !important; }
-        .theme-light .text-gray-500 { color: var(--text-muted) !important; }
-        .theme-light .hover\:text-white:hover { color: var(--text-primary) !important; }
-
-        .theme-light .border-gray-700,
-        .theme-light .border-gray-600 { border-color: var(--border-subtle) !important; }
+        /* Circuit Lab is dark-only by design; the site-wide theme toggle is hidden on this page. */
+        .theme-toggle { display: none !important; }
 
         /* --- BASE RESET --- */
         html, body { height: 100%; width: 100%; overflow: hidden; margin: 0; }
@@ -1205,7 +1165,7 @@
 
     <script type="module">
         import { initMainLayout } from '../../assets/js/layout/mainLayout.js';
-        initMainLayout('circuit-lab');
+        initMainLayout('circuit-lab', { themeOptions: { forceTheme: 'dark' } });
     </script>
 
     <script type="module" src="../../assets/js/sim/engine.js"></script>

@@ -1,5 +1,3 @@
-import { circuitInk } from '../inks.js';
-
 export default function createVoltageSource({ Component }) {
     return class VoltageSource extends Component {
         setup() {
@@ -11,7 +9,7 @@ export default function createVoltageSource({ Component }) {
         }
 
         drawSym(ctx) {
-            ctx.strokeStyle = circuitInk.primary;
+            ctx.strokeStyle = '#ffffff';
             ctx.lineWidth = 2;
 
             const plateOffset = 12; // vertical distance from center to outer plates

@@ -1,5 +1,3 @@
-import { circuitInk } from '../inks.js';
-
 export default function createFunctionGenerator({
     Component,
     LABEL_FONT_SMALL,
@@ -39,7 +37,7 @@ export default function createFunctionGenerator({
         }
 
         drawSym(ctx) {
-            ctx.strokeStyle = circuitInk.primary;
+            ctx.strokeStyle = '#ffffff';
             ctx.lineWidth = 2;
 
             // rectangular body (aligned with physical footprint)

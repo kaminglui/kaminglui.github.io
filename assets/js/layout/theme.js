@@ -61,8 +61,20 @@ function notifyThemeChange(theme) {
   });
 }
 
-function initThemeControls({ onChange } = {}) {
+function initThemeControls({ onChange, forceTheme } = {}) {
   const toggle = document.querySelector('.theme-toggle');
+  // Pages that want to lock the theme (e.g. Circuit Lab is dark-only) pass
+  // forceTheme: 'dark' | 'light'. We apply it once, skip the toggle/media listeners,
+  // and leave localStorage untouched so other pages keep the user's preference.
+  if (forceTheme === 'dark' || forceTheme === 'light') {
+    document.body.classList.toggle('theme-dark', forceTheme === 'dark');
+    document.body.classList.toggle('theme-light', forceTheme === 'light');
+    document.documentElement.classList.toggle('dark', forceTheme === 'dark');
+    if (toggle) toggle.hidden = true;
+    if (typeof onChange === 'function') onChange(forceTheme);
+    return forceTheme;
+  }
+
   const initial = applyTheme(resolveInitialTheme());
   updateThemeToggle(toggle, initial);
 
