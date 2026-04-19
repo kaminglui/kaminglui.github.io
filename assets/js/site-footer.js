@@ -1,5 +1,6 @@
 import { DEFAULT_META, FOOTER_PRESETS } from './config/footerPresets.js';
 import { normalizeRootPrefix, resolveRootPrefix } from './layout/rootPrefix.js';
+import { escapeHtml, escapeUrl } from './layout/escape.js';
 
 function resolvePreset(footer, presetId) {
   const id = presetId || footer?.dataset?.footerId || footer?.dataset?.footerPreset || 'home';
@@ -18,7 +19,7 @@ function buildActionMarkup(actions = [], rootPrefix = '') {
       const classes = ['button'];
       if (variant === 'primary') classes.push('button--primary');
       if (variant === 'ghost') classes.push('button--ghost');
-      return `<a class="${classes.join(' ')}" href="${resolvedHref}">${label}</a>`;
+      return `<a class="${classes.join(' ')}" href="${escapeUrl(resolvedHref)}">${escapeHtml(label)}</a>`;
     })
     .filter(Boolean)
     .join('');
@@ -26,7 +27,7 @@ function buildActionMarkup(actions = [], rootPrefix = '') {
 
 function buildMetaMarkup(meta = []) {
   if (!Array.isArray(meta) || meta.length === 0) return '';
-  return meta.map((line) => `<p>${line}</p>`).join('');
+  return meta.map((line) => `<p>${escapeHtml(line)}</p>`).join('');
 }
 
 function renderSiteFooter(options = {}) {
@@ -60,8 +61,8 @@ function renderSiteFooter(options = {}) {
     actionsMarkup = '<div class="footer__actions" data-contact-actions></div>';
     metaMarkup = '<p data-content="contact.meta"></p>' + buildMetaMarkup([DEFAULT_META]);
   } else {
-    headingMarkup = preset.heading ? `<h2>${preset.heading}</h2>` : '';
-    bodyMarkup = preset.body ? `<p>${preset.body}</p>` : '';
+    headingMarkup = preset.heading ? `<h2>${escapeHtml(preset.heading)}</h2>` : '';
+    bodyMarkup = preset.body ? `<p>${escapeHtml(preset.body)}</p>` : '';
     actionsMarkup = `<div class="footer__actions">${buildActionMarkup(preset.actions, rootPrefix)}</div>`;
     metaMarkup = buildMetaMarkup(preset.meta || [DEFAULT_META]);
   }
@@ -79,7 +80,7 @@ function renderSiteFooter(options = {}) {
         ${metaMarkup}
       </div>
     </div>
-    <a class="back-to-top" href="#top">${backToTopLabel}</a>
+    <a class="back-to-top" href="#top">${escapeHtml(backToTopLabel)}</a>
   `.trim();
 
   footer.classList.add('site-footer');

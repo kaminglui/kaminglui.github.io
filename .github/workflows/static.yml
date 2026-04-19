@@ -40,6 +40,10 @@ jobs:
           cache: 'npm'
       - name: Install deps
         run: npm ci
+      - name: Install Fourier deps
+        run: npm ci --prefix pages/fourier-epicycles-src
+      - name: Build Fourier
+        run: npm run build --prefix pages/fourier-epicycles-src
       - name: Build CSS
         run: npm run build:css
       - name: Stage site

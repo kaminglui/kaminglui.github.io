@@ -5,6 +5,7 @@ yarn-error.log
 .DS_Store
 dist/
 pages/fourier-epicycles-src/dist/
+pages/fourier-epicycles/
 *.log
 .vite/
 coverage/

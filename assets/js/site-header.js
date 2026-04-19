@@ -1,5 +1,6 @@
 import { LOGO_TEXT, NAV_LABS, NAV_SECTIONS } from './config/navigation.js';
 import { computeRootPrefix, resolveRootPrefix } from './layout/rootPrefix.js';
+import { escapeHtml, escapeUrl } from './layout/escape.js';
 
 function detectCurrentLabId(pathname = '') {
   const explicit =
@@ -23,7 +24,7 @@ function buildSectionLinks({ rootPrefix, useLocalAnchors }) {
     const href = useLocalAnchors
       ? `#${id}`
       : `${rootPrefix}index.html#${id}`;
-    return `<li><a href="${href}">${label}</a></li>`;
+    return `<li><a href="${escapeUrl(href)}">${escapeHtml(label)}</a></li>`;
   }).join('');
 }
 
@@ -33,7 +34,7 @@ function buildLabLinks({ rootPrefix, currentLabId }) {
       ? href
       : `${rootPrefix}${href}`;
     const ariaCurrent = id === currentLabId ? ' aria-current="page"' : '';
-    return `<li><a href="${link}"${ariaCurrent}>${label}</a></li>`;
+    return `<li><a href="${escapeUrl(link)}"${ariaCurrent}>${escapeHtml(label)}</a></li>`;
   }).join('');
 }
 
@@ -92,7 +93,7 @@ function renderSiteHeader(options = {}) {
   const navMarkup = `
     <div class="container">
       <nav class="nav" aria-label="Primary">
-        <a class="logo" href="${logoHref}">${LOGO_TEXT}</a>
+        <a class="logo" href="${escapeUrl(logoHref)}">${escapeHtml(LOGO_TEXT)}</a>
         <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="primary-navigation">
           <span class="nav-toggle__bar"></span>
           <span class="nav-toggle__bar"></span>
