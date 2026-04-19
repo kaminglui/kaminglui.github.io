@@ -620,6 +620,17 @@
             box-shadow: 0 2px 8px rgba(0,0,0,0.5);
         }
         .canvas-shell.probe-mode { cursor: crosshair; }
+        .sim-btn-group {
+            display: flex;
+            gap: 2px;
+        }
+        .sim-btn-group .sim-btn { border-radius: 0; }
+        .sim-btn-group .sim-btn:first-child { border-top-left-radius: 6px; border-bottom-left-radius: 6px; }
+        .sim-btn-group .sim-btn:last-child { border-top-right-radius: 6px; border-bottom-right-radius: 6px; }
+        .sim-btn:disabled {
+            opacity: 0.38;
+            cursor: not-allowed;
+        }
         #probe-btn.active-tool {
             background: #1e3a8a;
             color: #bfdbfe;
@@ -1248,6 +1259,27 @@
                 </div>
             </div>
 
+            <div class="sim-btn-group">
+                <button id="undo-btn" onclick="undo()"
+                        type="button"
+                        class="sim-btn mobile-icon-only"
+                        aria-label="Undo (Ctrl+Z)"
+                        data-tooltip="Undo (Ctrl+Z)"
+                        disabled>
+                    <i class="fas fa-rotate-left"></i>
+                    <span class="btn-text">Undo</span>
+                </button>
+                <button id="redo-btn" onclick="redo()"
+                        type="button"
+                        class="sim-btn mobile-icon-only"
+                        aria-label="Redo (Ctrl+Shift+Z)"
+                        data-tooltip="Redo (Ctrl+Shift+Z)"
+                        disabled>
+                    <i class="fas fa-rotate-right"></i>
+                    <span class="btn-text">Redo</span>
+                </button>
+            </div>
+
             <button onclick="clearCanvas()"
                     type="button"
                     class="sim-btn danger mobile-icon-only"
@@ -1290,6 +1322,8 @@
                     <dt class="text-gray-400">F</dt><dd>Mirror selected component</dd>
                     <dt class="text-gray-400">Delete / Backspace</dt><dd>Delete selected</dd>
                     <dt class="text-gray-400">Ctrl + C / X / V</dt><dd>Copy / cut / paste</dd>
+                    <dt class="text-gray-400">Ctrl + Z</dt><dd>Undo</dd>
+                    <dt class="text-gray-400">Ctrl + Shift + Z / Ctrl + Y</dt><dd>Redo</dd>
                     <dt class="text-gray-400">Esc</dt><dd>Cancel current action / deselect</dd>
                 </dl>
             </section>

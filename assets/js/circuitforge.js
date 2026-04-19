@@ -196,6 +196,17 @@ let scopeDragBounds = null;
 let isDraggingScope = false;
 let autosaveTimer = null;
 let isRestoringState = false;
+
+// Undo / redo.
+// historyUndo and historyRedo each hold serialized state snapshots. We push the
+// PREVIOUS stable state onto historyUndo every time markStateDirty()'s debounce
+// fires — i.e. once per logical action, not per intermediate mouse-move during a
+// drag. Undo restores the last pre-change snapshot; redo walks forward again.
+const MAX_HISTORY = 60;
+let historyUndo = [];
+let historyRedo = [];
+let lastStableSnapshot = null;
+let isUndoingOrRedoing = false;
 let currentSwitchType = DEFAULT_SWITCH_TYPE;
 let templatePlacementCount = 0;
 let activeTemplatePlacement = null; // { template, origin }
@@ -3035,11 +3046,97 @@ function applySerializedState(data) {
 function saveStateToLocalStorage() {
     if (typeof localStorage === 'undefined') return;
     const payload = serializeState();
+    captureHistorySnapshot(payload);
     try {
         localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(payload));
     } catch (err) {
         console.warn('Failed to persist circuit state', err);
     }
+}
+
+// Called from the autosave tick (once per quiescent-state transition). We compare
+// against the last stable snapshot and, if state changed, record the previous
+// snapshot on the undo stack. This collapses intra-drag churn into one history
+// entry even though markStateDirty() is fired many times mid-drag.
+function captureHistorySnapshot(currentSnapshot) {
+    if (isRestoringState || isUndoingOrRedoing) return;
+    if (!lastStableSnapshot) {
+        lastStableSnapshot = currentSnapshot;
+        return;
+    }
+    if (snapshotsEqual(lastStableSnapshot, currentSnapshot)) return;
+    historyUndo.push(lastStableSnapshot);
+    if (historyUndo.length > MAX_HISTORY) historyUndo.shift();
+    historyRedo.length = 0;
+    lastStableSnapshot = currentSnapshot;
+    updateHistoryButtons();
+}
+
+function snapshotsEqual(a, b) {
+    // Compare only the logical circuit state. Metadata includes a fresh savedAt
+    // timestamp on every serialization plus camera / view fields that shouldn't
+    // create undo entries on their own.
+    try {
+        const pick = (s) => ({ components: s?.components || [], wires: s?.wires || [] });
+        return JSON.stringify(pick(a)) === JSON.stringify(pick(b));
+    } catch {
+        return false;
+    }
+}
+
+function primeHistoryBaseline() {
+    lastStableSnapshot = serializeState();
+    historyUndo.length = 0;
+    historyRedo.length = 0;
+    updateHistoryButtons();
+}
+
+function undo() {
+    if (!historyUndo.length) return;
+    const current = serializeState();
+    historyRedo.push(current);
+    const prev = historyUndo.pop();
+    isUndoingOrRedoing = true;
+    try {
+        applySerializedState(prev);
+        lastStableSnapshot = prev;
+    } finally {
+        isUndoingOrRedoing = false;
+    }
+    // Persist to localStorage without pushing another history entry.
+    try {
+        if (typeof localStorage !== 'undefined') {
+            localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(prev));
+        }
+    } catch { /* storage quota — ignore */ }
+    updateHistoryButtons();
+}
+
+function redo() {
+    if (!historyRedo.length) return;
+    const current = serializeState();
+    historyUndo.push(current);
+    const next = historyRedo.pop();
+    isUndoingOrRedoing = true;
+    try {
+        applySerializedState(next);
+        lastStableSnapshot = next;
+    } finally {
+        isUndoingOrRedoing = false;
+    }
+    try {
+        if (typeof localStorage !== 'undefined') {
+            localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(next));
+        }
+    } catch { /* ignore */ }
+    updateHistoryButtons();
+}
+
+function updateHistoryButtons() {
+    const undoBtn = document.getElementById('undo-btn');
+    const redoBtn = document.getElementById('redo-btn');
+    if (undoBtn) undoBtn.disabled = !historyUndo.length;
+    if (redoBtn) redoBtn.disabled = !historyRedo.length;
 }
 
 function markStateDirty() {
@@ -4049,6 +4146,8 @@ function onKey(e) {
         if (key === 'c') { e.preventDefault(); copySelection(); return; }
         if (key === 'x') { e.preventDefault(); cutSelection(); return; }
         if (key === 'v') { e.preventDefault(); pasteClipboard(); return; }
+        if (key === 'z' && !e.shiftKey) { e.preventDefault(); undo(); return; }
+        if ((key === 'z' && e.shiftKey) || key === 'y') { e.preventDefault(); redo(); return; }
     }
 
     // While drawing a wire, Backspace drops the last waypoint instead of deleting
@@ -5265,6 +5364,7 @@ function reportInitError(message) {
     attachComponentSearch();
 
     loadStateFromLocalStorage();
+    primeHistoryBaseline();
     updateProps();
     loop();
 }
@@ -5300,7 +5400,9 @@ const circuitForgeApi = {
     renderToolIcons,
     updateBoardThemeColors,
     draw,
-    toggleProbeMode
+    toggleProbeMode,
+    undo,
+    redo
 };
 
 if (typeof window !== 'undefined') {
