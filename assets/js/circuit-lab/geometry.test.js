@@ -13,7 +13,8 @@ import {
   buildStableWirePath,
   routeManhattan,
   adjustWireAnchors,
-  distToSegment
+  distToSegment,
+  dropCollinearVerts
 } from './geometry.js';
 import { GRID } from './config.js';
 
@@ -176,6 +177,60 @@ describe('distToSegment', () => {
 
   it('returns the distance to the single point when the segment has zero length', () => {
     expect(distToSegment({ x: 3, y: 4 }, { x: 0, y: 0 }, { x: 0, y: 0 })).toBe(5);
+  });
+});
+
+describe('dropCollinearVerts', () => {
+  it('returns an empty array when given nothing to trim', () => {
+    expect(dropCollinearVerts([], { x: 0, y: 0 }, { x: 10, y: 10 })).toEqual([]);
+    expect(dropCollinearVerts(null, { x: 0, y: 0 }, { x: 10, y: 10 })).toEqual([]);
+  });
+
+  it('drops vertices that are collinear with their neighbours', () => {
+    const start = { x: 10, y: 10 };
+    const end = { x: 90, y: 10 };
+    const verts = [{ x: 30, y: 10 }, { x: 50, y: 10 }, { x: 70, y: 10 }];
+    expect(dropCollinearVerts(verts, start, end)).toEqual([]);
+  });
+
+  it('keeps genuine corners', () => {
+    const start = { x: 10, y: 10 };
+    const end = { x: 90, y: 70 };
+    const verts = [{ x: 50, y: 10 }, { x: 50, y: 70 }];
+    expect(dropCollinearVerts(verts, start, end)).toEqual(verts);
+  });
+
+  it('preserves user-placed vertices even if they are collinear', () => {
+    const start = { x: 10, y: 10 };
+    const end = { x: 90, y: 10 };
+    const userPoint = { x: 50, y: 10, userPlaced: true };
+    const routerStub = { x: 30, y: 10 };
+    const result = dropCollinearVerts([routerStub, userPoint], start, end);
+    expect(result).toEqual([userPoint]);
+  });
+});
+
+describe('routeManhattan obstacles', () => {
+  it('prefers the L whose elbow misses component bodies', () => {
+    // H-first L puts the elbow at (50, 10). V-first L puts the elbow at (10, -10).
+    // This obstacle strictly contains (50, 10) -- router should steer around it.
+    const obstacles = [{ x1: 30, y1: -20, x2: 70, y2: 20 }];
+    const path = routeManhattan(
+      { x: 10, y: 10 },
+      [],
+      { x: 50, y: -10 },
+      null,
+      null,
+      { obstacles }
+    );
+    const elbow = path.find((p) => p.x === 50 && p.y === 10);
+    expect(elbow).toBeUndefined();
+  });
+
+  it('ignores obstacles when none are passed', () => {
+    const path = routeManhattan({ x: 10, y: 10 }, [], { x: 50, y: -10 });
+    expect(path[0]).toEqual({ x: 10, y: 10 });
+    expect(path[path.length - 1]).toEqual({ x: 50, y: -10 });
   });
 });
 

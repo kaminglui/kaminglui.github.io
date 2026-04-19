@@ -1,3 +1,5 @@
+import { dropCollinearVerts } from './geometry.js';
+
 function createWiringApi({
   GRID,
   ROUTE_ORIENTATION,
@@ -11,6 +13,34 @@ function createWiringApi({
   Junction,
   distToSegment
 }) {
+  // Count path vertices that fall strictly inside a component's bounding box.
+  // Excludes the wire's own endpoint components so their bodies aren't flagged.
+  function countComponentCrossings(path, obstacles) {
+    if (!Array.isArray(path) || !obstacles || !obstacles.length) return 0;
+    let count = 0;
+    for (let i = 1; i < path.length - 1; i++) {
+      const p = path[i];
+      for (const ob of obstacles) {
+        if (p.x > ob.x1 && p.x < ob.x2 && p.y > ob.y1 && p.y < ob.y2) {
+          count += 1;
+          break;
+        }
+      }
+    }
+    return count;
+  }
+
+  function collectObstacles(excluded = []) {
+    const skip = new Set(excluded.filter(Boolean));
+    const out = [];
+    const comps = typeof getComponents === 'function' ? getComponents() : [];
+    for (const c of comps) {
+      if (skip.has(c)) continue;
+      if (typeof c.getBoundingBox !== 'function') continue;
+      out.push(c.getBoundingBox());
+    }
+    return out;
+  }
   const DELTA_TOLERANCE = Math.max(0.5, GRID * 0.05);
 
   const snapWithMeta = (p = {}) => {
@@ -471,6 +501,7 @@ function createWiringApi({
     const dir = getPinDirection(fromPin.c, fromPin.p);
     const endDir = getPinDirection(toPin.c, toPin.p);
     const occupancy = opts.occupancy || buildOccupancyMap(opts.excludeWire || null);
+    const obstacles = opts.obstacles || collectObstacles([fromPin.c, toPin.c]);
     let path = routeManhattan(
       start,
       midPoints || [],
@@ -479,8 +510,9 @@ function createWiringApi({
       endDir,
       { occupancy }
     );
-    if (occupancy && (!midPoints || midPoints.length === 0)) {
+    if ((!midPoints || midPoints.length === 0) && (occupancy || obstacles.length)) {
       const baseOverlap = countPathOverlaps(path, occupancy);
+      const baseCrossings = countComponentCrossings(path, obstacles);
       const baseOrientation = firstSegmentOrientation(path);
       const altPref = baseOrientation === ROUTE_ORIENTATION.H_FIRST
         ? ROUTE_ORIENTATION.V_FIRST
@@ -496,12 +528,16 @@ function createWiringApi({
         }
       );
       const altOverlap = countPathOverlaps(altPath, occupancy);
-      const preferAlt = (altOverlap < baseOverlap) ||
-        (altOverlap === baseOverlap && altPath.length < path.length);
+      const altCrossings = countComponentCrossings(altPath, obstacles);
+      // Crossings into a component body outrank wire-overlap cost: a wire that runs
+      // through a component is functionally wrong, while wire overlap is just visual.
+      const preferAlt = (altCrossings < baseCrossings) ||
+        (altCrossings === baseCrossings && altOverlap < baseOverlap) ||
+        (altCrossings === baseCrossings && altOverlap === baseOverlap && altPath.length < path.length);
       if (preferAlt) path = altPath;
     }
     const verts = path.slice(1, Math.max(1, path.length - 1)).map((p) => ({ ...p }));
-    return mergeCollinear(verts);
+    return dropCollinearVerts(mergeCollinear(verts), start, end);
   }
 
   function adjustWireAnchors(wire, { start, end, startDir = null, endDir = null } = {}) {

@@ -41,7 +41,8 @@ import {
     snapToGrid,
     snapToBoardPoint,
     directionToOrientation,
-    distToSegment
+    distToSegment,
+    dropCollinearVerts
 } from './circuit-lab/geometry.js';
 import {
     parseUnit,
@@ -3062,29 +3063,6 @@ function updatePinch(e) {
 }
 
 // find a pin under mouse
-// Strip middle vertices whose inclusion adds no bend: i.e. the prev/curr/next triplet
-// is collinear horizontally or vertically. User-placed vertices are preserved so the
-// router's 1-grid pin stubs can be cleaned up without erasing the user's drag targets.
-function dropCollinearVerts(verts, startPos, endPos) {
-    if (!Array.isArray(verts) || verts.length === 0) return verts ? verts.slice() : [];
-    const poly = [startPos, ...verts, endPos];
-    const out = [];
-    for (let i = 1; i < poly.length - 1; i++) {
-        const curr = poly[i];
-        const prev = out.length > 0 ? out[out.length - 1] : poly[i - 1];
-        const next = poly[i + 1];
-        if (curr && curr.userPlaced === true) {
-            out.push(curr);
-            continue;
-        }
-        const collinearH = prev.y === curr.y && curr.y === next.y;
-        const collinearV = prev.x === curr.x && curr.x === next.x;
-        if (collinearH || collinearV) continue;
-        out.push(curr);
-    }
-    return out;
-}
-
 function findPinAt(m, radius = PIN_HIT_RADIUS) {
     for (const c of components) {
         for (let i = 0; i < c.pins.length; i++) {
@@ -3677,13 +3655,33 @@ function onMove(e) {
             const endPos = wire.to.c.getPinPos(wire.to.p);
             const startDir = getPinDirection(wire.from.c, wire.from.p);
             const endDir = getPinDirection(wire.to.c, wire.to.p);
+
+            // Shift-held inverts the router's L preference so the user can flip an
+            // awkward elbow without breaking grip on the segment.
+            let preferredOrientation = wire.routePref || null;
+            if (shiftHeldForWire) {
+                const inferred = preferredOrientation
+                    || inferRoutePreference(startPos, newVerts, endPos);
+                preferredOrientation = inferred === ROUTE_ORIENTATION.H_FIRST
+                    ? ROUTE_ORIENTATION.V_FIRST
+                    : ROUTE_ORIENTATION.H_FIRST;
+            }
+
+            // Feed component bounding boxes as obstacles so routeManhattan prefers the
+            // L orientation whose elbow doesn't land inside another component's body.
+            // Endpoint components are excluded because their bodies legitimately host
+            // the wire's pins on their edges.
+            const obstacles = components
+                .filter(c => c !== wire.from.c && c !== wire.to.c && typeof c.getBoundingBox === 'function')
+                .map(c => c.getBoundingBox());
+
             const routedPath = routeManhattan(
                 startPos,
                 newVerts,
                 endPos,
                 startDir,
                 endDir,
-                { preferredOrientation: wire.routePref || null }
+                { preferredOrientation, obstacles }
             );
             const routedMids = routedPath.slice(1, Math.max(1, routedPath.length - 1));
             wire.vertices = dropCollinearVerts(routedMids, startPos, endPos);

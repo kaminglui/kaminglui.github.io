@@ -169,11 +169,46 @@ export function buildStableWirePath(start, midPoints, end, { routePref = null, s
     return mergeCollinear(path);
 }
 
+// Strip interior vertices that add no bend: a prev/curr/next triplet collinear
+// horizontally or vertically. Caller supplies start/end bookends so we can evaluate
+// the first and last interior vertex against their real neighbours. Vertices marked
+// `userPlaced = true` are preserved so caller-originated waypoints (clicked corners,
+// drag targets) survive cleanup; only router-added stubs get pruned.
+export function dropCollinearVerts(verts, startPos, endPos) {
+    if (!Array.isArray(verts) || verts.length === 0) return verts ? verts.slice() : [];
+    const poly = [startPos, ...verts, endPos];
+    const out = [];
+    for (let i = 1; i < poly.length - 1; i++) {
+        const curr = poly[i];
+        const prev = out.length > 0 ? out[out.length - 1] : poly[i - 1];
+        const next = poly[i + 1];
+        if (curr && curr.userPlaced === true) {
+            out.push(curr);
+            continue;
+        }
+        const collinearH = prev.y === curr.y && curr.y === next.y;
+        const collinearV = prev.x === curr.x && curr.x === next.x;
+        if (collinearH || collinearV) continue;
+        out.push(curr);
+    }
+    return out;
+}
+
+// Strict interior point-in-rectangle test. Exclusive on edges so pins sitting on
+// a component's bounding edge aren't considered "inside" the next component.
+function pointInsideRect(x, y, ob) {
+    return x > ob.x1 && x < ob.x2 && y > ob.y1 && y < ob.y2;
+}
+
 // Build an orthogonal path that honours user-provided midpoints in sequence and
-// uses pin directions to bias stub placement near endpoints.
+// uses pin directions to bias stub placement near endpoints. Optionally accepts
+// `obstacles: [{x1, y1, x2, y2}]` — rectangles the router should avoid routing
+// an L-elbow into (used to steer wires around component bodies).
 export function routeManhattan(start, midPoints, end, startDir = null, endDir = null, opts = {}) {
     const preferredOrientation = opts.preferredOrientation || null;
     const stickiness = Number.isFinite(opts.stickiness) ? opts.stickiness : 0.6;
+    const obstacles = Array.isArray(opts.obstacles) ? opts.obstacles : null;
+    const obstaclePenalty = Number.isFinite(opts.obstaclePenalty) ? opts.obstaclePenalty : 6;
     let orientationHint = preferredOrientation;
     // Preserve userPlaced so callers can distinguish the user's targets from router-added stubs.
     const targets = [...(midPoints || []), end].map((p) => {
@@ -229,6 +264,18 @@ export function routeManhattan(start, midPoints, end, startDir = null, endDir = 
             if (orientationHint && orientation) {
                 if (orientation === orientationHint) s -= stickiness;
                 else s += stickiness * 0.25;
+            }
+            // Strongly penalize L-elbows that land inside a component body so the
+            // other orientation wins when possible. `path` here is [elbow, target];
+            // the elbow is path[0] and we check strict interior against each obstacle.
+            if (obstacles && path.length >= 2) {
+                const elbow = path[0];
+                for (const ob of obstacles) {
+                    if (pointInsideRect(elbow.x, elbow.y, ob)) {
+                        s += obstaclePenalty;
+                        break;
+                    }
+                }
             }
             return s;
         }
