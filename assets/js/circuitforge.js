@@ -2,6 +2,8 @@ import {
     createResistor,
     createPotentiometer,
     createCapacitor,
+    createInductor,
+    createBJT,
     createLED,
     createSwitch,
     createJunction,
@@ -222,11 +224,23 @@ let canvas = null;
 let ctx = null;
 let scopeCanvas = null;
 let scopeCtx = null;
+let minimapCanvas = null;
+let minimapCtx = null;
+let minimapPanel = null;
+let probeReadout = null;
 let initRan = false;
 let canvasDisplayWidth = 0;
 let canvasDisplayHeight = 0;
 let canvasCssWidth = 0;
 let canvasCssHeight = 0;
+
+// Probe mode — when true, hovering a pin or wire shows its live voltage near the cursor.
+let probeMode = false;
+let probeHover = null; // { kind: 'pin'|'wire', target, screen: {x,y}, voltage }
+
+// Last solver output, kept so the probe readout can look up node voltages outside
+// the simulate() pass.
+let lastSim = { solution: null, getNodeIndex: null };
 
 /* === UTILITIES === */
 function screenToWorld(clientX, clientY) {
@@ -646,6 +660,8 @@ const componentFactoryContext = {
 const Resistor = createResistor(componentFactoryContext);
 const Potentiometer = createPotentiometer(componentFactoryContext);
 const Capacitor = createCapacitor(componentFactoryContext);
+const Inductor = createInductor(componentFactoryContext);
+const BJT = createBJT(componentFactoryContext);
 const LED = createLED(componentFactoryContext);
 const Switch = createSwitch(componentFactoryContext);
 const Junction = createJunction(componentFactoryContext);
@@ -724,6 +740,7 @@ function simulate(t) {
 
     const sol = result.solution || [];
     const getNodeIdx = result.getNodeIndex || (() => -1);
+    lastSim = { solution: sol, getNodeIndex: getNodeIdx };
 
     updateCircuitState({
         components,
@@ -1244,6 +1261,9 @@ function draw() {
     });
 
     ctx.restore();
+
+    drawMinimap();
+    updateProbeReadout();
 }
 
 function drawScope() {
@@ -1534,6 +1554,8 @@ function createToolIcon(selector, ComponentClass, setupFn, offsetY = 0) {
 function renderToolIcons() {
     createToolIcon("button[onclick=\"selectTool('resistor', this)\"]", Resistor);
     createToolIcon("button[onclick=\"selectTool('capacitor', this)\"]", Capacitor);
+    createToolIcon("button[onclick=\"selectTool('inductor', this)\"]", Inductor);
+    createToolIcon("button[onclick=\"selectTool('bjt', this)\"]", BJT);
     createToolIcon("button[onclick=\"selectTool('potentiometer', this)\"]", Potentiometer, p => {
         p.props.Turn = '65';
     });
@@ -2899,8 +2921,10 @@ function renderTemplateButtons() {
 const TOOL_COMPONENTS = {
     resistor: Resistor,
     capacitor: Capacitor,
+    inductor: Inductor,
     potentiometer: Potentiometer,
     mosfet: MOSFET,
+    bjt: BJT,
     switch: Switch,
     lf412: LF412,
     voltageSource: VoltageSource,
@@ -3879,6 +3903,9 @@ function onCanvasMove(e) {
         updatePinch(e);
         return;
     }
+    if (probeMode && typeof e?.clientX === 'number') {
+        updateProbeHover(e.clientX, e.clientY);
+    }
     if (draggingComponent || draggingWire || isPanning) return;
     onMove(e);
 }
@@ -4784,6 +4811,266 @@ function toggleSidebar() {
 function zoomInButton() { applyZoom(ZOOM_IN_STEP); }
 function zoomOutButton() { applyZoom(ZOOM_OUT_STEP); }
 
+/* ---------- MINIMAP ---------- */
+// World extents for the minimap: keep a bit of margin outside the board so edge
+// components still appear inside the frame.
+const MINIMAP_WORLD_PAD = 120;
+
+function getMinimapWorldBounds() {
+    return {
+        x: -MINIMAP_WORLD_PAD,
+        y: -MINIMAP_WORLD_PAD,
+        w: BOARD_W + MINIMAP_WORLD_PAD * 2,
+        h: BOARD_H + MINIMAP_WORLD_PAD * 2
+    };
+}
+
+function resizeMinimap() {
+    if (!minimapCanvas) return;
+    const dpr = window.devicePixelRatio || 1;
+    const rect = minimapCanvas.getBoundingClientRect();
+    const w = Math.max(1, Math.round(rect.width));
+    const h = Math.max(1, Math.round(rect.height));
+    if (minimapCanvas.width !== w * dpr || minimapCanvas.height !== h * dpr) {
+        minimapCanvas.width = w * dpr;
+        minimapCanvas.height = h * dpr;
+    }
+}
+
+function drawMinimap() {
+    if (!minimapCanvas || !minimapCtx) return;
+    resizeMinimap();
+    const dpr = window.devicePixelRatio || 1;
+    const W = minimapCanvas.width;
+    const H = minimapCanvas.height;
+    minimapCtx.setTransform(1, 0, 0, 1, 0, 0);
+    minimapCtx.clearRect(0, 0, W, H);
+
+    const bounds = getMinimapWorldBounds();
+    const sx = W / bounds.w;
+    const sy = H / bounds.h;
+    const mapX = (wx) => (wx - bounds.x) * sx;
+    const mapY = (wy) => (wy - bounds.y) * sy;
+
+    // board backdrop
+    minimapCtx.fillStyle = 'rgba(35, 45, 60, 0.55)';
+    minimapCtx.fillRect(mapX(0), mapY(0), BOARD_W * sx, BOARD_H * sy);
+    minimapCtx.strokeStyle = 'rgba(120, 140, 170, 0.4)';
+    minimapCtx.lineWidth = 1;
+    minimapCtx.strokeRect(mapX(0), mapY(0), BOARD_W * sx, BOARD_H * sy);
+
+    // wires (thin so they read as connectivity)
+    if (wires && wires.length) {
+        minimapCtx.strokeStyle = 'rgba(140, 180, 210, 0.55)';
+        minimapCtx.lineWidth = Math.max(1, 1 * dpr);
+        minimapCtx.beginPath();
+        wires.forEach((w) => {
+            try {
+                const poly = (typeof w.getPolyline === 'function') ? w.getPolyline() : null;
+                const pts = Array.isArray(poly) && poly.length
+                    ? poly
+                    : [w.from?.c?.getPinPos?.(w.from.p), w.to?.c?.getPinPos?.(w.to.p)].filter(Boolean);
+                if (pts.length < 2) return;
+                minimapCtx.moveTo(mapX(pts[0].x), mapY(pts[0].y));
+                for (let i = 1; i < pts.length; i += 1) {
+                    minimapCtx.lineTo(mapX(pts[i].x), mapY(pts[i].y));
+                }
+            } catch { /* draw robustness: skip malformed wires */ }
+        });
+        minimapCtx.stroke();
+    }
+
+    // component dots, colored by broad category
+    const compColor = (c) => {
+        const k = (c && c.kind) || '';
+        if (k === 'voltagesource' || k === 'ground' || k === 'functiongenerator') return '#fbbf24';
+        if (k === 'oscilloscope') return '#38bdf8';
+        if (k === 'lf412') return '#a78bfa';
+        if (k === 'led') return '#f87171';
+        return '#cbd5e1';
+    };
+    components.forEach((c) => {
+        const r = 2 * dpr;
+        minimapCtx.fillStyle = compColor(c);
+        const cx = mapX(c.x);
+        const cy = mapY(c.y);
+        minimapCtx.beginPath();
+        minimapCtx.arc(cx, cy, r, 0, Math.PI * 2);
+        minimapCtx.fill();
+    });
+
+    // viewport rectangle
+    const viewW = (canvasDisplayWidth || canvas?.width || 0) / (zoom || 1);
+    const viewH = (canvasDisplayHeight || canvas?.height || 0) / (zoom || 1);
+    const vx = -viewOffsetX;
+    const vy = -viewOffsetY;
+    minimapCtx.strokeStyle = '#60a5fa';
+    minimapCtx.lineWidth = Math.max(1.5, 1.5 * dpr);
+    minimapCtx.strokeRect(mapX(vx), mapY(vy), viewW * sx, viewH * sy);
+    minimapCtx.fillStyle = 'rgba(96, 165, 250, 0.10)';
+    minimapCtx.fillRect(mapX(vx), mapY(vy), viewW * sx, viewH * sy);
+}
+
+function panViewToMinimapPoint(clientX, clientY) {
+    if (!minimapCanvas || !canvas) return;
+    const rect = minimapCanvas.getBoundingClientRect();
+    if (!rect.width || !rect.height) return;
+    const bounds = getMinimapWorldBounds();
+    const mx = ((clientX - rect.left) / rect.width) * bounds.w + bounds.x;
+    const my = ((clientY - rect.top) / rect.height) * bounds.h + bounds.y;
+    const viewW = (canvasDisplayWidth || canvas.width) / (zoom || 1);
+    const viewH = (canvasDisplayHeight || canvas.height) / (zoom || 1);
+    // Place the clicked point at the centre of the main canvas viewport.
+    viewOffsetX = -(mx - viewW / 2);
+    viewOffsetY = -(my - viewH / 2);
+    if (typeof clampView === 'function') clampView();
+}
+
+let minimapDragging = false;
+function attachMinimapHandlers() {
+    if (!minimapPanel) return;
+    const onDownMap = (e) => {
+        e.preventDefault();
+        minimapDragging = true;
+        panViewToMinimapPoint(e.clientX, e.clientY);
+    };
+    const onMoveMap = (e) => {
+        if (!minimapDragging) return;
+        panViewToMinimapPoint(e.clientX, e.clientY);
+    };
+    const onUpMap = () => { minimapDragging = false; };
+    minimapPanel.addEventListener('mousedown', onDownMap);
+    window.addEventListener('mousemove', onMoveMap);
+    window.addEventListener('mouseup', onUpMap);
+    minimapPanel.addEventListener('touchstart', (e) => {
+        const t = e.touches[0];
+        if (!t) return;
+        e.preventDefault();
+        minimapDragging = true;
+        panViewToMinimapPoint(t.clientX, t.clientY);
+    }, { passive: false });
+    minimapPanel.addEventListener('touchmove', (e) => {
+        const t = e.touches[0];
+        if (!t || !minimapDragging) return;
+        e.preventDefault();
+        panViewToMinimapPoint(t.clientX, t.clientY);
+    }, { passive: false });
+    minimapPanel.addEventListener('touchend', () => { minimapDragging = false; });
+}
+
+/* ---------- MEASUREMENT PROBE ---------- */
+function toggleProbeMode(forceOn) {
+    const next = (typeof forceOn === 'boolean') ? forceOn : !probeMode;
+    probeMode = next;
+    const shell = document.querySelector('.canvas-shell');
+    if (shell) shell.classList.toggle('probe-mode', probeMode);
+    const btn = document.getElementById('probe-btn');
+    if (btn) btn.classList.toggle('active-tool', probeMode);
+    if (!probeMode) {
+        probeHover = null;
+        if (probeReadout) probeReadout.classList.add('hidden');
+    }
+}
+
+function readVoltageForPin(c, pinIdx) {
+    if (!c || !lastSim.getNodeIndex) return null;
+    const n = lastSim.getNodeIndex(c, pinIdx);
+    if (n === -1 || n == null) return 0; // reference / floating
+    const sol = lastSim.solution;
+    return (sol && Number.isFinite(sol[n])) ? sol[n] : null;
+}
+
+function readVoltageForWire(w) {
+    if (!w || !lastSim.getNodeIndex) return null;
+    const n = lastSim.getNodeIndex(w.from?.c, w.from?.p);
+    if (n === -1 || n == null) return 0;
+    const sol = lastSim.solution;
+    return (sol && Number.isFinite(sol[n])) ? sol[n] : null;
+}
+
+function formatProbeVoltage(v) {
+    if (!Number.isFinite(v)) return '—';
+    const abs = Math.abs(v);
+    if (abs < 1e-3) return `${(v * 1e6).toFixed(1)} µV`;
+    if (abs < 1)    return `${(v * 1e3).toFixed(1)} mV`;
+    return `${v.toFixed(3)} V`;
+}
+
+function updateProbeHover(clientX, clientY) {
+    if (!probeMode || !canvas) {
+        probeHover = null;
+        return;
+    }
+    const m = screenToWorld(clientX, clientY);
+    const pin = findPinAt(m);
+    let wireHit = null;
+    if (!pin && typeof pickWireAt === 'function') {
+        wireHit = pickWireAt(m, WIRE_HIT_DISTANCE);
+    }
+    if (pin) {
+        const v = readVoltageForPin(pin.c, pin.p);
+        probeHover = { kind: 'pin', target: pin, screen: { x: clientX, y: clientY }, voltage: v, label: `${(pin.c.id || pin.c.kind)}·${pin.p}` };
+    } else if (wireHit) {
+        const v = readVoltageForWire(wireHit);
+        probeHover = { kind: 'wire', target: wireHit, screen: { x: clientX, y: clientY }, voltage: v, label: 'wire' };
+    } else {
+        probeHover = null;
+    }
+}
+
+function updateProbeReadout() {
+    if (!probeReadout) return;
+    if (!probeMode || !probeHover) {
+        probeReadout.classList.add('hidden');
+        return;
+    }
+    const { screen, voltage, label } = probeHover;
+    probeReadout.classList.remove('hidden');
+    probeReadout.textContent = `${label}  ${formatProbeVoltage(voltage)}`;
+    // Position relative to the main workspace root (minimap is placed inside canvas-shell).
+    const shell = document.querySelector('.canvas-shell');
+    if (!shell) return;
+    const rect = shell.getBoundingClientRect();
+    const left = Math.round(screen.x - rect.left + 14);
+    const top = Math.round(screen.y - rect.top + 14);
+    probeReadout.style.left = `${left}px`;
+    probeReadout.style.top  = `${top}px`;
+}
+
+/* ---------- COMPONENT SEARCH ---------- */
+function attachComponentSearch() {
+    const input = document.getElementById('component-search');
+    if (!input) return;
+    const run = () => {
+        const q = input.value.trim().toLowerCase();
+        const buttons = document.querySelectorAll('#tool-scroll .tool-btn');
+        buttons.forEach((btn) => {
+            const text = (btn.textContent || '').toLowerCase();
+            const show = !q || text.includes(q);
+            btn.style.display = show ? '' : 'none';
+            btn.classList.toggle('search-hit', !!q && show);
+        });
+        // Hide empty section headers when all their buttons are hidden.
+        document.querySelectorAll('#tool-scroll > div').forEach((section) => {
+            const visible = section.querySelectorAll('.tool-btn:not([style*="display: none"])').length;
+            const hasBtns = section.querySelectorAll('.tool-btn').length;
+            if (!hasBtns) return;
+            section.style.display = visible ? '' : 'none';
+        });
+    };
+    input.addEventListener('input', run);
+    input.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            input.value = '';
+            run();
+            input.blur();
+        } else if (e.key === 'Enter') {
+            const first = document.querySelector('#tool-scroll .tool-btn:not([style*="display: none"])');
+            if (first) first.click();
+        }
+    });
+}
+
 function canvasIsEmpty() {
     return (!components || components.length === 0) && (!wires || wires.length === 0);
 }
@@ -4901,6 +5188,10 @@ function reportInitError(message) {
       }
       scopeCanvas = document.getElementById('scopeCanvas');
       scopeCtx = scopeCanvas ? scopeCanvas.getContext('2d') : null;
+      minimapPanel = document.getElementById('minimap-panel');
+      minimapCanvas = document.getElementById('minimap');
+      minimapCtx = minimapCanvas ? minimapCanvas.getContext('2d') : null;
+      probeReadout = document.getElementById('probe-readout');
       if (!scopeCanvas) {
           console.warn('Scope canvas not found; oscilloscope overlay disabled.');
       } else if (!scopeCtx) {
@@ -4970,6 +5261,9 @@ function reportInitError(message) {
         if (e.key === 'Shift') shiftHeldForWire = false;
     });
 
+    attachMinimapHandlers();
+    attachComponentSearch();
+
     loadStateFromLocalStorage();
     updateProps();
     loop();
@@ -5005,7 +5299,8 @@ const circuitForgeApi = {
     startDragCursor,
     renderToolIcons,
     updateBoardThemeColors,
-    draw
+    draw,
+    toggleProbeMode
 };
 
 if (typeof window !== 'undefined') {

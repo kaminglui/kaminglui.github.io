@@ -569,6 +569,94 @@
             padding: 2px 6px;
         }
 
+        /* --- MINIMAP --- */
+        #minimap-panel {
+            position: absolute;
+            bottom: 12px;
+            right: 12px;
+            width: 180px;
+            height: 140px;
+            background: rgba(20, 20, 20, 0.82);
+            border: 1px solid var(--border-subtle);
+            border-radius: 6px;
+            overflow: hidden;
+            z-index: 8;
+            backdrop-filter: blur(4px);
+            box-shadow: 0 4px 16px rgba(0,0,0,0.45);
+            cursor: pointer;
+        }
+        #minimap-panel canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+        #minimap-panel .minimap-label {
+            position: absolute;
+            top: 4px;
+            left: 6px;
+            font-size: 9px;
+            color: var(--text-muted);
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            pointer-events: none;
+        }
+        @media (max-width: 768px) {
+            #minimap-panel { display: none; }
+        }
+
+        /* --- MEASUREMENT PROBE --- */
+        #probe-readout {
+            position: absolute;
+            z-index: 9;
+            background: rgba(15, 25, 40, 0.92);
+            border: 1px solid #3b82f6;
+            border-radius: 4px;
+            padding: 4px 8px;
+            color: #bfdbfe;
+            font-family: ui-monospace, Menlo, monospace;
+            font-size: 11px;
+            pointer-events: none;
+            white-space: nowrap;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.5);
+        }
+        .canvas-shell.probe-mode { cursor: crosshair; }
+        #probe-btn.active-tool {
+            background: #1e3a8a;
+            color: #bfdbfe;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 1px #3b82f6 inset;
+        }
+
+        /* --- COMPONENT SEARCH --- */
+        #component-search-wrap {
+            position: relative;
+        }
+        #component-search {
+            width: 100%;
+            background: var(--bg-panel);
+            border: 1px solid var(--border-subtle);
+            border-radius: 6px;
+            color: var(--text-primary);
+            padding: 6px 10px 6px 28px;
+            font-size: 12px;
+            outline: none;
+            transition: border-color 0.15s ease;
+        }
+        #component-search:focus { border-color: var(--border-focus); }
+        #component-search-wrap .search-icon {
+            position: absolute;
+            top: 50%;
+            left: 10px;
+            transform: translateY(-50%);
+            color: var(--text-muted);
+            font-size: 11px;
+            pointer-events: none;
+        }
+        .tool-btn.search-hit {
+            outline: 1px solid #3b82f6;
+            outline-offset: 1px;
+        }
+
         /* --- UTILITIES --- */
         .hidden { display: none !important; }
         
@@ -682,6 +770,10 @@
         </div>
 
             <div id="tool-scroll" class="flex-1 overflow-y-auto p-4 space-y-6" style="padding-bottom: calc(var(--simbar-h) + 24px);">
+                <div id="component-search-wrap">
+                    <i class="fas fa-search search-icon"></i>
+                    <input id="component-search" type="search" placeholder="Search parts..." autocomplete="off" />
+                </div>
                 <div>
                     <h3 class="text-[11px] font-bold text-gray-400 uppercase mb-3 tracking-widest flex items-center gap-2">
                         <i class="fas fa-bolt text-xs opacity-50"></i> Power
@@ -712,6 +804,12 @@
                         </button>
                         <button class="tool-btn p-2" onclick="selectTool('capacitor', this)">
                             <span class="text-[11px] font-medium">Capacitor</span>
+                        </button>
+                        <button class="tool-btn p-2" onclick="selectTool('inductor', this)">
+                            <span class="text-[11px] font-medium">Inductor</span>
+                        </button>
+                        <button class="tool-btn p-2" onclick="selectTool('bjt', this)">
+                            <span class="text-[11px] font-medium">BJT</span>
                         </button>
                         <button class="tool-btn p-2" onclick="selectTool('led', this)">
                             <span class="text-[11px] font-medium">LED</span>
@@ -784,9 +882,23 @@
                     <i class="fas fa-layer-group"></i>
                     <span id="view-label">Schematic View</span>
                 </button>
+                <button onclick="toggleProbeMode()" id="probe-btn"
+                        class="bg-gray-800 hover:bg-gray-700 text-gray-200 px-4 py-2 rounded shadow-lg
+                               border border-gray-700 text-xs flex items-center gap-2 has-tooltip"
+                        data-tooltip="Probe voltages (V)" aria-label="Probe voltages">
+                    <i class="fas fa-crosshairs"></i>
+                    <span>Probe</span>
+                </button>
             </div>
 
             <canvas id="circuitCanvas"></canvas>
+
+            <div id="minimap-panel" title="Click or drag to pan the view">
+                <span class="minimap-label">MAP</span>
+                <canvas id="minimap"></canvas>
+            </div>
+
+            <div id="probe-readout" class="hidden"></div>
 
             <div id="scope-overlay" class="hidden">
                 <div class="scope-topbar flex justify-between items-center mb-4 px-4 pt-4 pr-12 flex-wrap gap-3 text-white relative">
