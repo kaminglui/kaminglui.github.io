@@ -175,6 +175,11 @@ let isPanning         = false;
 // NEW: wiring state
 let activeWire = null;   // { fromPin: {c,p}, vertices: [{x,y},...], toPin?:{c,p} }
 let hoverWire  = null;
+let hoveredPin = null;   // { c, p } — pin directly under the cursor (for affordance + "click to connect")
+// While drawing a wire, what the cursor is currently aimed at. Drives preview color + snap-to-target.
+// Shape: { kind: 'pin' | 'wire' | 'component', target, point: {x,y} } or null.
+let activeWireHover = null;
+let shiftHeldForWire = false;  // when true, invert the preview's auto elbow orientation
 let selectionBox = null; // {start:{x,y}, current:{x,y}}
 let activeScopeComponent = null;
 let dragListenersAttached = false;
@@ -969,23 +974,65 @@ function drawWires() {
 
         drawWirePolyline(pts, color, width, false);
     });
+}
 
-    if (activeWire && !activeWire.toPin) {
-        const fromPos = activeWire.fromPin.c.getPinPos(activeWire.fromPin.p);
-        const mousePt = activeWire.currentPoint || fromPos;
-        const dir = getPinDirection(activeWire.fromPin.c, activeWire.fromPin.p);
-        const pts = routeManhattan(
-            fromPos,
-            activeWire.vertices || [],
-            mousePt,
-            dir,
-            null,
-            { preferredOrientation: activeWire.routePref || null }
-        );
-        const previewOrientation = firstSegmentOrientation(pts);
-        if (!activeWire.routePref && previewOrientation) activeWire.routePref = previewOrientation;
-        drawWirePolyline(pts, wireActiveColor, ACTIVE_WIRE_WIDTH, true);
+// Draw the in-progress wire preview on top of components so it's never buried.
+function drawActiveWirePreview() {
+    if (!activeWire || activeWire.toPin) return;
+
+    const fromPos = activeWire.fromPin.c.getPinPos(activeWire.fromPin.p);
+    const mousePt = activeWire.currentPoint || fromPos;
+    const dir = getPinDirection(activeWire.fromPin.c, activeWire.fromPin.p);
+
+    // Shift: invert the auto elbow for this preview so the user can force the other path.
+    let preferredOrientation = activeWire.routePref || null;
+    if (shiftHeldForWire) {
+        const inferred = preferredOrientation
+            || inferRoutePreference(fromPos, activeWire.vertices || [], mousePt);
+        preferredOrientation = inferred === ROUTE_ORIENTATION.H_FIRST
+            ? ROUTE_ORIENTATION.V_FIRST
+            : ROUTE_ORIENTATION.H_FIRST;
     }
+
+    const pts = routeManhattan(
+        fromPos,
+        activeWire.vertices || [],
+        mousePt,
+        dir,
+        null,
+        { preferredOrientation }
+    );
+    const previewOrientation = firstSegmentOrientation(pts);
+    if (!activeWire.routePref && !shiftHeldForWire && previewOrientation) {
+        activeWire.routePref = previewOrientation;
+    }
+
+    // Context-colored preview: green = valid pin target, blue = will auto-junction a wire,
+    // red = over a component body (invalid), default ink otherwise.
+    let previewColor = wireActiveColor;
+    if (activeWireHover?.kind === 'pin') previewColor = '#22c55e';
+    else if (activeWireHover?.kind === 'wire') previewColor = '#3b82f6';
+    else if (activeWireHover?.kind === 'component') previewColor = '#ef4444';
+
+    drawWirePolyline(pts, previewColor, ACTIVE_WIRE_WIDTH, true);
+}
+
+// Draw a hover ring on any pin the cursor is near. Larger + green when a wire is being drawn
+// and the pin is a valid target, so "click to connect" is visually obvious.
+function drawPinAffordance() {
+    const activeTarget = activeWire && activeWireHover?.kind === 'pin' ? activeWireHover.target : null;
+    const pinToHighlight = activeTarget || hoveredPin;
+    if (!pinToHighlight) return;
+
+    const pos = pinToHighlight.c.getPinPos(pinToHighlight.p);
+    const isValidWireTarget = !!activeTarget;
+    ctx.save();
+    ctx.strokeStyle = isValidWireTarget ? '#22c55e' : '#60a5fa';
+    ctx.lineWidth = isValidWireTarget ? 2 : 1.4;
+    ctx.beginPath();
+    ctx.arc(pos.x, pos.y, PIN_HIT_RADIUS * (isValidWireTarget ? 1.35 : 1.15), 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
 }
 
 function drawTemplatePreview() {
@@ -1040,6 +1087,8 @@ function draw() {
         }
     });
     drawTemplatePreview();
+    drawPinAffordance();
+    drawActiveWirePreview();
 
     syncQuickBarVisibility();
 
@@ -3020,16 +3069,67 @@ function updatePinch(e) {
 }
 
 // find a pin under mouse
-function findPinAt(m) {
+function findPinAt(m, radius = PIN_HIT_RADIUS) {
     for (const c of components) {
         for (let i = 0; i < c.pins.length; i++) {
             const p = c.getPinPos(i);
-            if (Math.hypot(m.x - p.x, m.y - p.y) < PIN_HIT_RADIUS) {
+            if (Math.hypot(m.x - p.x, m.y - p.y) < radius) {
                 return { c, p: i };
             }
         }
     }
     return null;
+}
+
+// Refreshes `hoveredPin`, `hoverWire`, and (when wiring) `activeWireHover`, plus
+// snaps the active wire's current point to the aimed target. Called from onMove/onUp.
+function updatePointerContext(m) {
+    const busy = draggingComponent || draggingWire || selectionBox || isPanning || pendingComponentDrag;
+    if (busy) {
+        hoveredPin = null;
+        hoverWire = null;
+        activeWireHover = null;
+        if (canvas) canvas.style.cursor = '';
+        return;
+    }
+
+    // Slightly larger pick radius when actively wiring so the snap feels forgiving.
+    const pinRadius = activeWire ? PIN_HIT_RADIUS * 1.3 : PIN_HIT_RADIUS;
+    hoveredPin = findPinAt(m, pinRadius);
+    hoverWire = hoveredPin ? null : pickWireAt(m, WIRE_HIT_DISTANCE);
+
+    if (activeWire && !activeWire.toPin) {
+        const sameAsStart = hoveredPin
+            && hoveredPin.c === activeWire.fromPin.c
+            && hoveredPin.p === activeWire.fromPin.p;
+
+        if (hoveredPin && !sameAsStart) {
+            const pt = hoveredPin.c.getPinPos(hoveredPin.p);
+            activeWireHover = { kind: 'pin', target: hoveredPin, point: pt };
+            activeWire.currentPoint = pt;
+        } else if (hoverWire) {
+            activeWireHover = { kind: 'wire', target: hoverWire, point: snapToBoardPoint(m.x, m.y) };
+            activeWire.currentPoint = activeWireHover.point;
+        } else {
+            const compHit = components.find(c => c !== activeWire.fromPin.c && c.isInside(m.x, m.y));
+            if (compHit) {
+                activeWireHover = { kind: 'component', target: compHit, point: snapToBoardPoint(m.x, m.y) };
+                activeWire.currentPoint = activeWireHover.point;
+            } else {
+                activeWireHover = null;
+                activeWire.currentPoint = snapToBoardPoint(m.x, m.y);
+            }
+        }
+    } else {
+        activeWireHover = null;
+    }
+
+    // Cursor affordance: pointer on a pin, crosshair while drawing, default otherwise.
+    if (canvas) {
+        if (hoveredPin) canvas.style.cursor = 'pointer';
+        else if (activeWire) canvas.style.cursor = 'crosshair';
+        else canvas.style.cursor = '';
+    }
 }
 
 function applyZoom(factor) {
@@ -3509,15 +3609,7 @@ function onMove(e) {
         draggingWire.wire.vertices = newVerts;
     }
 
-    if (activeWire && !activeWire.toPin) {
-        activeWire.currentPoint = snapToBoardPoint(m.x, m.y);
-    }
-
-    if (!draggingComponent && !draggingWire && !selectionBox && !isPanning && !pendingComponentDrag) {
-        hoverWire = pickWireAt(m, WIRE_HIT_DISTANCE);
-    } else {
-        hoverWire = null;
-    }
+    updatePointerContext(m);
 }
 
 function onCanvasMove(e) {
@@ -3639,15 +3731,7 @@ function onUp(e) {
         handled = true;
     }
 
-    if (activeWire && !activeWire.toPin) {
-        activeWire.currentPoint = snapToBoardPoint(m.x, m.y);
-    }
-
-    if (!draggingComponent && !draggingWire && !selectionBox && !isPanning) {
-        hoverWire = pickWireAt(m, WIRE_HIT_DISTANCE);
-    } else {
-        hoverWire = null;
-    }
+    updatePointerContext(m);
 
     if (handled) {
         detachDragListeners();
@@ -3676,6 +3760,19 @@ function onKey(e) {
         if (key === 'c') { e.preventDefault(); copySelection(); return; }
         if (key === 'x') { e.preventDefault(); cutSelection(); return; }
         if (key === 'v') { e.preventDefault(); pasteClipboard(); return; }
+    }
+
+    // While drawing a wire, Backspace drops the last waypoint instead of deleting
+    // the selected component. Lets the user "take back" corners before committing.
+    if (e.key === 'Backspace' && !isEditable && activeWire && !activeWire.toPin) {
+        e.preventDefault();
+        if (activeWire.vertices && activeWire.vertices.length > 0) {
+            activeWire.vertices.pop();
+            if (activeWire.vertices.length === 0) activeWire.routePref = null;
+        } else {
+            activeWire = null;
+        }
+        return;
     }
 
     if ((e.key === 'Delete' || e.key === 'Backspace') && !isEditable) {
@@ -4580,6 +4677,13 @@ function reportInitError(message) {
     canvas.addEventListener('touchmove', onCanvasMove, { passive: false });
     canvas.addEventListener('touchend', onUp);
     window.addEventListener('keydown',   onKey);
+    // Track Shift live so the wire preview can flip its elbow on demand while a wire is being drawn.
+    window.addEventListener('keydown', (e) => {
+        if (e.key === 'Shift' && !shiftHeldForWire) shiftHeldForWire = true;
+    });
+    window.addEventListener('keyup', (e) => {
+        if (e.key === 'Shift') shiftHeldForWire = false;
+    });
 
     loadStateFromLocalStorage();
     updateProps();
