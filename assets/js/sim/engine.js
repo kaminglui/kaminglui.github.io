@@ -18,6 +18,7 @@ const DEFAULTS = {
   opAmpInputLeak: 1e-15,
   opAmpOutputLeak: 1e-12,
   opAmpHeadroom: 0.1,
+  opAmpSlewRate: 3e6, // ~3 V/µs, typical JFET-input op-amp (LF412) slew rate
   opAmpHysteresis: 1e-3,
   opAmpSaturationWindow: 0.02,
   funcGenRefRes: 1,
@@ -334,6 +335,7 @@ function buildSimulationComponents({
   opAmpHeadroom,
   opAmpHysteresis,
   opAmpSaturationWindow,
+  opAmpSlewRate,
   maxOutputClamp,
   mapNode,
   registerSource = () => {}
@@ -477,7 +479,8 @@ function buildSimulationComponents({
           state: opState,
           stateKey: `half-${idx}`,
           hysteresis: opAmpHysteresis,
-          saturationWindow: opAmpSaturationWindow
+          saturationWindow: opAmpSaturationWindow,
+          slewRate: opAmpSlewRate
         });
         opAmpComponents.push(opAmp);
         simComponents.push(opAmp);
@@ -501,6 +504,7 @@ function runSimulation(opts = {}) {
   const opAmpHeadroom = opts.opAmpHeadroom ?? DEFAULTS.opAmpHeadroom;
   const opAmpHysteresis = opts.opAmpHysteresis ?? DEFAULTS.opAmpHysteresis;
   const opAmpSaturationWindow = opts.opAmpSaturationWindow ?? DEFAULTS.opAmpSaturationWindow;
+  const opAmpSlewRate = opts.opAmpSlewRate ?? DEFAULTS.opAmpSlewRate;
   const funcGenRefRes = opts.funcGenRefRes ?? DEFAULTS.funcGenRefRes;
   const funcGenSeriesRes = opts.funcGenSeriesRes ?? DEFAULTS.funcGenSeriesRes;
   const maxOutputClamp = opts.maxOutputClamp ?? DEFAULTS.maxOutputClamp;
@@ -576,6 +580,7 @@ function runSimulation(opts = {}) {
     opAmpHeadroom,
     opAmpHysteresis,
     opAmpSaturationWindow,
+    opAmpSlewRate,
     maxOutputClamp,
     mapNode,
     registerSource
@@ -637,7 +642,7 @@ function runSimulation(opts = {}) {
   if (finalSolution && opAmpComponents.length) {
     opAmpComponents.forEach((op) => {
       if (typeof op.clampOutput === 'function') {
-        op.clampOutput(finalSolution);
+        op.clampOutput(finalSolution, dt);
       }
     });
   }

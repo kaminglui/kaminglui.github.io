@@ -13,13 +13,15 @@ class LED {
         this.nA = nAnode;
         this.nK = nCathode;
         this.Vf = Math.max(0, Vf ?? 0);
-        const IfVal = If ?? 0.01;
-        let R = Math.abs(this.Vf / IfVal);
-        if (!Number.isFinite(R) || R <= 0) R = 330;
-        this.gOn = 1 / R;
-        // The knee state conducts with a fraction of the on-state conductance and a
-        // lower effective forward drop, producing a smooth toe in the I-V curve.
-        this.gKnee = this.gOn * 0.12;
+        const IfVal = Math.max(1e-6, If ?? 0.01);
+        // On-state is stiff: conductance chosen so that at the rated forward current
+        // If, the extra drop above Vf is <= 1% of Vf. Matches real-LED behaviour of
+        // V_LED ≈ Vf for any reasonable forward bias.
+        const baseG = IfVal / (this.Vf || 1);
+        this.gOn = 100 * baseG;
+        // Knee region conducts ~3% of If at the top of the knee, giving a visible
+        // dim glow without the stiff slope of the full-on region.
+        this.gKnee = 0.1 * baseG;
         this.VfKnee = this.Vf * 0.8;
         this.gOff = 1e-9;
         this.gReverse = 1e-10;

@@ -56,6 +56,18 @@ class MOSFET {
                 const vov = vgs - vtEff;
                 ids = 0.5 * this.k * vov * vov * (1 + this.lambda * (vds - vov));
             }
+        } else if (vgs > 0) {
+            // Subthreshold region: real MOSFETs conduct an exponentially small current
+            // below Vth instead of hard-cutting off. Model as
+            //     I_sub = I_off * exp((Vgs - Vth) / (n * Vt))
+            // where n ~= 1.3 is the subthreshold slope factor and Vt = 25.85 mV.
+            // At the threshold, I_sub matches ~1% of a weak-inversion reference so
+            // it's a smooth order-of-magnitude less than above-threshold operation.
+            const nVt = 1.3 * 0.02585;
+            const iRef = 0.5 * this.k * 0.01; // 1% of Vov=0.1 V square-law reference
+            const iSub = iRef * Math.exp((vgs - vtEff) / nVt);
+            // (1 + lambda Vds) channel-length modulation still applies.
+            ids = iSub * (1 + this.lambda * Math.max(0, vds));
         }
         if (this.isP) ids = -ids;
 

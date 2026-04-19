@@ -113,13 +113,20 @@ describe('Op-amp nonlinear/temporal uses', () => {
       wire(op, 0, load, 0), wire(load, 1, gnd, 0)
     ];
 
-    const high = simulateCircuit({ components, wires }).voltage(op, 0);
-    expect(high).toBeCloseTo(4.9, 2);
+    // Slew-rate limiting means the output takes a few steps to settle to the rail
+    // after an input flip; iterate the sim so both states reach steady state.
+    const settle = () => {
+      let v = 0;
+      for (let i = 0; i < 40; i += 1) {
+        v = simulateCircuit({ components, wires, dt: 1e-6 }).voltage(op, 0);
+      }
+      return v;
+    };
+    expect(settle()).toBeCloseTo(4.9, 2);
 
     vinp.props.Vdc = '1';
     vinm.props.Vdc = '2.5';
-    const low = simulateCircuit({ components, wires }).voltage(op, 0);
-    expect(low).toBeCloseTo(0.1, 2);
+    expect(settle()).toBeCloseTo(0.1, 2);
   });
 
   it('integrates a constant input', () => {

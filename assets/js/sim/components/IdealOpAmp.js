@@ -17,7 +17,8 @@ class IdealOpAmp {
         state = null,
         stateKey = null,
         hysteresis = 0,
-        saturationWindow = 0.02
+        saturationWindow = 0.02,
+        slewRate = Infinity
     }) {
         this.nOut = nOut;
         this.nInv = nInv;
@@ -34,6 +35,10 @@ class IdealOpAmp {
         this.stateKey = stateKey;
         this.hysteresis = hysteresis;
         this.saturationWindow = saturationWindow;
+        // Volts / second. Used to limit how far the output can swing in one step
+        // (dt is supplied at clampOutput time, so the per-iteration limit scales
+        // with the simulation's timestep and a sharp input produces a visible ramp).
+        this.slewRate = Number.isFinite(slewRate) && slewRate > 0 ? slewRate : Infinity;
     }
 
     stamp(stamps) {
@@ -43,7 +48,7 @@ class IdealOpAmp {
         stamps.stampVCVS(this.nOut, -1, this.nNon, this.nInv, this.gain);
     }
 
-    clampOutput(systemSolution) {
+    clampOutput(systemSolution, dt = 0) {
         if (this.nOut == null || this.nOut === -1) return;
         const nodeVoltage = (node) => {
             if (node == null || node === -1) return 0;
@@ -85,6 +90,20 @@ class IdealOpAmp {
             if (nearRail && sign !== 0) {
                 finalVal = sign > 0 ? safeMax : safeMin;
             }
+        }
+
+        // Slew-rate limit: cap how much the output can move from its previous value
+        // in this dt. Gives sharp input steps a visible ramp on the scope and matches
+        // real op-amp transient behaviour.
+        if (bucket && Number.isFinite(this.slewRate) && dt > 0 && bucket.lastOut != null) {
+            const maxStep = this.slewRate * dt;
+            const delta = finalVal - bucket.lastOut;
+            if (Math.abs(delta) > maxStep) {
+                finalVal = bucket.lastOut + Math.sign(delta) * maxStep;
+            }
+        }
+
+        if (bucket) {
             bucket.lastSign = sign || prevSign || 0;
             bucket.lastOut = finalVal;
         }

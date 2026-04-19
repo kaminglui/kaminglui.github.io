@@ -1163,6 +1163,47 @@
         </div>
     </dialog>
 
+    <dialog id="help-overlay" class="bg-gray-900 text-gray-200 border border-gray-700 rounded-lg shadow-2xl" style="max-width: 560px; padding: 0;">
+        <div class="flex items-center justify-between px-5 py-3 border-b border-gray-700">
+            <h2 class="text-sm font-bold tracking-wider text-gray-300 uppercase">Keyboard &amp; mouse</h2>
+            <button type="button" class="text-gray-400 hover:text-white" id="help-close" aria-label="Close">×</button>
+        </div>
+        <div class="p-5 space-y-4 text-[12px] font-mono">
+            <section>
+                <h3 class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">Selection &amp; editing</h3>
+                <dl class="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1">
+                    <dt class="text-gray-400">Click</dt><dd>Select a component or wire</dd>
+                    <dt class="text-gray-400">Shift + click</dt><dd>Add to / remove from selection</dd>
+                    <dt class="text-gray-400">R</dt><dd>Rotate selected component</dd>
+                    <dt class="text-gray-400">F</dt><dd>Mirror selected component</dd>
+                    <dt class="text-gray-400">Delete / Backspace</dt><dd>Delete selected</dd>
+                    <dt class="text-gray-400">Ctrl + C / X / V</dt><dd>Copy / cut / paste</dd>
+                    <dt class="text-gray-400">Esc</dt><dd>Cancel current action / deselect</dd>
+                </dl>
+            </section>
+            <section>
+                <h3 class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">Wiring</h3>
+                <dl class="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1">
+                    <dt class="text-gray-400">Click a pin</dt><dd>Start / finish a wire</dd>
+                    <dt class="text-gray-400">Click empty board</dt><dd>Place a waypoint while drawing</dd>
+                    <dt class="text-gray-400">Shift (held)</dt><dd>Flip the L elbow orientation</dd>
+                    <dt class="text-gray-400">Backspace</dt><dd>Remove last waypoint (while drawing)</dd>
+                    <dt class="text-gray-400">Drag a segment</dt><dd>Slide the segment perpendicular; pin-connected ends re-stub</dd>
+                    <dt class="text-gray-400">Shift + click wire</dt><dd>Insert a junction there</dd>
+                </dl>
+            </section>
+            <section>
+                <h3 class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">View</h3>
+                <dl class="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1">
+                    <dt class="text-gray-400">Middle-drag</dt><dd>Pan</dd>
+                    <dt class="text-gray-400">Ctrl + scroll</dt><dd>Zoom</dd>
+                    <dt class="text-gray-400">A</dt><dd>Autoscale scope V/div</dd>
+                    <dt class="text-gray-400">?</dt><dd>Show / hide this help</dd>
+                </dl>
+            </section>
+        </div>
+    </dialog>
+
     <script type="module">
         import { initMainLayout } from '../../assets/js/layout/mainLayout.js';
         initMainLayout('circuit-lab', { themeOptions: { forceTheme: 'dark' } });

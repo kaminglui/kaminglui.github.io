@@ -177,6 +177,7 @@ let isPanning         = false;
 let activeWire = null;   // { fromPin: {c,p}, vertices: [{x,y},...], toPin?:{c,p} }
 let hoverWire  = null;
 let hoveredPin = null;   // { c, p } — pin directly under the cursor (for affordance + "click to connect")
+let hoveredComponent = null; // component under the cursor (body, not pin) — drives the value tooltip
 // While drawing a wire, what the cursor is currently aimed at. Drives preview color + snap-to-target.
 // Shape: { kind: 'pin' | 'wire' | 'component', target, point: {x,y} } or null.
 let activeWireHover = null;
@@ -1074,6 +1075,77 @@ function drawPinAffordance() {
     ctx.restore();
 }
 
+// Short "value" string shown in the hover tooltip. Uses whichever props make
+// the component identifiable at a glance: R/C/V/If/frequency/etc.
+function summarizeComponent(comp) {
+    if (!comp) return null;
+    const kind = (comp.kind || comp.constructor?.name || '').toLowerCase();
+    const p = comp.props || {};
+    if (kind.includes('resistor') || comp instanceof Resistor) return `R = ${p.R || '?'}Ω`;
+    if (kind.includes('potentiometer') || comp instanceof Potentiometer) return `${p.R || '?'}Ω · ${p.Turn || 50}%`;
+    if (kind.includes('capacitor') || comp instanceof Capacitor) return `C = ${p.C || '?'}F`;
+    if (comp instanceof VoltageSource) return `${p.Vdc || '?'} V DC`;
+    if (comp instanceof FunctionGenerator) {
+        const wave = (p.Wave || 'sine').toLowerCase();
+        return `${wave} · ${p.Vpp || '?'}Vpp · ${p.Freq || '?'}Hz`;
+    }
+    if (comp instanceof LED) return `LED · ${p.Color || 'red'} · Vf=${p.Vf || '?'}V`;
+    if (comp instanceof MOSFET) {
+        const t = (p.Type || 'NMOS').toUpperCase();
+        return `${t} · Vth=${p.Vth || '0.7'}V`;
+    }
+    if (comp instanceof Switch) return `${p.Type || 'SPST'} · pos ${p.Position || 'A'}`;
+    if (comp instanceof Oscilloscope) return 'Oscilloscope';
+    if (comp instanceof Ground) return 'Ground';
+    if (comp instanceof LF412) return 'LF412 · dual op-amp';
+    return null;
+}
+
+function drawComponentTooltip() {
+    if (!hoveredComponent) return;
+    const label = summarizeComponent(hoveredComponent);
+    if (!label) return;
+
+    const bb = typeof hoveredComponent.getBoundingBox === 'function'
+        ? hoveredComponent.getBoundingBox()
+        : null;
+    // Anchor the tooltip just above the component's top edge.
+    const anchorX = bb ? (bb.x1 + bb.x2) / 2 : hoveredComponent.x;
+    const anchorY = bb ? bb.y1 - 8 : (hoveredComponent.y - 24);
+
+    ctx.save();
+    ctx.font = LABEL_FONT_BOLD;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'bottom';
+    const metrics = ctx.measureText(label);
+    const padX = 6;
+    const padY = 3;
+    const w = metrics.width + padX * 2;
+    const h = 16;
+    const x0 = anchorX - w / 2;
+    const y0 = anchorY - h;
+    ctx.fillStyle = 'rgba(15, 23, 42, 0.94)';
+    ctx.strokeStyle = '#60a5fa';
+    ctx.lineWidth = 1;
+    const r = 3;
+    ctx.beginPath();
+    ctx.moveTo(x0 + r, y0);
+    ctx.lineTo(x0 + w - r, y0);
+    ctx.quadraticCurveTo(x0 + w, y0, x0 + w, y0 + r);
+    ctx.lineTo(x0 + w, y0 + h - r);
+    ctx.quadraticCurveTo(x0 + w, y0 + h, x0 + w - r, y0 + h);
+    ctx.lineTo(x0 + r, y0 + h);
+    ctx.quadraticCurveTo(x0, y0 + h, x0, y0 + h - r);
+    ctx.lineTo(x0, y0 + r);
+    ctx.quadraticCurveTo(x0, y0, x0 + r, y0);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = '#f1f5f9';
+    ctx.fillText(label, anchorX, anchorY - padY);
+    ctx.restore();
+}
+
 function drawTemplatePreview() {
     if (!activeTemplatePlacement || !templatePreviewOrigin) return;
     const template = activeTemplatePlacement.template;
@@ -1127,6 +1199,7 @@ function draw() {
     });
     drawTemplatePreview();
     drawPinAffordance();
+    drawComponentTooltip();
     drawActiveWirePreview();
 
     syncQuickBarVisibility();
@@ -3127,6 +3200,7 @@ function updatePointerContext(m) {
     if (busy) {
         hoveredPin = null;
         hoverWire = null;
+        hoveredComponent = null;
         activeWireHover = null;
         if (canvas) canvas.style.cursor = '';
         return;
@@ -3136,6 +3210,11 @@ function updatePointerContext(m) {
     const pinRadius = activeWire ? PIN_HIT_RADIUS * 1.3 : PIN_HIT_RADIUS;
     hoveredPin = findPinAt(m, pinRadius);
     hoverWire = hoveredPin ? null : pickWireAt(m, WIRE_HIT_DISTANCE);
+    // Component body hover (for the value tooltip) — only when we're NOT hovering a
+    // pin or a wire, and not in the middle of drawing a wire.
+    hoveredComponent = (!hoveredPin && !hoverWire && !activeWire)
+        ? components.find((c) => c.isInside(m.x, m.y)) || null
+        : null;
 
     if (activeWire && !activeWire.toPin) {
         const sameAsStart = hoveredPin
@@ -3921,6 +4000,9 @@ function onKey(e) {
         mirrorSelected();
     }
     if (e.key === 'Escape' && !isEditable) {
+        const helpDialog = document.getElementById('help-overlay');
+        if (helpDialog?.open) { helpDialog.close(); return; }
+
         selectionBox = null;
         draggingComponent = null;
         draggingWire = null;
@@ -3932,6 +4014,23 @@ function onKey(e) {
         clearToolSelection();
         detachDragListeners();
         updateProps();
+    }
+    // ? toggles the keyboard reference overlay. Capture 'shift+/' too since that's
+    // the raw keystroke on US layouts when the user presses the ? glyph.
+    if (!isEditable && (e.key === '?' || (e.key === '/' && e.shiftKey))) {
+        e.preventDefault();
+        const dialog = document.getElementById('help-overlay');
+        if (dialog) {
+            if (dialog.open) dialog.close();
+            else if (typeof dialog.showModal === 'function') dialog.showModal();
+        }
+    }
+    // A autoscales the scope's V/div on both channels.
+    if (!isEditable && e.key.toLowerCase() === 'a' && !e.metaKey && !e.ctrlKey) {
+        if (typeof autoscaleScopeVoltage === 'function') {
+            e.preventDefault();
+            autoscaleScopeVoltage();
+        }
     }
 }
 
@@ -4809,6 +4908,14 @@ function reportInitError(message) {
     canvas.addEventListener('touchmove', onCanvasMove, { passive: false });
     canvas.addEventListener('touchend', onUp);
     window.addEventListener('keydown',   onKey);
+
+    // Help overlay close button
+    const helpClose = document.getElementById('help-close');
+    if (helpClose) {
+        helpClose.addEventListener('click', () => {
+            document.getElementById('help-overlay')?.close();
+        });
+    }
     // Track Shift live so the wire preview can flip its elbow on demand while a wire is being drawn.
     window.addEventListener('keydown', (e) => {
         if (e.key === 'Shift' && !shiftHeldForWire) shiftHeldForWire = true;
