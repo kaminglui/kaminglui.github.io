@@ -71,7 +71,7 @@ export const defaultContent = {
     secondary: null,
     meta: 'I am looking for a Machine Learning (ML) related job position.'
   },
-  experienceFallback: {
+  experience: {
     positions: [
       {
         title: 'Penn State University',

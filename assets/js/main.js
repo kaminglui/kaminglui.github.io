@@ -3,8 +3,6 @@ import { defaultContent } from './content.js';
 
 const STORAGE_KEY = 'kaminglui-site-content-v1';
 const EDIT_VISIBILITY_KEY = 'kaminglui-site-edit-visible';
-const LINKEDIN_VANITY = 'ka-ming-lui';
-const LINKEDIN_PROXY = `https://r.jina.ai/https://www.linkedin.com/in/${LINKEDIN_VANITY}/`;
 
 const clone = (value) => {
   if (typeof structuredClone === 'function') {
@@ -191,6 +189,15 @@ let content = hydrateContent();
 
 if (typeof window !== 'undefined') {
   editToolsEnabled = window.sessionStorage.getItem(EDIT_VISIBILITY_KEY) === 'true';
+  const params = new URLSearchParams(window.location.search);
+  if (params.has('edit')) {
+    editToolsEnabled = true;
+    try {
+      window.sessionStorage.setItem(EDIT_VISIBILITY_KEY, 'true');
+    } catch (error) {
+      console.warn('Unable to persist edit mode.', error);
+    }
+  }
 }
 
 function hydrateContent() {
@@ -206,12 +213,17 @@ function hydrateContent() {
   }
 }
 
+const UNSAFE_KEYS = new Set(['__proto__', 'prototype', 'constructor']);
+
 function mergeContent(base, incoming) {
+  if (!incoming || typeof incoming !== 'object') return base;
   Object.entries(incoming).forEach(([key, value]) => {
+    if (UNSAFE_KEYS.has(key)) return;
+    if (!Object.prototype.hasOwnProperty.call(incoming, key)) return;
     if (value === undefined || value === null) return;
     if (Array.isArray(value)) {
       base[key] = value;
-    } else if (typeof value === 'object' && !Array.isArray(value)) {
+    } else if (typeof value === 'object') {
       const baseValue = typeof base[key] === 'object' && base[key] !== null ? clone(base[key]) : {};
       base[key] = mergeContent(baseValue, value);
     } else {
@@ -393,25 +405,25 @@ function renderContact() {
   contactElements.meta.textContent = content.contact.meta;
 }
 
-function renderExperienceFallback() {
+function renderExperience() {
   if (!experienceElements.list) return;
   experienceElements.list.innerHTML = '';
-  content.experienceFallback.positions.forEach((item) => {
+  content.experience.positions.forEach((item) => {
     experienceElements.list.appendChild(createTimelineItem(item));
   });
   if (experienceElements.empty) {
-    experienceElements.empty.hidden = content.experienceFallback.positions.length > 0;
+    experienceElements.empty.hidden = content.experience.positions.length > 0;
   }
 }
 
-function renderEducationFallback() {
+function renderEducation() {
   if (!educationElements.list) return;
   educationElements.list.innerHTML = '';
-  content.experienceFallback.education.forEach((item) => {
+  content.experience.education.forEach((item) => {
     educationElements.list.appendChild(createTimelineItem(item));
   });
   if (educationElements.empty) {
-    educationElements.empty.hidden = content.experienceFallback.education.length > 0;
+    educationElements.empty.hidden = content.experience.education.length > 0;
   }
 }
 
@@ -447,173 +459,6 @@ function createTimelineItem(item) {
   return wrapper;
 }
 
-async function populateExperienceFromLinkedIn() {
-  if (!experienceElements.list || !educationElements.list) return;
-  renderExperienceFallback();
-  renderEducationFallback();
-  try {
-    const response = await fetch(LINKEDIN_PROXY, {
-      headers: {
-        'Accept-Language': 'en-US'
-      }
-    });
-    if (!response.ok) {
-      throw new Error(`LinkedIn request failed with status ${response.status}`);
-    }
-    const html = await response.text();
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(html, 'text/html');
-
-    const data = extractLinkedInData(doc);
-    if (!data.positions.length && !data.education.length) {
-      throw new Error('No experience or education data detected.');
-    }
-
-    if (data.positions.length) {
-      experienceElements.list.innerHTML = '';
-      data.positions.forEach((position) => {
-        experienceElements.list.appendChild(
-          createTimelineItem({
-            title: position.companyName || position.title || 'Experience',
-            subtitle: buildPositionSubtitle(position),
-            description: position.description || ''
-          })
-        );
-      });
-      if (experienceElements.empty) {
-        experienceElements.empty.hidden = true;
-      }
-    } else {
-      renderExperienceFallback();
-    }
-
-    if (data.education.length) {
-      educationElements.list.innerHTML = '';
-      data.education.forEach((education) => {
-        educationElements.list.appendChild(
-          createTimelineItem({
-            title: education.schoolName || 'Education',
-            subtitle: buildEducationSubtitle(education),
-            description: education.description || education.degreeName || ''
-          })
-        );
-      });
-      if (educationElements.empty) {
-        educationElements.empty.hidden = true;
-      }
-    } else {
-      renderEducationFallback();
-    }
-  } catch (error) {
-    console.warn('Falling back to local experience data.', error);
-    renderExperienceFallback();
-    renderEducationFallback();
-  }
-}
-
-function extractLinkedInData(doc) {
-  const positions = [];
-  const education = [];
-
-  const jsonNodes = [...doc.querySelectorAll('script[type="application/ld+json"], script#__NEXT_DATA__')];
-  jsonNodes.forEach((node) => {
-    try {
-      const json = JSON.parse(node.textContent || '{}');
-      traverse(json, (value) => {
-        if (value && typeof value === 'object') {
-          if (value.companyName && value.title) {
-            positions.push(value);
-          }
-          if (value.schoolName && (value.degreeName || value.timePeriod)) {
-            education.push(value);
-          }
-        }
-      });
-    } catch (error) {
-      // ignore individual parse errors
-    }
-  });
-
-  if (!positions.length || !education.length) {
-    const experienceSection = doc.querySelector('[data-section="experience"], section[id*="experience"]');
-    if (experienceSection) {
-      positions.push(
-        ...[...experienceSection.querySelectorAll('li')].map((item) => ({
-          companyName: item.querySelector('h3, h4')?.textContent?.trim(),
-          title: item.querySelector('span')?.textContent?.trim(),
-          description: item.querySelector('p')?.textContent?.trim() || ''
-        }))
-      );
-    }
-
-    const educationSection = doc.querySelector('[data-section="education"], section[id*="education"]');
-    if (educationSection) {
-      education.push(
-        ...[...educationSection.querySelectorAll('li')].map((item) => ({
-          schoolName: item.querySelector('h3, h4')?.textContent?.trim(),
-          degreeName: item.querySelector('span')?.textContent?.trim(),
-          description: item.querySelector('p')?.textContent?.trim() || ''
-        }))
-      );
-    }
-  }
-
-  return {
-    positions: dedupeLinkedInEntries(positions, (entry) => `${entry.companyName}|${entry.title}`),
-    education: dedupeLinkedInEntries(education, (entry) => `${entry.schoolName}|${entry.degreeName}`)
-  };
-}
-
-function traverse(value, callback) {
-  if (Array.isArray(value)) {
-    value.forEach((item) => traverse(item, callback));
-    return;
-  }
-  if (value && typeof value === 'object') {
-    callback(value);
-    Object.values(value).forEach((item) => traverse(item, callback));
-  }
-}
-
-function dedupeLinkedInEntries(entries, keyFn) {
-  const seen = new Set();
-  return entries.filter((entry) => {
-    const key = keyFn(entry || {});
-    if (!key || seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  });
-}
-
-function buildPositionSubtitle(position) {
-  const role = position.title || '';
-  const time = formatLinkedInTime(position.timePeriod);
-  const location = position.geoLocationName ? ` · ${position.geoLocationName}` : '';
-  return [role, time].filter(Boolean).join(' · ') + location;
-}
-
-function buildEducationSubtitle(education) {
-  const degree = education.degreeName || education.fieldOfStudy || '';
-  const time = formatLinkedInTime(education.timePeriod);
-  return [degree, time].filter(Boolean).join(' · ');
-}
-
-function formatLinkedInTime(period) {
-  if (!period) return '';
-  const start = formatLinkedInDate(period.startDate);
-  const end = formatLinkedInDate(period.endDate) || (period.endDate === null ? 'Present' : 'Present');
-  if (start && end) return `${start} — ${end}`;
-  return start || end;
-}
-
-function formatLinkedInDate(date) {
-  if (!date) return '';
-  const { year, month } = date;
-  if (!year) return '';
-  if (!month) return String(year);
-  return new Intl.DateTimeFormat('en', { month: 'short', year: 'numeric' }).format(new Date(year, month - 1));
-}
-
 function formatDate(dateString) {
   if (!dateString) return '';
   const date = new Date(dateString);
@@ -629,6 +474,8 @@ function renderAll() {
   renderProjects();
   renderSidebar();
   renderContact();
+  renderExperience();
+  renderEducation();
 }
 
 function setupBackToTop() {
@@ -765,7 +612,6 @@ function setupEditors() {
         window.localStorage.removeItem(STORAGE_KEY);
         content = structuredClone(defaultContent);
         renderAll();
-        populateExperienceFromLinkedIn();
       }
     }
   });
@@ -779,12 +625,8 @@ function setupEditors() {
     });
   });
 
-  setupIntroForm();
-  setupAboutForm();
-  setupLearningForm();
-  setupPostsForm();
-  setupProjectsForm();
-  setupSidebarForm();
+  setupSimpleEditors();
+  setupCollectionEditors();
 
   applyEditToggleVisibility();
 }
@@ -799,423 +641,182 @@ function openEditor(type) {
 }
 
 function populateForm(type) {
-  switch (type) {
-    case 'intro':
-      populateIntroForm();
-      break;
-    case 'about':
-      populateAboutForm();
-      break;
-    case 'learning':
-      populateLearningForm();
-      break;
-    case 'posts':
-      populatePostsForm();
-      break;
-    case 'projects':
-      populateProjectsForm();
-      break;
-    case 'sidebar':
-      populateSidebarForm();
-      break;
-    default:
-      break;
-  }
+  editors[type]?.populate();
 }
 
-function setupIntroForm() {
-  const form = dialogs.intro?.querySelector('[data-form="intro"]');
-  if (!form) return;
+const editors = Object.create(null);
+
+function bindSimpleEditor({ key, formSelector, load, save, render }) {
+  const dialog = dialogs[key];
+  if (!dialog) return null;
+  const form = dialog.querySelector(formSelector);
+  if (!form) return null;
   form.addEventListener('submit', (event) => {
     event.preventDefault();
-    content.hero.eyebrow = getFieldValue(form, 'eyebrow');
-    content.hero.title = getFieldValue(form, 'title');
-    content.hero.lead = getFieldValue(form, 'lead');
-    content.hero.primary = {
-      label: getFieldValue(form, 'primaryLabel'),
-      url: getFieldValue(form, 'primaryUrl')
-    };
-    content.hero.secondary = {
-      label: getFieldValue(form, 'secondaryLabel'),
-      url: getFieldValue(form, 'secondaryUrl')
-    };
-    content.hero.current = splitLines(getFieldValue(form, 'current'));
-    content.hero.focus = splitLines(getFieldValue(form, 'focus'));
+    save(form);
     persistContent();
-    renderHero();
-    dialogs.intro.close();
+    render();
+    dialog.close();
+  });
+  return { populate: () => load(form) };
+}
+
+function setupSimpleEditors() {
+  editors.intro = bindSimpleEditor({
+    key: 'intro',
+    formSelector: '[data-form="intro"]',
+    load(form) {
+      setFieldValue(form, 'eyebrow', content.hero.eyebrow);
+      setFieldValue(form, 'title', content.hero.title);
+      setFieldValue(form, 'lead', content.hero.lead);
+      setFieldValue(form, 'primaryLabel', content.hero.primary.label);
+      setFieldValue(form, 'primaryUrl', content.hero.primary.url);
+      setFieldValue(form, 'secondaryLabel', content.hero.secondary.label);
+      setFieldValue(form, 'secondaryUrl', content.hero.secondary.url);
+      setFieldValue(form, 'current', joinLines(content.hero.current));
+      setFieldValue(form, 'focus', joinLines(content.hero.focus));
+    },
+    save(form) {
+      content.hero.eyebrow = getFieldValue(form, 'eyebrow');
+      content.hero.title = getFieldValue(form, 'title');
+      content.hero.lead = getFieldValue(form, 'lead');
+      content.hero.primary = {
+        label: getFieldValue(form, 'primaryLabel'),
+        url: getFieldValue(form, 'primaryUrl')
+      };
+      content.hero.secondary = {
+        label: getFieldValue(form, 'secondaryLabel'),
+        url: getFieldValue(form, 'secondaryUrl')
+      };
+      content.hero.current = splitLines(getFieldValue(form, 'current'));
+      content.hero.focus = splitLines(getFieldValue(form, 'focus'));
+    },
+    render: renderHero
+  });
+
+  editors.about = bindSimpleEditor({
+    key: 'about',
+    formSelector: '[data-form="about"]',
+    load(form) {
+      setFieldValue(form, 'title', content.about.title);
+      setFieldValue(form, 'paragraphs', joinLines(content.about.paragraphs));
+    },
+    save(form) {
+      content.about.title = getFieldValue(form, 'title');
+      content.about.paragraphs = splitLines(getFieldValue(form, 'paragraphs'));
+    },
+    render: renderAbout
+  });
+
+  editors.learning = bindSimpleEditor({
+    key: 'learning',
+    formSelector: '[data-form="learning"]',
+    load(form) {
+      setFieldValue(form, 'title', content.learning.title);
+      setFieldValue(form, 'topics', joinLines(content.learning.topics));
+    },
+    save(form) {
+      content.learning.title = getFieldValue(form, 'title');
+      content.learning.topics = splitLines(getFieldValue(form, 'topics'));
+    },
+    render: renderLearning
   });
 }
 
-function populateIntroForm() {
-  const form = dialogs.intro?.querySelector('[data-form="intro"]');
-  if (!form) return;
-  setFieldValue(form, 'eyebrow', content.hero.eyebrow);
-  setFieldValue(form, 'title', content.hero.title);
-  setFieldValue(form, 'lead', content.hero.lead);
-  setFieldValue(form, 'primaryLabel', content.hero.primary.label);
-  setFieldValue(form, 'primaryUrl', content.hero.primary.url);
-  setFieldValue(form, 'secondaryLabel', content.hero.secondary.label);
-  setFieldValue(form, 'secondaryUrl', content.hero.secondary.url);
-  setFieldValue(form, 'current', joinLines(content.hero.current));
-  setFieldValue(form, 'focus', joinLines(content.hero.focus));
-}
+function bindCollectionEditor({
+  key,
+  formSelector,
+  listSelector,
+  getItems,
+  getMeta,
+  setMeta,
+  loadItem,
+  readItem,
+  loadMeta,
+  readMeta,
+  newItem = () => ({}),
+  listLabel,
+  render
+}) {
+  const wrapper = dialogs[key];
+  if (!wrapper) return null;
+  const form = wrapper.querySelector(formSelector);
+  const list = wrapper.querySelector(listSelector);
+  if (!form || !list) return null;
 
-function setupAboutForm() {
-  const form = dialogs.about?.querySelector('[data-form="about"]');
-  if (!form) return;
-  form.addEventListener('submit', (event) => {
-    event.preventDefault();
-    content.about.title = getFieldValue(form, 'title');
-    content.about.paragraphs = splitLines(getFieldValue(form, 'paragraphs'));
-    persistContent();
-    renderAbout();
-    dialogs.about.close();
-  });
-}
+  let selectedIndex = -1;
 
-function populateAboutForm() {
-  const form = dialogs.about?.querySelector('[data-form="about"]');
-  if (!form) return;
-  setFieldValue(form, 'title', content.about.title);
-  setFieldValue(form, 'paragraphs', joinLines(content.about.paragraphs));
-}
-
-function setupLearningForm() {
-  const form = dialogs.learning?.querySelector('[data-form="learning"]');
-  if (!form) return;
-  form.addEventListener('submit', (event) => {
-    event.preventDefault();
-    content.learning.title = getFieldValue(form, 'title');
-    content.learning.topics = splitLines(getFieldValue(form, 'topics'));
-    persistContent();
-    renderLearning();
-    dialogs.learning.close();
-  });
-}
-
-function populateLearningForm() {
-  const form = dialogs.learning?.querySelector('[data-form="learning"]');
-  if (!form) return;
-  setFieldValue(form, 'title', content.learning.title);
-  setFieldValue(form, 'topics', joinLines(content.learning.topics));
-}
-
-let selectedPostIndex = -1;
-
-function setupPostsForm() {
-  const wrapper = dialogs.posts;
-  if (!wrapper) return;
-  const form = wrapper.querySelector('.posts-editor__form');
-  const list = wrapper.querySelector('.posts-editor__list');
-
-  form.addEventListener('submit', (event) => {
-    event.preventDefault();
-    savePostFromForm(form);
-  });
-
-  form.querySelector('[data-command="new"]').addEventListener('click', () => {
-    selectedPostIndex = -1;
-    populatePostsMeta(form);
-    populatePostDetail(form, {});
-  });
-
-  form.querySelector('[data-command="delete"]').addEventListener('click', () => {
-    if (selectedPostIndex < 0) return;
-    content.posts.entries.splice(selectedPostIndex, 1);
-    selectedPostIndex = -1;
-    persistContent();
-    renderPosts();
-    populatePostsForm();
-  });
-
-  form.querySelector('[data-command="cancel"]').addEventListener('click', () => {
-    wrapper.close();
-  });
-
-  list.addEventListener('click', (event) => {
-    if (!(event.target instanceof HTMLButtonElement)) return;
-    selectedPostIndex = Number(event.target.dataset.index);
-    populatePostsMeta(form);
-    populatePostDetail(form, content.posts.entries[selectedPostIndex]);
-    updateSelectionState(list, selectedPostIndex);
-  });
-}
-
-function populatePostsForm() {
-  const wrapper = dialogs.posts;
-  if (!wrapper) return;
-  const form = wrapper.querySelector('.posts-editor__form');
-  const list = wrapper.querySelector('.posts-editor__list');
-  list.innerHTML = '';
-  content.posts.title ??= 'Working notes on machine learning concepts';
-  content.posts.ctaLabel ??= 'Get updates';
-  content.posts.ctaUrl ??= 'mailto:hello@kaminglui.com?subject=Learning%20journal%20updates';
-  populatePostsMeta(form);
-
-  content.posts.entries.forEach((entry, index) => {
-    const button = document.createElement('button');
-    button.type = 'button';
-    button.textContent = entry.title || `Post ${index + 1}`;
-    button.dataset.index = String(index);
-    if (index === 0 && selectedPostIndex === -1) {
-      selectedPostIndex = 0;
-      populatePostDetail(form, entry);
-    }
-    if (index === selectedPostIndex) {
-      button.setAttribute('aria-selected', 'true');
-    }
-    list.appendChild(button);
-  });
-
-  if (selectedPostIndex >= content.posts.entries.length) {
-    selectedPostIndex = content.posts.entries.length - 1;
-  }
-
-  if (selectedPostIndex >= 0) {
-    populatePostDetail(form, content.posts.entries[selectedPostIndex]);
-  } else {
-    populatePostDetail(form, {});
-  }
-
-  updateSelectionState(list, selectedPostIndex);
-}
-
-function populatePostsMeta(form) {
-  setFieldValue(form, 'title', content.posts.title);
-  setFieldValue(form, 'ctaLabel', content.posts.ctaLabel);
-  setFieldValue(form, 'ctaUrl', content.posts.ctaUrl);
-}
-
-function populatePostDetail(form, entry = {}) {
-  setFieldValue(form, 'eyebrow', entry.eyebrow || '');
-  setFieldValue(form, 'postTitle', entry.title || '');
-  setFieldValue(form, 'summary', entry.summary || '');
-  setFieldValue(form, 'date', entry.date || '');
-}
-
-function savePostFromForm(form) {
-  const entry = {
-    eyebrow: getFieldValue(form, 'eyebrow'),
-    title: getFieldValue(form, 'postTitle'),
-    summary: getFieldValue(form, 'summary'),
-    date: getFieldValue(form, 'date')
+  const applyDetail = (item) => loadItem(form, item || {});
+  const applyMeta = () => {
+    if (loadMeta && getMeta) loadMeta(form, getMeta());
   };
 
-  content.posts.title = getFieldValue(form, 'title');
-  content.posts.ctaLabel = getFieldValue(form, 'ctaLabel');
-  content.posts.ctaUrl = getFieldValue(form, 'ctaUrl');
+  const populate = () => {
+    const items = getItems();
+    applyMeta();
 
-  if (selectedPostIndex >= 0) {
-    content.posts.entries[selectedPostIndex] = entry;
-  } else {
-    content.posts.entries.push(entry);
-    selectedPostIndex = content.posts.entries.length - 1;
-  }
+    list.innerHTML = '';
+    items.forEach((item, index) => {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.textContent = listLabel(item, index);
+      button.dataset.index = String(index);
+      list.appendChild(button);
+    });
 
-  persistContent();
-  renderPosts();
-  populatePostsForm();
-}
+    if (items.length && selectedIndex === -1) selectedIndex = 0;
+    if (selectedIndex >= items.length) selectedIndex = items.length - 1;
 
-let selectedProjectIndex = -1;
-
-function setupProjectsForm() {
-  const wrapper = dialogs.projects;
-  if (!wrapper) return;
-  const form = wrapper.querySelector('.projects-editor__form');
-  const list = wrapper.querySelector('.projects-editor__list');
-
-  form.addEventListener('submit', (event) => {
-    event.preventDefault();
-    saveProjectFromForm(form);
-  });
-
-  form.querySelector('[data-command="new"]').addEventListener('click', () => {
-    selectedProjectIndex = -1;
-    setFieldValue(form, 'title', content.projects.title);
-    populateProjectDetail(form, {});
-  });
-
-  form.querySelector('[data-command="delete"]').addEventListener('click', () => {
-    if (selectedProjectIndex < 0) return;
-    content.projects.items.splice(selectedProjectIndex, 1);
-    selectedProjectIndex = -1;
-    persistContent();
-    renderProjects();
-    populateProjectsForm();
-  });
-
-  form.querySelector('[data-command="cancel"]').addEventListener('click', () => {
-    wrapper.close();
-  });
-
-  list.addEventListener('click', (event) => {
-    if (!(event.target instanceof HTMLButtonElement)) return;
-    selectedProjectIndex = Number(event.target.dataset.index);
-    populateProjectDetail(form, content.projects.items[selectedProjectIndex]);
-    updateSelectionState(list, selectedProjectIndex);
-  });
-}
-
-function populateProjectsForm() {
-  const wrapper = dialogs.projects;
-  if (!wrapper) return;
-  const form = wrapper.querySelector('.projects-editor__form');
-  const list = wrapper.querySelector('.projects-editor__list');
-  list.innerHTML = '';
-  setFieldValue(form, 'title', content.projects.title);
-
-  if (content.projects.items.length && selectedProjectIndex === -1) {
-    selectedProjectIndex = 0;
-  }
-
-  content.projects.items.forEach((project, index) => {
-    const button = document.createElement('button');
-    button.type = 'button';
-    button.textContent = project.title || `Project ${index + 1}`;
-    button.dataset.index = String(index);
-    if (index === selectedProjectIndex) {
-      button.setAttribute('aria-selected', 'true');
-    }
-    list.appendChild(button);
-  });
-
-  if (selectedProjectIndex >= content.projects.items.length) {
-    selectedProjectIndex = content.projects.items.length - 1;
-  }
-
-  if (selectedProjectIndex >= 0) {
-    populateProjectDetail(form, content.projects.items[selectedProjectIndex]);
-  } else {
-    populateProjectDetail(form, {});
-  }
-
-  updateSelectionState(list, selectedProjectIndex);
-}
-
-function populateProjectDetail(form, project = {}) {
-  setFieldValue(form, 'projectTitle', project.title || '');
-  setFieldValue(form, 'summary', project.summary || '');
-  setFieldValue(form, 'highlights', joinLines(project.highlights || []));
-}
-
-function saveProjectFromForm(form) {
-  const project = {
-    title: getFieldValue(form, 'projectTitle'),
-    summary: getFieldValue(form, 'summary'),
-    highlights: splitLines(getFieldValue(form, 'highlights'))
+    applyDetail(selectedIndex >= 0 ? items[selectedIndex] : null);
+    updateSelectionState(list, selectedIndex);
   };
 
-  content.projects.title = getFieldValue(form, 'title');
-
-  if (selectedProjectIndex >= 0) {
-    content.projects.items[selectedProjectIndex] = project;
-  } else {
-    content.projects.items.push(project);
-    selectedProjectIndex = content.projects.items.length - 1;
-  }
-
-  persistContent();
-  renderProjects();
-  populateProjectsForm();
-}
-
-let selectedSidebarIndex = -1;
-
-function setupSidebarForm() {
-  const wrapper = dialogs.sidebar;
-  if (!wrapper) return;
-  const form = wrapper.querySelector('.sidebar-editor__form');
-  const list = wrapper.querySelector('.sidebar-editor__list');
-  const details = wrapper.querySelector('.sidebar-editor__details');
-
   form.addEventListener('submit', (event) => {
     event.preventDefault();
-    saveSidebarFromForm(form);
-  });
-
-  form.querySelector('[data-command="new"]').addEventListener('click', () => {
-    selectedSidebarIndex = -1;
-    setFieldValue(form, 'blockTitle', '');
-    setFieldValue(form, 'blockType', 'text');
-    setFieldValue(form, 'blockBody', '');
-    setFieldValue(form, 'blockItems', '');
-    updateSidebarMode(details, 'text');
-  });
-
-  form.querySelector('[data-command="delete"]').addEventListener('click', () => {
-    if (selectedSidebarIndex < 0) return;
-    content.sidebar.blocks.splice(selectedSidebarIndex, 1);
-    selectedSidebarIndex = -1;
+    const items = getItems();
+    const current = selectedIndex >= 0 ? items[selectedIndex] : null;
+    const next = readItem(form, current);
+    if (selectedIndex >= 0) {
+      items[selectedIndex] = next;
+    } else {
+      items.push(next);
+      selectedIndex = items.length - 1;
+    }
+    if (readMeta && setMeta) setMeta(readMeta(form));
     persistContent();
-    renderSidebar();
-    populateSidebarForm();
+    render();
+    populate();
   });
 
-  form.querySelector('[data-command="cancel"]').addEventListener('click', () => {
+  form.querySelector('[data-command="new"]')?.addEventListener('click', () => {
+    selectedIndex = -1;
+    applyMeta();
+    applyDetail(newItem());
+    updateSelectionState(list, -1);
+  });
+
+  form.querySelector('[data-command="delete"]')?.addEventListener('click', () => {
+    if (selectedIndex < 0) return;
+    getItems().splice(selectedIndex, 1);
+    selectedIndex = -1;
+    persistContent();
+    render();
+    populate();
+  });
+
+  form.querySelector('[data-command="cancel"]')?.addEventListener('click', () => {
     wrapper.close();
-  });
-
-  form.elements.namedItem('blockType').addEventListener('change', (event) => {
-    updateSidebarMode(details, event.target.value);
   });
 
   list.addEventListener('click', (event) => {
     if (!(event.target instanceof HTMLButtonElement)) return;
-    selectedSidebarIndex = Number(event.target.dataset.index);
-    populateSidebarDetail(form, content.sidebar.blocks[selectedSidebarIndex]);
-    updateSelectionState(list, selectedSidebarIndex);
-  });
-}
-
-function populateSidebarForm() {
-  const wrapper = dialogs.sidebar;
-  if (!wrapper) return;
-  const form = wrapper.querySelector('.sidebar-editor__form');
-  const list = wrapper.querySelector('.sidebar-editor__list');
-  const details = wrapper.querySelector('.sidebar-editor__details');
-
-  list.innerHTML = '';
-  content.sidebar.blocks.forEach((block, index) => {
-    const button = document.createElement('button');
-    button.type = 'button';
-    button.textContent = block.title || `Block ${index + 1}`;
-    button.dataset.index = String(index);
-    if (index === selectedSidebarIndex) {
-      button.setAttribute('aria-selected', 'true');
-    }
-    list.appendChild(button);
+    selectedIndex = Number(event.target.dataset.index);
+    applyMeta();
+    applyDetail(getItems()[selectedIndex]);
+    updateSelectionState(list, selectedIndex);
   });
 
-  if (content.sidebar.blocks.length && selectedSidebarIndex === -1) {
-    selectedSidebarIndex = 0;
-  }
-
-  if (selectedSidebarIndex >= content.sidebar.blocks.length) {
-    selectedSidebarIndex = content.sidebar.blocks.length - 1;
-  }
-
-  if (selectedSidebarIndex >= 0) {
-    populateSidebarDetail(form, content.sidebar.blocks[selectedSidebarIndex]);
-  } else {
-    setFieldValue(form, 'blockTitle', '');
-    setFieldValue(form, 'blockType', 'text');
-    setFieldValue(form, 'blockBody', '');
-    setFieldValue(form, 'blockItems', '');
-    updateSidebarMode(details, 'text');
-  }
-
-  updateSelectionState(list, selectedSidebarIndex);
-}
-
-function populateSidebarDetail(form, block = {}) {
-  const details = dialogs.sidebar.querySelector('.sidebar-editor__details');
-  setFieldValue(form, 'blockTitle', block.title || '');
-  setFieldValue(form, 'blockType', block.type || 'text');
-  setFieldValue(form, 'blockBody', block.body || '');
-  setFieldValue(form, 'blockItems', joinLines(block.items || []));
-  updateSidebarMode(details, block.type || 'text');
+  return { populate };
 }
 
 function updateSidebarMode(details, mode) {
@@ -1223,33 +824,104 @@ function updateSidebarMode(details, mode) {
   details.dataset.mode = mode;
 }
 
-function saveSidebarFromForm(form) {
-  const block = {
-    id: selectedSidebarIndex >= 0 ? content.sidebar.blocks[selectedSidebarIndex].id : createId(),
-    title: getFieldValue(form, 'blockTitle'),
-    type: getFieldValue(form, 'blockType'),
-    body: getFieldValue(form, 'blockBody') || '',
-    items: splitLines(getFieldValue(form, 'blockItems'))
-  };
+function setupCollectionEditors() {
+  editors.posts = bindCollectionEditor({
+    key: 'posts',
+    formSelector: '.posts-editor__form',
+    listSelector: '.posts-editor__list',
+    getItems: () => content.posts.entries,
+    getMeta: () => ({
+      title: content.posts.title,
+      ctaLabel: content.posts.ctaLabel,
+      ctaUrl: content.posts.ctaUrl
+    }),
+    setMeta: (meta) => {
+      content.posts.title = meta.title;
+      content.posts.ctaLabel = meta.ctaLabel;
+      content.posts.ctaUrl = meta.ctaUrl;
+    },
+    loadMeta: (form, meta) => {
+      setFieldValue(form, 'title', meta.title);
+      setFieldValue(form, 'ctaLabel', meta.ctaLabel);
+      setFieldValue(form, 'ctaUrl', meta.ctaUrl);
+    },
+    readMeta: (form) => ({
+      title: getFieldValue(form, 'title'),
+      ctaLabel: getFieldValue(form, 'ctaLabel'),
+      ctaUrl: getFieldValue(form, 'ctaUrl')
+    }),
+    loadItem: (form, entry) => {
+      setFieldValue(form, 'eyebrow', entry.eyebrow || '');
+      setFieldValue(form, 'postTitle', entry.title || '');
+      setFieldValue(form, 'summary', entry.summary || '');
+      setFieldValue(form, 'date', entry.date || '');
+    },
+    readItem: (form) => ({
+      eyebrow: getFieldValue(form, 'eyebrow'),
+      title: getFieldValue(form, 'postTitle'),
+      summary: getFieldValue(form, 'summary'),
+      date: getFieldValue(form, 'date')
+    }),
+    listLabel: (entry, index) => entry.title || `Post ${index + 1}`,
+    render: renderPosts
+  });
 
-  if (block.type === 'list' && !block.items.length) {
-    block.items = [];
-  }
+  editors.projects = bindCollectionEditor({
+    key: 'projects',
+    formSelector: '.projects-editor__form',
+    listSelector: '.projects-editor__list',
+    getItems: () => content.projects.items,
+    getMeta: () => ({ title: content.projects.title }),
+    setMeta: (meta) => { content.projects.title = meta.title; },
+    loadMeta: (form, meta) => setFieldValue(form, 'title', meta.title),
+    readMeta: (form) => ({ title: getFieldValue(form, 'title') }),
+    loadItem: (form, project) => {
+      setFieldValue(form, 'projectTitle', project.title || '');
+      setFieldValue(form, 'summary', project.summary || '');
+      setFieldValue(form, 'highlights', joinLines(project.highlights || []));
+    },
+    readItem: (form) => ({
+      title: getFieldValue(form, 'projectTitle'),
+      summary: getFieldValue(form, 'summary'),
+      highlights: splitLines(getFieldValue(form, 'highlights'))
+    }),
+    listLabel: (project, index) => project.title || `Project ${index + 1}`,
+    render: renderProjects
+  });
 
-  if (block.type === 'text') {
-    block.items = [];
-  }
+  const sidebarDetails = dialogs.sidebar?.querySelector('.sidebar-editor__details');
 
-  if (selectedSidebarIndex >= 0) {
-    content.sidebar.blocks[selectedSidebarIndex] = block;
-  } else {
-    content.sidebar.blocks.push(block);
-    selectedSidebarIndex = content.sidebar.blocks.length - 1;
-  }
+  editors.sidebar = bindCollectionEditor({
+    key: 'sidebar',
+    formSelector: '.sidebar-editor__form',
+    listSelector: '.sidebar-editor__list',
+    getItems: () => content.sidebar.blocks,
+    loadItem: (form, block) => {
+      setFieldValue(form, 'blockTitle', block.title || '');
+      setFieldValue(form, 'blockType', block.type || 'text');
+      setFieldValue(form, 'blockBody', block.body || '');
+      setFieldValue(form, 'blockItems', joinLines(block.items || []));
+      updateSidebarMode(sidebarDetails, block.type || 'text');
+    },
+    readItem: (form, current) => {
+      const type = getFieldValue(form, 'blockType');
+      return {
+        id: current?.id || createId(),
+        title: getFieldValue(form, 'blockTitle'),
+        type,
+        body: type === 'text' ? (getFieldValue(form, 'blockBody') || '') : '',
+        items: type === 'list' ? splitLines(getFieldValue(form, 'blockItems')) : []
+      };
+    },
+    newItem: () => ({ id: createId() }),
+    listLabel: (block, index) => block.title || `Block ${index + 1}`,
+    render: renderSidebar
+  });
 
-  persistContent();
-  renderSidebar();
-  populateSidebarForm();
+  const sidebarForm = dialogs.sidebar?.querySelector('.sidebar-editor__form');
+  sidebarForm?.elements?.namedItem('blockType')?.addEventListener('change', (event) => {
+    updateSidebarMode(sidebarDetails, event.target.value);
+  });
 }
 
 function updateSelectionState(list, index) {
@@ -1336,5 +1008,4 @@ if (hasContentScaffold) {
   renderAll();
   setupManagementDialog();
   setupEditors();
-  populateExperienceFromLinkedIn();
 }

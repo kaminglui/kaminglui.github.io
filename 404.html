@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="Page not found on Ka Ming Lui's site." />
+    <meta name="robots" content="noindex" />
+    <title>404 · Not Found · Ka Ming Lui</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fira+Code:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/assets/css/style.css" />
+  </head>
+  <body class="theme-light">
+    <div id="site-header"></div>
+
+    <main>
+      <section class="hero">
+        <div class="container hero__layout">
+          <div class="hero__content">
+            <p class="hero__eyebrow">404</p>
+            <h1 class="hero__title">That page moved or never existed.</h1>
+            <p class="hero__lead">
+              Try the home page or pick a lab from the navigation.
+            </p>
+            <div class="hero__actions">
+              <a class="button button--primary" href="/">Back to home</a>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <div id="site-footer"></div>
+
+    <script type="module">
+      import { initMainLayout } from '/assets/js/layout/mainLayout.js';
+      initMainLayout('home');
+    </script>
+  </body>
+</html>

@@ -33,11 +33,41 @@ jobs:
         uses: actions/checkout@v4
       - name: Setup Pages
         uses: actions/configure-pages@v5
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - name: Install deps
+        run: npm ci
+      - name: Build CSS
+        run: npm run build:css
+      - name: Stage site
+        run: |
+          mkdir -p _site
+          rsync -a --delete \
+            --exclude='.git/' \
+            --exclude='.github/' \
+            --exclude='.gitignore' \
+            --exclude='README.md' \
+            --exclude='docs/' \
+            --exclude='scripts/' \
+            --exclude='node_modules/' \
+            --exclude='**/node_modules/' \
+            --exclude='package.json' \
+            --exclude='package-lock.json' \
+            --exclude='vitest.config.js' \
+            --exclude='tailwind.config.js' \
+            --exclude='assets/css/tailwind.src.css' \
+            --exclude='pages/fourier-epicycles-src/' \
+            --exclude='**/*.test.js' \
+            --exclude='**/tests/' \
+            --exclude='_site/' \
+            ./ _site/
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          # Upload entire repository
-          path: '.'
+          path: '_site'
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4

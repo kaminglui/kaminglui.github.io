@@ -3,3 +3,10 @@ node_modules/
 npm-debug.log*
 yarn-error.log
 .DS_Store
+dist/
+pages/fourier-epicycles-src/dist/
+*.log
+.vite/
+coverage/
+_site/
+assets/css/tailwind.css
