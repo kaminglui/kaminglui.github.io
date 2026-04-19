@@ -18,7 +18,9 @@ class IdealOpAmp {
         stateKey = null,
         hysteresis = 0,
         saturationWindow = 0.02,
-        slewRate = Infinity
+        slewRate = Infinity,
+        inputOffset = 0,
+        outputImpedance = 0
     }) {
         this.nOut = nOut;
         this.nInv = nInv;
@@ -39,13 +41,23 @@ class IdealOpAmp {
         // (dt is supplied at clampOutput time, so the per-iteration limit scales
         // with the simulation's timestep and a sharp input produces a visible ramp).
         this.slewRate = Number.isFinite(slewRate) && slewRate > 0 ? slewRate : Infinity;
+        // Input offset voltage: real op-amps have a small (sub-mV to a few mV) mismatch
+        // between the input differential pair that biases the output even when the inputs
+        // are perfectly matched. We add it to (vNon - vInv) inside clampOutput.
+        this.inputOffset = Number.isFinite(inputOffset) ? inputOffset : 0;
+        // Thevenin output impedance; finite value drops the output a bit into loads and
+        // makes the op-amp behave like a real device when driving near the rails.
+        this.outputImpedance = Number.isFinite(outputImpedance) && outputImpedance > 0
+            ? outputImpedance : 0;
     }
 
     stamp(stamps) {
         if (this.nNon !== -1) stamps.stampConductance(this.nNon, -1, this.inputLeak);
         if (this.nInv !== -1) stamps.stampConductance(this.nInv, -1, this.inputLeak);
         if (this.nOut !== -1) stamps.stampConductance(this.nOut, -1, this.outputLeak);
-        stamps.stampVCVS(this.nOut, -1, this.nNon, this.nInv, this.gain);
+        // Input offset voltage adds gain·Vos to the VCVS branch constant so the
+        // effective differential input is (Vnon − Vinv + Vos).
+        stamps.stampVCVS(this.nOut, -1, this.nNon, this.nInv, this.gain, this.gain * this.inputOffset);
     }
 
     clampOutput(systemSolution, dt = 0) {
@@ -101,6 +113,21 @@ class IdealOpAmp {
             if (Math.abs(delta) > maxStep) {
                 finalVal = bucket.lastOut + Math.sign(delta) * maxStep;
             }
+        }
+
+        // Output impedance: Thevenin Rout drops the output voltage under load. We
+        // approximate the load current from the node's current balance by looking at
+        // how much our ideal output would need to source if its bare-VCVS result were
+        // the target. The applied clamp already integrates the VCVS's node voltage;
+        // we only need to back-compute an approximate droop.
+        if (this.outputImpedance > 0 && bucket && bucket.lastOut != null) {
+            const gainedDiff = this.gain * (nodeVoltage(this.nNon) - nodeVoltage(this.nInv) + this.inputOffset);
+            const idealTarget = Math.max(safeMin, Math.min(safeMax, gainedDiff));
+            // Estimate "how hard the output is being pulled" as the gap between the
+            // ideal target and the solved node voltage; scale by Rout to droop the
+            // reported output. Keeps the model stable for modest Rout.
+            const droop = (idealTarget - raw) * Math.min(1, this.outputImpedance / (this.outputImpedance + 50));
+            finalVal = Math.max(safeMin, Math.min(safeMax, finalVal - droop * 0.05));
         }
 
         if (bucket) {

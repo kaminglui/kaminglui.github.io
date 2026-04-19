@@ -9,7 +9,7 @@ export default function createCapacitor({
             this.pins = [{ x: -20, y: 0 }, { x: 20, y: 0 }];
             this.w = 40;
             this.h = 20;
-            this.props = { C: '33n' };
+            this.props = { C: '33n', Rleak: '100M' };
             this._lastV = 0; // voltage across C from previous step
         }
 

@@ -19,6 +19,8 @@ const DEFAULTS = {
   opAmpOutputLeak: 1e-12,
   opAmpHeadroom: 0.1,
   opAmpSlewRate: 3e6, // ~3 V/µs, typical JFET-input op-amp (LF412) slew rate
+  opAmpInputOffset: 0, // Vos (V); default ideal — UI knob can enable LF412-like 3 mV
+  opAmpOutputImpedance: 0, // Rout (Ω); 0 = ideal rail-to-rail, 50 Ω gives a small droop
   opAmpHysteresis: 1e-3,
   opAmpSaturationWindow: 0.02,
   funcGenRefRes: 1,
@@ -255,7 +257,10 @@ function createStampHelpers(system, mapNode) {
     system.addToB(idx, val);
   }
 
-  function stampVCVS(nOut, nRef, nPos, nNeg, gain) {
+  // Optional `rhs` shifts the VCVS branch equation by a constant:
+  //   V_out - V_ref = gain * (V_pos - V_neg) + rhs
+  // so callers can model things like input offset voltage (rhs = gain * Vos).
+  function stampVCVS(nOut, nRef, nPos, nNeg, gain, rhs = 0) {
     const row = system.allocateAuxVariable();
     const iOut = (nOut === -1 ? null : mapNode(nOut));
     const iRef = (nRef === -1 ? null : mapNode(nRef));
@@ -272,6 +277,7 @@ function createStampHelpers(system, mapNode) {
     if (iPos != null) system.addToG(row, iPos, -gain);
     if (iNeg != null) system.addToG(row, iNeg, gain);
     system.addToG(row, row, 1e-9);
+    if (rhs) system.addToB(row, rhs);
     return row;
   }
 
@@ -336,6 +342,8 @@ function buildSimulationComponents({
   opAmpHysteresis,
   opAmpSaturationWindow,
   opAmpSlewRate,
+  opAmpInputOffset,
+  opAmpOutputImpedance,
   maxOutputClamp,
   mapNode,
   registerSource = () => {}
@@ -364,7 +372,10 @@ function buildSimulationComponents({
       const n1 = getNodeIndex(c, 0);
       const n2 = getNodeIndex(c, 1);
       const C = parse(c.props?.C || '0');
-      simComponents.push(new Capacitor(n1, n2, C, dt, c._lastV || 0));
+      // Leak resistance: missing / zero / unparseable falls back to Infinity (ideal cap).
+      const rLeakRaw = parse(c.props?.Rleak || '');
+      const rLeak = Number.isFinite(rLeakRaw) && rLeakRaw > 0 ? rLeakRaw : Infinity;
+      simComponents.push(new Capacitor(n1, n2, C, dt, c._lastV || 0, rLeak));
     } else if (kind === 'led') {
       const nA = getNodeIndex(c, 0);
       const nK = getNodeIndex(c, 1);
@@ -380,7 +391,23 @@ function buildSimulationComponents({
       const getActiveConnections = (typeof c.getActiveConnections === 'function')
         ? () => c.getActiveConnections()
         : null;
-      simComponents.push(new Switch(nodes, { type, position, getActiveConnections }));
+      // Track position changes on the UI component so we can simulate contact
+      // bounce for ~bounceDuration ms after each toggle, when opted in.
+      if (c._bounceLastPosition !== position) {
+        c._bounceChangeTime = time;
+        c._bounceLastPosition = position;
+      }
+      const bounceEnabled = String(c.props?.Bounce || 'off').toLowerCase() === 'on';
+      const bounceDuration = parse(c.props?.BounceDuration || '3m') || 3e-3;
+      simComponents.push(new Switch(nodes, {
+        type,
+        position,
+        getActiveConnections,
+        bounceEnabled,
+        bounceChangeTime: c._bounceChangeTime ?? null,
+        bounceDuration,
+        now: time
+      }));
     } else if (kind === 'mosfet') {
       const nodes = [
         getNodeIndex(c, 0),
@@ -480,7 +507,9 @@ function buildSimulationComponents({
           stateKey: `half-${idx}`,
           hysteresis: opAmpHysteresis,
           saturationWindow: opAmpSaturationWindow,
-          slewRate: opAmpSlewRate
+          slewRate: opAmpSlewRate,
+          inputOffset: opAmpInputOffset,
+          outputImpedance: opAmpOutputImpedance
         });
         opAmpComponents.push(opAmp);
         simComponents.push(opAmp);
@@ -505,6 +534,8 @@ function runSimulation(opts = {}) {
   const opAmpHysteresis = opts.opAmpHysteresis ?? DEFAULTS.opAmpHysteresis;
   const opAmpSaturationWindow = opts.opAmpSaturationWindow ?? DEFAULTS.opAmpSaturationWindow;
   const opAmpSlewRate = opts.opAmpSlewRate ?? DEFAULTS.opAmpSlewRate;
+  const opAmpInputOffset = opts.opAmpInputOffset ?? DEFAULTS.opAmpInputOffset;
+  const opAmpOutputImpedance = opts.opAmpOutputImpedance ?? DEFAULTS.opAmpOutputImpedance;
   const funcGenRefRes = opts.funcGenRefRes ?? DEFAULTS.funcGenRefRes;
   const funcGenSeriesRes = opts.funcGenSeriesRes ?? DEFAULTS.funcGenSeriesRes;
   const maxOutputClamp = opts.maxOutputClamp ?? DEFAULTS.maxOutputClamp;
@@ -581,6 +612,8 @@ function runSimulation(opts = {}) {
     opAmpHysteresis,
     opAmpSaturationWindow,
     opAmpSlewRate,
+    opAmpInputOffset,
+    opAmpOutputImpedance,
     maxOutputClamp,
     mapNode,
     registerSource

@@ -219,6 +219,91 @@ describe('Op-amp slew-rate limiting', () => {
   });
 });
 
+describe('Capacitor leak', () => {
+  function rcScaffold({ Rleak, R = 1e6 }) {
+    const circuit = buildCircuit();
+    const gnd = makeGround();
+    const src = makeVoltageSource(5);
+    const r = makeResistor(R);
+    const cap = makeCapacitor(1e-6);
+    if (Rleak != null) cap.props.Rleak = Rleak;
+    circuit.add(gnd, src, r, cap);
+    circuit.connect(src, 1, gnd, 0);
+    circuit.connect(src, 0, r, 0);
+    circuit.connect(r, 1, cap, 0);
+    circuit.connect(cap, 1, gnd, 0);
+    return { circuit, cap };
+  }
+
+  it('leaks: a leaky cap settles below the source voltage via the R/Rleak divider', () => {
+    // Source=5V, R=1MΩ, Rleak=10MΩ -> DC steady state ≈ 5·Rleak/(R+Rleak) ≈ 4.545V.
+    const { circuit, cap } = rcScaffold({ Rleak: '10M', R: 1e6 });
+    let vFinal = 0;
+    runTransient(circuit, {
+      duration: 30, // plenty of settling time (tau = (1M || 10M)·1uF ≈ 0.9 s)
+      dt: 0.01,
+      sampleInterval: 1,
+      measure: ({ sim }) => { vFinal = sim.voltage(cap, 0) - sim.voltage(cap, 1); }
+    });
+    expect(vFinal).toBeGreaterThan(4.3);
+    expect(vFinal).toBeLessThan(4.8);
+  });
+
+  it('holds: an ideal cap (no Rleak) settles to the full source voltage', () => {
+    const { circuit, cap } = rcScaffold({ Rleak: null, R: 1e6 });
+    let vFinal = 0;
+    runTransient(circuit, {
+      duration: 10,
+      dt: 0.005,
+      sampleInterval: 1,
+      measure: ({ sim }) => { vFinal = sim.voltage(cap, 0) - sim.voltage(cap, 1); }
+    });
+    expect(vFinal).toBeGreaterThan(4.95);
+    expect(vFinal).toBeLessThan(5.01);
+  });
+});
+
+describe('Op-amp input offset', () => {
+  it('adds ~(1 + Rf/Rg) · Vos of output bias when inputOffset is set', () => {
+    // Symmetric rails ±12 V so the output isn't squashed by the ground-rail saturation
+    // window, and a 3 mV offset produces a clean ~6 mV output (closed-loop gain 2).
+    const circuit = buildCircuit();
+    const gnd = makeGround();
+    const vpos = makeVoltageSource(12);
+    const vneg = makeVoltageSource(12); // wired backwards below to give −12 V
+    const op = makeOpAmp();
+    const rf = makeResistor(10e3);
+    const rg = makeResistor(10e3);
+    circuit.add(gnd, vpos, vneg, op, rf, rg);
+    circuit.connect(vpos, 1, gnd, 0);
+    circuit.connect(vpos, 0, op, 7); // VCC+ = +12
+    circuit.connect(vneg, 0, gnd, 0);
+    circuit.connect(vneg, 1, op, 3); // VCC− = −12
+    circuit.connect(op, 2, gnd, 0);  // IN+ grounded
+    circuit.connect(op, 0, rf, 0);   // OUT → Rf
+    circuit.connect(rf, 1, op, 1);   // Rf → IN−
+    circuit.connect(op, 1, rg, 0);   // IN− → Rg
+    circuit.connect(rg, 1, gnd, 0);
+
+    const settle = () => {
+      let v = 0;
+      for (let i = 0; i < 40; i += 1) {
+        v = simulateCircuit({
+          components: circuit.components,
+          wires: circuit.wires,
+          dt: 1e-5,
+          opAmpInputOffset: 3e-3
+        }).voltage(op, 0);
+      }
+      return v;
+    };
+    const vOut = settle();
+    // Expect ~6 mV; accept [2, 20] mV to absorb the small inputLeak / outputLeak terms.
+    expect(Math.abs(vOut)).toBeGreaterThan(2e-3);
+    expect(Math.abs(vOut)).toBeLessThan(0.02);
+  });
+});
+
 describe('MOSFET subthreshold leakage', () => {
   it('leaks far more than a fully-off transistor but far less than when biased above Vth', () => {
     // Vgs = 0.4 V (below Vth = 0.7 V). Expect current << saturation but >> off.

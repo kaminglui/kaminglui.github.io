@@ -584,20 +584,28 @@ class Component {
             ctx.fill();
         });
 
-        // selection box for single or group
+        // selection highlight: a soft blue glow bloom behind the component plus the
+        // existing dashed bounding box. Makes it obvious which element(s) will be
+        // affected by Delete / Copy / rotate actions.
         const isSel = selectionGroup.includes(this);
         if (isSel) {
             const b = this.getBoundingBox();
+            const x = b.x1 - SELECTION_PADDING;
+            const y = b.y1 - SELECTION_PADDING;
+            const w = (b.x2 - b.x1) + SELECTION_PADDING * 2;
+            const h = (b.y2 - b.y1) + SELECTION_PADDING * 2;
             ctx.save();
+            // Soft outer glow
+            ctx.shadowColor = 'rgba(96, 165, 250, 0.55)';
+            ctx.shadowBlur = 14;
+            ctx.fillStyle = 'rgba(96, 165, 250, 0.10)';
+            ctx.fillRect(x, y, w, h);
+            ctx.shadowBlur = 0;
+            // Dashed rim
             ctx.setLineDash(SELECTION_DASH_PATTERN);
             ctx.strokeStyle = '#60a5fa';
-            ctx.lineWidth   = 1;
-            ctx.strokeRect(
-                b.x1 - SELECTION_PADDING,
-                b.y1 - SELECTION_PADDING,
-                (b.x2 - b.x1) + SELECTION_PADDING * 2,
-                (b.y2 - b.y1) + SELECTION_PADDING * 2
-            );
+            ctx.lineWidth = 1.5;
+            ctx.strokeRect(x, y, w, h);
             ctx.restore();
         }
     }
@@ -1353,6 +1361,44 @@ function drawScope() {
 
         if (showCursor1) drawCursorMarker(cursorMetrics.pctA, '#fcd34d', valuesA);
         if (showCursor2) drawCursorMarker(cursorMetrics.pctB, '#06b6d4', valuesB);
+    }
+
+    // Prominent PAUSED overlay so it's obvious the waveform is frozen.
+    if (isPaused) {
+        scopeCtx.save();
+        scopeCtx.fillStyle = 'rgba(0, 0, 0, 0.35)';
+        scopeCtx.fillRect(0, 0, drawW, h);
+        const badgeW = 150;
+        const badgeH = 36;
+        const bx = drawW / 2 - badgeW / 2;
+        const by = h / 2 - badgeH / 2;
+        scopeCtx.fillStyle = 'rgba(30, 41, 59, 0.92)';
+        scopeCtx.strokeStyle = '#fbbf24';
+        scopeCtx.lineWidth = 2;
+        const r = 6;
+        scopeCtx.beginPath();
+        scopeCtx.moveTo(bx + r, by);
+        scopeCtx.lineTo(bx + badgeW - r, by);
+        scopeCtx.quadraticCurveTo(bx + badgeW, by, bx + badgeW, by + r);
+        scopeCtx.lineTo(bx + badgeW, by + badgeH - r);
+        scopeCtx.quadraticCurveTo(bx + badgeW, by + badgeH, bx + badgeW - r, by + badgeH);
+        scopeCtx.lineTo(bx + r, by + badgeH);
+        scopeCtx.quadraticCurveTo(bx, by + badgeH, bx, by + badgeH - r);
+        scopeCtx.lineTo(bx, by + r);
+        scopeCtx.quadraticCurveTo(bx, by, bx + r, by);
+        scopeCtx.closePath();
+        scopeCtx.fill();
+        scopeCtx.stroke();
+        // Pause-glyph (two yellow bars)
+        scopeCtx.fillStyle = '#fbbf24';
+        scopeCtx.fillRect(bx + 18, by + 8, 5, badgeH - 16);
+        scopeCtx.fillRect(bx + 28, by + 8, 5, badgeH - 16);
+        scopeCtx.font = 'bold 14px monospace';
+        scopeCtx.textAlign = 'left';
+        scopeCtx.textBaseline = 'middle';
+        scopeCtx.fillStyle = '#fbbf24';
+        scopeCtx.fillText('PAUSED', bx + 42, by + badgeH / 2);
+        scopeCtx.restore();
     }
 
     // keep cursor Δt / ΔV working even when the sim is paused
