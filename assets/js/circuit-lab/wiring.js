@@ -1,4 +1,4 @@
-import { dropCollinearVerts } from './geometry.js';
+import { dropCollinearVerts, routeAStar, countPathCrossings } from './geometry.js';
 
 function createWiringApi({
   GRID,
@@ -535,6 +535,18 @@ function createWiringApi({
         (altCrossings === baseCrossings && altOverlap < baseOverlap) ||
         (altCrossings === baseCrossings && altOverlap === baseOverlap && altPath.length < path.length);
       if (preferAlt) path = altPath;
+
+      // If both L's still cross components, fall back to A* — it can route around
+      // obstacles with multi-hop detours that L routing can't express. Only accept
+      // the A* path if it genuinely improves on crossings.
+      const chosenCrossings = preferAlt ? altCrossings : baseCrossings;
+      if (chosenCrossings > 0 && obstacles.length) {
+        const astar = routeAStar(start, end, { obstacles });
+        if (astar && astar.length >= 2) {
+          const astarCrossings = countPathCrossings(astar, obstacles);
+          if (astarCrossings < chosenCrossings) path = astar;
+        }
+      }
     }
     const verts = path.slice(1, Math.max(1, path.length - 1)).map((p) => ({ ...p }));
     return dropCollinearVerts(mergeCollinear(verts), start, end);

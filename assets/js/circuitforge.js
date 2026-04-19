@@ -42,7 +42,9 @@ import {
     snapToBoardPoint,
     directionToOrientation,
     distToSegment,
-    dropCollinearVerts
+    dropCollinearVerts,
+    routeAStar,
+    countPathCrossings
 } from './circuit-lab/geometry.js';
 import {
     parseUnit,
@@ -3675,7 +3677,7 @@ function onMove(e) {
                 .filter(c => c !== wire.from.c && c !== wire.to.c && typeof c.getBoundingBox === 'function')
                 .map(c => c.getBoundingBox());
 
-            const routedPath = routeManhattan(
+            let routedPath = routeManhattan(
                 startPos,
                 newVerts,
                 endPos,
@@ -3683,6 +3685,19 @@ function onMove(e) {
                 endDir,
                 { preferredOrientation, obstacles }
             );
+
+            // If the L router still can't clear the obstacles (large components between
+            // start and end), fall back to A* and keep whichever path has fewer crossings.
+            if (obstacles.length) {
+                const routedCrossings = countPathCrossings(routedPath, obstacles);
+                if (routedCrossings > 0) {
+                    const astar = routeAStar(startPos, endPos, { obstacles });
+                    if (astar && astar.length >= 2 && countPathCrossings(astar, obstacles) < routedCrossings) {
+                        routedPath = astar;
+                    }
+                }
+            }
+
             const routedMids = routedPath.slice(1, Math.max(1, routedPath.length - 1));
             wire.vertices = dropCollinearVerts(routedMids, startPos, endPos);
         }

@@ -14,7 +14,10 @@ import {
   routeManhattan,
   adjustWireAnchors,
   distToSegment,
-  dropCollinearVerts
+  dropCollinearVerts,
+  segmentIntersectsRect,
+  countPathCrossings,
+  routeAStar
 } from './geometry.js';
 import { GRID } from './config.js';
 
@@ -231,6 +234,78 @@ describe('routeManhattan obstacles', () => {
     const path = routeManhattan({ x: 10, y: 10 }, [], { x: 50, y: -10 });
     expect(path[0]).toEqual({ x: 10, y: 10 });
     expect(path[path.length - 1]).toEqual({ x: 50, y: -10 });
+  });
+});
+
+describe('segmentIntersectsRect', () => {
+  const ob = { x1: 30, y1: 30, x2: 70, y2: 70 };
+
+  it('returns true when a horizontal segment skewers the rect', () => {
+    expect(segmentIntersectsRect({ x: 10, y: 50 }, { x: 90, y: 50 }, ob)).toBe(true);
+  });
+
+  it('returns true when a vertical segment skewers the rect', () => {
+    expect(segmentIntersectsRect({ x: 50, y: 10 }, { x: 50, y: 90 }, ob)).toBe(true);
+  });
+
+  it('returns false when the segment only grazes the edge', () => {
+    // y === 30 == ob.y1; strict interior check excludes edges.
+    expect(segmentIntersectsRect({ x: 10, y: 30 }, { x: 90, y: 30 }, ob)).toBe(false);
+  });
+
+  it('returns false when the segment misses the rect entirely', () => {
+    expect(segmentIntersectsRect({ x: 10, y: 10 }, { x: 20, y: 20 }, ob)).toBe(false);
+  });
+});
+
+describe('countPathCrossings', () => {
+  it('counts one crossing per crossed segment', () => {
+    const obstacles = [{ x1: 30, y1: 30, x2: 70, y2: 70 }];
+    const path = [
+      { x: 10, y: 50 },
+      { x: 90, y: 50 }, // crosses horizontally
+      { x: 90, y: 10 }
+    ];
+    expect(countPathCrossings(path, obstacles)).toBe(1);
+  });
+
+  it('returns 0 when no segments cross', () => {
+    const obstacles = [{ x1: 30, y1: 30, x2: 70, y2: 70 }];
+    const path = [
+      { x: 10, y: 10 },
+      { x: 10, y: 20 },
+      { x: 20, y: 20 }
+    ];
+    expect(countPathCrossings(path, obstacles)).toBe(0);
+  });
+});
+
+describe('routeAStar', () => {
+  it('finds a direct path when no obstacles block the way', () => {
+    const path = routeAStar({ x: 0, y: 0 }, { x: 80, y: 0 });
+    expect(path).not.toBeNull();
+    expect(path[0]).toEqual({ x: 0, y: 0 });
+    expect(path[path.length - 1]).toEqual({ x: 80, y: 0 });
+  });
+
+  it('routes around a large obstacle both Ls would have to cross', () => {
+    // Obstacle fully between start and end, covering the full middle. Neither a
+    // horizontal-first nor vertical-first L can clear it.
+    const obstacles = [{ x1: -100, y1: -20, x2: 100, y2: 20 }];
+    const path = routeAStar({ x: -140, y: 0 }, { x: 140, y: 0 }, { obstacles });
+    expect(path).not.toBeNull();
+    // No point on the path should be strictly inside the obstacle.
+    for (const p of path) {
+      expect(
+        p.x > obstacles[0].x1 && p.x < obstacles[0].x2 &&
+        p.y > obstacles[0].y1 && p.y < obstacles[0].y2
+      ).toBe(false);
+    }
+  });
+
+  it('returns null if start or end is inside an obstacle', () => {
+    const obstacles = [{ x1: -10, y1: -10, x2: 10, y2: 10 }];
+    expect(routeAStar({ x: 0, y: 0 }, { x: 50, y: 50 }, { obstacles })).toBeNull();
   });
 });
 

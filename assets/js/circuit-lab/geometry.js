@@ -200,6 +200,41 @@ function pointInsideRect(x, y, ob) {
     return x > ob.x1 && x < ob.x2 && y > ob.y1 && y < ob.y2;
 }
 
+// Does an axis-aligned segment a->b intersect the strict interior of rect ob?
+// For orthogonal wires, the segment is either horizontal (a.y === b.y) or vertical
+// (a.x === b.x). We test the constant coordinate against the opposite range (strict),
+// then the variable range against the matching range (non-empty overlap).
+export function segmentIntersectsRect(a, b, ob) {
+    if (!a || !b || !ob) return false;
+    if (a.y === b.y) {
+        if (a.y <= ob.y1 || a.y >= ob.y2) return false;
+        const xMin = Math.min(a.x, b.x);
+        const xMax = Math.max(a.x, b.x);
+        return xMax > ob.x1 && xMin < ob.x2;
+    }
+    if (a.x === b.x) {
+        if (a.x <= ob.x1 || a.x >= ob.x2) return false;
+        const yMin = Math.min(a.y, b.y);
+        const yMax = Math.max(a.y, b.y);
+        return yMax > ob.y1 && yMin < ob.y2;
+    }
+    // Non-orthogonal segments aren't expected from the router; bail safely.
+    return false;
+}
+
+// Count how many segments of `path` cross (strict interior) any of the obstacles.
+// Each segment is counted at most once even if it crosses multiple obstacles.
+export function countPathCrossings(path, obstacles) {
+    if (!Array.isArray(path) || !Array.isArray(obstacles) || obstacles.length === 0) return 0;
+    let n = 0;
+    for (let i = 0; i < path.length - 1; i++) {
+        for (const ob of obstacles) {
+            if (segmentIntersectsRect(path[i], path[i + 1], ob)) { n++; break; }
+        }
+    }
+    return n;
+}
+
 // Build an orthogonal path that honours user-provided midpoints in sequence and
 // uses pin directions to bias stub placement near endpoints. Optionally accepts
 // `obstacles: [{x1, y1, x2, y2}]` — rectangles the router should avoid routing
@@ -265,16 +300,20 @@ export function routeManhattan(start, midPoints, end, startDir = null, endDir = 
                 if (orientation === orientationHint) s -= stickiness;
                 else s += stickiness * 0.25;
             }
-            // Strongly penalize L-elbows that land inside a component body so the
-            // other orientation wins when possible. `path` here is [elbow, target];
-            // the elbow is path[0] and we check strict interior against each obstacle.
-            if (obstacles && path.length >= 2) {
-                const elbow = path[0];
-                for (const ob of obstacles) {
-                    if (pointInsideRect(elbow.x, elbow.y, ob)) {
-                        s += obstaclePenalty;
-                        break;
+            // Strongly penalize candidate paths whose segments pass through a component
+            // body. Segment-level check (not just elbow) so a long straight run that
+            // skewers a component is also caught. The full L-path is `[last, ...path]`.
+            if (obstacles && obstacles.length) {
+                const fullPath = [last, ...path];
+                for (let si = 0; si < fullPath.length - 1; si++) {
+                    let hit = false;
+                    for (const ob of obstacles) {
+                        if (segmentIntersectsRect(fullPath[si], fullPath[si + 1], ob)) {
+                            hit = true;
+                            break;
+                        }
                     }
+                    if (hit) s += obstaclePenalty;
                 }
             }
             return s;
@@ -308,6 +347,119 @@ export function routeManhattan(start, midPoints, end, startDir = null, endDir = 
 
     pts = mergeCollinear(pts);
     return pts;
+}
+
+// Orthogonal A* pathfinder: finds a grid-aligned path from start to end that avoids
+// component bodies. Used as a fallback when the cheap L router (routeManhattan)
+// produces a path that crosses obstacles both ways. Keeps runtime bounded by
+// limiting exploration to a box around start/end plus any obstacles, and caps the
+// total node expansions.
+//
+// opts:
+//   obstacles     — [{x1,y1,x2,y2}] strict-interior avoidance rectangles
+//   step          — grid step (defaults to GRID)
+//   margin        — padding around the start/end/obstacle bbox (defaults to 4*step)
+//   maxNodes      — cap on node expansions (defaults to 8000)
+//   cornerPenalty — extra g-cost for changing direction (defaults to 2)
+//
+// Returns an array of {x,y} or null if no path found. The path is already
+// compressed to turn points (collinear grid walks are collapsed into single edges).
+export function routeAStar(start, end, opts = {}) {
+    const obstacles = Array.isArray(opts.obstacles) ? opts.obstacles : [];
+    const step = Number.isFinite(opts.step) ? opts.step : GRID;
+    const margin = Number.isFinite(opts.margin) ? opts.margin : step * 4;
+    const maxNodes = Number.isFinite(opts.maxNodes) ? opts.maxNodes : 8000;
+    const cornerPenalty = Number.isFinite(opts.cornerPenalty) ? opts.cornerPenalty : 2;
+
+    const sx = snapToGrid(start.x);
+    const sy = snapToGrid(start.y);
+    const ex = snapToGrid(end.x);
+    const ey = snapToGrid(end.y);
+
+    let minX = Math.min(sx, ex) - margin;
+    let maxX = Math.max(sx, ex) + margin;
+    let minY = Math.min(sy, ey) - margin;
+    let maxY = Math.max(sy, ey) + margin;
+    for (const ob of obstacles) {
+        minX = Math.min(minX, ob.x1 - step);
+        maxX = Math.max(maxX, ob.x2 + step);
+        minY = Math.min(minY, ob.y1 - step);
+        maxY = Math.max(maxY, ob.y2 + step);
+    }
+
+    const isBlocked = (x, y) => {
+        for (const ob of obstacles) {
+            if (x > ob.x1 && x < ob.x2 && y > ob.y1 && y < ob.y2) return true;
+        }
+        return false;
+    };
+
+    if (isBlocked(sx, sy) || isBlocked(ex, ey)) return null;
+
+    const keyOf = (x, y) => `${x},${y}`;
+    const startKey = keyOf(sx, sy);
+    const endKey = keyOf(ex, ey);
+    const manhattan = (x1, y1, x2, y2) => Math.abs(x1 - x2) + Math.abs(y1 - y2);
+
+    const gScore = new Map([[startKey, 0]]);
+    const cameFrom = new Map();
+    const dirInto = new Map(); // 'h' | 'v' — direction we entered this cell from
+
+    // Open set as a flat array of [fScore, key]. Linear-scan extraction is fine for
+    // typical board-scale searches; swap for a binary heap if this ever becomes hot.
+    const open = [[manhattan(sx, sy, ex, ey), startKey]];
+    const openSet = new Set([startKey]);
+    const NEIGHBORS = [[step, 0, 'h'], [-step, 0, 'h'], [0, step, 'v'], [0, -step, 'v']];
+
+    let expansions = 0;
+    while (open.length > 0 && expansions < maxNodes) {
+        let minIdx = 0;
+        for (let i = 1; i < open.length; i++) {
+            if (open[i][0] < open[minIdx][0]) minIdx = i;
+        }
+        const [, currentKey] = open.splice(minIdx, 1)[0];
+        openSet.delete(currentKey);
+        expansions += 1;
+
+        if (currentKey === endKey) {
+            const walk = [];
+            let k = currentKey;
+            while (k) {
+                const [x, y] = k.split(',').map(Number);
+                walk.unshift({ x, y });
+                k = cameFrom.get(k);
+            }
+            // Compress collinear runs so callers get turn points, not every grid cell.
+            if (walk.length <= 2) return walk;
+            const verts = walk.slice(1, walk.length - 1);
+            return [walk[0], ...dropCollinearVerts(verts, walk[0], walk[walk.length - 1]), walk[walk.length - 1]];
+        }
+
+        const [cx, cy] = currentKey.split(',').map(Number);
+        const currentDir = dirInto.get(currentKey) || null;
+
+        for (const [dx, dy, ndir] of NEIGHBORS) {
+            const nx = cx + dx;
+            const ny = cy + dy;
+            if (nx < minX || nx > maxX || ny < minY || ny > maxY) continue;
+            if (isBlocked(nx, ny)) continue;
+            const nKey = keyOf(nx, ny);
+            const turn = currentDir && currentDir !== ndir ? cornerPenalty : 0;
+            const tentativeG = (gScore.get(currentKey) ?? Infinity) + 1 + turn;
+            if (tentativeG < (gScore.get(nKey) ?? Infinity)) {
+                cameFrom.set(nKey, currentKey);
+                dirInto.set(nKey, ndir);
+                gScore.set(nKey, tentativeG);
+                const f = tentativeG + manhattan(nx, ny, ex, ey);
+                if (!openSet.has(nKey)) {
+                    open.push([f, nKey]);
+                    openSet.add(nKey);
+                }
+            }
+        }
+    }
+
+    return null;
 }
 
 // Distance from a point p to the finite segment v→w.
