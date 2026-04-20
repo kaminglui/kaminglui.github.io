@@ -618,6 +618,66 @@ body {
     opacity: 0.38;
     cursor: not-allowed;
 }
+/* --- CANVAS TOP-RIGHT CONTROL PANEL ---
+   Single unified panel (background + border + shadow) with evenly-sized
+   buttons so zoom / view / probe / heatmap all read as one tool cluster
+   instead of four separate floating pills. */
+.canvas-controls {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    z-index: 10;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 6px;
+    background: rgba(20, 20, 25, 0.88);
+    border: 1px solid var(--border-subtle);
+    border-radius: 10px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+    backdrop-filter: blur(6px);
+    min-width: 148px;
+}
+.canvas-controls__row {
+    display: flex;
+    gap: 4px;
+}
+.canvas-controls__row .canvas-ctrl-btn { flex: 1; }
+
+.canvas-ctrl-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 8px;
+    min-height: 30px;
+    padding: 6px 10px;
+    background: transparent;
+    color: var(--text-primary);
+    border: 1px solid transparent;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 500;
+    font-family: inherit;
+    cursor: pointer;
+    transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+.canvas-ctrl-btn:hover {
+    background: var(--bg-surface);
+    border-color: var(--border-focus);
+}
+.canvas-ctrl-btn:focus-visible {
+    outline: 1px solid var(--accent);
+    outline-offset: 1px;
+}
+.canvas-ctrl-btn--icon {
+    justify-content: center;
+    padding: 6px;
+    min-width: 32px;
+}
+.canvas-ctrl-btn i { width: 14px; text-align: center; font-size: 12px; }
+
+/* Active-tool highlight applied to any panel button that toggles a mode. */
+.canvas-ctrl-btn.active-tool,
 #probe-btn.active-tool,
 #heatmap-btn.active-tool {
     background: #1e3a8a;
@@ -632,8 +692,7 @@ body {
     gap: 6px;
     padding: 4px 8px;
     border-radius: 6px;
-    background: rgba(15, 15, 20, 0.75);
-    border: 1px solid var(--border-subtle);
+    background: rgba(10, 12, 18, 0.6);
     color: var(--text-secondary);
     font-family: ui-monospace, Menlo, monospace;
     font-size: 10px;
