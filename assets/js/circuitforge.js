@@ -26,6 +26,7 @@ import {
 import { listTemplates, loadTemplate } from './circuit-lab/templateRegistry.js';
 import { solveCircuitWasm, updateCircuitState } from './sim/wasmInterface.js';
 import { createWiringApi } from './circuit-lab/wiring.js';
+import { createSharingApi } from './circuit-lab/sharing.js';
 import {
     fileTimestamp,
     validateSaveData,
@@ -5192,112 +5193,12 @@ function updateProbeReadout() {
 }
 
 /* ---------- SHAREABLE URL STATE ---------- */
-// Encode the circuit into the URL hash as URL-safe base64 of a JSON blob. Fast,
-// dependency-free, and works for anything under the browser's ~2 MB URL limit
-// (typical circuits are well under 10 KB).
-function encodeStateToHash(state) {
-    try {
-        const json = JSON.stringify(state);
-        const bytes = new TextEncoder().encode(json);
-        let bin = '';
-        for (let i = 0; i < bytes.length; i += 1) bin += String.fromCharCode(bytes[i]);
-        return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-    } catch {
-        return '';
-    }
-}
-
-function decodeStateFromHash(encoded) {
-    try {
-        let b64 = String(encoded).replace(/-/g, '+').replace(/_/g, '/');
-        while (b64.length % 4) b64 += '=';
-        const bin = atob(b64);
-        const bytes = new Uint8Array(bin.length);
-        for (let i = 0; i < bin.length; i += 1) bytes[i] = bin.charCodeAt(i);
-        return JSON.parse(new TextDecoder().decode(bytes));
-    } catch {
-        return null;
-    }
-}
-
-function buildShareUrl() {
-    const state = serializeState();
-    const encoded = encodeStateToHash(state);
-    if (!encoded) return '';
-    const base = typeof location !== 'undefined' ? `${location.origin}${location.pathname}` : '';
-    return `${base}#state=${encoded}`;
-}
-
-function copyShareLink() {
-    if (!components.length && !wires.length) {
-        flashShareToast('Nothing to share yet', true);
-        return;
-    }
-    const url = buildShareUrl();
-    if (!url) {
-        flashShareToast('Could not build link', true);
-        return;
-    }
-    const ok = (text) => {
-        flashShareToast('Link copied to clipboard');
-    };
-    const fail = () => {
-        // Last-resort fallback: put it in the URL bar so the user can copy it
-        // manually, and surface a toast explaining what happened.
-        try {
-            if (typeof history?.replaceState === 'function') {
-                history.replaceState(null, '', url);
-            }
-        } catch { /* ignore */ }
-        flashShareToast('Clipboard blocked — URL updated');
-    };
-    if (navigator?.clipboard?.writeText) {
-        navigator.clipboard.writeText(url).then(ok, fail);
-    } else {
-        fail();
-    }
-}
-
-function flashShareToast(message, isError = false) {
-    let toast = document.getElementById('share-toast');
-    if (!toast) {
-        toast = document.createElement('div');
-        toast.id = 'share-toast';
-        document.body.appendChild(toast);
-    }
-    toast.textContent = message;
-    toast.classList.remove('hidden');
-    toast.classList.toggle('error', !!isError);
-    toast.style.opacity = '1';
-    clearTimeout(flashShareToast._timer);
-    flashShareToast._timer = setTimeout(() => {
-        toast.style.opacity = '0';
-        setTimeout(() => toast.classList.add('hidden'), 300);
-    }, 1800);
-}
-
-// If the user landed on a URL with a state hash, apply it and clean up the
-// hash so a subsequent reload doesn't re-overwrite local edits.
-function applyHashStateIfPresent() {
-    if (typeof location === 'undefined') return false;
-    const hash = location.hash || '';
-    const match = hash.match(/^#state=([A-Za-z0-9_-]+)$/);
-    if (!match) return false;
-    const decoded = decodeStateFromHash(match[1]);
-    if (!decoded) return false;
-    try {
-        applySerializedState(decoded);
-    } catch (err) {
-        console.warn('Could not apply shared circuit state:', err);
-        return false;
-    }
-    try {
-        if (typeof history?.replaceState === 'function') {
-            history.replaceState(null, '', location.pathname + location.search);
-        }
-    } catch { /* ignore */ }
-    return true;
-}
+const sharing = createSharingApi({
+    serializeState,
+    applySerializedState,
+    isEmpty: () => !components.length && !wires.length
+});
+const { copyShareLink, applyHashStateIfPresent } = sharing;
 
 /* ---------- VOLTAGE HEATMAP TOGGLE ---------- */
 function toggleHeatmap(forceOn) {
