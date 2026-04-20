@@ -9,6 +9,7 @@
 
 const RL_SEC = (id, label) => ({ id, label: `RL · ${label}` });
 const DF_SEC = (id, label) => ({ id, label: `Diffusion · ${label}` });
+const MATH_SEC = (id, label) => ({ id, label: `Math · ${label}` });
 
 export const GLOSSARY = {
   // ====================== RL — core variables ======================
@@ -584,5 +585,128 @@ export const GLOSSARY = {
     title: 'Monte-Carlo integration',
     body: 'Estimate an expectation 𝔼[f(X)] by averaging N random samples: (1/N) Σ f(x<sub>i</sub>). Error shrinks as O(1/√N) independent of dimension. Every MC return estimate G<sub>t</sub> in RL is the same pattern.',
     related: ['monte-carlo', 'return']
+  },
+
+  // ====================== Math Foundations ======================
+  'loss': {
+    title: 'Loss L(θ)',
+    body: 'A scalar function measuring "how wrong" a model with parameters θ is on data. Training = minimising L(θ). Squared error, cross-entropy, KL, policy-gradient objective — all flavours of loss.',
+    related: ['gradient', 'argmin', 'learning-rate'],
+    sections: [MATH_SEC('theory-gd', '§2 GD')]
+  },
+  'gradient': {
+    title: '∇L · gradient',
+    body: 'Vector of partial derivatives. Points in the direction of steepest <em>increase</em> of L. GD steps the opposite direction. Magnitude tells you how steep the slope is.',
+    related: ['loss', 'learning-rate', 'argmin'],
+    sections: [MATH_SEC('theory-gd', '§2 GD')]
+  },
+  'learning-rate': {
+    title: 'α · learning rate',
+    body: 'Step-size scalar in GD: θ ← θ − α ∇L. Too large: diverges / oscillates. Too small: crawls. Decayed (or scheduled) in most deep-learning setups.',
+    related: ['gradient', 'loss', 'momentum'],
+    sections: [MATH_SEC('theory-gd', '§2 GD')]
+  },
+  'convex': {
+    title: 'Convex function',
+    body: 'f is convex if every line segment between two points on its graph lies above the graph. Single bowl-shaped minimum. GD provably finds the global optimum. Linear/logistic regression, SVM are convex; neural nets are not.',
+    related: ['non-convex', 'loss', 'gradient'],
+    sections: [MATH_SEC('theory-gd', '§2 GD')]
+  },
+  'non-convex': {
+    title: 'Non-convex function',
+    body: 'Multiple minima, saddle points, plateaus. GD can get stuck in a local minimum. Escape tricks: SGD noise, momentum, restarts, simulated annealing.',
+    related: ['convex', 'sgd-noise', 'simulated-annealing', 'momentum'],
+    sections: [MATH_SEC('theory-nonconvex', '§3 Non-convex')]
+  },
+  'argmin': {
+    title: 'argmin / argmax',
+    body: 'argmin<sub>x</sub> f(x) = the input x that achieves the minimum of f (a point, not a number). min<sub>x</sub> f(x) = the minimum value (a number). ML training returns argmin of the loss.',
+    related: ['loss', 'gradient', 'lagrangian'],
+    sections: [MATH_SEC('theory-opt', '§1 Optimisation')]
+  },
+  'lagrangian': {
+    title: 'Lagrangian / Lagrange multipliers',
+    body: 'Turns a constrained problem "min f(x) s.t. g(x) = 0" into an unconstrained one over the Lagrangian ℒ(x, λ) = f(x) + λ g(x). At the optimum, ∇f = −λ∇g (level sets of f and g are tangent).',
+    related: ['argmin', 'convex', 'kkt'],
+    sections: [MATH_SEC('theory-opt', '§1 Optimisation')]
+  },
+  'momentum': {
+    title: 'Momentum',
+    body: 'Update v ← β v + ∇L, θ ← θ − α v. Averaged gradient pushes through flat regions and damps oscillations. β ≈ 0.9 is typical. Adam is momentum + per-parameter scale.',
+    related: ['gradient', 'learning-rate', 'sgd-noise'],
+    sections: [MATH_SEC('theory-nonconvex', '§3 Non-convex')]
+  },
+  'sgd-noise': {
+    title: 'SGD noise',
+    body: 'The mini-batch gradient is a noisy estimate of the true gradient. In deep learning that noise is a blessing: it perturbs the iterate off saddles and shallow ridges. Main escape mechanism from non-convex traps.',
+    related: ['non-convex', 'momentum', 'simulated-annealing'],
+    sections: [MATH_SEC('theory-nonconvex', '§3 Non-convex')]
+  },
+  'simulated-annealing': {
+    title: 'Simulated annealing',
+    body: 'Propose random perturbations; always accept improvements, accept worsening moves with probability exp(−ΔL / T). Cool T over time. Finds the global minimum of any function if T is cooled slowly enough. Used for combinatorial problems where gradients do not exist (TSP, graph layout).',
+    related: ['non-convex', 'sgd-noise', 'momentum'],
+    sections: [MATH_SEC('theory-nonconvex', '§3 Non-convex')]
+  },
+  'eigenvalue': {
+    title: 'Eigenvalue λ, eigenvector v',
+    body: 'v is an eigenvector of A if Av = λv — the matrix only <em>scales</em> it, no rotation. λ is the scaling factor. Symmetric matrices have a full orthogonal eigenbasis. PCA is eigendecomposition of the sample covariance.',
+    related: ['pca', 'svd', 'linalg'],
+    sections: [MATH_SEC('theory-linalg', '§4 Linear algebra')]
+  },
+  'dot-product': {
+    title: 'Dot product',
+    body: 'a · b = Σ a<sub>i</sub> b<sub>i</sub> = ‖a‖‖b‖ cos θ. Measures how aligned two vectors are. Attention scores, similarity, logistic regression outputs — all dot products.',
+    related: ['linalg', 'convolution'],
+    sections: [MATH_SEC('theory-linalg', '§4 Linear algebra')]
+  },
+  'convolution': {
+    title: 'Convolution',
+    body: '(f * g)(t) = ∫ f(τ) g(t − τ) dτ. A sliding dot product; translation-equivariant. CNN filters are discrete convolutions. Convolution theorem: Fourier turns it into pointwise multiplication.',
+    related: ['dot-product', 'linalg'],
+    sections: [MATH_SEC('theory-linalg', '§4 Linear algebra')]
+  },
+  'linalg': {
+    title: 'Linear algebra',
+    body: 'Matrices as linear transformations, vector/matrix products, decompositions. The substrate every ML layer runs on. Key facts: columns are images of basis vectors; composition = multiplication; eigendecomposition reveals "natural axes."',
+    related: ['eigenvalue', 'svd', 'dot-product', 'convolution'],
+    sections: [MATH_SEC('theory-linalg', '§4 Linear algebra')]
+  },
+  'svd': {
+    title: 'SVD · Singular Value Decomposition',
+    body: 'Any matrix X can be written as UΣV<sup>⊤</sup>: rotate (V<sup>⊤</sup>), scale (Σ), rotate (U). Singular values σ<sub>i</sub> = √eigenvalues of X<sup>⊤</sup>X. PCA of centred X = columns of V.',
+    related: ['pca', 'eigenvalue', 'linalg']
+  },
+  'pca': {
+    title: 'PCA · Principal Component Analysis',
+    body: 'Find the orthogonal directions of maximum variance in a dataset. Eigendecomposition of the sample covariance (or SVD of centred data). Used for dimensionality reduction, denoising, whitening, visualisation — <em>not</em> clustering.',
+    related: ['eigenvalue', 'svd', 'variance', 'linalg'],
+    sections: [MATH_SEC('theory-pca', '§5 PCA')]
+  },
+  'variance': {
+    title: 'Variance',
+    body: 'Expected squared deviation from the mean: Var[X] = 𝔼[(X − μ)²]. In multi-D, the covariance matrix generalises this — its eigenvalues are variances along the principal axes.',
+    related: ['pca', 'eigenvalue']
+  },
+  'universal-approximation': {
+    title: 'Universal approximation theorem',
+    body: 'A feedforward neural net with one hidden layer and a non-polynomial activation can approximate any continuous function on a compact domain to arbitrary accuracy — <em>if</em> the hidden layer is wide enough. Doesn\'t say <em>how</em> wide (can be exponential) and doesn\'t say SGD can find the weights.',
+    related: ['neural-net', 'activation'],
+    sections: [MATH_SEC('theory-nn', '§6 NN')]
+  },
+  'neural-net': {
+    title: 'Neural network',
+    body: 'A parameterised function built by stacking layers h = σ(Wx + b). Linear transform (Wx), translation (+b), non-linearity (σ). Enough depth/width gives universal approximation. Used as policy, value, encoder, decoder, score network across every modern ML method.',
+    related: ['universal-approximation', 'activation', 'gradient']
+  },
+  'activation': {
+    title: 'Activation function σ',
+    body: 'Element-wise non-linearity (ReLU, GELU, sigmoid, tanh, SiLU). Without it, stacked linear layers collapse to a single linear transform — no expressive power beyond regression.',
+    related: ['neural-net', 'universal-approximation']
+  },
+  'kkt': {
+    title: 'KKT conditions',
+    body: 'Karush-Kuhn-Tucker generalisation of Lagrange multipliers to inequality constraints. Optimality of a constrained optimum requires ∇f + Σ λ<sub>i</sub> ∇g<sub>i</sub> = 0, primal feasibility, dual feasibility (λ ≥ 0), and complementary slackness (λ<sub>i</sub> g<sub>i</sub> = 0).',
+    related: ['lagrangian', 'argmin', 'convex']
   }
 };

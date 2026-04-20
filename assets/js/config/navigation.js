@@ -14,7 +14,8 @@ const NAV_LABS = [
   { id: 'ml-playground', label: 'Clustering Playground', href: 'pages/ml-playground/' },
   { id: 'fourier-epicycles', label: 'Fourier Epicycles', href: 'pages/fourier-epicycles/' },
   { id: 'rl-lab', label: 'RL Lab', href: 'pages/rl-lab/' },
-  { id: 'diffusion-lab', label: 'Diffusion Lab', href: 'pages/diffusion-lab/' }
+  { id: 'diffusion-lab', label: 'Diffusion Lab', href: 'pages/diffusion-lab/' },
+  { id: 'math-lab', label: 'Math Foundations', href: 'pages/math-lab/' }
 ];
 
 const LOGO_TEXT = 'Ka Ming Lui';

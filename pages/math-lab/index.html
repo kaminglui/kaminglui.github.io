@@ -1,0 +1,613 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="Interactive tour of the math behind modern ML: gradient descent and SGD on user-picked landscapes, PCA on 2D scatter, plus a kid-friendly walk through optimisation, linear algebra, and the universal approximation theorem."
+    />
+    <title>Math Foundations Lab — Ka Ming Lui</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fira+Code:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="../../assets/css/style.css" />
+    <link rel="stylesheet" href="../../assets/css/rl-lab.css" />
+    <link rel="stylesheet" href="../../assets/css/math-lab.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" />
+  </head>
+  <body class="theme-light">
+    <div id="site-header"></div>
+
+    <main class="lab-main">
+      <section class="lab-hero">
+        <div class="container">
+          <div class="lab-hero__inner">
+            <p class="lab-hero__eyebrow">Interactive lab</p>
+            <h1 class="lab-hero__title">Math Foundations Lab</h1>
+            <p class="lab-hero__lead">
+              Watch gradient descent roll down a landscape you pick, then escape a nasty non-convex valley with
+              stochastic noise or simulated annealing. Find a dataset's principal components by eye. Along the way,
+              a kid-friendly tour of optimisation (argmin, argmax, Lagrange multipliers), linear algebra (matrices
+              as transformations, dot & cross products, convolution), PCA math from the ground up, and why a
+              neural network can approximate almost any function.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section class="lab-section" aria-labelledby="math-title">
+        <div class="container">
+          <article class="card lab-card">
+            <header class="lab-card__header">
+              <p class="lab-card__eyebrow">Optimisation · Linear algebra · PCA · Approximation</p>
+              <div class="lab-card__title-row">
+                <h2 class="lab-card__title" id="math-title">The math every ML method reuses</h2>
+                <div class="lab-card__chips">
+                  <span class="lab-chip">GD / SGD</span>
+                  <span class="lab-chip">Linear algebra</span>
+                  <span class="lab-chip">PCA</span>
+                  <span class="lab-chip">Universal approx</span>
+                </div>
+              </div>
+              <p class="lab-card__lead">
+                Pick a 2D function, pick an optimiser (GD · SGD · simulated annealing) and watch the trajectory
+                descend into a minimum — or get stuck. Then switch to the PCA panel and see which direction of
+                a point cloud carries the most variance. The math sections below explain what the optimiser is
+                doing, what a gradient <em>is</em>, and why any smooth function can be written as a neural net.
+              </p>
+            </header>
+
+            <aside class="lab-intro-steps" aria-label="Read this first">
+              <p class="lab-intro-steps__title">Read this first</p>
+              <ol>
+                <li>
+                  <strong>What it does</strong>
+                  Every ML algorithm is a loop of "score this guess, tweak the parameters to score better."
+                  <em>Score better</em> means decreasing some loss L(θ), which is just a function of the
+                  parameters. The tools for doing that reliably come from <em>calculus</em> (gradients),
+                  <em>linear algebra</em> (how to manipulate the tensors those gradients live in), and
+                  <em>probability</em> (which loss we pick in the first place).
+                </li>
+                <li>
+                  <strong>Try this</strong>
+                  Pick the <em>Two wells</em> preset, set the optimiser to <em>GD</em>, press <em>Run</em>.
+                  From most starts you land in whichever well you were closer to. Now switch to
+                  <em>Simulated annealing</em> with a warm temperature and re-run — it jumps between wells and
+                  picks the deeper one eventually.
+                </li>
+                <li>
+                  <strong>Look for this</strong>
+                  Contour lines are <em>level sets</em> of the loss. The gradient is <em>perpendicular</em> to
+                  them and points uphill — which is why <em>−</em>gradient goes downhill. SGD noise lets you
+                  escape saddle points and narrow ridges. SA's acceptance rule lets you escape a local min.
+                </li>
+              </ol>
+            </aside>
+
+            <aside class="lab-intuition" aria-label="Plain-English intro">
+              <h3 class="lab-intuition__title">In plain English — what is optimisation?</h3>
+              <p>
+                Imagine a hilly landscape with a ball on it. <strong>Optimisation</strong> is the problem of
+                "where's the lowest point?" — and <strong>gradient descent</strong> is the simplest recipe for
+                answering it: feel the slope under your feet and take a small step downhill. Repeat.
+              </p>
+              <p>
+                Every modern ML model is a function f<sub>θ</sub> with millions of knobs θ. We pick a
+                <em>loss</em> L(θ) measuring "how wrong is f<sub>θ</sub>?" on data. Training = using gradient
+                descent on L to find θ that makes the loss small. Deep learning's big trick is that
+                <em>backprop</em> computes ∇<sub>θ</sub> L cheaply even when f<sub>θ</sub> has billions of
+                knobs.
+              </p>
+              <p class="lab-intuition__note"><strong>Words that show up a lot:</strong></p>
+              <ul class="rl-glossary">
+                <li><strong data-g="loss">Loss L(θ)</strong> — the number we're trying to minimise. Squared error, cross-entropy, KL divergence, reward-negated, ….</li>
+                <li><strong data-g="gradient">Gradient ∇L</strong> — a vector of partial derivatives. Points in the direction of steepest <em>increase</em> of L; we step the opposite way.</li>
+                <li><strong data-g="learning-rate">Learning rate α</strong> — how big a step to take. Too big: overshoot. Too small: slow.</li>
+                <li><strong data-g="convex">Convex</strong> — a loss with a single bowl-shaped minimum. GD always finds it.</li>
+                <li><strong data-g="non-convex">Non-convex</strong> — multiple valleys, saddle points, plateaus. GD can get stuck in a local min.</li>
+                <li><strong data-g="argmin">argmin / argmax</strong> — "the input that achieves the min/max". <em>argmin L = θ<sup>*</sup></em>.</li>
+                <li><strong data-g="eigenvalue">Eigenvalue / eigenvector</strong> — directions a matrix just scales (doesn't rotate). The axes PCA finds.</li>
+              </ul>
+            </aside>
+
+            <!-- ================= GD/SGD/SA interactive ================= -->
+            <div class="rl-controls" aria-label="Gradient-descent controls">
+              <div class="rl-controls__row">
+                <div class="math-presets" role="group" aria-label="Function presets">
+                  <span class="math-presets__label">Function</span>
+                  <button type="button" class="math-preset is-active" data-gd-preset="quadratic">Convex bowl</button>
+                  <button type="button" class="math-preset" data-gd-preset="saddle">Saddle</button>
+                  <button type="button" class="math-preset" data-gd-preset="two-wells">Two wells</button>
+                  <button type="button" class="math-preset" data-gd-preset="rosenbrock">Rosenbrock valley</button>
+                  <button type="button" class="math-preset" data-gd-preset="himmelblau">Himmelblau (4 mins)</button>
+                </div>
+                <div class="rl-controls__group">
+                  <label for="gd-method">Optimiser</label>
+                  <select id="gd-method">
+                    <option value="gd" selected>Gradient descent</option>
+                    <option value="sgd">SGD (noisy gradient)</option>
+                    <option value="momentum">GD + momentum</option>
+                    <option value="sa">Simulated annealing</option>
+                  </select>
+                </div>
+                <div class="rl-controls__group" style="min-width: 200px;">
+                  <label for="gd-lr">α <span class="rl-controls__value" id="gd-lr-value">0.05</span></label>
+                  <input id="gd-lr" type="range" min="0.001" max="0.3" step="0.001" value="0.05" />
+                </div>
+                <div class="rl-controls__group" data-method-only="sgd" hidden style="min-width: 200px;">
+                  <label for="gd-noise">SGD σ <span class="rl-controls__value" id="gd-noise-value">0.30</span></label>
+                  <input id="gd-noise" type="range" min="0" max="1.5" step="0.01" value="0.3" />
+                </div>
+                <div class="rl-controls__group" data-method-only="momentum" hidden style="min-width: 200px;">
+                  <label for="gd-mom">β <span class="rl-controls__value" id="gd-mom-value">0.80</span></label>
+                  <input id="gd-mom" type="range" min="0" max="0.99" step="0.01" value="0.8" />
+                </div>
+                <div class="rl-controls__group" data-method-only="sa" hidden style="min-width: 200px;">
+                  <label for="gd-temp">T<sub>0</sub> <span class="rl-controls__value" id="gd-temp-value">2.00</span></label>
+                  <input id="gd-temp" type="range" min="0.01" max="5" step="0.01" value="2" />
+                </div>
+              </div>
+              <div class="rl-controls__actions">
+                <button type="button" id="gd-step">Step</button>
+                <button type="button" id="gd-run" class="is-primary">Run 300</button>
+                <button type="button" id="gd-pause" hidden>Pause</button>
+                <button type="button" id="gd-new-start">New start</button>
+                <button type="button" id="gd-reset">Reset</button>
+              </div>
+            </div>
+
+            <div class="rl-stage">
+              <div>
+                <div class="math-canvas-wrapper">
+                  <canvas id="gd-canvas" width="640" height="640" aria-label="Gradient-descent landscape"></canvas>
+                </div>
+                <p class="math-legend" aria-hidden="true">
+                  <span><span class="math-legend__swatch" style="background:#3b82f6"></span>Trajectory</span>
+                  <span><span class="math-legend__swatch" style="background:#f97316"></span>Current θ</span>
+                  <span><span class="math-legend__swatch" style="background:#22c55e"></span>Global minimum</span>
+                  <span>Click the canvas to set a new starting point.</span>
+                </p>
+              </div>
+              <aside class="rl-sidebar" aria-label="Optimiser stats">
+                <h3>Live stats</h3>
+                <div class="rl-stat-grid">
+                  <div class="rl-stat"><span class="rl-stat__label">step</span><span class="rl-stat__value" id="gd-stat-step">0</span></div>
+                  <div class="rl-stat"><span class="rl-stat__label">loss</span><span class="rl-stat__value rl-stat__value--accent" id="gd-stat-loss">—</span></div>
+                  <div class="rl-stat"><span class="rl-stat__label">θ</span><span class="rl-stat__value" id="gd-stat-theta">—</span></div>
+                  <div class="rl-stat"><span class="rl-stat__label">‖∇L‖</span><span class="rl-stat__value" id="gd-stat-grad">—</span></div>
+                  <div class="rl-stat"><span class="rl-stat__label">accepts (SA)</span><span class="rl-stat__value" id="gd-stat-accept">—</span></div>
+                  <div class="rl-stat"><span class="rl-stat__label">T (SA)</span><span class="rl-stat__value" id="gd-stat-temp">—</span></div>
+                </div>
+                <p class="ml-hint">
+                  Dark valleys are small-loss regions. Lines you see on the canvas are contour curves at fixed
+                  loss levels. The trajectory's colour darkens as steps progress.
+                </p>
+              </aside>
+            </div>
+
+            <section class="rl-theory" aria-labelledby="math-theory-title">
+              <h3 id="math-theory-title" class="visually-hidden">Math tour</h3>
+
+              <article class="rl-theory__panel" id="theory-opt">
+                <h3>1 · Reading min, max, argmin, argmax — and Lagrange</h3>
+                <p class="rl-theory__kid">
+                  <strong>Kid version.</strong> <em>min</em> is "the lowest score a set ever reaches."
+                  <em>argmin</em> is "the input that achieves that lowest score." Same pair for max. When
+                  there's a rule you can't break (a constraint), <em>Lagrange multipliers</em> are the book-
+                  keeping trick that lets you still use plain gradient descent.
+                </p>
+                <p>Notation:</p>
+                <ul>
+                  <li><span data-katex="\min_x f(x)"></span> — the <em>lowest value</em> of f. A number.</li>
+                  <li><span data-katex="\arg\min_x f(x)"></span> — the <em>input</em> x that achieves the lowest value. A point (or set of points if there are ties).</li>
+                  <li><span data-katex="\max_x f(x)"></span>, <span data-katex="\arg\max_x f(x)"></span> — the same pair for maximising.</li>
+                </ul>
+                <p>
+                  Critical fact: argmin is <em>not</em> min. If f(x) = (x − 3)², then min = 0 but
+                  argmin = 3. ML people say "minimise L" but almost always want the <em>parameters</em> that
+                  achieve the minimum, i.e. argmin.
+                </p>
+                <p>
+                  <strong>Constrained optimisation.</strong> "Minimise f(x) subject to g(x) = 0." The
+                  <em>Lagrangian</em> turns a constrained problem into an unconstrained one:
+                </p>
+                <div class="rl-equation" data-katex="\mathcal{L}(x, \lambda) = f(x) + \lambda\, g(x)" data-katex-display></div>
+                <ul>
+                  <li><strong>λ</strong> — <em>Lagrange multiplier</em>: a scalar you also solve for. Roughly, "how much does the constraint hurt?"</li>
+                  <li>Setting <span data-katex="\nabla_x \mathcal{L} = 0"></span> and <span data-katex="\nabla_\lambda \mathcal{L} = 0"></span> together captures the constrained optimum.</li>
+                </ul>
+                <p>
+                  Geometric intuition: at the constrained optimum, the level sets of f and g are
+                  <em>tangent</em>. That means <span data-katex="\nabla f = -\lambda\, \nabla g"></span>.
+                  Lagrange multipliers show up in SVM duals, convex optimisation, KKT conditions, and even
+                  in RL via the maximum-entropy policy derivation.
+                </p>
+              </article>
+
+              <article class="rl-theory__panel" id="theory-gd">
+                <h3>2 · Gradient descent and SGD</h3>
+                <p class="rl-theory__kid">
+                  <strong>Kid version.</strong> Stand on a hill with your eyes closed. Feel which way is
+                  downhill with your feet. Step that way. Repeat. That's gradient descent.
+                </p>
+                <p>
+                  Given a differentiable loss L(θ), gradient descent iterates:
+                </p>
+                <div class="rl-equation" data-katex="\theta_{k+1} = \theta_k - \alpha\, \nabla_\theta L(\theta_k)" data-katex-display></div>
+                <ul>
+                  <li><strong>α</strong> — learning rate; the step-size scalar. Too big: overshoot or diverge. Too small: crawl.</li>
+                  <li><strong>∇L</strong> — gradient vector; each entry is ∂L/∂θ<sub>i</sub>. Points uphill; we step opposite.</li>
+                </ul>
+                <p>
+                  On a <strong>convex</strong> loss (a "bowl"), GD provably finds the global minimum with a
+                  small-enough α. Every classical method before neural nets (linear regression, logistic
+                  regression, linear SVM, lasso) has a convex loss — so "just run GD" was the full story.
+                </p>
+                <p>
+                  <strong>SGD</strong> — stochastic gradient descent — replaces the full gradient with a
+                  noisy estimate from a single sample or mini-batch:
+                </p>
+                <div class="rl-equation" data-katex="\theta_{k+1} = \theta_k - \alpha\, \widehat{\nabla L}(\theta_k),\qquad \widehat{\nabla L} \approx \nabla L + \text{noise}" data-katex-display></div>
+                <p>
+                  Cheap (doesn't touch the whole dataset) and a blessing in non-convex land (the noise helps
+                  escape saddle points and narrow ridges). <strong>GD + momentum</strong> keeps a running
+                  average of gradients — a "heavy ball" that powers through flat regions:
+                </p>
+                <div class="rl-equation" data-katex="v_{k+1} = \beta\, v_k + \nabla L(\theta_k),\qquad \theta_{k+1} = \theta_k - \alpha\, v_{k+1}" data-katex-display></div>
+                <p>Adam, RMSprop, AdaGrad, AdamW all build on this skeleton with per-parameter scaling.</p>
+              </article>
+
+              <article class="rl-theory__panel" id="theory-nonconvex">
+                <h3>3 · Non-convex optimisation and escape tricks</h3>
+                <p class="rl-theory__kid">
+                  <strong>Kid version.</strong> Deep-learning landscapes aren't nice bowls. They have many
+                  valleys (local minima), saddles (looks flat in one direction, cliff in another), and
+                  plateaus. Pure downhill-stepping can get stuck. The trick: add randomness that lets you
+                  occasionally go <em>up</em>.
+                </p>
+                <p>Common escape methods:</p>
+                <div class="rl-taxonomy">
+                  <div class="rl-taxonomy__card">
+                    <h4 data-g="momentum">Momentum / Adam</h4>
+                    <ul>
+                      <li>Average gradients over time.</li>
+                      <li>Flat plateaus get crossed faster.</li>
+                      <li>Doesn't escape a deep local min — only accelerates.</li>
+                    </ul>
+                  </div>
+                  <div class="rl-taxonomy__card">
+                    <h4 data-g="sgd-noise">SGD noise</h4>
+                    <ul>
+                      <li>Stochastic gradient acts like injected noise.</li>
+                      <li>Perturbs you off saddles, over shallow ridges.</li>
+                      <li>Main escape mechanism in modern deep learning.</li>
+                    </ul>
+                  </div>
+                  <div class="rl-taxonomy__card">
+                    <h4 data-g="simulated-annealing">Simulated annealing</h4>
+                    <div class="rl-equation" data-katex="P(\text{accept } \theta') = \min\!\bigl(1,\, e^{-(L(\theta') - L(\theta))/T}\bigr)" data-katex-display></div>
+                    <ul>
+                      <li>Propose a random step. Always accept improvements.</li>
+                      <li>Accept worsening steps with probability decreasing in ΔL and in 1/T.</li>
+                      <li>Cool T slowly. Classical for combinatorial optimisation (TSP, graph colouring).</li>
+                    </ul>
+                  </div>
+                  <div class="rl-taxonomy__card">
+                    <h4>Restarts / ensembles</h4>
+                    <ul>
+                      <li>Run GD from many random inits; pick the best.</li>
+                      <li>Embarrassingly parallel; baseline for "just try harder."</li>
+                      <li>Used in hyper-parameter search and population-based training.</li>
+                    </ul>
+                  </div>
+                </div>
+                <p class="ml-hint">
+                  For modern deep nets, plain SGD with momentum + a schedule is the workhorse. The curious
+                  empirical fact: in the high-dimensional parameter spaces of deep nets, most critical points
+                  are saddles, not minima, and the SGD noise handles them — simulated annealing is rarely used
+                  in deep learning, but it's still the go-to for discrete/combinatorial problems where
+                  gradients don't exist.
+                </p>
+              </article>
+
+              <article class="rl-theory__panel" id="theory-linalg">
+                <h3>4 · Linear algebra — transformations, dot / cross, convolution</h3>
+                <p class="rl-theory__kid">
+                  <strong>Kid version.</strong> A <em>matrix</em> is a rule for turning one arrow into another
+                  — stretch, rotate, shear. The <em>dot product</em> measures "how much two arrows point the
+                  same way." <em>Convolution</em> is dot-products slid across an image to make a new one.
+                </p>
+                <p>
+                  A matrix A ∈ ℝ<sup>m×n</sup> is a <strong>linear transformation</strong> that maps vectors
+                  in ℝ<sup>n</sup> to ℝ<sup>m</sup>. Three facts to internalise:
+                </p>
+                <ul>
+                  <li>
+                    <strong>Columns are images of basis vectors.</strong> Column j of A is what A does to the
+                    j-th unit vector e<sub>j</sub>. A transformation is fully specified by what it does to the
+                    basis.
+                  </li>
+                  <li>
+                    <strong>Matrix-vector product</strong> is a linear combination of A's columns:
+                    <span data-katex="A\mathbf{x} = \sum_i x_i\, \mathbf{a}_{:,i}"></span>.
+                  </li>
+                  <li>
+                    <strong>Composition = multiplication.</strong> Doing A then B equals applying BA as one
+                    matrix. Order matters: BA ≠ AB in general.
+                  </li>
+                </ul>
+                <p><strong>Dot product</strong> — the most-used operation in ML:</p>
+                <div class="rl-equation" data-katex="\mathbf{a} \cdot \mathbf{b} = \sum_i a_i\, b_i = \lVert \mathbf{a} \rVert\, \lVert \mathbf{b} \rVert\, \cos\theta" data-katex-display></div>
+                <ul>
+                  <li>Measures alignment. Positive: same-ish direction. Zero: orthogonal. Negative: opposite.</li>
+                  <li>Attention scores in transformers are dot products. "Similarity" in retrieval is dot product. Logistic regression's output is <em>w · x + b</em>.</li>
+                </ul>
+                <p><strong>Cross product</strong> (ℝ³ only) — produces a vector <em>orthogonal</em> to both inputs:</p>
+                <div class="rl-equation" data-katex="\mathbf{a} \times \mathbf{b} = \bigl(a_2 b_3 - a_3 b_2,\ a_3 b_1 - a_1 b_3,\ a_1 b_2 - a_2 b_1\bigr)" data-katex-display></div>
+                <ul>
+                  <li>Magnitude = area of the parallelogram spanned by a, b.</li>
+                  <li>Used in physics (torque, angular momentum) and 3D graphics (surface normals). Rare in ML.</li>
+                </ul>
+                <p><strong>Convolution</strong> — a sliding dot product:</p>
+                <div class="rl-equation" data-katex="(f * g)(t) = \int f(\tau)\, g(t - \tau)\, d\tau" data-katex-display></div>
+                <div class="rl-equation" data-katex="(x * k)[n] = \sum_m x[m]\, k[n - m]" data-katex-display></div>
+                <ul>
+                  <li>Translation-equivariant: shift the input, shifted output.</li>
+                  <li>In CNNs, each filter is a small k weighted-summed across image patches — a dot product per pixel.</li>
+                  <li>Convolution theorem: <span data-katex="\mathcal{F}\{\, f * g \,\} = \mathcal{F}\{f\} \cdot \mathcal{F}\{g\}"></span>. Fourier turns convolution into pointwise multiplication.</li>
+                </ul>
+                <p>
+                  <strong>Eigenvalues and eigenvectors.</strong> A vector v is an <em>eigenvector</em> of A if
+                  <span data-katex="A\mathbf{v} = \lambda\, \mathbf{v}"></span>: the transformation leaves v's
+                  direction alone, only scaling it by λ (the <em>eigenvalue</em>). These are the "natural axes"
+                  of A. Symmetric A always has a full orthogonal eigenbasis — the fact PCA leans on in §5.
+                </p>
+              </article>
+
+              <article class="rl-theory__panel" id="theory-pca">
+                <h3>5 · PCA — find the direction of maximum variance</h3>
+                <p class="rl-theory__kid">
+                  <strong>Kid version.</strong> You have a cloud of points. PCA asks: "If I had to squash you
+                  all onto a single line, which line would lose the <em>least</em> information?" Answer: the
+                  direction the cloud is most stretched along.
+                </p>
+                <p>Given N points x<sub>i</sub> ∈ ℝ<sup>d</sup> with mean x̄, centre them and form the covariance:</p>
+                <div class="rl-equation" data-katex="\Sigma = \tfrac{1}{N} \sum_{i=1}^{N} (x_i - \bar x)\, (x_i - \bar x)^\top \;\in\; \mathbb{R}^{d \times d}" data-katex-display></div>
+                <p>
+                  Σ is symmetric positive semi-definite, so it has an <em>eigendecomposition</em>
+                  <span data-katex="\Sigma = U\, \Lambda\, U^\top"></span> with orthonormal eigenvectors
+                  u<sub>1</sub>, …, u<sub>d</sub> and non-negative eigenvalues λ<sub>1</sub> ≥ … ≥ λ<sub>d</sub> ≥ 0.
+                  The <strong>principal components</strong> are the u<sub>i</sub>; the <strong>explained
+                  variance</strong> of the i-th is λ<sub>i</sub> / Σ<sub>j</sub> λ<sub>j</sub>.
+                </p>
+                <p>Three equivalent ways to derive PCA, all giving the same answer:</p>
+                <ul>
+                  <li><strong>Maximum variance.</strong> u<sub>1</sub> = argmax<sub>‖u‖=1</sub> u<sup>⊤</sup> Σ u. A constrained optimisation; solve it with Lagrange multipliers and you get Σu = λu.</li>
+                  <li><strong>Minimum reconstruction error.</strong> u<sub>1</sub> minimises Σ<sub>i</sub> ‖x<sub>i</sub> − (u u<sup>⊤</sup>) x<sub>i</sub>‖². Same solution.</li>
+                  <li><strong>SVD of centered data.</strong> Let X̃ be the N×d matrix of centered points. SVD X̃ = UΣV<sup>⊤</sup>. Columns of V are the principal components; squared singular values / N are the eigenvalues of Σ.</li>
+                </ul>
+                <p>
+                  Uses: dimensionality reduction (project on top-k PCs), denoising (drop the low-variance
+                  components), whitening (normalise by eigenvalues), visualisation (project high-dim data
+                  into 2D). Not a clustering method — if you want that, go back to K-means or GMM.
+                </p>
+
+                <h4 style="margin-top:0.9rem;">Demo — PCA on a 2D scatter</h4>
+                <div class="rl-controls" aria-label="PCA controls">
+                  <div class="rl-controls__row">
+                    <div class="math-presets" role="group" aria-label="Dataset presets">
+                      <span class="math-presets__label">Dataset</span>
+                      <button type="button" class="math-preset is-active" data-pca-preset="tilted">Tilted Gaussian</button>
+                      <button type="button" class="math-preset" data-pca-preset="round">Isotropic blob</button>
+                      <button type="button" class="math-preset" data-pca-preset="two-modes">Two modes</button>
+                      <button type="button" class="math-preset" data-pca-preset="line">Near-linear</button>
+                    </div>
+                    <div class="rl-controls__group">
+                      <label for="pca-count">Points</label>
+                      <select id="pca-count">
+                        <option value="80">80</option>
+                        <option value="200" selected>200</option>
+                        <option value="500">500</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div class="rl-controls__actions">
+                    <button type="button" id="pca-resample">Resample</button>
+                    <button type="button" id="pca-project">Toggle PC1 projection</button>
+                    <button type="button" id="pca-clear">Clear</button>
+                  </div>
+                </div>
+                <div class="rl-stage">
+                  <div>
+                    <div class="math-canvas-wrapper">
+                      <canvas id="pca-canvas" width="640" height="640" aria-label="PCA scatter + principal axes"></canvas>
+                    </div>
+                    <p class="math-legend" aria-hidden="true">
+                      <span><span class="math-legend__swatch" style="background:#3b82f6"></span>Point</span>
+                      <span><span class="math-legend__swatch" style="background:#f97316"></span>PC1 (high variance)</span>
+                      <span><span class="math-legend__swatch" style="background:#a855f7"></span>PC2</span>
+                      <span>Click the canvas to add points.</span>
+                    </p>
+                  </div>
+                  <aside class="rl-sidebar" aria-label="PCA stats">
+                    <h3>Covariance decomposition</h3>
+                    <div class="rl-stat-grid">
+                      <div class="rl-stat"><span class="rl-stat__label">N points</span><span class="rl-stat__value" id="pca-n">0</span></div>
+                      <div class="rl-stat"><span class="rl-stat__label">λ<sub>1</sub></span><span class="rl-stat__value rl-stat__value--accent" id="pca-l1">—</span></div>
+                      <div class="rl-stat"><span class="rl-stat__label">λ<sub>2</sub></span><span class="rl-stat__value" id="pca-l2">—</span></div>
+                      <div class="rl-stat"><span class="rl-stat__label">Var<sub>1</sub> %</span><span class="rl-stat__value" id="pca-v1">—</span></div>
+                      <div class="rl-stat"><span class="rl-stat__label">Var<sub>2</sub> %</span><span class="rl-stat__value" id="pca-v2">—</span></div>
+                      <div class="rl-stat"><span class="rl-stat__label">mean</span><span class="rl-stat__value" id="pca-mean">—</span></div>
+                    </div>
+                    <p class="ml-hint">
+                      Orange arrow = PC1, the direction of maximum variance. Purple = PC2, orthogonal. Arrow
+                      lengths are proportional to √λ<sub>i</sub> (1σ along each PC). Toggle the projection to
+                      see every point collapse onto PC1 — that's what 2D→1D dimensionality reduction looks
+                      like.
+                    </p>
+                  </aside>
+                </div>
+              </article>
+
+              <article class="rl-theory__panel" id="theory-nn">
+                <h3>6 · Neural networks as universal approximators</h3>
+                <p class="rl-theory__kid">
+                  <strong>Kid version.</strong> A single number times a weight plus a bias is just a line. A
+                  <em>pile</em> of those, with a non-linear bend in the middle, can draw any curve you want.
+                  That's the whole reason neural nets are used everywhere: they can copy almost any function
+                  you hand them.
+                </p>
+                <p>
+                  A single layer computes <span data-katex="h(x) = \sigma(Wx + b)"></span>. Three pieces:
+                </p>
+                <ul>
+                  <li><strong>Wx</strong> — linear transformation (§4). Stretches, rotates, projects.</li>
+                  <li><strong>+ b</strong> — bias. Translates.</li>
+                  <li><strong>σ(·)</strong> — <em>non-linear</em> activation applied elementwise: ReLU, sigmoid, GELU, tanh. Without it, stacked layers collapse to one big linear transform.</li>
+                </ul>
+                <p>
+                  The <strong>Universal Approximation Theorem</strong> (Cybenko 1989, Hornik 1991): for any
+                  continuous function f on a compact domain and any ε &gt; 0, there exists a two-layer neural
+                  network N(x) = W<sub>2</sub> σ(W<sub>1</sub> x + b<sub>1</sub>) + b<sub>2</sub> with finite
+                  width such that
+                </p>
+                <div class="rl-equation" data-katex="\sup_x \bigl\lvert f(x) - N(x) \bigr\rvert < \varepsilon" data-katex-display></div>
+                <p>
+                  In words: neural networks with a non-polynomial activation can approximate <em>any</em>
+                  continuous function to arbitrary precision — <em>if</em> they're wide enough.
+                </p>
+                <p class="ml-hint">
+                  Important caveats the pop-sci version skips: (1) the theorem doesn't say <em>how wide</em> — the
+                  width can be exponential in the input dimension. (2) It doesn't say you can <em>train</em> the
+                  weights to match — only that a setting <em>exists</em>. (3) Modern practice relies on
+                  <em>depth</em> (many layers) vastly more than width; deep networks represent some functions
+                  with exponentially fewer parameters than wide ones. Universal approximation is why NNs
+                  <em>could</em> learn almost anything; SGD, architectures, and data are why they
+                  <em>actually do</em>.
+                </p>
+                <p>
+                  This is why a neural network can <strong>be the policy</strong> π<sub>θ</sub>(a|s) in RL,
+                  the <strong>score network</strong> s<sub>θ</sub>(x, t) in diffusion, the
+                  <strong>encoder/decoder</strong> of a VAE, the <strong>value function</strong> V<sub>φ</sub>,
+                  or the <strong>classifier</strong> in a supervised model — it's the one function class
+                  flexible enough to parameterise any of those.
+                </p>
+              </article>
+
+              <article class="rl-theory__panel" id="theory-map">
+                <h3>7 · Families of math tools — a clustering map</h3>
+                <p class="rl-theory__kid">
+                  <strong>Kid version.</strong> Every concept in this lab lives in one of four families.
+                  Optimisation asks "where's the bottom of the valley?" Linear algebra asks "what does this
+                  transformation do?" Statistics asks "how noisy is this estimate?" Approximation asks "can
+                  my model represent the thing I care about?"
+                </p>
+                <div class="rl-clusters">
+                  <div class="rl-cluster" data-family="opt">
+                    <span class="rl-cluster__eyebrow">Family A</span>
+                    <h4 class="rl-cluster__title">Optimisation</h4>
+                    <p>Find an argmin / argmax, with or without constraints.</p>
+                    <div class="rl-cluster__members">
+                      <span class="rl-cluster__member">GD</span>
+                      <span class="rl-cluster__member">SGD</span>
+                      <span class="rl-cluster__member">Momentum / Adam</span>
+                      <span class="rl-cluster__member">Simulated annealing</span>
+                      <span class="rl-cluster__member">Lagrangian / KKT</span>
+                      <span class="rl-cluster__member">Newton / L-BFGS</span>
+                    </div>
+                    <ul class="rl-cluster__axes">
+                      <li><strong>input</strong>differentiable loss (or discrete for SA)</li>
+                      <li><strong>output</strong>θ<sup>*</sup></li>
+                      <li><strong>used in</strong>training every ML model</li>
+                    </ul>
+                  </div>
+                  <div class="rl-cluster" data-family="linalg">
+                    <span class="rl-cluster__eyebrow">Family B</span>
+                    <h4 class="rl-cluster__title">Linear algebra</h4>
+                    <p>Manipulate and decompose linear transformations.</p>
+                    <div class="rl-cluster__members">
+                      <span class="rl-cluster__member">Matrix × vector</span>
+                      <span class="rl-cluster__member">Dot / cross</span>
+                      <span class="rl-cluster__member">Convolution</span>
+                      <span class="rl-cluster__member">Eigendecomposition</span>
+                      <span class="rl-cluster__member">SVD</span>
+                    </div>
+                    <ul class="rl-cluster__axes">
+                      <li><strong>objects</strong>vectors, matrices, tensors</li>
+                      <li><strong>operations</strong>composition, inversion, decomposition</li>
+                      <li><strong>used in</strong>every layer of every model</li>
+                    </ul>
+                  </div>
+                  <div class="rl-cluster" data-family="stat">
+                    <span class="rl-cluster__eyebrow">Family C</span>
+                    <h4 class="rl-cluster__title">Statistics / Bayes</h4>
+                    <p>Quantify uncertainty; connect data to parameters.</p>
+                    <div class="rl-cluster__members">
+                      <span class="rl-cluster__member">PCA</span>
+                      <span class="rl-cluster__member">MLE / MAP</span>
+                      <span class="rl-cluster__member">Bayes' rule</span>
+                      <span class="rl-cluster__member">KL divergence</span>
+                      <span class="rl-cluster__member">Monte Carlo</span>
+                    </div>
+                    <ul class="rl-cluster__axes">
+                      <li><strong>input</strong>data samples</li>
+                      <li><strong>output</strong>posteriors, moments, decompositions</li>
+                      <li><strong>used in</strong>evaluation, inference, variational models</li>
+                    </ul>
+                  </div>
+                  <div class="rl-cluster" data-family="approx">
+                    <span class="rl-cluster__eyebrow">Family D</span>
+                    <h4 class="rl-cluster__title">Function approximation</h4>
+                    <p>Parameterise a flexible family and fit it to data.</p>
+                    <div class="rl-cluster__members">
+                      <span class="rl-cluster__member">Neural nets</span>
+                      <span class="rl-cluster__member">Kernel machines</span>
+                      <span class="rl-cluster__member">Gaussian processes</span>
+                      <span class="rl-cluster__member">Splines</span>
+                      <span class="rl-cluster__member">Fourier series</span>
+                    </div>
+                    <ul class="rl-cluster__axes">
+                      <li><strong>input</strong>a function class + training data</li>
+                      <li><strong>output</strong>a concrete f<sub>θ</sub></li>
+                      <li><strong>theorem</strong>universal approximation (§6)</li>
+                    </ul>
+                  </div>
+                </div>
+              </article>
+            </section>
+          </article>
+        </div>
+      </section>
+    </main>
+
+    <div id="site-footer"></div>
+
+    <script type="module">
+      import { initMainLayout } from '../../assets/js/layout/mainLayout.js';
+      initMainLayout('math-lab');
+    </script>
+    <script type="module" src="../../assets/js/main.js"></script>
+    <script type="module" src="../../assets/js/math-lab.js"></script>
+    <script type="module" src="../../assets/js/lab-tooltips.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+    <script>
+      document.addEventListener('DOMContentLoaded', () => {
+        const render = () => {
+          if (!window.katex) return;
+          document.querySelectorAll('[data-katex]').forEach((el) => {
+            const tex = el.getAttribute('data-katex');
+            if (!tex) return;
+            const displayMode = el.hasAttribute('data-katex-display');
+            window.katex.render(tex, el, { throwOnError: false, displayMode });
+          });
+        };
+        if (window.katex) render();
+        else window.addEventListener('load', render, { once: true });
+      });
+    </script>
+  </body>
+</html>
