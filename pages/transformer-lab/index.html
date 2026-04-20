@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta
       name="description"
-      content="Explore how transformers tokenize inputs, compute attention, and form predictions in an interactive lab."
+      content="Type a sentence and watch a transformer tokenize it, build Q/K/V vectors, compute real attention, and blend the results into context vectors."
     />
     <title>Transformer Lab · Ka Ming Lui</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -15,6 +15,7 @@
       rel="stylesheet"
     />
     <link rel="stylesheet" href="../../assets/css/style.css" />
+    <link rel="stylesheet" href="../../assets/css/transformer-lab.css" />
   </head>
   <body class="theme-light">
     <div id="site-header"></div>
@@ -24,26 +25,22 @@
         <div class="container">
           <div class="lab-hero__inner">
             <p class="lab-hero__eyebrow">Interactive lab</p>
-            <h1 class="lab-hero__title">Transformer Fundamentals Explorer</h1>
+            <h1 class="lab-hero__title">Transformer Attention Live</h1>
             <p class="lab-hero__lead">
-              Step through tokenization, self-attention, and prediction heads to see how transformers turn words and image
-              patches into understanding.
-            </p>
-            <p class="lab-panel__note">
-              Session progress syncs through a tiny Express + Redis API mounted at <code>/api</code>. Update the config block
-              before <code>transformer-lab.js</code> if your backend lives on another origin.
+              Type a sentence. The lab tokenizes it, builds real query/key/value vectors with a fixed random projection,
+              computes actual dot-product attention, and shows you the weighted sum every token uses as its context.
             </p>
           </div>
         </div>
       </section>
 
-      <section class="lab-section" aria-labelledby="lab-title">
+      <section class="lab-section" aria-labelledby="tlab-title">
         <div class="container">
-          <article class="card lab-card" data-transformer-lab>
+          <article class="card lab-card" data-tlab>
             <header class="lab-card__header">
-              <p class="lab-card__eyebrow">Stage by stage</p>
+              <p class="lab-card__eyebrow">Live pipeline</p>
               <div class="lab-card__title-row">
-                <h2 class="lab-card__title" id="lab-title">How transformers reason about your input</h2>
+                <h2 class="lab-card__title" id="tlab-title">Every number on this page is computed, not written down</h2>
                 <div class="lab-card__chips">
                   <span class="lab-chip">Tokens</span>
                   <span class="lab-chip">Attention</span>
@@ -51,195 +48,138 @@
                 </div>
               </div>
               <p class="lab-card__lead">
-                Pick a stage to explore how the model handles a sample prompt. Each interaction highlights the mechanics—no
-                quiz required.
+                Change the sentence and every panel recomputes from scratch. The projections <code>W_Q</code>,
+                <code>W_K</code>, <code>W_V</code> are deterministic random matrices so the same sentence always lands on
+                the same attention — good for learning, not a trained model.
               </p>
             </header>
-            <div class="lab-stage">
-              <div class="lab-stage__nav" data-stage-nav>
-                <button class="lab-stage__tab is-active" type="button" data-stage="tokens">
-                  Tokens
-                  <span>Words, subwords &amp; vision patches</span>
-                </button>
-                <button class="lab-stage__tab" type="button" data-stage="vectors">
-                  Q · K · V
-                  <span>Embed tokens into attention space</span>
-                </button>
-                <button class="lab-stage__tab" type="button" data-stage="attention">
-                  Attention
-                  <span>See which tokens influence each other</span>
-                </button>
-                <button class="lab-stage__tab" type="button" data-stage="outputs">
-                  Outputs
-                  <span>Follow the path to the final prediction</span>
-                </button>
-              </div>
-              <div class="lab-stage__panels">
-                <section class="lab-panel is-active" data-stage-panel="tokens">
-                  <div class="lab-panel__grid">
-                    <div class="lab-panel__intro">
-                      <h3 data-stage-heading>Choose a stage to explore</h3>
-                      <p class="lab-panel__summary" data-stage-summary>
-                        The copy below updates when you switch stages so every panel shares the same plain-language context.
-                      </p>
-                      <div class="sr-only" role="status" aria-live="polite" data-stage-announcer></div>
-                      <p class="lab-panel__sample"><code>Transformers help models connect ideas.</code></p>
-                      <p class="lab-panel__note" data-token-mode-description>
-                        Word tokens keep whole words intact and map closely to how humans read the sentence.
-                      </p>
-                      <div class="lab-panel__walkthrough" data-stage-walkthrough hidden>
-                        <h4 class="lab-panel__walkthrough-title" data-stage-example-title>Stage example</h4>
-                        <p data-stage-example-text></p>
-                        <ul class="lab-panel__bullet-list" data-stage-bullets></ul>
-                      </div>
-                      <div class="token-mode-switch" data-token-mode-switch>
-                        <button class="is-active" type="button" data-token-mode="words">Word tokens</button>
-                        <button type="button" data-token-mode="subwords">Subword pieces</button>
-                        <button type="button" data-token-mode="vision">Vision patches</button>
-                      </div>
-                    </div>
-                    <div class="lab-panel__visual">
-                      <div class="token-stream" data-token-group="words">
-                        <button class="token" type="button" data-token="words-cls">[CLS]</button>
-                        <button class="token" type="button" data-token="words-transformers">Transformers</button>
-                        <button class="token" type="button" data-token="words-help">help</button>
-                        <button class="token" type="button" data-token="words-models">models</button>
-                        <button class="token" type="button" data-token="words-connect">connect</button>
-                        <button class="token" type="button" data-token="words-ideas">ideas</button>
-                        <button class="token" type="button" data-token="words-sep">[SEP]</button>
-                      </div>
-                      <div class="token-stream" data-token-group="subwords" hidden>
-                        <button class="token" type="button" data-token="subwords-cls">[CLS]</button>
-                        <button class="token" type="button" data-token="subwords-trans">trans</button>
-                        <button class="token" type="button" data-token="subwords-formers">##formers</button>
-                        <button class="token" type="button" data-token="subwords-help">help</button>
-                        <button class="token" type="button" data-token="subwords-model">model</button>
-                        <button class="token" type="button" data-token="subwords-s">##s</button>
-                        <button class="token" type="button" data-token="subwords-connect">connect</button>
-                        <button class="token" type="button" data-token="subwords-idea">idea</button>
-                        <button class="token" type="button" data-token="subwords-s2">##s</button>
-                        <button class="token" type="button" data-token="subwords-sep">[SEP]</button>
-                      </div>
-                      <div class="token-stream token-stream--vision" data-token-group="vision" hidden>
-                        <button class="token" type="button" data-token="vision-class">[CLS]</button>
-                        <button class="token" type="button" data-token="vision-patch1">Patch 1</button>
-                        <button class="token" type="button" data-token="vision-patch2">Patch 2</button>
-                        <button class="token" type="button" data-token="vision-patch3">Patch 3</button>
-                        <button class="token" type="button" data-token="vision-patch4">Patch 4</button>
-                        <button class="token" type="button" data-token="vision-patch5">Patch 5</button>
-                        <button class="token" type="button" data-token="vision-patch6">Patch 6</button>
-                        <button class="token" type="button" data-token="vision-sep">[SEP]</button>
-                      </div>
-                      <aside class="token-inspector" data-token-inspector>
-                        <h4 data-token-title>Choose a token to inspect</h4>
-                        <p data-token-summary>
-                          Toggle between token views and tap a token to see how transformers break down the input.
-                        </p>
-                        <dl class="token-inspector__facts" data-token-facts></dl>
-                      </aside>
-                      <figure class="lab-figure">
-                        <img
-                          src="../../assets/img/vision-token-grid.svg"
-                          width="480"
-                          height="320"
-                          alt="Diagram showing a six-patch grid that becomes six image tokens"
-                        />
-                        <figcaption>Image patches become tokens just like the words above—Step 3 brings text and vision together.</figcaption>
-                      </figure>
-                    </div>
-                  </div>
-                </section>
 
-                <section class="lab-panel" data-stage-panel="vectors">
-                  <div class="lab-panel__grid">
-                    <div class="lab-panel__intro">
-                      <h3>Every token becomes three learned vectors</h3>
-                      <p class="lab-panel__note">
-                        Queries ask for context, keys advertise what a token offers, and values carry the content that gets
-                        blended by attention.
-                      </p>
-                      <div class="vector-picker" data-vector-picker role="group" aria-label="Vector views">
-                        <button class="vector-tab is-active" type="button" data-vector="query">Query</button>
-                        <button class="vector-tab" type="button" data-vector="key">Key</button>
-                        <button class="vector-tab" type="button" data-vector="value">Value</button>
-                      </div>
-                      <p class="vector-description" data-vector-description></p>
-                      <div class="vector-legend">
-                        <span><i></i>Positive influence</span>
-                        <span><i data-type="negative"></i>Negative pull</span>
-                      </div>
-                    </div>
-                    <div class="lab-panel__visual">
-                      <div class="vector-board-wrapper">
-                        <div class="vector-board" data-vector-board role="table" aria-label="Vector components"></div>
-                      </div>
-                    </div>
-                  </div>
-                </section>
+            <aside class="lab-intro-steps" aria-label="Read this first">
+              <p class="lab-intro-steps__title">Read this first</p>
+              <ol>
+                <li>
+                  <strong>What it does</strong>
+                  A single transformer block turns a sequence of tokens into a sequence of context-aware vectors. Each token "looks at" every other token and pulls in the information it cares about.
+                </li>
+                <li>
+                  <strong>Try this</strong>
+                  Edit the sentence, then click through the four stages. Pick any token — the same token stays highlighted across Q/K/V, attention rows, and output.
+                </li>
+                <li>
+                  <strong>Look for this</strong>
+                  In the attention heatmap, bright cells tell you which tokens the row's query decided to blend. The output vector below is just that weighted sum.
+                </li>
+              </ol>
+            </aside>
 
-                <section class="lab-panel" data-stage-panel="attention">
-                  <div class="lab-panel__grid lab-panel__grid--balanced">
-                    <div class="lab-panel__intro">
-                      <h3>Self-attention decides who to listen to</h3>
-                      <p class="lab-panel__note">
-                        Switch heads to see how different learned patterns route information, then pick a query token to
-                        inspect its weights.
-                      </p>
-                      <div class="attention-heads" data-attention-heads>
-                        <button class="attention-head is-active" type="button" data-head="semantic">Head 1 · semantic</button>
-                        <button class="attention-head" type="button" data-head="position">Head 2 · ordering</button>
-                      </div>
-                      <div class="attention-queries" data-attention-queries>
-                        <span class="sr-only">Choose a query token</span>
-                        <div class="attention-queries__buttons">
-                          <button class="attention-query is-active" type="button" data-query="words-cls">[CLS]</button>
-                          <button class="attention-query" type="button" data-query="words-transformers">Transformers</button>
-                          <button class="attention-query" type="button" data-query="words-help">help</button>
-                          <button class="attention-query" type="button" data-query="words-models">models</button>
-                          <button class="attention-query" type="button" data-query="words-connect">connect</button>
-                          <button class="attention-query" type="button" data-query="words-ideas">ideas</button>
-                        </div>
-                      </div>
-                      <p class="attention-focus-note" data-attention-note></p>
-                    </div>
-                    <div class="lab-panel__visual">
-                      <div class="attention-board" data-attention-board aria-live="polite"></div>
-                    </div>
-                  </div>
-                </section>
-
-                <section class="lab-panel" data-stage-panel="outputs">
-                  <div class="pipeline-layout">
-                    <div class="pipeline-overview">
-                      <h3>How the model finishes the thought</h3>
-                      <p>
-                        The sentence above threads through four repeatable moves. Follow the numbered list, then use the
-                        inspector to dive deeper into each stage.
-                      </p>
-                      <ol class="lab-steps">
-                        <li><strong>Step 1 · Mix context</strong> — attention blends clues from every token.</li>
-                        <li><strong>Step 2 · Feed-forward</strong> — an MLP sharpens each token individually.</li>
-                        <li><strong>Step 3 · Residual &amp; norm</strong> — skip paths keep the story stable.</li>
-                        <li><strong>Step 4 · Output head</strong> — the task head turns features into predictions.</li>
-                      </ol>
-                      <p class="pipeline-overview__note">The active step below mirrors these headings for quick cross-reference.</p>
-                    </div>
-                    <div class="pipeline-steps" data-pipeline-steps>
-                      <button class="pipeline-step is-active" type="button" data-step="mix">1 · Mix context</button>
-                      <button class="pipeline-step" type="button" data-step="ffn">2 · Feed-forward</button>
-                      <button class="pipeline-step" type="button" data-step="residual">3 · Residual + norm</button>
-                      <button class="pipeline-step" type="button" data-step="prediction">4 · Output head</button>
-                    </div>
-                    <div class="pipeline-detail">
-                      <h3 data-pipeline-title></h3>
-                      <p data-pipeline-description></p>
-                      <ul class="pipeline-highlights" data-pipeline-highlights></ul>
-                      <div class="pipeline-chips" data-pipeline-chips></div>
-                    </div>
-                  </div>
-                </section>
+            <div class="tlab-input">
+              <label class="tlab-input__label" for="tlab-sentence">Your sentence</label>
+              <input
+                type="text"
+                id="tlab-sentence"
+                class="tlab-input__field"
+                value="Transformers help models connect ideas"
+                autocomplete="off"
+                spellcheck="false"
+              />
+              <div class="tlab-input__presets" data-tlab-presets>
+                <button type="button" data-preset="Transformers help models connect ideas">default</button>
+                <button type="button" data-preset="The cat sat on the mat because it was tired">pronoun test</button>
+                <button type="button" data-preset="Paris is the capital of France">fact</button>
+                <button type="button" data-preset="She opened the letter and began to cry">story</button>
               </div>
             </div>
+
+            <nav class="tlab-stages" data-tlab-stages aria-label="Pipeline stages">
+              <button class="tlab-stage is-active" type="button" data-stage="tokens">
+                <span class="tlab-stage__num">1</span>
+                <span class="tlab-stage__name">Tokens</span>
+                <span class="tlab-stage__hint">split into pieces</span>
+              </button>
+              <button class="tlab-stage" type="button" data-stage="qkv">
+                <span class="tlab-stage__num">2</span>
+                <span class="tlab-stage__name">Q · K · V</span>
+                <span class="tlab-stage__hint">three learned views</span>
+              </button>
+              <button class="tlab-stage" type="button" data-stage="attention">
+                <span class="tlab-stage__num">3</span>
+                <span class="tlab-stage__name">Attention</span>
+                <span class="tlab-stage__hint">who listens to whom</span>
+              </button>
+              <button class="tlab-stage" type="button" data-stage="output">
+                <span class="tlab-stage__num">4</span>
+                <span class="tlab-stage__name">Output</span>
+                <span class="tlab-stage__hint">blended context</span>
+              </button>
+            </nav>
+
+            <div class="tlab-panel" data-tlab-panel="tokens">
+              <div class="tlab-panel__copy">
+                <h3>Step 1 — break the sentence into tokens</h3>
+                <p>
+                  Real models use subword tokenizers like BPE or WordPiece so rare words share prefixes. Here we use a
+                  simpler word-level split and wrap with <code>[CLS]</code> / <code>[SEP]</code> sentinels.
+                </p>
+                <p class="tlab-panel__note">
+                  Click any token below — it stays selected across every stage so you can follow the same token's journey.
+                </p>
+              </div>
+              <div class="tlab-token-list" data-tlab-tokens role="list"></div>
+            </div>
+
+            <div class="tlab-panel is-hidden" data-tlab-panel="qkv">
+              <div class="tlab-panel__copy">
+                <h3>Step 2 — each token becomes three vectors</h3>
+                <p>
+                  Every token's embedding <code>e</code> is multiplied by three fixed matrices to produce
+                  <strong>Q</strong> (query — what am I looking for?), <strong>K</strong> (key — what do I advertise?)
+                  and <strong>V</strong> (value — what do I carry?).
+                </p>
+                <p class="tlab-panel__math">
+                  <code>Q = e · W<sub>Q</sub></code> &nbsp;·&nbsp;
+                  <code>K = e · W<sub>K</sub></code> &nbsp;·&nbsp;
+                  <code>V = e · W<sub>V</sub></code>
+                </p>
+              </div>
+              <div class="tlab-qkv" data-tlab-qkv></div>
+            </div>
+
+            <div class="tlab-panel is-hidden" data-tlab-panel="attention">
+              <div class="tlab-panel__copy">
+                <h3>Step 3 — every query scores every key</h3>
+                <p>
+                  Score <code>s<sub>ij</sub> = Q<sub>i</sub> · K<sub>j</sub> / √d</code>. The softmax across each row
+                  turns those scores into weights that sum to 1 — those are the attention weights.
+                </p>
+                <p class="tlab-panel__note">
+                  Hover or click a row to see which tokens that query ends up blending. Brighter cells = higher weight.
+                </p>
+              </div>
+              <div class="tlab-attention">
+                <canvas class="tlab-heatmap" data-tlab-heatmap width="480" height="480"></canvas>
+                <div class="tlab-attention__labels">
+                  <div class="tlab-attention__axis tlab-attention__axis--rows" data-tlab-row-labels aria-hidden="true"></div>
+                  <div class="tlab-attention__axis tlab-attention__axis--cols" data-tlab-col-labels aria-hidden="true"></div>
+                </div>
+                <div class="tlab-attention__row" data-tlab-row-weights></div>
+              </div>
+            </div>
+
+            <div class="tlab-panel is-hidden" data-tlab-panel="output">
+              <div class="tlab-panel__copy">
+                <h3>Step 4 — blend the value vectors</h3>
+                <p>
+                  The context vector for token <em>i</em> is a weighted sum of the <em>value</em> vectors from every
+                  other token, using the attention weights from Step 3.
+                </p>
+                <p class="tlab-panel__math">
+                  <code>output<sub>i</sub> = Σ<sub>j</sub> α<sub>ij</sub> · V<sub>j</sub></code>
+                </p>
+              </div>
+              <div class="tlab-output" data-tlab-output></div>
+            </div>
+
+            <div class="tlab-picked-note" data-tlab-picked aria-live="polite"></div>
           </article>
         </div>
       </section>
@@ -250,15 +190,6 @@
     <script type="module">
       import { initMainLayout } from '../../assets/js/layout/mainLayout.js';
       initMainLayout('transformer-lab');
-    </script>
-    <script>
-      window.TRANSFORMER_LAB_CONFIG = {
-        // No backend is required for the static deployment; provide an API base to enable remote sync.
-        apiBaseUrl: null,
-        sessionKey: 'transformerLabSession',
-        localStateKey: 'transformerLabState',
-        ...(window.TRANSFORMER_LAB_CONFIG || {})
-      };
     </script>
     <script type="module" src="../../assets/js/transformer-lab.js"></script>
   </body>
