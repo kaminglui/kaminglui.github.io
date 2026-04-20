@@ -38,6 +38,13 @@ import {
 } from './circuit-lab/wireColors.js';
 import { createToolIconPainter } from './circuit-lab/toolIcons.js';
 import {
+    getViewportSize,
+    isMobileViewport as isMobileViewportRaw,
+    isLayoutDebuggingEnabled,
+    validateLayoutHeights as validateLayoutHeightsRaw,
+    syncViewportCssVars as syncViewportCssVarsRaw
+} from './layout/viewport.js';
+import {
     fileTimestamp,
     validateSaveData,
     serializeCircuitPayload,
@@ -273,87 +280,19 @@ function screenToWorld(clientX, clientY) {
     };
 }
 
-function getViewportSize() {
-    const vv = window.visualViewport;
-    const fallbackW = Math.round(window.screen?.width || 0);
-    const fallbackH = Math.round(window.screen?.height || 0);
-    const width = Math.round(vv?.width || window.innerWidth || document.documentElement.clientWidth || fallbackW);
-    const height = Math.round(vv?.height || window.innerHeight || document.documentElement.clientHeight || fallbackH);
-    return { width, height };
-}
-
-function isMobileViewport() {
-    const { width } = getViewportSize();
-    return width <= MOBILE_BREAKPOINT;
-}
-
-function syncViewportCssVars() {
-    const root = document.documentElement;
-    const { width, height } = getViewportSize();
-    if (width)  root.style.setProperty('--viewport-w', `${width}px`);
-    if (height) root.style.setProperty('--viewport-h', `${height}px`);
-
-    const header = document.querySelector('.site-header');
-    const headerH = header?.getBoundingClientRect?.().height ?? header?.offsetHeight ?? 0;
-    root.style.setProperty('--header-h', `${Math.max(0, headerH || 0)}px`);
-
-    const simBar = document.getElementById('sim-bar');
-    const simBarH = simBar?.getBoundingClientRect?.().height ?? simBar?.offsetHeight ?? 0;
-    root.style.setProperty('--simbar-height', `${Math.max(0, simBarH || 0)}px`);
-
-    const supportsDvh = (typeof CSS !== 'undefined') && CSS.supports?.('height: 100dvh');
-    if (!supportsDvh) {
-        // Fallback for older browsers: calculate workspace height manually.
-        const subtractSimBar = true;
-        const workspaceH = computeWorkspaceHeight({
-            viewportH: height,
-            headerH,
-            simBarH,
-            subtractSimBar
-        });
-        if (workspaceH || workspaceH === 0) {
-            root.style.setProperty('--workspace-h', `${workspaceH}px`);
-        }
-    } else {
-        // Allow CSS 100dvh rule to drive the layout.
-        root.style.removeProperty('--workspace-h');
-    }
-
-    if (isLayoutDebuggingEnabled()) {
+// Viewport helpers now live in layout/viewport.js. Bind wrappers keep the
+// local-module API stable (e.g. isMobileViewport uses the Circuit Lab
+// breakpoint automatically) while delegating the heavy lifting.
+const isMobileViewport = () => isMobileViewportRaw(MOBILE_BREAKPOINT);
+const syncViewportCssVars = () => {
+    const measured = syncViewportCssVarsRaw({ computeWorkspaceHeight });
+    if (measured?.debugEnabled) {
         const check = validateLayoutHeights();
-        if (!check.ok) {
-            console.warn('Circuit Lab layout check: height mismatch', check);
-        }
+        if (!check.ok) console.warn('Circuit Lab layout check: height mismatch', check);
     }
-}
-
-function validateLayoutHeights(tolerance = 3) {
-    if (typeof document === 'undefined') return { ok: true, delta: 0, parts: {} };
-    const { height: viewportH } = getViewportSize();
-    const headerEl = document.querySelector('.site-header');
-    const simBarEl = document.getElementById('sim-bar');
-    const workspaceEl = document.getElementById('circuit-lab-root')
-        || document.querySelector('.lab-main')
-        || document.querySelector('.canvas-shell');
-
-    const headerH = headerEl?.getBoundingClientRect?.().height ?? headerEl?.offsetHeight ?? 0;
-    const simBarH = simBarEl?.getBoundingClientRect?.().height ?? simBarEl?.offsetHeight ?? 0;
-    const workspaceH = workspaceEl?.getBoundingClientRect?.().height ?? workspaceEl?.offsetHeight ?? 0;
-    const expectedWorkspace = computeWorkspaceHeight({ viewportH, headerH, simBarH });
-    const delta = Math.abs((headerH + simBarH + workspaceH) - viewportH);
-    return {
-        ok: delta <= tolerance,
-        delta,
-        parts: { viewportH, headerH, simBarH, workspaceH, expectedWorkspace }
-    };
-}
-
-function isLayoutDebuggingEnabled() {
-    if (typeof document === 'undefined') return false;
-    const body = document.body;
-    if (!body) return false;
-    return body.dataset.debugLayout === 'true' || body.hasAttribute('data-debug-layout');
-}
+};
+const validateLayoutHeights = (tolerance = 3) =>
+    validateLayoutHeightsRaw({ computeWorkspaceHeight, tolerance });
 
 function clampView() {
     const viewW = canvasDisplayWidth || canvas?.width || 0;
