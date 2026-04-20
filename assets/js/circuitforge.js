@@ -51,6 +51,7 @@ import {
     worldToLocal
 } from './circuit-lab/pinGeometry.js';
 import { createComponentBase } from './circuit-lab/componentBase.js';
+import { createKeyboardDispatcher } from './circuit-lab/keyboard.js';
 import {
     normalizeTemplateComponent,
     getTemplateBounds,
@@ -3693,74 +3694,73 @@ function onDblClick(e) {
     }
 }
 
-function onKey(e) {
-    const activeEl = document.activeElement;
-    const isEditable = isEditableElement(activeEl);
-
-    if ((e.metaKey || e.ctrlKey) && !isEditable) {
-        const key = e.key?.toLowerCase?.() || '';
-        if (key === 'c') { e.preventDefault(); copySelection(); return; }
-        if (key === 'x') { e.preventDefault(); cutSelection(); return; }
-        if (key === 'v') { e.preventDefault(); pasteClipboard(); return; }
-        if (key === 'z' && !e.shiftKey) { e.preventDefault(); undo(); return; }
-        if ((key === 'z' && e.shiftKey) || key === 'y') { e.preventDefault(); redo(); return; }
-    }
-
-    // While drawing a wire, Backspace drops the last waypoint instead of deleting
-    // the selected component. Lets the user "take back" corners before committing.
-    if (e.key === 'Backspace' && !isEditable && activeWire && !activeWire.toPin) {
-        e.preventDefault();
-        if (activeWire.vertices && activeWire.vertices.length > 0) {
-            activeWire.vertices.pop();
-            if (activeWire.vertices.length === 0) activeWire.routePref = null;
-        } else {
+// Keyboard bindings. The dispatcher in circuit-lab/keyboard.js matches by key +
+// modifiers and handles the standard preventDefault / editable guard so each
+// handler below can stay a one-liner.
+const keyboardBindings = [
+    { key: 'c', ctrl: true, handler: () => copySelection() },
+    { key: 'x', ctrl: true, handler: () => cutSelection() },
+    { key: 'v', ctrl: true, handler: () => pasteClipboard() },
+    { key: 'z', ctrl: true, shift: false, handler: () => undo() },
+    { key: 'z', ctrl: true, shift: true, handler: () => redo() },
+    { key: 'y', ctrl: true, handler: () => redo() },
+    { key: 'Delete', handler: () => deleteSelected() },
+    { key: 'Backspace', handler: () => deleteSelected() },
+    { key: 'r', handler: () => { if (selectedComponent) rotateSelected(); }, preventDefault: false },
+    { key: 'f', handler: () => { if (selectedComponent) mirrorSelected(); }, preventDefault: false },
+    {
+        key: 'Escape',
+        handler: () => {
+            const helpDialog = document.getElementById('help-overlay');
+            if (helpDialog?.open) { helpDialog.close(); return; }
+            selectionBox = null;
+            draggingComponent = null;
+            draggingWire = null;
+            pendingComponentDrag = null;
             activeWire = null;
+            isPanning = false;
+            wireDragMoved = false;
+            wireDragStart = null;
+            clearToolSelection();
+            detachDragListeners();
+            updateProps();
         }
-        return;
-    }
-
-    if ((e.key === 'Delete' || e.key === 'Backspace') && !isEditable) {
-        e.preventDefault();
-        deleteSelected();
-    }
-    if (e.key.toLowerCase() === 'r' && selectedComponent) rotateSelected();
-    if (e.key.toLowerCase() === 'f' && selectedComponent && !isEditable) {
-        mirrorSelected();
-    }
-    if (e.key === 'Escape' && !isEditable) {
-        const helpDialog = document.getElementById('help-overlay');
-        if (helpDialog?.open) { helpDialog.close(); return; }
-
-        selectionBox = null;
-        draggingComponent = null;
-        draggingWire = null;
-        pendingComponentDrag = null;
-        activeWire = null;
-        isPanning = false;
-        wireDragMoved = false;
-        wireDragStart = null;
-        clearToolSelection();
-        detachDragListeners();
-        updateProps();
-    }
-    // ? toggles the keyboard reference overlay. Capture 'shift+/' too since that's
-    // the raw keystroke on US layouts when the user presses the ? glyph.
-    if (!isEditable && (e.key === '?' || (e.key === '/' && e.shiftKey))) {
-        e.preventDefault();
-        const dialog = document.getElementById('help-overlay');
-        if (dialog) {
+    },
+    {
+        // ? toggles the keyboard-reference overlay. Capture shift+/ too since
+        // that's the raw keystroke on US layouts for the ? glyph.
+        matchKey: (e) => e.key === '?' || (e.key === '/' && e.shiftKey),
+        handler: () => {
+            const dialog = document.getElementById('help-overlay');
+            if (!dialog) return;
             if (dialog.open) dialog.close();
             else if (typeof dialog.showModal === 'function') dialog.showModal();
         }
-    }
-    // A autoscales the scope's V/div on both channels.
-    if (!isEditable && e.key.toLowerCase() === 'a' && !e.metaKey && !e.ctrlKey) {
-        if (typeof autoscaleScopeVoltage === 'function') {
+    },
+    { key: 'a', handler: () => autoscaleScopeVoltage?.() }
+];
+
+const onKey = createKeyboardDispatcher({
+    bindings: keyboardBindings,
+    isEditable: isEditableElement,
+    // Backspace during wire drawing drops the last waypoint instead of
+    // deleting the selected component. Handled ahead of the dispatch table
+    // because its behaviour is context-sensitive.
+    beforeDispatch: (e, { editable }) => {
+        if (editable) return false;
+        if (e.key === 'Backspace' && activeWire && !activeWire.toPin) {
             e.preventDefault();
-            autoscaleScopeVoltage();
+            if (activeWire.vertices && activeWire.vertices.length > 0) {
+                activeWire.vertices.pop();
+                if (activeWire.vertices.length === 0) activeWire.routePref = null;
+            } else {
+                activeWire = null;
+            }
+            return true;
         }
+        return false;
     }
-}
+});
 
 /* ---------- SCOPE UI ---------- */
 
