@@ -249,6 +249,9 @@ let canvasCssHeight = 0;
 let probeMode = false;
 let probeHover = null; // { kind: 'pin'|'wire', target, screen: {x,y}, voltage }
 
+// Voltage heatmap — when true, wires colorize by voltage level. Default on.
+let heatmapEnabled = true;
+
 // Last solver output, kept so the probe readout can look up node voltages outside
 // the simulate() pass.
 let lastSim = { solution: null, getNodeIndex: null };
@@ -988,7 +991,46 @@ function drawWirePolyline(pts, color, width, dashed) {
     }
 }
 
+// Diverging cold-to-hot ramp for visualizing wire voltages. We pick a per-frame
+// vMax from the max |w.v| seen across wires so small-signal circuits don't all
+// just read as neutral grey, while still clamping at a sensible floor so noise
+// around 0 V doesn't bloom into full red/blue.
+function wireVoltageRange() {
+    let peak = 0;
+    for (const w of wires) {
+        const mag = Math.abs(w.v || 0);
+        if (mag > peak) peak = mag;
+    }
+    // Snap up to a familiar rail voltage so colors are stable rather than
+    // re-normalizing every frame; floor at 1 V to keep grey from washing out.
+    if (peak < 1) return 1;
+    if (peak < 5) return 5;
+    if (peak < 12) return 12;
+    if (peak < 24) return 24;
+    return Math.ceil(peak);
+}
+
+function wireColorForVoltage(v, vMax) {
+    const n = Math.max(-1, Math.min(1, (v || 0) / (vMax || 1)));
+    if (Math.abs(n) < 0.015) return '#6b7280'; // near-zero: neutral grey
+    if (n > 0) {
+        // 0 → amber (#facc15) → deep red (#dc2626)
+        const t = n;
+        const r = Math.round(250 + (-30) * t);
+        const g = Math.round(200 + (-160) * t);
+        const b = Math.round(30 + (10) * t);
+        return `rgb(${r}, ${g}, ${b})`;
+    }
+    // 0 → teal (#2dd4bf) → deep blue (#2563eb)
+    const t = -n;
+    const r = Math.round(45 + (-10) * t);
+    const g = Math.round(212 + (-130) * t);
+    const b = Math.round(191 + (44) * t);
+    return `rgb(${r}, ${g}, ${b})`;
+}
+
 function drawWires() {
+    const vMax = heatmapEnabled ? wireVoltageRange() : 0;
     wires.forEach(w => {
         const pts = getWirePolyline(w);
         const v   = w.v || 0;
@@ -1000,10 +1042,15 @@ function drawWires() {
         // outline for stability (no flashing)
         drawWirePolyline(pts, wireOutlineColor, width + WIRE_OUTLINE_PADDING, false);
 
-        let color = '#3aa86b';
-        if (v > 0.01) color = '#34d399';
-        else if (v < -0.01) color = '#f87171';
-        color = isSelected ? '#facc15' : color;
+        let color;
+        if (heatmapEnabled) {
+            color = wireColorForVoltage(v, vMax);
+        } else {
+            color = '#3aa86b';
+            if (v > 0.01) color = '#34d399';
+            else if (v < -0.01) color = '#f87171';
+        }
+        if (isSelected) color = '#facc15';
 
         drawWirePolyline(pts, color, width, false);
     });
@@ -5136,6 +5183,13 @@ function updateProbeReadout() {
     probeReadout.style.top  = `${top}px`;
 }
 
+/* ---------- VOLTAGE HEATMAP TOGGLE ---------- */
+function toggleHeatmap(forceOn) {
+    heatmapEnabled = (typeof forceOn === 'boolean') ? forceOn : !heatmapEnabled;
+    const btn = document.getElementById('heatmap-btn');
+    if (btn) btn.classList.toggle('active-tool', heatmapEnabled);
+}
+
 /* ---------- COMPONENT SEARCH ---------- */
 function attachComponentSearch() {
     const input = document.getElementById('component-search');
@@ -5401,6 +5455,7 @@ const circuitForgeApi = {
     updateBoardThemeColors,
     draw,
     toggleProbeMode,
+    toggleHeatmap,
     undo,
     redo
 };
