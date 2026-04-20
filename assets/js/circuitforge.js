@@ -28,6 +28,7 @@ import { solveCircuitWasm, updateCircuitState } from './sim/wasmInterface.js';
 import { createWiringApi } from './circuit-lab/wiring.js';
 import { createSharingApi } from './circuit-lab/sharing.js';
 import { createHistoryApi } from './circuit-lab/history.js';
+import { attachComponentSearch } from './circuit-lab/componentSearch.js';
 import {
     fileTimestamp,
     validateSaveData,
@@ -5133,40 +5134,6 @@ function toggleHeatmap(forceOn) {
     heatmapEnabled = (typeof forceOn === 'boolean') ? forceOn : !heatmapEnabled;
     const btn = document.getElementById('heatmap-btn');
     if (btn) btn.classList.toggle('active-tool', heatmapEnabled);
-}
-
-/* ---------- COMPONENT SEARCH ---------- */
-function attachComponentSearch() {
-    const input = document.getElementById('component-search');
-    if (!input) return;
-    const run = () => {
-        const q = input.value.trim().toLowerCase();
-        const buttons = document.querySelectorAll('#tool-scroll .tool-btn');
-        buttons.forEach((btn) => {
-            const text = (btn.textContent || '').toLowerCase();
-            const show = !q || text.includes(q);
-            btn.style.display = show ? '' : 'none';
-            btn.classList.toggle('search-hit', !!q && show);
-        });
-        // Hide empty section headers when all their buttons are hidden.
-        document.querySelectorAll('#tool-scroll > div').forEach((section) => {
-            const visible = section.querySelectorAll('.tool-btn:not([style*="display: none"])').length;
-            const hasBtns = section.querySelectorAll('.tool-btn').length;
-            if (!hasBtns) return;
-            section.style.display = visible ? '' : 'none';
-        });
-    };
-    input.addEventListener('input', run);
-    input.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape') {
-            input.value = '';
-            run();
-            input.blur();
-        } else if (e.key === 'Enter') {
-            const first = document.querySelector('#tool-scroll .tool-btn:not([style*="display: none"])');
-            if (first) first.click();
-        }
-    });
 }
 
 function canvasIsEmpty() {
