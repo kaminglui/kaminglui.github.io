@@ -7,6 +7,8 @@ const COMPONENT_ID_PREFIXES = {
   inductor: 'L',
   potentiometer: 'POT',
   led: 'LED',
+  diode: 'D',
+  currentsource: 'I',
   mosfet: 'M',
   bjt: 'Q',
   lf412: 'U',

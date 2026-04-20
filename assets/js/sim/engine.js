@@ -6,7 +6,9 @@ import {
   BJT,
   Potentiometer,
   VoltageSource,
+  CurrentSource,
   FunctionGenerator,
+  Diode,
   LED,
   Switch,
   MOSFET,
@@ -207,6 +209,17 @@ function updateComponentState({ components, solution, getNodeIndex, parseUnit: p
       const v1 = (n1 === -1 ? 0 : solution[n1]);
       const v2 = (n2 === -1 ? 0 : solution[n2]);
       c._lastV = v1 - v2;
+    } else if (kind === 'diode') {
+      const nA = getNodeIndex(c, 0);
+      const nK = getNodeIndex(c, 1);
+      const vA = (nA === -1 ? 0 : solution[nA]);
+      const vK = (nK === -1 ? 0 : solution[nK]);
+      const Vf = parse(c.props?.Vf || '0.7');
+      const vD = vA - vK;
+      c._diodeState =
+        vD < -0.1 ? 'reverse' :
+        vD > Vf * 0.95 ? 'on' : 'off';
+      c._forwardOn = c._diodeState === 'on';
     } else if (kind === 'led') {
       const nA = getNodeIndex(c, 0);
       const nK = getNodeIndex(c, 1);
@@ -425,6 +438,19 @@ function buildSimulationComponents({
       const led = new LED(nA, nK, { Vf, If, state: c._ledState, forwardOn: !!c._forwardOn });
       diodeComponents.push(led);
       simComponents.push(led);
+    } else if (kind === 'diode') {
+      const nA = getNodeIndex(c, 0);
+      const nK = getNodeIndex(c, 1);
+      const Vf = Math.max(0, parse(c.props?.Vf || '0.7'));
+      const If = parse(c.props?.If || '10m') || 0.01;
+      const diode = new Diode(nA, nK, { Vf, If, state: c._diodeState, forwardOn: !!c._forwardOn });
+      diodeComponents.push(diode);
+      simComponents.push(diode);
+    } else if (kind === 'currentsource') {
+      const nP = getNodeIndex(c, 0);
+      const nM = getNodeIndex(c, 1);
+      const Idc = parse(c.props?.Idc || '1m');
+      simComponents.push(new CurrentSource(nP, nM, Idc));
     } else if (kind === 'switch') {
       const type = c.props?.Type || 'SPST';
       const position = c.props?.Position || 'A';

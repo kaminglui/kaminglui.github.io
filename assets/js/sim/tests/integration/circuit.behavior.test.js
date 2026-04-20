@@ -10,6 +10,8 @@ import {
   makeCapacitor,
   makeInductor,
   makeBjt,
+  makeDiode,
+  makeCurrentSource,
   makeLED,
   makeMosfet,
   makeOpAmp,
@@ -367,6 +369,79 @@ describe('BJT (NPN) common-emitter amplifier', () => {
     // Significant collector current (well above leakage) and Vce down near saturation.
     expect(iC).toBeGreaterThan(5e-3);
     expect(vCE).toBeLessThan(4); // some drop; active region or near saturation
+  });
+});
+
+describe('Diode', () => {
+  it('clamps forward voltage near Vf under heavy bias', () => {
+    // 5 V source through 100 Ω then diode to ground. Expect Vdiode ≈ 0.7 V
+    // and I ≈ (5 - 0.7) / 100 = 43 mA.
+    const circuit = buildCircuit();
+    const gnd = makeGround();
+    const src = makeVoltageSource(5);
+    const r = makeResistor(100);
+    const d = makeDiode({ Vf: '0.7', If: '10m' });
+    circuit.add(gnd, src, r, d);
+    circuit.connect(src, 1, gnd, 0);
+    circuit.connect(src, 0, r, 0);
+    circuit.connect(r, 1, d, 0); // anode
+    circuit.connect(d, 1, gnd, 0); // cathode
+
+    let vD = 0;
+    let iR = 0;
+    runTransient(circuit, {
+      duration: 1e-4,
+      dt: 1e-6,
+      measure: ({ sim }) => {
+        vD = sim.voltage(d, 0) - sim.voltage(d, 1);
+        iR = resistorCurrent(r, sim.voltage);
+      }
+    });
+    expect(vD).toBeGreaterThan(0.65);
+    expect(vD).toBeLessThan(0.85);
+    expect(iR).toBeGreaterThan(30e-3);
+    expect(iR).toBeLessThan(55e-3);
+  });
+
+  it('blocks reverse current', () => {
+    const circuit = buildCircuit();
+    const gnd = makeGround();
+    const src = makeVoltageSource(5);
+    const r = makeResistor(1e3);
+    const d = makeDiode({ Vf: '0.7' });
+    circuit.add(gnd, src, r, d);
+    circuit.connect(src, 1, gnd, 0);
+    circuit.connect(src, 0, r, 0);
+    circuit.connect(r, 1, d, 1); // cathode — reverse-biased
+    circuit.connect(d, 0, gnd, 0); // anode to ground
+
+    const { voltage } = simulateCircuit({
+      components: circuit.components,
+      wires: circuit.wires
+    });
+    const iR = resistorCurrent(r, voltage);
+    expect(Math.abs(iR)).toBeLessThan(1e-6);
+  });
+});
+
+describe('Ideal current source', () => {
+  it('forces Idc through a load resistor regardless of R', () => {
+    // 1 mA into a 1 kΩ resistor → 1 V across it.
+    const circuit = buildCircuit();
+    const gnd = makeGround();
+    const isrc = makeCurrentSource('1m');
+    const r = makeResistor(1e3);
+    circuit.add(gnd, isrc, r);
+    circuit.connect(isrc, 1, gnd, 0); // tail to ground
+    circuit.connect(isrc, 0, r, 0);   // head drives R
+    circuit.connect(r, 1, gnd, 0);
+
+    const { voltage } = simulateCircuit({
+      components: circuit.components,
+      wires: circuit.wires
+    });
+    const vR = voltage(r, 0) - voltage(r, 1);
+    expect(vR).toBeCloseTo(1.0, 2);
   });
 });
 

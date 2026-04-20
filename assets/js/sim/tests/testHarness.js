@@ -122,6 +122,17 @@ function makeBjt(type = 'NPN', props = {}, id) {
   }, id);
 }
 
+function makeDiode(props = {}, id) {
+  return makeComponent('diode', 2, {
+    Vf: props.Vf || '0.7',
+    If: props.If || '10m'
+  }, id);
+}
+
+function makeCurrentSource(Idc = '1m', id) {
+  return makeComponent('currentsource', 2, { Idc: String(Idc) }, id);
+}
+
 function makeMosfet(type = 'NMOS', props = {}, id) {
   return makeComponent('mosfet', 4, {
     Type: type || 'NMOS',
@@ -318,6 +329,8 @@ export {
   makeMosfet,
   makeInductor,
   makeBjt,
+  makeDiode,
+  makeCurrentSource,
   wire,
   simulateCircuit,
   runSimulation,
