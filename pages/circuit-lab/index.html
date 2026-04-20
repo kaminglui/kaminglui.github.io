@@ -669,6 +669,29 @@
             outline-offset: 1px;
         }
 
+        /* --- SHARE TOAST --- */
+        #share-toast {
+            position: fixed;
+            bottom: calc(var(--simbar-h) + 16px);
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(15, 25, 40, 0.94);
+            border: 1px solid #3b82f6;
+            color: #bfdbfe;
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-family: ui-monospace, Menlo, monospace;
+            z-index: 1200;
+            pointer-events: none;
+            transition: opacity 0.25s ease;
+            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45);
+        }
+        #share-toast.error {
+            border-color: #dc2626;
+            color: #fecaca;
+        }
+
         /* --- UTILITIES --- */
         .hidden { display: none !important; }
         
@@ -790,7 +813,7 @@
                     <h3 class="text-[11px] font-bold text-gray-400 uppercase mb-3 tracking-widest flex items-center gap-2">
                         <i class="fas fa-bolt text-xs opacity-50"></i> Power
                     </h3>
-                    <div class="grid grid-cols-3 gap-2">
+                    <div class="grid grid-cols-2 gap-2">
                         <button class="tool-btn p-2 rounded flex flex-col items-center gap-1"
                                 onclick="selectTool('voltageSource', this)">
                             <span class="text-[10px] font-semibold mt-1">DC</span>
@@ -798,6 +821,10 @@
                         <button class="tool-btn p-2 rounded flex flex-col items-center gap-1"
                                 onclick="selectTool('funcGen', this)">
                             <span class="text-[10px] font-semibold mt-1">AC</span>
+                        </button>
+                        <button class="tool-btn p-2 rounded flex flex-col items-center gap-1"
+                                onclick="selectTool('currentSource', this)">
+                            <span class="text-[10px] font-semibold mt-1">I src</span>
                         </button>
                         <button class="tool-btn p-2 rounded flex flex-col items-center gap-1"
                                 onclick="selectTool('ground', this)">
@@ -822,6 +849,9 @@
                         </button>
                         <button class="tool-btn p-2" onclick="selectTool('bjt', this)">
                             <span class="text-[11px] font-medium">BJT</span>
+                        </button>
+                        <button class="tool-btn p-2" onclick="selectTool('diode', this)">
+                            <span class="text-[11px] font-medium">Diode</span>
                         </button>
                         <button class="tool-btn p-2" onclick="selectTool('led', this)">
                             <span class="text-[11px] font-medium">LED</span>
@@ -1247,6 +1277,7 @@
                 <div id="save-menu" class="menu-list">
                     <button onclick="runSaveOption('circuit')"><i class="fas fa-download"></i> Save Circuit</button>
                     <button onclick="runSaveOption('template')"><i class="fas fa-puzzle-piece"></i> Save Template</button>
+                    <button onclick="copyShareLink()"><i class="fas fa-link"></i> Copy Share Link</button>
                 </div>
             </div>
 
