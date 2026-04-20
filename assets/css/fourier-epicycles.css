@@ -402,3 +402,160 @@ body.theme-dark .fourier-notes {
     grid-template-columns: 1fr;
   }
 }
+
+/* --- "Four flavours of Fourier" 2×2 matrix ----------------------------- */
+/* The highlight cell (DFT) is the one the visualizer above actually runs,
+   so it gets a coloured rim to anchor the rest of the grid. */
+.fourier-matrix__axis-note {
+  margin: 0 0 1rem;
+  padding: 0.65rem 0.9rem;
+  border-left: 3px solid var(--color-accent);
+  background: var(--color-bg-alt);
+  color: var(--color-text);
+  font-size: 0.95rem;
+}
+.fourier-matrix {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  margin: 0 0 2rem;
+}
+@media (max-width: 720px) {
+  .fourier-matrix { grid-template-columns: 1fr; }
+}
+.fourier-matrix__cell {
+  display: grid;
+  align-content: start;
+  gap: 0.55rem;
+  padding: 1rem 1.1rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-bg-alt);
+}
+.fourier-matrix__cell--highlight {
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 2px var(--color-accent-muted);
+  background: var(--color-surface);
+}
+.fourier-matrix__cell header h3 {
+  margin: 0;
+  font-size: 1.1rem;
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
+}
+.fourier-matrix__abbr {
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  padding: 0.1rem 0.5rem;
+  border-radius: 999px;
+  background: var(--color-accent-muted);
+  color: var(--color-accent);
+  letter-spacing: 0.05em;
+}
+.fourier-matrix__tag {
+  margin: 0;
+  font-size: 0.72rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+}
+.fourier-matrix__cell p {
+  margin: 0;
+  line-height: 1.55;
+  color: var(--color-text);
+}
+.fourier-matrix__formula {
+  margin: 0.35rem 0;
+  padding: 0.65rem 0.75rem;
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  overflow-x: auto;
+}
+.fourier-matrix__cell--highlight .fourier-matrix__formula {
+  background: var(--color-bg-alt);
+}
+.fourier-matrix__example {
+  font-size: 0.92rem;
+  color: var(--color-muted);
+}
+
+/* --- FFT explainer --------------------------------------------------- */
+.fourier-fft {
+  display: grid;
+  gap: 0.85rem;
+  padding: 1.25rem 1.4rem;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-alt);
+}
+.fourier-fft h3 {
+  margin: 0;
+  font-size: 1.15rem;
+}
+.fourier-fft p {
+  margin: 0;
+  line-height: 1.6;
+  color: var(--color-text);
+}
+.fourier-fft code {
+  font-family: var(--font-mono);
+  font-size: 0.9em;
+  padding: 0.05rem 0.3rem;
+  border-radius: 4px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+}
+.fourier-fft__steps {
+  counter-reset: fft-step;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.65rem;
+}
+.fourier-fft__steps li {
+  counter-increment: fft-step;
+  position: relative;
+  padding: 0.5rem 0.9rem 0.5rem 2.4rem;
+  border-left: 2px solid var(--color-border);
+  background: var(--color-surface);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  line-height: 1.55;
+}
+.fourier-fft__steps li::before {
+  content: counter(fft-step);
+  position: absolute;
+  top: 0.55rem;
+  left: 0.55rem;
+  width: 1.4rem;
+  height: 1.4rem;
+  border-radius: 999px;
+  background: var(--color-accent);
+  color: #fff;
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.fourier-fft__formula {
+  padding: 0.75rem 0.9rem;
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  overflow-x: auto;
+}
+.fourier-fft__intuition,
+.fourier-fft__note {
+  font-size: 0.95rem;
+  color: var(--color-text);
+}
+.fourier-fft__note {
+  font-size: 0.9rem;
+  color: var(--color-muted);
+  padding-top: 0.6rem;
+  border-top: 1px dashed var(--color-border);
+}

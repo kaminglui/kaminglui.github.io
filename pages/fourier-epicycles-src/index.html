@@ -154,6 +154,121 @@
           </article>
         </div>
       </section>
+
+      <section class="lab-section" aria-labelledby="fourier-theory-title">
+        <div class="container">
+          <article class="card lab-card">
+            <header class="lab-card__header">
+              <p class="lab-card__eyebrow">Beyond the visualizer</p>
+              <div class="lab-card__title-row">
+                <h2 class="lab-card__title" id="fourier-theory-title">Four flavours of Fourier — and the FFT that makes them fast</h2>
+                <div class="lab-card__chips">
+                  <span class="lab-chip">FT</span>
+                  <span class="lab-chip">FS</span>
+                  <span class="lab-chip">DTFT</span>
+                  <span class="lab-chip">DFT</span>
+                </div>
+              </div>
+              <p class="lab-card__lead">
+                The canvas above runs a <strong>DFT</strong> every frame. "Fourier transform" actually names a family
+                of four related transforms, one for each way your signal can be <em>continuous or discrete</em> in time
+                and <em>one-shot or repeating</em>.
+              </p>
+            </header>
+
+            <p class="fourier-matrix__axis-note">
+              <strong>The duality:</strong> whenever one domain is discrete, the other becomes periodic. Sample in
+              time → periodic spectrum. Periodic in time → discrete spectrum. Four quadrants fall out of that rule.
+            </p>
+
+            <div class="fourier-matrix">
+              <article class="fourier-matrix__cell">
+                <header>
+                  <p class="fourier-matrix__tag">Continuous · Aperiodic</p>
+                  <h3>Fourier Transform <span class="fourier-matrix__abbr">FT</span></h3>
+                </header>
+                <p>The classic, "general" Fourier transform. Takes an arbitrary continuous signal and decomposes it into a <em>continuous</em> spectrum of frequencies.</p>
+                <div class="fourier-matrix__formula" data-katex="X(\omega) = \int_{-\infty}^{\infty} x(t)\, e^{-i\omega t}\, dt" data-katex-display></div>
+                <p class="fourier-matrix__example"><strong>Picture:</strong> a single clap in a quiet room — one-off, analogue, everything is smooth.</p>
+              </article>
+
+              <article class="fourier-matrix__cell">
+                <header>
+                  <p class="fourier-matrix__tag">Continuous · Periodic</p>
+                  <h3>Fourier Series <span class="fourier-matrix__abbr">FS</span></h3>
+                </header>
+                <p>A continuous signal that <em>repeats</em> every T seconds is built only from integer multiples of the fundamental frequency. The spectrum becomes a discrete ladder of harmonics.</p>
+                <div class="fourier-matrix__formula" data-katex="X_k = \frac{1}{T}\int_{0}^{T} x(t)\, e^{-i 2\pi k t / T}\, dt" data-katex-display></div>
+                <p class="fourier-matrix__example"><strong>Picture:</strong> a violin note held steady — periodic analogue waveform, harmonics at 1×, 2×, 3× … the fundamental.</p>
+              </article>
+
+              <article class="fourier-matrix__cell">
+                <header>
+                  <p class="fourier-matrix__tag">Discrete · Aperiodic</p>
+                  <h3>Discrete-Time FT <span class="fourier-matrix__abbr">DTFT</span></h3>
+                </header>
+                <p>The signal is sampled at integer times but never repeats. The output is continuous in frequency — and it's also <em>periodic</em> with period 2π (sampling folds frequencies back on themselves).</p>
+                <div class="fourier-matrix__formula" data-katex="X(e^{i\omega}) = \sum_{n=-\infty}^{\infty} x[n]\, e^{-i\omega n}" data-katex-display></div>
+                <p class="fourier-matrix__example"><strong>Picture:</strong> an endless stream of microphone samples you analyse as a theoretical object. You wouldn't compute it directly — it's infinite.</p>
+              </article>
+
+              <article class="fourier-matrix__cell fourier-matrix__cell--highlight">
+                <header>
+                  <p class="fourier-matrix__tag">Discrete · Periodic</p>
+                  <h3>Discrete Fourier Transform <span class="fourier-matrix__abbr">DFT</span></h3>
+                </header>
+                <p>The one a computer actually computes. Take <em>N</em> samples, assume they repeat, and get back <em>N</em> frequency bins. Finite in both domains — perfect for a CPU.</p>
+                <div class="fourier-matrix__formula" data-katex="X_k = \sum_{n=0}^{N-1} x_n\, e^{-i 2\pi k n / N}" data-katex-display></div>
+                <p class="fourier-matrix__example"><strong>Picture:</strong> this visualizer! Every frame of the epicycle animation above comes straight from a DFT of your drawing.</p>
+              </article>
+            </div>
+
+            <div class="fourier-fft">
+              <h3>Why the FFT is a big deal</h3>
+              <p>
+                A straight DFT on <em>N</em> samples does <em>N</em>² work — one sum of <em>N</em> terms for each of
+                <em>N</em> output bins. The Fast Fourier Transform (Cooley &amp; Tukey, 1965) computes the same answer in
+                <em>N</em> · log<sub>2</sub> <em>N</em>. For <em>N</em> = 1024 that's <strong>10 240</strong> operations
+                instead of <strong>1 048 576</strong> — a 100× speedup. For a one-second audio clip at 48 kHz, minutes
+                become milliseconds.
+              </p>
+
+              <ol class="fourier-fft__steps">
+                <li>
+                  <strong>Split by parity.</strong>
+                  Separate the input into even-indexed samples <code>[x₀, x₂, x₄, …]</code> and odd-indexed samples
+                  <code>[x₁, x₃, x₅, …]</code>. Each half has <em>N</em>/2 elements.
+                </li>
+                <li>
+                  <strong>Recurse.</strong>
+                  Run a DFT on each half. If a half is small enough, do it directly; otherwise split it again. Halving
+                  log<sub>2</sub> <em>N</em> times gets you to size 1.
+                </li>
+                <li>
+                  <strong>Combine (butterfly).</strong>
+                  Each output bin <em>k</em> is <code>E<sub>k</sub> + W<sub>N</sub><sup>k</sup>·O<sub>k</sub></code>
+                  where <code>E, O</code> are the two sub-DFTs. The bin <em>k + N/2</em> uses the <em>same</em> two
+                  numbers with just a sign flip — nearly free.
+                </li>
+              </ol>
+
+              <div class="fourier-fft__formula" data-katex="\begin{aligned} X_k &amp;= E_k + W_N^{k}\, O_k \\ X_{k + N/2} &amp;= E_k - W_N^{k}\, O_k \end{aligned}" data-katex-display></div>
+
+              <p class="fourier-fft__intuition">
+                <strong>Intuition:</strong> doing one big DFT is like multiplying every sample by every frequency
+                separately. Splitting by parity lets half the multiplications be <em>shared</em> between bins <em>k</em>
+                and <em>k + N/2</em>, which recursively reduces redundant work at every level. The famous "butterfly"
+                diagram is just a picture of those shared multiplications stacked log<sub>2</sub> <em>N</em> layers deep.
+              </p>
+              <p class="fourier-fft__note">
+                <strong>Why blocks of 256 / 512 / 1024?</strong> Audio and image libraries pick powers of two because
+                the split-in-half recursion only bottoms out cleanly when <em>N</em> is one. Non-power-of-two FFTs
+                exist (Rader, Bluestein, mixed-radix) but they're slightly slower and trickier to implement.
+              </p>
+            </div>
+          </article>
+        </div>
+      </section>
     </main>
 
     <div id="site-footer"></div>
@@ -179,7 +294,8 @@
         document.querySelectorAll('[data-katex]').forEach((el) => {
           const tex = el.getAttribute('data-katex');
           if (!tex) return;
-          render(el, tex, false);
+          const displayMode = el.hasAttribute('data-katex-display');
+          render(el, tex, displayMode);
         });
       });
     </script>
