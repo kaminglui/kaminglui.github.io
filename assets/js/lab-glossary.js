@@ -7,9 +7,15 @@
    one lab can link to a concept introduced in the other (e.g. 'kl' is
    used by both RL's on/off-policy discussion and Diffusion's ELBO). */
 
-const RL_SEC = (id, label) => ({ id, label: `RL · ${label}` });
-const DF_SEC = (id, label) => ({ id, label: `Diffusion · ${label}` });
-const MATH_SEC = (id, label) => ({ id, label: `Math · ${label}` });
+// Section helpers carry an `href` so the tooltip engine can navigate
+// cross-lab when the section isn't on the current page. Same-page links
+// still scroll smoothly because the engine tries getElementById first.
+const RL_SEC = (id, label) => ({ id, label: `RL · ${label}`, href: '../rl-lab/' });
+const DF_SEC = (id, label) => ({ id, label: `Diffusion · ${label}`, href: '../diffusion-lab/' });
+const MATH_SEC = (id, label) => ({ id, label: `Math · ${label}`, href: '../math-lab/' });
+const CML_SEC = (id, label) => ({ id, label: `Classical · ${label}`, href: '../classical-ml/' });
+const ML_SEC = (label) => ({ id: '', label: `Clustering · ${label}`, href: '../ml-playground/' });
+const FOURIER_SEC = (label) => ({ id: '', label: `Fourier · ${label}`, href: '../fourier-epicycles/' });
 
 export const GLOSSARY = {
   // ====================== RL — core variables ======================
@@ -78,9 +84,13 @@ export const GLOSSARY = {
   },
   'td-error': {
     title: 'δ<sub>t</sub> · TD error',
-    body: '"Surprise" at each step: δ<sub>t</sub> = r<sub>t+1</sub> + γV(s<sub>t+1</sub>) − V(s<sub>t</sub>). Drives TD, SARSA, Q-learning, and actor-critic updates.',
+    body: '"Surprise" at each step: δ<sub>t</sub> = r<sub>t+1</sub> + γV(s<sub>t+1</sub>) − V(s<sub>t</sub>). Drives TD, SARSA, Q-learning, and actor-critic updates. Instance of the broader "estimate ← estimate + α·[target − estimate]" stochastic-approximation shape.',
     related: ['td0', 'sarsa', 'q-learning', 'actor-critic', 'bellman'],
-    sections: [RL_SEC('theory-mc-td', '§5 MC vs TD')]
+    sections: [
+      RL_SEC('theory-mc-td', '§5 MC vs TD'),
+      RL_SEC('theory-shape', '§8 Same-shape updates'),
+      MATH_SEC('theory-gd', '§2 stochastic approximation')
+    ]
   },
   'rho-ratio': {
     title: 'ρ · importance weight',
@@ -119,9 +129,13 @@ export const GLOSSARY = {
   },
   'bellman': {
     title: 'Bellman equation',
-    body: 'Recursive identity: V<sup>π</sup>(s) = 𝔼[r + γV<sup>π</sup>(s\')]. The optimal version replaces the expectation with a max. Every RL update is a noisy, approximate Bellman backup.',
+    body: 'Recursive identity: V<sup>π</sup>(s) = 𝔼[r + γV<sup>π</sup>(s\')]. The optimal version replaces the expectation with a max. Every RL update is a noisy, approximate Bellman backup. A fixed-point equation; solved by iteration (§4 DP) or stochastic approximation (MC / TD).',
     related: ['v-value', 'q-value', 'contraction', 'value-iteration'],
-    sections: [RL_SEC('theory-values', '§3 Value functions')]
+    sections: [
+      RL_SEC('theory-values', '§3 Value functions'),
+      RL_SEC('theory-dp', '§4 DP (Bellman fixed-point iteration)'),
+      MATH_SEC('theory-opt', '§1 Optimisation (fixed-point / argmin connection)')
+    ]
   },
   'contraction': {
     title: 'γ-contraction',
@@ -148,8 +162,11 @@ export const GLOSSARY = {
   'monte-carlo': {
     title: 'Monte Carlo (MC)',
     body: 'Update using the actual return G<sub>t</sub> from a completed episode: V(s) ← V(s) + α[G<sub>t</sub> − V(s)]. Unbiased, high variance, requires episode termination.',
-    related: ['td0', 'td-lambda', 'alpha-step', 'return'],
-    sections: [RL_SEC('theory-mc-td', '§5 MC vs TD')]
+    related: ['td0', 'td-lambda', 'alpha-step', 'return', 'mc-integration'],
+    sections: [
+      RL_SEC('theory-mc-td', '§5 MC vs TD'),
+      RL_SEC('demo-darts', '§5 darts demo')
+    ]
   },
   'td0': {
     title: 'TD(0)',
@@ -269,8 +286,12 @@ export const GLOSSARY = {
   },
   'entropy-bonus': {
     title: 'Entropy bonus',
-    body: 'Add β·H[π(·|s)] to the loss to reward policy entropy. Prevents premature collapse to a single action. Core to SAC; also used in A3C/PPO.',
-    related: ['sac', 'exploration-exploitation']
+    body: 'Add β·H[π(·|s)] to the loss to reward policy entropy. Prevents premature collapse to a single action. Core to SAC; also used in A3C/PPO. Structurally the same as a "keep the policy spread" regulariser.',
+    related: ['sac', 'exploration-exploitation', 'regularisation'],
+    sections: [
+      RL_SEC('theory-pg', '§7 Policy gradient'),
+      CML_SEC('theory-gen', '§6 Regularisation (kinship)')
+    ]
   },
   'model-based': {
     title: 'Model-based RL',
@@ -345,8 +366,12 @@ export const GLOSSARY = {
   'kl': {
     title: 'D<sub>KL</sub>(p ‖ q) · KL divergence',
     body: 'Asymmetric "distance" from p to q: 𝔼<sub>p</sub>[log(p/q)]. Not a metric. Minimising forward KL = MLE (mean-seeking); reverse KL is mode-seeking.',
-    related: ['forward-kl', 'reverse-kl', 'elbo', 'vae'],
-    sections: [DF_SEC('theory-kl', '§1 KL divergence')]
+    related: ['forward-kl', 'reverse-kl', 'elbo', 'vae', 'cross-entropy', 'mle'],
+    sections: [
+      DF_SEC('theory-kl', '§1 KL divergence'),
+      DF_SEC('theory-vae', '§2 VAE (ELBO has a KL term)'),
+      RL_SEC('theory-pg', '§7 TRPO / PPO uses KL')
+    ]
   },
   'forward-kl': {
     title: 'Forward KL · D<sub>KL</sub>(p<sub>data</sub> ‖ q<sub>θ</sub>)',
@@ -367,7 +392,11 @@ export const GLOSSARY = {
   'reparam': {
     title: 'Reparameterisation trick',
     body: 'Rewrite z ~ 𝒩(μ, σ²) as z = μ + σ ε with ε ~ 𝒩(0, I) so gradients flow through μ and σ. Core to VAEs; also how DDPM ε-prediction is structured.',
-    related: ['vae', 'elbo', 'epsilon-noise']
+    related: ['vae', 'elbo', 'epsilon-noise'],
+    sections: [
+      DF_SEC('theory-vae', '§2 VAE reparam'),
+      DF_SEC('theory-ddpm', '§4 DDPM ε-parameterisation')
+    ]
   },
   'langevin': {
     title: 'Langevin dynamics',
@@ -415,8 +444,11 @@ export const GLOSSARY = {
   'vae': {
     title: 'VAE · Variational Autoencoder',
     body: 'Encoder q<sub>φ</sub>(z|x), decoder p<sub>θ</sub>(x|z), prior p(z) = 𝒩(0, I). Trained by maximising the ELBO. Ancestor of diffusion (which is a hierarchical VAE with fixed encoder).',
-    related: ['elbo', 'reparam', 'kl', 'ddpm', 'latent-diffusion'],
-    sections: [DF_SEC('theory-vae', '§2 VAE')]
+    related: ['elbo', 'reparam', 'kl', 'ddpm', 'latent-diffusion', 'mle'],
+    sections: [
+      DF_SEC('theory-vae', '§2 VAE'),
+      CML_SEC('theory-mle', '§2 MLE (ELBO generalises MLE)')
+    ]
   },
   'brownian': {
     title: 'Brownian motion',
@@ -526,8 +558,12 @@ export const GLOSSARY = {
   'posterior': {
     title: 'Bayesian posterior',
     body: 'Distribution over a parameter <em>after</em> observing data: p(θ|𝒟) ∝ p(𝒟|θ) p(θ). Always a probability distribution over θ. Thompson sampling\'s heart; also the "z-posterior" in VAEs.',
-    related: ['prior', 'likelihood', 'bayes-rule', 'thompson', 'vae', 'beta-distribution'],
-    sections: [RL_SEC('theory-bandits', '§1 Bandits')]
+    related: ['prior', 'likelihood', 'bayes-rule', 'thompson', 'vae', 'beta-distribution', 'map-estimate'],
+    sections: [
+      RL_SEC('theory-bandits', '§1 Bayesian coin'),
+      DF_SEC('theory-vae', '§2 VAE (z-posterior)'),
+      CML_SEC('theory-gen', '§6 Bayesian regression (ridge = MAP)')
+    ]
   },
   'prior': {
     title: 'Prior p(θ)',
@@ -554,7 +590,12 @@ export const GLOSSARY = {
   'mle': {
     title: 'MLE · Maximum Likelihood Estimation',
     body: 'Pick θ̂ = argmax<sub>θ</sub> p(𝒟|θ). Equivalent to minimising forward KL from data to model. What most classical supervised learning (logistic/linear regression with Gaussian noise, softmax cross-entropy) is doing under the hood.',
-    related: ['likelihood', 'forward-kl']
+    related: ['likelihood', 'forward-kl', 'map-estimate', 'elbo'],
+    sections: [
+      CML_SEC('theory-mle', '§2 MLE derivation of squared loss'),
+      DF_SEC('theory-vae', '§2 VAE ELBO'),
+      RL_SEC('theory-bandits', '§1 Bayesian coin demo')
+    ]
   },
   'map-estimate': {
     title: 'MAP · Maximum a Posteriori',
@@ -597,8 +638,13 @@ export const GLOSSARY = {
   'gradient': {
     title: '∇L · gradient',
     body: 'Vector of partial derivatives. Points in the direction of steepest <em>increase</em> of L. GD steps the opposite direction. Magnitude tells you how steep the slope is.',
-    related: ['loss', 'learning-rate', 'argmin'],
-    sections: [MATH_SEC('theory-gd', '§2 GD')]
+    related: ['loss', 'learning-rate', 'argmin', 'policy-gradient', 'score'],
+    sections: [
+      MATH_SEC('theory-gd', '§2 GD'),
+      CML_SEC('demo-logreg', '§3 logistic gradient'),
+      RL_SEC('theory-pg', '§7 policy gradient'),
+      DF_SEC('theory-score', '§5 score = ∇ log p')
+    ]
   },
   'learning-rate': {
     title: 'α · learning rate',
@@ -620,15 +666,23 @@ export const GLOSSARY = {
   },
   'argmin': {
     title: 'argmin / argmax',
-    body: 'argmin<sub>x</sub> f(x) = the input x that achieves the minimum of f (a point, not a number). min<sub>x</sub> f(x) = the minimum value (a number). ML training returns argmin of the loss.',
-    related: ['loss', 'gradient', 'lagrangian'],
-    sections: [MATH_SEC('theory-opt', '§1 Optimisation')]
+    body: 'argmin<sub>x</sub> f(x) = the input x that achieves the minimum of f (a point, not a number). min<sub>x</sub> f(x) = the minimum value (a number). ML training returns argmin of the loss. Recurs everywhere: MLE = argmax likelihood; MAP = argmax posterior; SVM primal = argmin ½‖w‖² + hinge; K-means = argmin SSE.',
+    related: ['loss', 'gradient', 'lagrangian', 'mle', 'map-estimate'],
+    sections: [
+      MATH_SEC('theory-opt', '§1 Optimisation'),
+      CML_SEC('theory-mle', '§2 MLE (argmax likelihood)'),
+      CML_SEC('demo-svm', '§4 SVM primal')
+    ]
   },
   'lagrangian': {
     title: 'Lagrangian / Lagrange multipliers',
     body: 'Turns a constrained problem "min f(x) s.t. g(x) = 0" into an unconstrained one over the Lagrangian ℒ(x, λ) = f(x) + λ g(x). At the optimum, ∇f = −λ∇g (level sets of f and g are tangent).',
-    related: ['argmin', 'convex', 'kkt'],
-    sections: [MATH_SEC('theory-opt', '§1 Optimisation')]
+    related: ['argmin', 'convex', 'kkt', 'svm'],
+    sections: [
+      MATH_SEC('theory-opt', '§1 Optimisation'),
+      CML_SEC('demo-svm', '§4 SVM dual'),
+      MATH_SEC('theory-pca', '§5 PCA derivation')
+    ]
   },
   'momentum': {
     title: 'Momentum',
@@ -652,7 +706,11 @@ export const GLOSSARY = {
     title: 'Eigenvalue λ, eigenvector v',
     body: 'v is an eigenvector of A if Av = λv — the matrix only <em>scales</em> it, no rotation. λ is the scaling factor. Symmetric matrices have a full orthogonal eigenbasis. PCA is eigendecomposition of the sample covariance.',
     related: ['pca', 'svd', 'linalg'],
-    sections: [MATH_SEC('theory-linalg', '§4 Linear algebra')]
+    sections: [
+      MATH_SEC('theory-linalg', '§4 Linear algebra'),
+      MATH_SEC('theory-pca', '§5 PCA — eigendecomposition of Σ'),
+      CML_SEC('theory-gen', '§6 Ridge closed form (X⊤X + λI)')
+    ]
   },
   'dot-product': {
     title: 'Dot product',
@@ -664,13 +722,20 @@ export const GLOSSARY = {
     title: 'Convolution',
     body: '(f * g)(t) = ∫ f(τ) g(t − τ) dτ. A sliding dot product; translation-equivariant. CNN filters are discrete convolutions. Convolution theorem: Fourier turns it into pointwise multiplication.',
     related: ['dot-product', 'linalg'],
-    sections: [MATH_SEC('theory-linalg', '§4 Linear algebra')]
+    sections: [
+      MATH_SEC('theory-linalg', '§4 Linear algebra'),
+      FOURIER_SEC('convolution theorem')
+    ]
   },
   'linalg': {
     title: 'Linear algebra',
     body: 'Matrices as linear transformations, vector/matrix products, decompositions. The substrate every ML layer runs on. Key facts: columns are images of basis vectors; composition = multiplication; eigendecomposition reveals "natural axes."',
     related: ['eigenvalue', 'svd', 'dot-product', 'convolution'],
-    sections: [MATH_SEC('theory-linalg', '§4 Linear algebra')]
+    sections: [
+      MATH_SEC('theory-linalg', '§4 Linear algebra'),
+      FOURIER_SEC('DFT as matrix transform'),
+      MATH_SEC('theory-nn', '§6 Wx in neural nets')
+    ]
   },
   'svd': {
     title: 'SVD · Singular Value Decomposition',
@@ -679,9 +744,12 @@ export const GLOSSARY = {
   },
   'pca': {
     title: 'PCA · Principal Component Analysis',
-    body: 'Find the orthogonal directions of maximum variance in a dataset. Eigendecomposition of the sample covariance (or SVD of centred data). Used for dimensionality reduction, denoising, whitening, visualisation — <em>not</em> clustering.',
-    related: ['eigenvalue', 'svd', 'variance', 'linalg'],
-    sections: [MATH_SEC('theory-pca', '§5 PCA')]
+    body: 'Find the orthogonal directions of maximum variance in a dataset. Eigendecomposition of the sample covariance (or SVD of centred data). Used for dimensionality reduction, denoising, whitening, visualisation — <em>not</em> clustering (that\'s K-means / GMM).',
+    related: ['eigenvalue', 'svd', 'variance', 'linalg', 'gmm'],
+    sections: [
+      MATH_SEC('theory-pca', '§5 PCA'),
+      ML_SEC('K-means / GMM (contrast: clustering, not PCA)')
+    ]
   },
   'variance': {
     title: 'Variance',
@@ -720,25 +788,25 @@ export const GLOSSARY = {
     title: 'Regression',
     body: 'Predict a continuous y. Linear regression fits y ≈ w<sup>⊤</sup>x + b by minimising squared error.',
     related: ['ols', 'mle', 'regularisation', 'ridge'],
-    sections: [{ id: 'demo-linreg', label: 'Classical · §1 Linear regression' }]
+    sections: [CML_SEC('demo-linreg', '§1 Linear regression')]
   },
   'classification': {
     title: 'Classification',
     body: 'Predict a category y. Two-class: logistic regression or SVM. Multiclass: softmax, LDA, trees, k-NN.',
     related: ['logistic-regression', 'svm', 'decision-boundary'],
-    sections: [{ id: 'demo-logreg', label: 'Classical · §3 Logistic' }]
+    sections: [CML_SEC('demo-logreg', '§3 Logistic')]
   },
   'ols': {
     title: 'OLS · Ordinary Least Squares',
     body: 'Pick θ minimising Σ (y<sub>i</sub> − θ<sup>⊤</sup>x<sub>i</sub>)². Closed form θ̂ = (X<sup>⊤</sup>X)<sup>−1</sup>X<sup>⊤</sup>y. Geometrically: orthogonal projection of y onto the column space of X. Falls out of MLE under Gaussian noise.',
     related: ['regression', 'mle', 'ridge'],
-    sections: [{ id: 'demo-linreg', label: 'Classical · §1 OLS' }]
+    sections: [CML_SEC('demo-linreg', '§1 OLS')]
   },
   'logistic-regression': {
     title: 'Logistic regression',
     body: 'Model P(y=1|x) = σ(w<sup>⊤</sup>x + b). Train by minimising the binary cross-entropy (= −log Bernoulli likelihood). No closed form; minimise by GD/Newton. Decision boundary is linear.',
     related: ['sigmoid', 'cross-entropy', 'mle', 'classification'],
-    sections: [{ id: 'demo-logreg', label: 'Classical · §3 Logistic' }]
+    sections: [CML_SEC('demo-logreg', '§3 Logistic')]
   },
   'sigmoid': {
     title: 'σ · sigmoid / logistic function',
@@ -747,14 +815,21 @@ export const GLOSSARY = {
   },
   'cross-entropy': {
     title: 'Cross-entropy loss',
-    body: 'For binary y ∈ {0, 1} and predicted p: L = −[y log p + (1 − y) log(1 − p)]. Equivalent to −log Bernoulli likelihood. Generalised by categorical cross-entropy for multi-class softmax outputs.',
-    related: ['logistic-regression', 'mle', 'forward-kl']
+    body: 'For binary y ∈ {0, 1} and predicted p: L = −[y log p + (1 − y) log(1 − p)]. Equivalent to −log Bernoulli likelihood. Generalised by categorical cross-entropy for multi-class softmax outputs. Minimising cross-entropy over data = minimising forward KL to the model = MLE.',
+    related: ['logistic-regression', 'mle', 'forward-kl', 'kl'],
+    sections: [
+      CML_SEC('demo-logreg', '§3 Logistic regression'),
+      DF_SEC('theory-kl', '§1 KL — cross-entropy relation')
+    ]
   },
   'svm': {
     title: 'SVM · Support Vector Machine',
     body: 'Max-margin classifier. Hard margin: min ½‖w‖² s.t. y<sub>i</sub>(w<sup>⊤</sup>x<sub>i</sub> + b) ≥ 1. Soft margin adds slack ξ<sub>i</sub> with penalty C. Equivalent unconstrained form uses hinge loss. Only support vectors matter at the optimum.',
     related: ['hinge', 'support-vector', 'kernel', 'margin', 'lagrangian'],
-    sections: [{ id: 'demo-svm', label: 'Classical · §4 SVM' }]
+    sections: [
+      CML_SEC('demo-svm', '§4 SVM'),
+      MATH_SEC('theory-opt', '§1 Lagrangian (SVM dual)')
+    ]
   },
   'hinge': {
     title: 'Hinge loss',
@@ -798,8 +873,12 @@ export const GLOSSARY = {
   },
   'regularisation': {
     title: 'Regularisation',
-    body: 'Add a penalty on parameter norm to the training loss so the model can\'t over-fit: min L(θ) + λ Ω(θ). Classic choices: L2 (ridge), L1 (lasso), elastic net. Deep-learning extensions: dropout, weight decay, early stopping, data augmentation.',
-    related: ['ridge', 'lasso', 'bias-variance']
+    body: 'Add a penalty on parameter norm to the training loss so the model can\'t over-fit: min L(θ) + λ Ω(θ). Classic choices: L2 (ridge), L1 (lasso), elastic net. Deep-learning extensions: dropout, weight decay, early stopping, data augmentation. MAP = MLE + regulariser from −log prior.',
+    related: ['ridge', 'lasso', 'bias-variance', 'map-estimate', 'entropy-bonus'],
+    sections: [
+      CML_SEC('theory-gen', '§6 Generalisation'),
+      RL_SEC('theory-pg', '§7 entropy bonus (policy regulariser)')
+    ]
   },
   'bias-variance': {
     title: 'Bias / variance trade-off',

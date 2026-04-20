@@ -39,10 +39,15 @@ function ensureTooltip() {
     const link = e.target.closest('[data-g-link]');
     if (link) {
       const id = link.getAttribute('data-g-link');
-      const target = document.getElementById(id);
+      const href = link.getAttribute('data-g-href');
+      // Same-page anchor: scroll smoothly. Cross-page: navigate to
+      // "<href>#<id>" so the destination page lands at the right section.
+      const target = id ? document.getElementById(id) : null;
       if (target) {
         target.scrollIntoView({ behavior: 'smooth', block: 'start' });
         hide();
+      } else if (href) {
+        window.location.href = id ? `${href}#${id}` : href;
       }
     }
   });
@@ -60,7 +65,11 @@ function renderEntry(key) {
     })
     .join('');
   const sections = (entry.sections || [])
-    .map((s) => `<button type="button" class="lab-tooltip__section" data-g-link="${escapeHtml(s.id)}">${escapeHtml(s.label)} →</button>`)
+    .map((s) => {
+      const idAttr = s.id ? ` data-g-link="${escapeHtml(s.id)}"` : '';
+      const hrefAttr = s.href ? ` data-g-href="${escapeHtml(s.href)}"` : '';
+      return `<button type="button" class="lab-tooltip__section"${idAttr}${hrefAttr}>${escapeHtml(s.label)} →</button>`;
+    })
     .join('');
   return [
     `<div class="lab-tooltip__title">${escapeHtml(entry.title)}</div>`,
