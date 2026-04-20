@@ -50,6 +50,7 @@ import {
     getPinDirection,
     worldToLocal
 } from './circuit-lab/pinGeometry.js';
+import { createComponentBase } from './circuit-lab/componentBase.js';
 import {
     fileTimestamp,
     validateSaveData,
@@ -403,158 +404,16 @@ class Matrix {
 
 /* === BASE COMPONENT CLASS === */
 
-class Component {
-    constructor(x, y) {
-        this.id   = reserveComponentId((this.constructor?.name || 'component').toLowerCase());
-        this.kind = (this.constructor?.name || 'component').toLowerCase();
-        // align component origin to grid centers so pin legs land in holes
-        const snap = snapToBoardPoint(x, y);
-        this.x    = snap.x;
-        this.y    = snap.y;
-        this.w    = 40;
-        this.h    = 40;
-        this.rotation = 0;   // 0,1,2,3 => 0,90,180,270 deg
-        this.mirrorX  = false; // NEW: horizontal mirror
-        this.pins = [];      // local pin coords
-        this.props = {};     // editable properties
-        this.setup();
-    }
-
-    // overridden in subclasses: define pins, props, etc.
-    setup() {}
-
-    // Local pin position -> world (account for rotation + origin)
-    getPinPos(i) {
-        const p = this.pins[i];
-        let px = p.x, py = p.y;
-        for (let r = 0; r < this.rotation; r++) {
-            const tx = px;
-            px = -py;
-            py = tx;
-        }
-        if (this.mirrorX) px = -px; // mirror over Y-axis
-        const wx = this.x + px;
-        const wy = this.y + py;
-        // Snap pin to nearest hole
-        const sn = snapToBoardPoint(wx, wy);
-        return sn;
-    }
-
-    // Convert a local coordinate (before rotation/mirroring) to world space without snapping
-    localToWorld(x, y) {
-        let px = x, py = y;
-        for (let r = 0; r < this.rotation; r++) {
-            const tx = px;
-            px = -py;
-            py = tx;
-        }
-        if (this.mirrorX) px = -px;
-        return { x: this.x + px, y: this.y + py };
-    }
-
-    getLocalBounds() {
-        return {
-            x1: -this.w / 2,
-            y1: -this.h / 2,
-            x2:  this.w / 2,
-            y2:  this.h / 2
-        };
-    }
-
-    getBoundingBox() {
-        const b = this.getLocalBounds();
-        const corners = [
-            this.localToWorld(b.x1, b.y1),
-            this.localToWorld(b.x1, b.y2),
-            this.localToWorld(b.x2, b.y1),
-            this.localToWorld(b.x2, b.y2)
-        ];
-
-        let x1 =  Infinity, y1 =  Infinity;
-        let x2 = -Infinity, y2 = -Infinity;
-        corners.forEach(p => {
-            x1 = Math.min(x1, p.x);
-            y1 = Math.min(y1, p.y);
-            x2 = Math.max(x2, p.x);
-            y2 = Math.max(y2, p.y);
-        });
-        return { x1, y1, x2, y2 };
-    }
-
-    // Axis-aligned hit test in world space
-    isInside(mx, my) {
-        const b = this.getBoundingBox();
-        return (mx >= b.x1 && mx <= b.x2 && my >= b.y1 && my <= b.y2);
-    }
-
-    shouldSkipDefaultPins() { return false; }
-
-    draw(ctx, mode) {
-        ctx.save();
-        ctx.translate(this.x, this.y);
-        ctx.rotate(this.rotation * Math.PI / 2);
-        if (this.mirrorX) ctx.scale(-1, 1);  // NEW: mirror
-
-        ctx.shadowColor   = 'rgba(0,0,0,0.5)';
-        ctx.shadowBlur    = 8;
-        ctx.shadowOffsetY = 4;
-
-        if (mode === 'schematic') this.drawSym(ctx);
-        else                      this.drawPhys(ctx);
-
-        ctx.restore();
-
-        if (this.shouldSkipDefaultPins(mode)) return;
-
-        // draw pin legs + dots that sit in the holes
-        ctx.strokeStyle = '#9ca3af';
-        ctx.lineWidth   = 1;
-
-        this.pins.forEach((p, i) => {
-            const pos = this.getPinPos(i);
-            // short leg (one “hole” below the head)
-            ctx.beginPath();
-            ctx.moveTo(pos.x, pos.y);
-            ctx.lineTo(pos.x, pos.y + PIN_LEG_LENGTH);
-            ctx.stroke();
-
-            // pin head (exactly over hole)
-            ctx.fillStyle = pinHeadColor;
-            ctx.beginPath();
-            ctx.arc(pos.x, pos.y, PIN_HEAD_RADIUS, 0, Math.PI * 2);
-            ctx.fill();
-        });
-
-        // selection highlight: a soft blue glow bloom behind the component plus the
-        // existing dashed bounding box. Makes it obvious which element(s) will be
-        // affected by Delete / Copy / rotate actions.
-        const isSel = selectionGroup.includes(this);
-        if (isSel) {
-            const b = this.getBoundingBox();
-            const x = b.x1 - SELECTION_PADDING;
-            const y = b.y1 - SELECTION_PADDING;
-            const w = (b.x2 - b.x1) + SELECTION_PADDING * 2;
-            const h = (b.y2 - b.y1) + SELECTION_PADDING * 2;
-            ctx.save();
-            // Soft outer glow
-            ctx.shadowColor = 'rgba(96, 165, 250, 0.55)';
-            ctx.shadowBlur = 14;
-            ctx.fillStyle = 'rgba(96, 165, 250, 0.10)';
-            ctx.fillRect(x, y, w, h);
-            ctx.shadowBlur = 0;
-            // Dashed rim
-            ctx.setLineDash(SELECTION_DASH_PATTERN);
-            ctx.strokeStyle = '#60a5fa';
-            ctx.lineWidth = 1.5;
-            ctx.strokeRect(x, y, w, h);
-            ctx.restore();
-        }
-    }
-
-    // default drawing (overridden)
-    drawSym(ctx) {}
-    drawPhys(ctx) { this.drawSym(ctx); }
-}
+const Component = createComponentBase({
+    reserveComponentId,
+    snapToBoardPoint,
+    isSelected: (c) => selectionGroup.includes(c),
+    getPinHeadColor: () => pinHeadColor,
+    pinLegLength: PIN_LEG_LENGTH,
+    pinHeadRadius: PIN_HEAD_RADIUS,
+    selectionPadding: SELECTION_PADDING,
+    selectionDash: SELECTION_DASH_PATTERN
+});
 
 /* === COMPONENT CONSTRUCTORS === */
 
