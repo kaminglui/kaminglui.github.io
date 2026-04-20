@@ -761,6 +761,7 @@ function drawWirePolyline(pts, color, width, dashed) {
 function drawWires() {
     const heatmapOn = heatmap.isEnabled();
     const vMax = heatmapOn ? wireVoltageRange(wires) : 0;
+    if (heatmapOn) heatmap.updateLegendRange(vMax);
     wires.forEach(w => {
         const pts = getWirePolyline(w);
         const v   = w.v || 0;

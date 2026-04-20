@@ -95,7 +95,14 @@ function createProbe({
         }
         const { screen, voltage, label } = hover;
         probeReadout.classList.remove('hidden');
-        probeReadout.textContent = `${label}  ${formatVoltage(voltage)}`;
+        // When the simulator hasn't produced a solution yet, every probed pin
+        // reads null — tell the user that explicitly instead of showing "—"
+        // with no context so they know to press Play.
+        const sim = getSim();
+        const simReady = !!sim?.getNodeIndex && !!sim?.solution;
+        probeReadout.textContent = simReady
+            ? `${label}  ${formatVoltage(voltage)}`
+            : `${label}  — (press Play to simulate)`;
         const shell = document.querySelector(canvasShellSelector);
         if (!shell) return;
         const rect = shell.getBoundingClientRect();

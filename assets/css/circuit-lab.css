@@ -626,6 +626,36 @@ body {
     box-shadow: 0 0 0 1px #3b82f6 inset;
 }
 
+#heatmap-legend {
+    display: none;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 8px;
+    border-radius: 6px;
+    background: rgba(15, 15, 20, 0.75);
+    border: 1px solid var(--border-subtle);
+    color: var(--text-secondary);
+    font-family: ui-monospace, Menlo, monospace;
+    font-size: 10px;
+    white-space: nowrap;
+}
+#heatmap-legend.is-visible { display: inline-flex; }
+#heatmap-legend .legend-bar {
+    width: 96px;
+    height: 8px;
+    border-radius: 2px;
+    background: linear-gradient(
+        to right,
+        rgb(35, 82, 235) 0%,
+        rgb(45, 212, 191) 45%,
+        #6b7280 50%,
+        rgb(250, 200, 30) 55%,
+        rgb(220, 40, 40) 100%
+    );
+}
+#heatmap-legend .legend-neg { color: #93c5fd; }
+#heatmap-legend .legend-pos { color: #fca5a5; }
+
 /* --- COMPONENT SEARCH --- */
 #component-search-wrap {
     position: relative;

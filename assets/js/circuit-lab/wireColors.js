@@ -39,22 +39,41 @@ function wireColorForVoltage(v, vMax) {
 function createHeatmapToggle({
     initial = true,
     buttonId = 'heatmap-btn',
-    activeClass = 'active-tool'
+    activeClass = 'active-tool',
+    legendId = 'heatmap-legend',
+    legendVisibleClass = 'is-visible',
+    legendRangeId = 'legend-range',
+    legendRangePosId = 'legend-range-pos'
 } = {}) {
     let enabled = !!initial;
-    const syncButton = () => {
+    const syncUi = () => {
         if (typeof document === 'undefined') return;
         const btn = document.getElementById(buttonId);
         if (btn) btn.classList.toggle(activeClass, enabled);
+        const legend = document.getElementById(legendId);
+        if (legend) legend.classList.toggle(legendVisibleClass, enabled);
     };
-    syncButton();
+    syncUi();
+
+    // Update the small range label next to the legend so users can see which
+    // rail the color ramp is currently normalizing against.
+    function updateLegendRange(vMax) {
+        if (typeof document === 'undefined') return;
+        const formatted = vMax >= 1 ? Math.round(vMax) : vMax.toPrecision(2);
+        const neg = document.getElementById(legendRangeId);
+        const pos = document.getElementById(legendRangePosId);
+        if (neg) neg.textContent = String(formatted);
+        if (pos) pos.textContent = String(formatted);
+    }
+
     return {
         toggle(force) {
             enabled = (typeof force === 'boolean') ? force : !enabled;
-            syncButton();
+            syncUi();
             return enabled;
         },
-        isEnabled: () => enabled
+        isEnabled: () => enabled,
+        updateLegendRange
     };
 }
 
