@@ -72,6 +72,36 @@
               </ol>
             </aside>
 
+            <aside class="lab-intuition" aria-label="Plain-English intro">
+              <h3 class="lab-intuition__title">In plain English — what is a transformer, really?</h3>
+              <p>
+                Imagine you're reading a mystery novel. When you hit the word <em>"she"</em>, your brain instinctively
+                glances back to the most recent female character and connects the two. Transformers learn to do the
+                same thing for <strong>every word</strong>: for each one, they figure out which <em>other</em> words
+                in the sentence matter most, then mix in meaning from those words.
+              </p>
+              <p>
+                That mixing step is called <strong>attention</strong>, and this lab lets you watch it happen step by
+                step — tokenize a sentence, see each word's three personality vectors, watch every word score every
+                other word, and see the final blended output.
+              </p>
+              <p class="lab-intuition__note"><strong>Six words that keep coming up:</strong></p>
+              <ul class="tlab-glossary">
+                <li><strong>Token</strong> — a chunk the model reads. Usually a word, sometimes part of a word. Transformers can't read letters the way you do; they work on pre-chopped pieces.</li>
+                <li><strong>Embedding</strong> — a list of numbers that stands in for a token. Lets the computer do math on meaning.</li>
+                <li><strong>Query / Key / Value (Q · K · V)</strong> — three "views" every token has. Query = "what am I looking for?"; Key = "what do I advertise?"; Value = "what do I actually carry?"</li>
+                <li><strong>Attention</strong> — how much each token listens to each other token. One number per token-pair.</li>
+                <li><strong>Softmax</strong> — a recipe that turns raw scores into percentages that sum to 100%. Makes the attention weights easy to interpret.</li>
+                <li><strong>Context vector</strong> — the final output per token. It's the token's <em>value</em> blended with every other token's <em>value</em>, weighted by how much attention the token paid.</li>
+              </ul>
+              <p class="lab-intuition__note" style="margin-top: 0.75rem">
+                <strong>Classroom analogy:</strong> every kid in class has a <em>question on their mind</em> (Q), wears
+                a <em>nametag</em> (K), and carries a <em>backpack</em> full of stuff (V). A question looks around the
+                room: "whose nametag matches what I want?" The best matches get to empty their backpack into yours.
+                Whatever ends up in your backpack is your new, smarter version of yourself.
+              </p>
+            </aside>
+
             <div class="tlab-input">
               <label class="tlab-input__label" for="tlab-sentence">Your sentence</label>
               <input
@@ -116,6 +146,12 @@
             <div class="tlab-panel" data-tlab-panel="tokens">
               <div class="tlab-panel__copy">
                 <h3>Step 1 — break the sentence into tokens</h3>
+                <p class="tlab-panel__kid">
+                  <strong>Kid version:</strong> the computer doesn't know English words the way you do. Before anything
+                  else, we <em>chop the sentence into little pieces</em> called <strong>tokens</strong>. The special
+                  <code>[CLS]</code> marker is like "sentence starts here" and <code>[SEP]</code> is "sentence ends
+                  here" — think opening and closing quotes.
+                </p>
                 <p>
                   Real models use subword tokenizers like BPE or WordPiece so rare words share prefixes. Here we use a
                   simpler word-level split and wrap with <code>[CLS]</code> / <code>[SEP]</code> sentinels.
@@ -130,6 +166,14 @@
             <div class="tlab-panel is-hidden" data-tlab-panel="qkv">
               <div class="tlab-panel__copy">
                 <h3>Step 2 — each token becomes three vectors</h3>
+                <p class="tlab-panel__kid">
+                  <strong>Kid version:</strong> think of each token as a kid with <em>three personality cards</em>.<br>
+                  🟡 <strong>Q — Query:</strong> what question is this kid trying to answer?<br>
+                  🔵 <strong>K — Key:</strong> what does this kid advertise about themself? (their nametag)<br>
+                  🟢 <strong>V — Value:</strong> what stuff does this kid actually carry? (their backpack)<br>
+                  The cards are made by running the token's <em>embedding</em> (a list of numbers) through three fixed
+                  recipes. Each bar below is one slot of one card.
+                </p>
                 <p>
                   Every token's embedding <code>e</code> is multiplied by three fixed matrices to produce
                   <strong>Q</strong> (query — what am I looking for?), <strong>K</strong> (key — what do I advertise?)
@@ -147,6 +191,14 @@
             <div class="tlab-panel is-hidden" data-tlab-panel="attention">
               <div class="tlab-panel__copy">
                 <h3>Step 3 — every query scores every key</h3>
+                <p class="tlab-panel__kid">
+                  <strong>Kid version:</strong> every kid's <strong>Query</strong> walks around the room and asks
+                  <em>"does your nametag (Key) match what I want?"</em> High match → score is big. Low match → score
+                  is small. Then we use <strong>softmax</strong> — a trick that turns the raw scores into percentages
+                  that sum to 100%. That tells each kid <em>exactly how much</em> of each classmate to listen to. In
+                  the heatmap below, each ROW is one kid's listening plan: bright squares = "I'm paying a lot of
+                  attention to that kid".
+                </p>
                 <p>
                   Score <code>s<sub>ij</sub> = Q<sub>i</sub> · K<sub>j</sub> / √d</code>. The softmax across each row
                   turns those scores into weights that sum to 1 — those are the attention weights.
@@ -168,6 +220,13 @@
             <div class="tlab-panel is-hidden" data-tlab-panel="output">
               <div class="tlab-panel__copy">
                 <h3>Step 4 — blend the value vectors</h3>
+                <p class="tlab-panel__kid">
+                  <strong>Kid version:</strong> remember each kid's <strong>Value</strong> was their backpack? Now the
+                  kids whose listening plan said "55% Alice, 30% Bob, 15% Cara" dump <em>55% of Alice's backpack, 30%
+                  of Bob's, 15% of Cara's</em> into one new backpack. That mixed backpack is this kid's <strong>context
+                  vector</strong> — their fresh, context-aware representation. Do this for every token and you're done:
+                  one transformer block, no magic, just weighted sums.
+                </p>
                 <p>
                   The context vector for token <em>i</em> is a weighted sum of the <em>value</em> vectors from every
                   other token, using the attention weights from Step 3.
