@@ -36,6 +36,7 @@ import {
     wireColorForVoltage,
     createHeatmapToggle
 } from './circuit-lab/wireColors.js';
+import { createToolIconPainter } from './circuit-lab/toolIcons.js';
 import {
     fileTimestamp,
     validateSaveData,
@@ -1510,73 +1511,10 @@ function resize() {
     clampView();
 }
 
-function createToolIcon(selector, ComponentClass, setupFn, offsetY = 0) {
-    const btn = document.querySelector(selector);
-    if (!btn) return;
-
-    const oldIcon = btn.querySelector('i');
-    if (oldIcon) oldIcon.style.display = 'none';
-
-    let canvas = btn.querySelector('canvas.tool-icon');
-    if (!canvas) {
-        canvas = document.createElement('canvas');
-        canvas.className = 'tool-icon';
-        canvas.width = 56;
-        canvas.height = 42;
-        canvas.style.display = 'block';
-        canvas.style.margin = '0 auto 4px';
-        btn.insertBefore(canvas, btn.firstChild);
-    }
-    const ictx = canvas.getContext('2d');
-    ictx.clearRect(0, 0, canvas.width, canvas.height);
-
-    const c = new ComponentClass(0, 0);
-    c.x = 0;
-    c.y = 0;
-    c.rotation = 0;
-    c.mirrorX = false;
-    if (setupFn) setupFn(c);
-
-    const pad = 18;
-    const targetW = (c.w || 40) + pad;
-    const targetH = (c.h || 40) + pad;
-    const scale = Math.min((canvas.width - 6) / targetW, (canvas.height - 6) / targetH, 1);
-
-    // Determine ink color based on computed background/theme
-    const btnStyle = getComputedStyle(btn);
-    const bg = btnStyle.backgroundColor || '';
-    const match = bg.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/i);
-    const luminance = match ? (0.299 * +match[1] + 0.587 * +match[2] + 0.114 * +match[3]) / 255 : null;
-    const isLight = document.body.classList.contains('theme-light') || (luminance !== null && luminance > 0.5);
-    const strokeColor = isLight ? '#1e293b' : '#f1f5f9';
-
-    ictx.save();
-    ictx.translate(canvas.width / 2, canvas.height / 2 + offsetY);
-    ictx.scale(scale, scale);
-
-    ictx.strokeStyle = strokeColor;
-    ictx.fillStyle = strokeColor;
-    c.drawPhys(ictx);
-
-    const skipPins = (c instanceof MOSFET);
-    if (!skipPins && Array.isArray(c.pins)) {
-        ictx.strokeStyle = strokeColor;
-        ictx.lineWidth = 1.2;
-        c.pins.forEach(p => {
-            const pos = c.localToWorld(p.x, p.y);
-            ictx.beginPath();
-            ictx.moveTo(pos.x, pos.y);
-            ictx.lineTo(pos.x, pos.y + GRID * 0.25);
-            ictx.stroke();
-            ictx.fillStyle = strokeColor;
-            ictx.beginPath();
-            ictx.arc(pos.x, pos.y, 2.1, 0, Math.PI * 2);
-            ictx.fill();
-        });
-    }
-
-    ictx.restore();
-}
+const createToolIcon = createToolIconPainter({
+    GRID,
+    skipPins: (c) => c instanceof MOSFET
+});
 
 function renderToolIcons() {
     createToolIcon("button[onclick=\"selectTool('resistor', this)\"]", Resistor);
