@@ -112,13 +112,13 @@
               </p>
               <p class="lab-intuition__note"><strong>Words that show up a lot:</strong></p>
               <ul class="rl-glossary">
-                <li><strong>Latent variable</strong> — a hidden random variable that generates the data. In VAEs it's z; in diffusion it's every noisy x<sub>t</sub>.</li>
-                <li><strong>Noise schedule</strong> — the pre-chosen sequence β<sub>1</sub>, …, β<sub>T</sub> saying how much noise to add each step. Fixed; not learned.</li>
-                <li><strong>Score</strong> — the gradient of log-density, ∇<sub>x</sub> log p(x). Points from "unlikely" regions toward "more likely" ones.</li>
-                <li><strong>ELBO</strong> — Evidence Lower BOund on log p(x). VAEs and diffusion both maximise it.</li>
-                <li><strong>KL divergence</strong> — "distance" from distribution p to q. Not symmetric: KL(p‖q) ≠ KL(q‖p), and that asymmetry matters a lot in practice.</li>
-                <li><strong>Reparameterisation trick</strong> — write a sample as z = μ + σε with ε ~ 𝒩(0,I) so gradients flow through μ and σ.</li>
-                <li><strong>SDE</strong> — stochastic differential equation. Diffusion is cleanest in the continuous-time SDE view.</li>
+                <li><strong data-g="z-latent">Latent variable</strong> — a hidden random variable that generates the data. In VAEs it's z; in diffusion it's every noisy x<sub>t</sub>.</li>
+                <li><strong data-g="noise-schedule">Noise schedule</strong> — the pre-chosen sequence β<sub>1</sub>, …, β<sub>T</sub> saying how much noise to add each step. Fixed; not learned.</li>
+                <li><strong data-g="score">Score</strong> — the gradient of log-density, ∇<sub>x</sub> log p(x). Points from "unlikely" regions toward "more likely" ones.</li>
+                <li><strong data-g="elbo">ELBO</strong> — Evidence Lower BOund on log p(x). VAEs and diffusion both maximise it.</li>
+                <li><strong data-g="kl">KL divergence</strong> — "distance" from distribution p to q. Not symmetric: KL(p‖q) ≠ KL(q‖p), and that asymmetry matters a lot in practice.</li>
+                <li><strong data-g="reparam">Reparameterisation trick</strong> — write a sample as z = μ + σε with ε ~ 𝒩(0,I) so gradients flow through μ and σ.</li>
+                <li><strong data-g="sde">SDE</strong> — stochastic differential equation. Diffusion is cleanest in the continuous-time SDE view.</li>
               </ul>
             </aside>
 
@@ -225,7 +225,7 @@
                 <ul>
                   <li><strong>p</strong> — the "reference" distribution (the one the expectation is taken under).</li>
                   <li><strong>q</strong> — the model being compared against p.</li>
-                  <li>D<sub>KL</sub> ≥ 0 with equality iff p = q almost everywhere. Not a metric (not symmetric, no triangle inequality).</li>
+                  <li><strong data-g="kl">D<sub>KL</sub></strong> ≥ 0 with equality iff p = q almost everywhere. Not a metric (not symmetric, no triangle inequality).</li>
                 </ul>
                 <p>Two orderings matter. In ML, the same symbols flip meaning depending on which side you put data:</p>
                 <table class="rl-compare">
@@ -269,7 +269,7 @@
                 </p>
                 <p>A VAE has three pieces:</p>
                 <ul>
-                  <li><strong>Encoder</strong> <span data-katex="q_\phi(z\mid x)"></span> — maps data x to a distribution over latents z (usually Gaussian with learned mean and variance).</li>
+                  <li><strong data-g="mu-phi">Encoder</strong> <span data-katex="q_\phi(z\mid x)"></span> — maps data x to a distribution over latents z (usually Gaussian with learned mean and variance).</li>
                   <li><strong>Decoder</strong> <span data-katex="p_\theta(x\mid z)"></span> — maps a latent z back to a distribution over data.</li>
                   <li><strong>Prior</strong> <span data-katex="p(z) = \mathcal{N}(0, I)"></span> — a simple distribution we can sample.</li>
                 </ul>
@@ -315,7 +315,7 @@
                 <ul>
                   <li><strong>f(x, t)</strong> — drift: deterministic nudge at each instant.</li>
                   <li><strong>g(t)</strong> — diffusion coefficient: scale of the random kicks.</li>
-                  <li><strong>dW</strong> — Brownian increment, 𝒩(0, dt) in each dimension.</li>
+                  <li><strong data-g="dW">dW</strong> — <span data-g="brownian">Brownian</span> increment, 𝒩(0, dt) in each dimension.</li>
                 </ul>
                 <p>
                   Diffusion's forward process is exactly this SDE, discretised. The drift pulls x toward zero
@@ -340,9 +340,9 @@
                 <div class="rl-equation" data-katex="q(x_t \mid x_0) = \mathcal{N}\!\bigl(x_t;\ \sqrt{\bar\alpha_t}\, x_0,\ (1 - \bar\alpha_t)\, I\bigr)" data-katex-display></div>
                 <div class="rl-equation" data-katex="x_t = \sqrt{\bar\alpha_t}\, x_0 \;+\; \sqrt{1 - \bar\alpha_t}\, \varepsilon,\qquad \varepsilon \sim \mathcal{N}(0, I)" data-katex-display></div>
                 <ul>
-                  <li><strong>β<sub>t</sub></strong> — per-step noise variance (schedule). Linear, cosine, etc.</li>
-                  <li><strong>α<sub>t</sub></strong>, <strong>ᾱ<sub>t</sub></strong> — signal-preservation factors: √ᾱ<sub>t</sub> is how much of x<sub>0</sub> survives to step t.</li>
-                  <li><strong>ε</strong> — the noise that <em>created</em> x<sub>t</sub>. Knowing ε is equivalent to knowing x<sub>0</sub>.</li>
+                  <li><strong data-g="beta-t">β<sub>t</sub></strong> — per-step noise variance (schedule). Linear, cosine, etc.</li>
+                  <li><strong data-g="alpha-t">α<sub>t</sub></strong>, <strong data-g="alpha-bar-t">ᾱ<sub>t</sub></strong> — signal-preservation factors: √ᾱ<sub>t</sub> is how much of x<sub>0</sub> survives to step t.</li>
+                  <li><strong data-g="epsilon-noise">ε</strong> — the noise that <em>created</em> x<sub>t</sub>. Knowing ε is equivalent to knowing x<sub>0</sub>.</li>
                 </ul>
                 <p><strong>Reverse process</strong>: we don't know q(x<sub>t−1</sub>|x<sub>t</sub>), but it's Gaussian when conditioned on x<sub>0</sub>:</p>
                 <div class="rl-equation" data-katex="q(x_{t-1} \mid x_t, x_0) = \mathcal{N}\!\bigl(x_{t-1};\ \tilde\mu_t(x_t, x_0),\ \tilde\beta_t\, I\bigr)" data-katex-display></div>
@@ -381,6 +381,11 @@
                   <strong>Langevin dynamics</strong> turns a score into samples:
                 </p>
                 <div class="rl-equation" data-katex="x_{k+1} = x_k + \tfrac{\eta}{2}\, s_\theta(x_k) + \sqrt{\eta}\, z_k,\qquad z_k \sim \mathcal{N}(0, I)" data-katex-display></div>
+                <ul>
+                  <li><strong>η</strong> — step size for the Langevin climb (small is accurate, slow).</li>
+                  <li><strong>K</strong> — number of Langevin iterations.</li>
+                  <li><strong>z<sub>k</sub></strong> — fresh Gaussian noise at each step; keeps the chain exploring instead of getting stuck at a local maximum.</li>
+                </ul>
                 <p>
                   As η → 0 and K → ∞, x<sub>K</sub> is distributed according to p. Song & Ermon (2019) showed
                   that running Langevin at <em>decreasing</em> noise scales (annealed SMLD) produces high-quality
@@ -408,13 +413,17 @@
                 <div class="rl-equation" data-katex="dx = f(x, t)\, dt + g(t)\, dW" data-katex-display></div>
                 <p>And — using Anderson's (1982) time-reversal identity — the <strong>reverse SDE</strong> is:</p>
                 <div class="rl-equation" data-katex="dx = \bigl[\,f(x, t) - g(t)^2\, \nabla_x \log p_t(x)\,\bigr]\, dt \;+\; g(t)\, d\bar W" data-katex-display></div>
+                <ul>
+                  <li><strong>dW̄</strong> — Brownian increment for time running <em>backward</em> (T → 0). Independent of the forward dW; fresh randomness for the reverse integration.</li>
+                  <li><strong>p<sub>t</sub>(x)</strong> — marginal density at time t under the forward SDE.</li>
+                </ul>
                 <p>
                   The only unknown is the score ∇ log p<sub>t</sub>. Train s<sub>θ</sub> once; integrate this
                   backward to generate.
                 </p>
                 <div class="rl-taxonomy">
                   <div class="rl-taxonomy__card">
-                    <h4>VP-SDE (DDPM)</h4>
+                    <h4 data-g="vp-sde">VP-SDE (DDPM)</h4>
                     <div class="rl-equation" data-katex="f = -\tfrac{1}{2}\beta(t)\, x,\quad g = \sqrt{\beta(t)}" data-katex-display></div>
                     <ul>
                       <li>Variance Preserving: marginal stays bounded.</li>
@@ -422,7 +431,7 @@
                     </ul>
                   </div>
                   <div class="rl-taxonomy__card">
-                    <h4>VE-SDE (SMLD)</h4>
+                    <h4 data-g="ve-sde">VE-SDE (SMLD)</h4>
                     <div class="rl-equation" data-katex="f = 0,\quad g = \sqrt{\tfrac{d[\sigma^2]}{dt}}" data-katex-display></div>
                     <ul>
                       <li>Variance Exploding: marginal variance grows to σ<sub>max</sub>².</li>
@@ -430,7 +439,7 @@
                     </ul>
                   </div>
                   <div class="rl-taxonomy__card">
-                    <h4>Probability-flow ODE</h4>
+                    <h4 data-g="pf-ode">Probability-flow ODE</h4>
                     <div class="rl-equation" data-katex="dx = \bigl[\,f - \tfrac{1}{2} g^2\, \nabla \log p_t\,\bigr]\, dt" data-katex-display></div>
                     <ul>
                       <li>Deterministic. Same marginals as the SDE.</li>
@@ -452,25 +461,26 @@
                 </p>
                 <div class="rl-taxonomy">
                   <div class="rl-taxonomy__card">
-                    <h4>Classifier-free guidance</h4>
+                    <h4 data-g="cfg">Classifier-free guidance</h4>
                     <div class="rl-equation" data-katex="\tilde\varepsilon = (1 + w)\,\varepsilon_\theta(x, c) - w\,\varepsilon_\theta(x, \varnothing)" data-katex-display></div>
                     <ul>
-                      <li>c — conditioning (text prompt, class label).</li>
-                      <li>w — guidance scale; w=0 is unconditional, w→∞ is over-confident.</li>
-                      <li>Trick: train one model with and without c; extrapolate at inference.</li>
+                      <li><strong>c</strong> — conditioning (text prompt, class label, image mask).</li>
+                      <li><strong>∅</strong> — "null" condition; a learned embedding meaning "no condition." Model sees it ≈10 % of training.</li>
+                      <li><strong>w</strong> — guidance scale; w=0 is conditional only, w→∞ over-saturates.</li>
+                      <li>Trick: train one model to predict ε under either c or ∅; extrapolate at inference.</li>
                     </ul>
                   </div>
                   <div class="rl-taxonomy__card">
-                    <h4>DDIM (non-Markov)</h4>
+                    <h4 data-g="ddim">DDIM (non-Markov)</h4>
                     <div class="rl-equation" data-katex="x_{t-1} = \sqrt{\bar\alpha_{t-1}}\,\hat x_0 + \sqrt{1-\bar\alpha_{t-1}}\,\varepsilon_\theta" data-katex-display></div>
                     <ul>
-                      <li>Deterministic (σ=0) sampling path.</li>
-                      <li>Skip steps; 1000 → 50 inference steps.</li>
-                      <li>Same training loss as DDPM.</li>
+                      <li><strong>x̂<sub>0</sub></strong> — model's current guess of the clean data: x̂<sub>0</sub> = (x<sub>t</sub> − √(1−ᾱ<sub>t</sub>) ε<sub>θ</sub>) / √ᾱ<sub>t</sub>.</li>
+                      <li>Deterministic (σ=0) sampling path — no fresh noise added.</li>
+                      <li>Skip steps; 1000 → 50 inference steps with the same training loss as DDPM.</li>
                     </ul>
                   </div>
                   <div class="rl-taxonomy__card">
-                    <h4>Latent diffusion (SD, Imagen)</h4>
+                    <h4 data-g="latent-diffusion">Latent diffusion (SD, Imagen)</h4>
                     <ul>
                       <li>Pre-train a VAE that maps 512×512 images to 64×64 latents.</li>
                       <li>Run diffusion in latent space — 64× fewer FLOPs per step.</li>
@@ -478,21 +488,21 @@
                     </ul>
                   </div>
                   <div class="rl-taxonomy__card">
-                    <h4>Flow matching</h4>
+                    <h4 data-g="flow-matching">Flow matching</h4>
                     <div class="rl-equation" data-katex="x_t = (1 - t)\, x_0 + t\, x_1,\quad \mathcal{L} = \mathbb{E}\,\lVert v_\theta(x_t, t) - (x_1 - x_0)\rVert^2" data-katex-display></div>
                     <ul>
-                      <li>Regress a velocity field along straight paths between data and noise.</li>
-                      <li>No noise schedule; simpler than diffusion.</li>
-                      <li>Stable Diffusion 3, Flux, Veo use this.</li>
+                      <li><strong>x<sub>0</sub></strong> — a real data sample. <strong>x<sub>1</sub></strong> — a fresh noise sample ~ 𝒩(0, I). x<sub>t</sub> linearly interpolates between them.</li>
+                      <li><strong>v<sub>θ</sub></strong> — predicted velocity field dx/dt along the path. Ideal target is the straight-line velocity x<sub>1</sub> − x<sub>0</sub>.</li>
+                      <li>No noise schedule; ODE-only sampling. Stable Diffusion 3, Flux, Veo use this.</li>
                     </ul>
                   </div>
                   <div class="rl-taxonomy__card">
-                    <h4>Consistency models</h4>
+                    <h4 data-g="consistency-models">Consistency models</h4>
                     <div class="rl-equation" data-katex="f_\theta(x_t, t) \approx f_\theta(x_0, 0)\;\;\forall\, t" data-katex-display></div>
                     <ul>
-                      <li>Train so the model predicts the <em>end of the trajectory</em> directly.</li>
-                      <li>1-step sampling (with small quality loss) or 2-4 step.</li>
-                      <li>LCM, SDXL-Turbo, Dreamshaper-LCM.</li>
+                      <li><strong>f<sub>θ</sub></strong> — the consistency function. Trained so every point on a PF-ODE trajectory maps to the <em>same</em> x<sub>0</sub>.</li>
+                      <li><strong>θ⁻</strong> — EMA (exponential moving average) of θ; acts as a slowly-updated target model, like in DQN / SAC.</li>
+                      <li>1-step sampling (with small quality loss) or 2–4 step. LCM, SDXL-Turbo, ADD.</li>
                     </ul>
                   </div>
                 </div>
@@ -557,9 +567,9 @@
                     <h4 class="rl-cluster__title">Likelihood models</h4>
                     <p>Learn an explicit p<sub>θ</sub>(x), train by maximum likelihood or an ELBO on it.</p>
                     <div class="rl-cluster__members">
-                      <span class="rl-cluster__member">VAE</span>
-                      <span class="rl-cluster__member">β-VAE</span>
-                      <span class="rl-cluster__member">VQ-VAE</span>
+                      <span class="rl-cluster__member" data-g="vae">VAE</span>
+                      <span class="rl-cluster__member" data-g="vae">β-VAE</span>
+                      <span class="rl-cluster__member" data-g="vae">VQ-VAE</span>
                       <span class="rl-cluster__member">RealNVP</span>
                       <span class="rl-cluster__member">Glow</span>
                       <span class="rl-cluster__member">IAF</span>
@@ -578,13 +588,13 @@
                     <h4 class="rl-cluster__title">Score / diffusion</h4>
                     <p>Many-step stochastic denoising. Train a score or noise predictor; integrate a reverse SDE.</p>
                     <div class="rl-cluster__members">
-                      <span class="rl-cluster__member">DDPM</span>
-                      <span class="rl-cluster__member">SMLD / NCSN</span>
-                      <span class="rl-cluster__member">DDIM</span>
-                      <span class="rl-cluster__member">Score SDE</span>
+                      <span class="rl-cluster__member" data-g="ddpm">DDPM</span>
+                      <span class="rl-cluster__member" data-g="smld">SMLD / NCSN</span>
+                      <span class="rl-cluster__member" data-g="ddim">DDIM</span>
+                      <span class="rl-cluster__member" data-g="sde">Score SDE</span>
                       <span class="rl-cluster__member">EDM</span>
-                      <span class="rl-cluster__member">DPM-Solver</span>
-                      <span class="rl-cluster__member">Latent Diffusion / SD</span>
+                      <span class="rl-cluster__member" data-g="dpm-solver">DPM-Solver</span>
+                      <span class="rl-cluster__member" data-g="stable-diffusion">Latent Diffusion / SD</span>
                       <span class="rl-cluster__member">Imagen</span>
                     </div>
                     <ul class="rl-cluster__axes">
@@ -600,12 +610,12 @@
                     <h4 class="rl-cluster__title">Flow-based (rectified)</h4>
                     <p>Regress a velocity field along simple paths between x<sub>0</sub> and x<sub>1</sub> = noise.</p>
                     <div class="rl-cluster__members">
-                      <span class="rl-cluster__member">Flow matching</span>
-                      <span class="rl-cluster__member">Rectified flow</span>
+                      <span class="rl-cluster__member" data-g="flow-matching">Flow matching</span>
+                      <span class="rl-cluster__member" data-g="rectified-flow">Rectified flow</span>
                       <span class="rl-cluster__member">Stochastic interpolants</span>
-                      <span class="rl-cluster__member">CNF</span>
-                      <span class="rl-cluster__member">SD 3</span>
-                      <span class="rl-cluster__member">Flux</span>
+                      <span class="rl-cluster__member" data-g="cnf">CNF</span>
+                      <span class="rl-cluster__member" data-g="flow-matching">SD 3</span>
+                      <span class="rl-cluster__member" data-g="flow-matching">Flux</span>
                     </div>
                     <ul class="rl-cluster__axes">
                       <li><strong>path</strong>straight (x<sub>0</sub>→x<sub>1</sub>)</li>
@@ -620,11 +630,11 @@
                     <h4 class="rl-cluster__title">Consistency / distillation</h4>
                     <p>Collapse a multi-step teacher into a 1–4 step student. Keeps most quality, drops most cost.</p>
                     <div class="rl-cluster__members">
-                      <span class="rl-cluster__member">Consistency Models</span>
-                      <span class="rl-cluster__member">LCM</span>
-                      <span class="rl-cluster__member">SDXL-Turbo</span>
-                      <span class="rl-cluster__member">ADD</span>
-                      <span class="rl-cluster__member">CTM</span>
+                      <span class="rl-cluster__member" data-g="consistency-models">Consistency Models</span>
+                      <span class="rl-cluster__member" data-g="consistency-models">LCM</span>
+                      <span class="rl-cluster__member" data-g="consistency-models">SDXL-Turbo</span>
+                      <span class="rl-cluster__member" data-g="consistency-models">ADD</span>
+                      <span class="rl-cluster__member" data-g="consistency-models">CTM</span>
                       <span class="rl-cluster__member">Progressive distillation</span>
                     </div>
                     <ul class="rl-cluster__axes">
@@ -656,6 +666,7 @@
     </script>
     <script type="module" src="../../assets/js/main.js"></script>
     <script type="module" src="../../assets/js/diffusion-lab.js"></script>
+    <script type="module" src="../../assets/js/lab-tooltips.js"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
     <script>
       document.addEventListener('DOMContentLoaded', () => {
