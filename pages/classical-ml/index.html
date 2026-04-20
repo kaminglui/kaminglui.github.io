@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+    <meta
+      name="description"
+      content="Hands-on tour of classical machine-learning methods: linear regression via closed form, logistic regression via gradient descent, linear SVM via hinge loss — with the full derivations from MLE and Lagrangian duals."
+    />
+    <title>Classical ML Lab — Ka Ming Lui</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fira+Code:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="../../assets/css/style.css" />
+    <link rel="stylesheet" href="../../assets/css/rl-lab.css" />
+    <link rel="stylesheet" href="../../assets/css/classical-ml.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" />
+  </head>
+  <body class="theme-light">
+    <div id="site-header"></div>
+
+    <main class="lab-main">
+      <section class="lab-hero">
+        <div class="container">
+          <div class="lab-hero__inner">
+            <p class="lab-hero__eyebrow">Interactive lab</p>
+            <h1 class="lab-hero__title">Classical ML Lab</h1>
+            <p class="lab-hero__lead">
+              The three supervised-learning workhorses that came before deep nets: linear regression (fit a
+              line), logistic regression (fit a probability), and the support-vector machine (fit a max-margin
+              boundary). Each with a live 2D demo you can click into, plus the full math — closed-form OLS,
+              the MLE derivation of both losses, the Lagrangian dual behind SVMs, hinge loss, and kernels.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section class="lab-section" aria-labelledby="cml-title">
+        <div class="container">
+          <article class="card lab-card">
+            <header class="lab-card__header">
+              <p class="lab-card__eyebrow">Linear regression · Logistic regression · SVM · MLE</p>
+              <div class="lab-card__title-row">
+                <h2 class="lab-card__title" id="cml-title">Three classical supervised methods, one math backbone</h2>
+                <div class="lab-card__chips">
+                  <span class="lab-chip">OLS</span>
+                  <span class="lab-chip">Logistic</span>
+                  <span class="lab-chip">SVM</span>
+                  <span class="lab-chip">MLE</span>
+                </div>
+              </div>
+              <p class="lab-card__lead">
+                Add points by clicking a canvas. Linear regression shows the least-squares line with residuals.
+                Logistic regression fits a sigmoid decision boundary to two-class data. SVM fits the widest
+                possible margin between the classes and marks which points touch it. All three drop out of the
+                same recipe: pick a loss, minimise, read off parameters.
+              </p>
+            </header>
+
+            <aside class="lab-intro-steps" aria-label="Read this first">
+              <p class="lab-intro-steps__title">Read this first</p>
+              <ol>
+                <li>
+                  <strong>What they do</strong>
+                  Supervised learning: given training pairs (x, y), learn a function f<sub>θ</sub>(x) that
+                  predicts y on new inputs. Regression when y is a real number; classification when y is a
+                  category. Linear regression, logistic regression, and SVM are the "hello world" of each half
+                  — and still the go-to baselines when the problem is small or interpretability matters more
+                  than accuracy.
+                </li>
+                <li>
+                  <strong>Try this</strong>
+                  Click a few scattered points in the linear-regression canvas — watch the best-fit line move.
+                  Then in the logistic-regression panel, click the <em>+ class</em> chip and drop a cluster on
+                  one side; switch to <em>− class</em> and drop another on the other side. Press <em>Fit</em>
+                  and see the sigmoid decision boundary slide in. Repeat in the SVM panel; notice how only a
+                  few points (support vectors) touch the margin.
+                </li>
+                <li>
+                  <strong>Look for this</strong>
+                  The same pattern in every case: pick a loss (squared / cross-entropy / hinge), differentiate
+                  with respect to θ, solve (closed form or GD). Different losses correspond to different
+                  probabilistic assumptions via MLE — that's §3 and §4.
+                </li>
+              </ol>
+            </aside>
+
+            <aside class="lab-intuition" aria-label="Plain-English intro">
+              <h3 class="lab-intuition__title">In plain English — what is supervised learning?</h3>
+              <p>
+                You have a pile of flashcards: on one side an <em>input</em> (a photo, a sentence, a row of
+                numbers), on the other an <em>answer</em> (a label, a score, a yes/no). Supervised learning is
+                the problem of "study these flashcards so you can answer new ones you've never seen." The model
+                is a function with knobs; training adjusts the knobs so the model's answers match the labels.
+              </p>
+              <p>
+                <strong>Regression</strong> = the answer is a number ("how much will this house sell for?").
+                <strong>Classification</strong> = the answer is a category ("spam or not?"). The three methods
+                here are the small, interpretable, reliable versions of each — used every day for everything
+                from medical risk scores to A/B tests to linear baselines for deep models.
+              </p>
+              <p class="lab-intuition__note"><strong>Words that show up a lot:</strong></p>
+              <ul class="rl-glossary">
+                <li><strong data-g="supervised">Supervised learning</strong> — learning from labelled (x, y) pairs.</li>
+                <li><strong data-g="regression">Regression</strong> — predict a real number.</li>
+                <li><strong data-g="classification">Classification</strong> — predict a category.</li>
+                <li><strong data-g="loss">Loss</strong> — the number we minimise during training. Squared error, cross-entropy, hinge.</li>
+                <li><strong data-g="mle">MLE</strong> — "pick θ that makes the observed data most probable." A derivation technique, not a specific algorithm.</li>
+                <li><strong data-g="regularisation">Regularisation</strong> — add a penalty on ‖θ‖ to the loss so the model doesn't over-fit. L2 = ridge; L1 = lasso (sparse).</li>
+                <li><strong data-g="decision-boundary">Decision boundary</strong> — the surface in input space where a classifier switches its prediction.</li>
+                <li><strong data-g="support-vector">Support vector</strong> — a training point that lies exactly on an SVM's margin. Only these determine the solution.</li>
+              </ul>
+            </aside>
+
+            <!-- =============== Linear regression demo =============== -->
+            <article class="rl-theory__panel" id="demo-linreg">
+              <h3>1 · Linear regression — least squares, closed form</h3>
+              <p class="rl-theory__kid">
+                <strong>Kid version.</strong> Drop some points on graph paper. Find the straight line that
+                passes <em>closest</em> to all of them (closest in the sense of smallest total vertical gap
+                squared). That's least-squares linear regression.
+              </p>
+              <div class="rl-controls" aria-label="Linear regression controls">
+                <div class="rl-controls__row">
+                  <div class="cml-presets" role="group" aria-label="Preset datasets">
+                    <span class="cml-presets__label">Preset</span>
+                    <button type="button" class="cml-preset is-active" data-linreg-preset="clean">Clean trend</button>
+                    <button type="button" class="cml-preset" data-linreg-preset="noisy">Noisy</button>
+                    <button type="button" class="cml-preset" data-linreg-preset="outlier">One outlier</button>
+                    <button type="button" class="cml-preset" data-linreg-preset="none">Blank (click to add)</button>
+                  </div>
+                </div>
+                <div class="rl-controls__actions">
+                  <button type="button" id="linreg-resample">Resample</button>
+                  <button type="button" id="linreg-residuals">Toggle residuals</button>
+                  <button type="button" id="linreg-clear">Clear</button>
+                </div>
+              </div>
+              <div class="rl-stage">
+                <div>
+                  <div class="cml-canvas-wrap">
+                    <canvas id="linreg-canvas" width="640" height="640" aria-label="Linear regression scatter"></canvas>
+                  </div>
+                  <p class="cml-legend" aria-hidden="true">
+                    <span><span class="cml-legend__swatch" style="background:#3b82f6"></span>Point</span>
+                    <span><span class="cml-legend__swatch" style="background:#f97316"></span>Fit ŷ = wx + b</span>
+                    <span><span class="cml-legend__swatch" style="background:rgba(249,115,22,0.35)"></span>Residual y − ŷ</span>
+                    <span>Click the canvas to add a point.</span>
+                  </p>
+                </div>
+                <aside class="rl-sidebar" aria-label="Fit stats">
+                  <h3>OLS fit</h3>
+                  <div class="rl-stat-grid">
+                    <div class="rl-stat"><span class="rl-stat__label">N</span><span class="rl-stat__value" id="linreg-n">0</span></div>
+                    <div class="rl-stat"><span class="rl-stat__label">slope w</span><span class="rl-stat__value rl-stat__value--accent" id="linreg-w">—</span></div>
+                    <div class="rl-stat"><span class="rl-stat__label">intercept b</span><span class="rl-stat__value" id="linreg-b">—</span></div>
+                    <div class="rl-stat"><span class="rl-stat__label">RMSE</span><span class="rl-stat__value" id="linreg-rmse">—</span></div>
+                    <div class="rl-stat"><span class="rl-stat__label">R²</span><span class="rl-stat__value" id="linreg-r2">—</span></div>
+                    <div class="rl-stat"><span class="rl-stat__label">Σ(y−ŷ)²</span><span class="rl-stat__value" id="linreg-sse">—</span></div>
+                  </div>
+                </aside>
+              </div>
+              <p>Ordinary Least Squares (OLS) picks (w, b) by minimising</p>
+              <div class="rl-equation" data-katex="L(w, b) = \sum_{i=1}^N \bigl(y_i - (w x_i + b)\bigr)^2" data-katex-display></div>
+              <p>Setting the gradients to zero gives the <em>normal equations</em> — two linear equations in (w, b) with a closed-form solution:</p>
+              <div class="rl-equation" data-katex="w = \frac{\sum_i (x_i - \bar x)(y_i - \bar y)}{\sum_i (x_i - \bar x)^2},\qquad b = \bar y - w\,\bar x" data-katex-display></div>
+              <p>
+                In higher dimensions with design matrix X ∈ ℝ<sup>N×d</sup> (rows = samples, columns =
+                features) and y ∈ ℝ<sup>N</sup>:
+              </p>
+              <div class="rl-equation" data-katex="\boxed{\; \hat\theta = (X^\top X)^{-1}\, X^\top y \;}" data-katex-display></div>
+              <p>
+                Geometrically: ŷ = Xθ̂ is the <em>orthogonal projection</em> of y onto the column space of X.
+                Residuals (y − ŷ) are perpendicular to that column space.
+              </p>
+            </article>
+
+            <!-- =============== MLE derivation panel =============== -->
+            <article class="rl-theory__panel" id="theory-mle">
+              <h3>2 · Why squared loss? The MLE derivation</h3>
+              <p class="rl-theory__kid">
+                <strong>Kid version.</strong> Squared loss isn't random. It's what falls out if you assume the
+                data is generated as "line plus Gaussian noise" and you want the parameters that make your
+                actual observations the most probable.
+              </p>
+              <p>Assume the data-generating process:</p>
+              <div class="rl-equation" data-katex="y_i = \theta^\top x_i + \varepsilon_i,\qquad \varepsilon_i \sim \mathcal{N}(0, \sigma^2)" data-katex-display></div>
+              <p>Then each y<sub>i</sub> is Gaussian with mean θ<sup>⊤</sup>x<sub>i</sub> and variance σ². The joint likelihood across N independent samples is</p>
+              <div class="rl-equation" data-katex="p(y_{1..N} \mid X, \theta) = \prod_{i=1}^N \frac{1}{\sqrt{2\pi\sigma^2}} \exp\!\left(-\frac{(y_i - \theta^\top x_i)^2}{2\sigma^2}\right)" data-katex-display></div>
+              <p>Take the log — products become sums, constants drop, signs flip for <em>max</em>likelihood → <em>min</em>NLL:</p>
+              <div class="rl-equation" data-katex="\hat\theta_{\mathrm{MLE}} = \arg\min_\theta \sum_{i=1}^N (y_i - \theta^\top x_i)^2" data-katex-display></div>
+              <p>
+                That's exactly the OLS objective. Pick a different noise distribution and you get a different
+                loss: Laplace noise → L1 (absolute) loss; Bernoulli output → cross-entropy (next section);
+                Poisson count → Poisson regression. Every classical loss is "−log p(data | θ) for some
+                assumed distribution."
+              </p>
+              <p class="rl-theory__kid">
+                <strong>Shape watch.</strong> MLE → minimise −log likelihood.
+                <em>Add a prior p(θ)</em> → minimise −log likelihood − log prior = <em>MAP</em> estimation.
+                Gaussian prior → L2 regularisation (ridge). Laplace prior → L1 (lasso). The "loss" and the
+                "regulariser" both come from the same probabilistic formalism.
+              </p>
+            </article>
+
+            <!-- =============== Logistic regression demo =============== -->
+            <article class="rl-theory__panel" id="demo-logreg">
+              <h3>3 · Logistic regression — fit a probability</h3>
+              <p class="rl-theory__kid">
+                <strong>Kid version.</strong> You want a model that says "70 % chance of spam," not just
+                "spam." Squash a linear score through a sigmoid and you get a probability between 0 and 1.
+                Train it to match the labels.
+              </p>
+              <p>Logistic regression models class probability as</p>
+              <div class="rl-equation" data-katex="P(y=1 \mid x) = \sigma(w^\top x + b),\qquad \sigma(z) = \frac{1}{1 + e^{-z}}" data-katex-display></div>
+              <p>
+                <strong>σ</strong> is the <em>logistic</em> (sigmoid) function: smoothly maps ℝ → (0, 1). For
+                y ∈ {0, 1}, the likelihood of the data set is
+                <span data-katex="\prod_i p_i^{y_i}(1-p_i)^{1-y_i}"></span>. Taking −log gives the
+                <strong>binary cross-entropy</strong> loss:
+              </p>
+              <div class="rl-equation" data-katex="L(w, b) = -\sum_{i=1}^N \bigl[\,y_i \log p_i + (1-y_i)\log(1-p_i)\,\bigr],\quad p_i = \sigma(w^\top x_i + b)" data-katex-display></div>
+              <p>
+                Unlike OLS, no closed form — minimise by gradient descent / Newton / L-BFGS. Gradients are
+                simple: ∇<sub>w</sub> L = Σ (p<sub>i</sub> − y<sub>i</sub>) x<sub>i</sub>.
+              </p>
+              <div class="rl-controls" aria-label="Logistic regression controls">
+                <div class="rl-controls__row">
+                  <div class="cml-class-toggle" role="group" aria-label="Point class">
+                    <button type="button" class="cml-class-toggle__btn is-pos is-active" data-logreg-class="1">+ class</button>
+                    <button type="button" class="cml-class-toggle__btn is-neg" data-logreg-class="0">− class</button>
+                  </div>
+                  <div class="cml-presets" role="group" aria-label="Preset data">
+                    <span class="cml-presets__label">Preset</span>
+                    <button type="button" class="cml-preset is-active" data-logreg-preset="separated">Separated</button>
+                    <button type="button" class="cml-preset" data-logreg-preset="overlap">Overlap</button>
+                    <button type="button" class="cml-preset" data-logreg-preset="none">Blank</button>
+                  </div>
+                </div>
+                <div class="rl-controls__actions">
+                  <button type="button" id="logreg-fit" class="is-primary">Fit (GD 500 steps)</button>
+                  <button type="button" id="logreg-step">+1 step</button>
+                  <button type="button" id="logreg-reset">Reset weights</button>
+                  <button type="button" id="logreg-clear">Clear points</button>
+                </div>
+              </div>
+              <div class="rl-stage">
+                <div>
+                  <div class="cml-canvas-wrap">
+                    <canvas id="logreg-canvas" width="640" height="640" aria-label="Logistic regression scatter + boundary"></canvas>
+                  </div>
+                  <p class="cml-legend" aria-hidden="true">
+                    <span><span class="cml-legend__swatch" style="background:#3b82f6"></span>+ class (y=1)</span>
+                    <span><span class="cml-legend__swatch" style="background:#f97316"></span>− class (y=0)</span>
+                    <span><span class="cml-legend__swatch" style="background:rgba(168,85,247,0.6)"></span>Decision boundary p=0.5</span>
+                    <span>Click to drop a point in the active class.</span>
+                  </p>
+                </div>
+                <aside class="rl-sidebar" aria-label="Logistic fit stats">
+                  <h3>Fit state</h3>
+                  <div class="rl-stat-grid">
+                    <div class="rl-stat"><span class="rl-stat__label">N+ / N−</span><span class="rl-stat__value" id="logreg-nc">0 / 0</span></div>
+                    <div class="rl-stat"><span class="rl-stat__label">w</span><span class="rl-stat__value" id="logreg-w">—</span></div>
+                    <div class="rl-stat"><span class="rl-stat__label">b</span><span class="rl-stat__value" id="logreg-b">—</span></div>
+                    <div class="rl-stat"><span class="rl-stat__label">step</span><span class="rl-stat__value" id="logreg-step">0</span></div>
+                    <div class="rl-stat"><span class="rl-stat__label">log-loss</span><span class="rl-stat__value rl-stat__value--accent" id="logreg-loss">—</span></div>
+                    <div class="rl-stat"><span class="rl-stat__label">accuracy</span><span class="rl-stat__value" id="logreg-acc">—</span></div>
+                  </div>
+                  <p class="ml-hint">The purple shading shows p(y=1|x) from 0 (orange) to 1 (blue). The dark purple contour is the decision boundary where p = 0.5.</p>
+                </aside>
+              </div>
+            </article>
+
+            <!-- =============== SVM demo =============== -->
+            <article class="rl-theory__panel" id="demo-svm">
+              <h3>4 · Support Vector Machine — widest margin</h3>
+              <p class="rl-theory__kid">
+                <strong>Kid version.</strong> Draw a line between the two classes. Pick the one with the
+                biggest <em>gap</em> — the margin — on either side. Only the points that actually touch the
+                margin matter. They're the <em>support vectors</em>.
+              </p>
+              <p>
+                A linear SVM finds w, b such that the hyperplane w<sup>⊤</sup>x + b = 0 separates the classes
+                and the minimum distance from any point to it (the <em>margin</em>) is maximised. The hard-
+                margin formulation:
+              </p>
+              <div class="rl-equation" data-katex="\min_{w, b}\ \tfrac{1}{2}\lVert w \rVert^2 \quad \text{s.t.} \quad y_i\,(w^\top x_i + b) \ge 1\ \ \forall i" data-katex-display></div>
+              <p>For noisy/non-separable data, relax with slack ξ<sub>i</sub> ≥ 0 (soft margin):</p>
+              <div class="rl-equation" data-katex="\min_{w, b, \xi}\ \tfrac{1}{2}\lVert w \rVert^2 + C \sum_i \xi_i,\qquad y_i(w^\top x_i + b) \ge 1 - \xi_i" data-katex-display></div>
+              <ul>
+                <li><strong>C</strong> — slack penalty. Large C: hard margin (few points inside). Small C: wider margin, more violations allowed.</li>
+                <li><strong>ξ<sub>i</sub></strong> — how far point i sits inside its own margin (or on the wrong side).</li>
+              </ul>
+              <p>Equivalent unconstrained form using the <strong>hinge loss</strong> — which is what the demo below minimises by subgradient descent:</p>
+              <div class="rl-equation" data-katex="\min_{w, b}\ \tfrac{1}{2}\lVert w \rVert^2 + C \sum_i \max\!\bigl(0,\, 1 - y_i(w^\top x_i + b)\bigr)" data-katex-display></div>
+              <p>
+                The Lagrangian dual pairs one multiplier α<sub>i</sub> ≥ 0 per constraint. At the optimum
+                α<sub>i</sub> = 0 for points comfortably outside the margin (irrelevant); α<sub>i</sub> &gt; 0
+                only for <em>support vectors</em>. Hence "only the support vectors determine the solution" —
+                drop all other points, the classifier is unchanged.
+              </p>
+              <div class="rl-controls" aria-label="SVM controls">
+                <div class="rl-controls__row">
+                  <div class="cml-class-toggle" role="group" aria-label="Point class">
+                    <button type="button" class="cml-class-toggle__btn is-pos is-active" data-svm-class="1">+ class</button>
+                    <button type="button" class="cml-class-toggle__btn is-neg" data-svm-class="-1">− class</button>
+                  </div>
+                  <div class="cml-presets" role="group" aria-label="Preset data">
+                    <span class="cml-presets__label">Preset</span>
+                    <button type="button" class="cml-preset is-active" data-svm-preset="separated">Separated</button>
+                    <button type="button" class="cml-preset" data-svm-preset="overlap">Overlap</button>
+                    <button type="button" class="cml-preset" data-svm-preset="none">Blank</button>
+                  </div>
+                  <div class="rl-controls__group" style="min-width: 200px;">
+                    <label for="svm-c">C <span class="rl-controls__value" id="svm-c-value">1.00</span></label>
+                    <input id="svm-c" type="range" min="0.05" max="10" step="0.05" value="1" />
+                  </div>
+                </div>
+                <div class="rl-controls__actions">
+                  <button type="button" id="svm-fit" class="is-primary">Fit (subgrad 500)</button>
+                  <button type="button" id="svm-step">+1 step</button>
+                  <button type="button" id="svm-reset">Reset weights</button>
+                  <button type="button" id="svm-clear">Clear points</button>
+                </div>
+              </div>
+              <div class="rl-stage">
+                <div>
+                  <div class="cml-canvas-wrap">
+                    <canvas id="svm-canvas" width="640" height="640" aria-label="SVM scatter + margin"></canvas>
+                  </div>
+                  <p class="cml-legend" aria-hidden="true">
+                    <span><span class="cml-legend__swatch" style="background:#3b82f6"></span>+ class</span>
+                    <span><span class="cml-legend__swatch" style="background:#f97316"></span>− class</span>
+                    <span><span class="cml-legend__swatch" style="background:#22c55e"></span>Support vectors</span>
+                    <span><span class="cml-legend__swatch" style="background:rgba(168,85,247,0.6)"></span>Decision + margin lines</span>
+                  </p>
+                </div>
+                <aside class="rl-sidebar" aria-label="SVM stats">
+                  <h3>Fit state</h3>
+                  <div class="rl-stat-grid">
+                    <div class="rl-stat"><span class="rl-stat__label">N+ / N−</span><span class="rl-stat__value" id="svm-nc">0 / 0</span></div>
+                    <div class="rl-stat"><span class="rl-stat__label">w</span><span class="rl-stat__value" id="svm-w">—</span></div>
+                    <div class="rl-stat"><span class="rl-stat__label">b</span><span class="rl-stat__value" id="svm-b">—</span></div>
+                    <div class="rl-stat"><span class="rl-stat__label">margin</span><span class="rl-stat__value rl-stat__value--accent" id="svm-margin">—</span></div>
+                    <div class="rl-stat"><span class="rl-stat__label">step</span><span class="rl-stat__value" id="svm-step">0</span></div>
+                    <div class="rl-stat"><span class="rl-stat__label">support vectors</span><span class="rl-stat__value" id="svm-sv">—</span></div>
+                  </div>
+                  <p class="ml-hint">Margin width = 2 / ‖w‖. Support vectors (green outline) are the points with y<sub>i</sub>(w·x<sub>i</sub>+b) ≤ 1.</p>
+                </aside>
+              </div>
+            </article>
+
+            <section class="rl-theory" aria-labelledby="cml-theory-title">
+              <h3 id="cml-theory-title" class="visually-hidden">Classical ML theory</h3>
+
+              <article class="rl-theory__panel" id="theory-kernels">
+                <h3>5 · Kernels — SVMs beyond straight lines</h3>
+                <p class="rl-theory__kid">
+                  <strong>Kid version.</strong> If the two classes aren't separable by a straight line, lift
+                  them into a higher-dimensional space where they <em>are</em>. The "kernel trick" lets you do
+                  that without ever writing down the high-dimensional coordinates.
+                </p>
+                <p>
+                  The dual SVM only ever touches data through dot products
+                  <span data-katex="x_i^\top x_j"></span>. Replace that with a kernel
+                  <span data-katex="K(x_i, x_j) = \phi(x_i)^\top \phi(x_j)"></span> and you get an SVM in
+                  whatever space φ maps to — without computing φ explicitly.
+                </p>
+                <div class="rl-taxonomy">
+                  <div class="rl-taxonomy__card">
+                    <h4>Linear</h4>
+                    <div class="rl-equation" data-katex="K(x, x') = x^\top x'" data-katex-display></div>
+                    <p>Original feature space. The demo above.</p>
+                  </div>
+                  <div class="rl-taxonomy__card">
+                    <h4>Polynomial</h4>
+                    <div class="rl-equation" data-katex="K(x, x') = (x^\top x' + c)^d" data-katex-display></div>
+                    <p>Implicitly adds all monomial interactions up to degree d.</p>
+                  </div>
+                  <div class="rl-taxonomy__card">
+                    <h4>RBF (Gaussian)</h4>
+                    <div class="rl-equation" data-katex="K(x, x') = e^{-\gamma \lVert x - x' \rVert^2}" data-katex-display></div>
+                    <p>Implicitly infinite-dimensional. The go-to general-purpose kernel.</p>
+                  </div>
+                </div>
+                <p>
+                  The same trick applies to kernel ridge regression, Gaussian processes (RBF =&gt; squared
+                  exponential covariance), and kernel PCA. Modern deep nets have mostly replaced kernels —
+                  they learn the feature map φ from data — but when you only have hundreds of samples,
+                  kernel SVM is still state-of-the-art.
+                </p>
+              </article>
+
+              <article class="rl-theory__panel" id="theory-gen">
+                <h3>6 · Generalisation — bias, variance, regularisation</h3>
+                <p class="rl-theory__kid">
+                  <strong>Kid version.</strong> A model that memorises the training set perfectly (high
+                  variance) will fail on new data. A model too simple to capture the pattern (high bias) also
+                  fails. Regularisation tells the loss "keep the knobs small" to land somewhere in the middle.
+                </p>
+                <p>The expected test error of a learned predictor decomposes into three terms:</p>
+                <div class="rl-equation" data-katex="\mathbb{E}\!\left[(y - \hat f(x))^2\right] = \underbrace{\bigl(\mathbb{E}[\hat f(x)] - f(x)\bigr)^2}_{\text{bias}^2} + \underbrace{\mathrm{Var}[\hat f(x)]}_{\text{variance}} + \underbrace{\sigma^2}_{\text{irreducible}}" data-katex-display></div>
+                <ul>
+                  <li><strong>Bias</strong> — systematic error from an inflexible model. Shrinks with capacity.</li>
+                  <li><strong>Variance</strong> — sensitivity to the training sample. Grows with capacity.</li>
+                  <li><strong>Irreducible</strong> — noise inherent to the data; no model can fix it.</li>
+                </ul>
+                <p><strong>Regularisation</strong> adds a penalty on the parameter norm:</p>
+                <div class="rl-equation" data-katex="\hat\theta = \arg\min_\theta\ L(\theta) + \lambda\,\Omega(\theta)" data-katex-display></div>
+                <div class="rl-taxonomy">
+                  <div class="rl-taxonomy__card">
+                    <h4>Ridge · L2</h4>
+                    <div class="rl-equation" data-katex="\Omega(\theta) = \lVert \theta \rVert_2^2" data-katex-display></div>
+                    <ul>
+                      <li>Shrinks weights smoothly toward zero.</li>
+                      <li>Closed form: θ̂ = (X<sup>⊤</sup>X + λI)<sup>−1</sup>X<sup>⊤</sup>y.</li>
+                      <li>MAP with a Gaussian prior on θ.</li>
+                    </ul>
+                  </div>
+                  <div class="rl-taxonomy__card">
+                    <h4>Lasso · L1</h4>
+                    <div class="rl-equation" data-katex="\Omega(\theta) = \lVert \theta \rVert_1" data-katex-display></div>
+                    <ul>
+                      <li>Drives many coefficients to <em>exactly</em> zero — sparse solution.</li>
+                      <li>Implicit feature selection.</li>
+                      <li>MAP with a Laplace prior.</li>
+                    </ul>
+                  </div>
+                  <div class="rl-taxonomy__card">
+                    <h4>Elastic net</h4>
+                    <div class="rl-equation" data-katex="\Omega(\theta) = \alpha \lVert \theta \rVert_1 + (1-\alpha) \lVert \theta \rVert_2^2" data-katex-display></div>
+                    <ul>
+                      <li>Hybrid of the two.</li>
+                      <li>Sparse like lasso, stable like ridge.</li>
+                    </ul>
+                  </div>
+                </div>
+                <p class="ml-hint">
+                  Deep-learning regularisation adds more tools — dropout, batch norm, data augmentation,
+                  early stopping, weight decay (= L2) — all in service of the same bias-variance trade-off.
+                </p>
+              </article>
+
+              <article class="rl-theory__panel" id="theory-map">
+                <h3>7 · A classical-ML clustering map</h3>
+                <p class="rl-theory__kid">
+                  <strong>Kid version.</strong> Four families. Pick one axis ("do I want a number or a label?")
+                  and one trick ("kernels? sparsity?") and you've covered most of the "boring but reliable"
+                  toolbox used before deep learning took over.
+                </p>
+                <div class="rl-clusters">
+                  <div class="rl-cluster" data-family="reg">
+                    <span class="rl-cluster__eyebrow">Family A</span>
+                    <h4 class="rl-cluster__title">Regression (predict a number)</h4>
+                    <p>Linear fit via OLS. Extensions add regularisation or a non-linear link.</p>
+                    <div class="rl-cluster__members">
+                      <span class="rl-cluster__member">Linear regression</span>
+                      <span class="rl-cluster__member">Ridge</span>
+                      <span class="rl-cluster__member">Lasso / Elastic-net</span>
+                      <span class="rl-cluster__member">Poisson regression</span>
+                      <span class="rl-cluster__member">Kernel ridge</span>
+                      <span class="rl-cluster__member">GLM</span>
+                    </div>
+                    <ul class="rl-cluster__axes">
+                      <li><strong>loss</strong>squared / Poisson / Huber</li>
+                      <li><strong>MLE view</strong>Gaussian / Poisson noise</li>
+                      <li><strong>solver</strong>closed form or GD</li>
+                    </ul>
+                  </div>
+                  <div class="rl-cluster" data-family="clf">
+                    <span class="rl-cluster__eyebrow">Family B</span>
+                    <h4 class="rl-cluster__title">Classification (predict a label)</h4>
+                    <p>Map x to a score, threshold or softmax.</p>
+                    <div class="rl-cluster__members">
+                      <span class="rl-cluster__member">Logistic regression</span>
+                      <span class="rl-cluster__member">Softmax (multiclass)</span>
+                      <span class="rl-cluster__member">LDA / QDA</span>
+                      <span class="rl-cluster__member">Naive Bayes</span>
+                      <span class="rl-cluster__member">k-NN</span>
+                      <span class="rl-cluster__member">Decision trees</span>
+                    </div>
+                    <ul class="rl-cluster__axes">
+                      <li><strong>loss</strong>cross-entropy / 0-1</li>
+                      <li><strong>MLE view</strong>Bernoulli / categorical</li>
+                      <li><strong>solver</strong>GD, Newton, tree splits</li>
+                    </ul>
+                  </div>
+                  <div class="rl-cluster" data-family="kernel">
+                    <span class="rl-cluster__eyebrow">Family C</span>
+                    <h4 class="rl-cluster__title">Margin / kernel</h4>
+                    <p>Max-margin classifiers with linear or implicit feature maps.</p>
+                    <div class="rl-cluster__members">
+                      <span class="rl-cluster__member">Linear SVM</span>
+                      <span class="rl-cluster__member">Kernel SVM (RBF)</span>
+                      <span class="rl-cluster__member">SVR</span>
+                      <span class="rl-cluster__member">Gaussian Processes</span>
+                    </div>
+                    <ul class="rl-cluster__axes">
+                      <li><strong>loss</strong>hinge / squared-hinge / ε-insensitive</li>
+                      <li><strong>dual</strong>support vectors emerge naturally</li>
+                      <li><strong>kernel</strong>linear / polynomial / RBF</li>
+                    </ul>
+                  </div>
+                  <div class="rl-cluster" data-family="regularise">
+                    <span class="rl-cluster__eyebrow">Family D — orthogonal</span>
+                    <h4 class="rl-cluster__title">Regularisation / Bayes</h4>
+                    <p>Add priors (ridge/lasso) or go fully Bayesian to quantify uncertainty.</p>
+                    <div class="rl-cluster__members">
+                      <span class="rl-cluster__member">Ridge</span>
+                      <span class="rl-cluster__member">Lasso</span>
+                      <span class="rl-cluster__member">Bayesian linear regression</span>
+                      <span class="rl-cluster__member">GPs</span>
+                      <span class="rl-cluster__member">Cross-validation</span>
+                    </div>
+                    <ul class="rl-cluster__axes">
+                      <li><strong>wraps</strong>any model in A–C</li>
+                      <li><strong>priors</strong>Gaussian (ridge) · Laplace (lasso)</li>
+                    </ul>
+                  </div>
+                </div>
+              </article>
+            </section>
+          </article>
+        </div>
+      </section>
+    </main>
+
+    <div id="site-footer"></div>
+
+    <script type="module">
+      import { initMainLayout } from '../../assets/js/layout/mainLayout.js';
+      initMainLayout('classical-ml');
+    </script>
+    <script type="module" src="../../assets/js/main.js"></script>
+    <script type="module" src="../../assets/js/classical-ml.js"></script>
+    <script type="module" src="../../assets/js/lab-tooltips.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+    <script>
+      document.addEventListener('DOMContentLoaded', () => {
+        const render = () => {
+          if (!window.katex) return;
+          document.querySelectorAll('[data-katex]').forEach((el) => {
+            const tex = el.getAttribute('data-katex');
+            if (!tex) return;
+            const displayMode = el.hasAttribute('data-katex-display');
+            window.katex.render(tex, el, { throwOnError: false, displayMode });
+          });
+        };
+        if (window.katex) render();
+        else window.addEventListener('load', render, { once: true });
+      });
+    </script>
+  </body>
+</html>

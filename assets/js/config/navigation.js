@@ -15,7 +15,8 @@ const NAV_LABS = [
   { id: 'fourier-epicycles', label: 'Fourier Epicycles', href: 'pages/fourier-epicycles/' },
   { id: 'rl-lab', label: 'RL Lab', href: 'pages/rl-lab/' },
   { id: 'diffusion-lab', label: 'Diffusion Lab', href: 'pages/diffusion-lab/' },
-  { id: 'math-lab', label: 'Math Foundations', href: 'pages/math-lab/' }
+  { id: 'math-lab', label: 'Math Foundations', href: 'pages/math-lab/' },
+  { id: 'classical-ml', label: 'Classical ML', href: 'pages/classical-ml/' }
 ];
 
 const LOGO_TEXT = 'Ka Ming Lui';

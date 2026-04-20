@@ -14,8 +14,8 @@ const MATH_SEC = (id, label) => ({ id, label: `Math · ${label}` });
 export const GLOSSARY = {
   // ====================== RL — core variables ======================
   'epsilon': {
-    title: 'ε · exploration rate',
-    body: 'Probability of picking a <em>random</em> action in ε-greedy. ε=0 is pure exploitation (greedy); ε=1 is pure exploration (random); 0.05–0.1 is typical. Common to decay ε over time.',
+    title: 'ε · probability of exploration',
+    body: 'ε is the <em>probability of picking a random action (exploring)</em> each step. Its complement 1 − ε is the probability of picking the current-best-estimated action (exploiting). ε=0 is pure exploit — locks in on the first apparent winner. ε=1 is pure random. 0.05–0.1 is typical; decayed over time is common.',
     related: ['epsilon-greedy', 'exploration-exploitation', 'ucb1', 'thompson'],
     sections: [RL_SEC('theory-bandits', '§1 Bandits')]
   },
@@ -708,5 +708,102 @@ export const GLOSSARY = {
     title: 'KKT conditions',
     body: 'Karush-Kuhn-Tucker generalisation of Lagrange multipliers to inequality constraints. Optimality of a constrained optimum requires ∇f + Σ λ<sub>i</sub> ∇g<sub>i</sub> = 0, primal feasibility, dual feasibility (λ ≥ 0), and complementary slackness (λ<sub>i</sub> g<sub>i</sub> = 0).',
     related: ['lagrangian', 'argmin', 'convex']
+  },
+
+  // ====================== Classical ML ======================
+  'supervised': {
+    title: 'Supervised learning',
+    body: 'Learn f<sub>θ</sub>(x) ≈ y from a labelled dataset {(x<sub>i</sub>, y<sub>i</sub>)}. Regression when y is a number; classification when y is a category.',
+    related: ['regression', 'classification', 'loss', 'mle']
+  },
+  'regression': {
+    title: 'Regression',
+    body: 'Predict a continuous y. Linear regression fits y ≈ w<sup>⊤</sup>x + b by minimising squared error.',
+    related: ['ols', 'mle', 'regularisation', 'ridge'],
+    sections: [{ id: 'demo-linreg', label: 'Classical · §1 Linear regression' }]
+  },
+  'classification': {
+    title: 'Classification',
+    body: 'Predict a category y. Two-class: logistic regression or SVM. Multiclass: softmax, LDA, trees, k-NN.',
+    related: ['logistic-regression', 'svm', 'decision-boundary'],
+    sections: [{ id: 'demo-logreg', label: 'Classical · §3 Logistic' }]
+  },
+  'ols': {
+    title: 'OLS · Ordinary Least Squares',
+    body: 'Pick θ minimising Σ (y<sub>i</sub> − θ<sup>⊤</sup>x<sub>i</sub>)². Closed form θ̂ = (X<sup>⊤</sup>X)<sup>−1</sup>X<sup>⊤</sup>y. Geometrically: orthogonal projection of y onto the column space of X. Falls out of MLE under Gaussian noise.',
+    related: ['regression', 'mle', 'ridge'],
+    sections: [{ id: 'demo-linreg', label: 'Classical · §1 OLS' }]
+  },
+  'logistic-regression': {
+    title: 'Logistic regression',
+    body: 'Model P(y=1|x) = σ(w<sup>⊤</sup>x + b). Train by minimising the binary cross-entropy (= −log Bernoulli likelihood). No closed form; minimise by GD/Newton. Decision boundary is linear.',
+    related: ['sigmoid', 'cross-entropy', 'mle', 'classification'],
+    sections: [{ id: 'demo-logreg', label: 'Classical · §3 Logistic' }]
+  },
+  'sigmoid': {
+    title: 'σ · sigmoid / logistic function',
+    body: 'σ(z) = 1 / (1 + e<sup>−z</sup>). Maps ℝ → (0, 1) smoothly; makes a linear score interpretable as a probability. Derivative σ(z)(1 − σ(z)).',
+    related: ['logistic-regression', 'cross-entropy']
+  },
+  'cross-entropy': {
+    title: 'Cross-entropy loss',
+    body: 'For binary y ∈ {0, 1} and predicted p: L = −[y log p + (1 − y) log(1 − p)]. Equivalent to −log Bernoulli likelihood. Generalised by categorical cross-entropy for multi-class softmax outputs.',
+    related: ['logistic-regression', 'mle', 'forward-kl']
+  },
+  'svm': {
+    title: 'SVM · Support Vector Machine',
+    body: 'Max-margin classifier. Hard margin: min ½‖w‖² s.t. y<sub>i</sub>(w<sup>⊤</sup>x<sub>i</sub> + b) ≥ 1. Soft margin adds slack ξ<sub>i</sub> with penalty C. Equivalent unconstrained form uses hinge loss. Only support vectors matter at the optimum.',
+    related: ['hinge', 'support-vector', 'kernel', 'margin', 'lagrangian'],
+    sections: [{ id: 'demo-svm', label: 'Classical · §4 SVM' }]
+  },
+  'hinge': {
+    title: 'Hinge loss',
+    body: 'max(0, 1 − y · (w<sup>⊤</sup>x + b)). Zero for points safely outside the margin, linear in the margin violation. Combined with ½‖w‖² it gives the soft-margin SVM primal.',
+    related: ['svm', 'support-vector']
+  },
+  'margin': {
+    title: 'Margin',
+    body: 'Geometric distance from the separating hyperplane to the nearest training point: 2 / ‖w‖ (with normalised SVM constraints). Wider margin → better generalisation, up to the bias-variance trade-off.',
+    related: ['svm', 'support-vector']
+  },
+  'support-vector': {
+    title: 'Support vector',
+    body: 'A training point lying on or inside the SVM\'s margin. Only these carry non-zero dual multipliers α<sub>i</sub> and determine (w, b); all other points can be deleted with no change to the classifier.',
+    related: ['svm', 'margin', 'lagrangian']
+  },
+  'kernel': {
+    title: 'Kernel K(x, x′)',
+    body: 'A function equal to ⟨φ(x), φ(x′)⟩ for some feature map φ, possibly infinite-dimensional. The "kernel trick" lets any dot-product-based algorithm (dual SVM, kernel ridge, GPs) work in that lifted space without computing φ.',
+    related: ['svm', 'rbf-kernel']
+  },
+  'rbf-kernel': {
+    title: 'RBF · Gaussian kernel',
+    body: 'K(x, x′) = exp(−γ‖x − x′‖²). Implicitly infinite-dimensional. The default general-purpose kernel in SVMs and GPs.',
+    related: ['kernel', 'svm']
+  },
+  'decision-boundary': {
+    title: 'Decision boundary',
+    body: 'The surface in input space separating regions predicted by a classifier. For a linear model it\'s the hyperplane w<sup>⊤</sup>x + b = 0 (or p = 0.5 for logistic). Kernels / trees / deep nets produce curved boundaries.',
+    related: ['svm', 'logistic-regression', 'classification']
+  },
+  'ridge': {
+    title: 'Ridge regression · L2',
+    body: 'OLS + λ‖θ‖². Closed form θ̂ = (X<sup>⊤</sup>X + λI)<sup>−1</sup>X<sup>⊤</sup>y. Shrinks coefficients smoothly; MAP under a Gaussian prior on θ.',
+    related: ['ols', 'regularisation', 'map-estimate']
+  },
+  'lasso': {
+    title: 'Lasso · L1',
+    body: 'OLS + λ‖θ‖<sub>1</sub>. Drives many coefficients to exactly zero — implicit feature selection. MAP under a Laplace prior. No closed form; solved by coordinate descent or LARS.',
+    related: ['ridge', 'regularisation', 'map-estimate']
+  },
+  'regularisation': {
+    title: 'Regularisation',
+    body: 'Add a penalty on parameter norm to the training loss so the model can\'t over-fit: min L(θ) + λ Ω(θ). Classic choices: L2 (ridge), L1 (lasso), elastic net. Deep-learning extensions: dropout, weight decay, early stopping, data augmentation.',
+    related: ['ridge', 'lasso', 'bias-variance']
+  },
+  'bias-variance': {
+    title: 'Bias / variance trade-off',
+    body: 'Expected test error = bias² + variance + irreducible noise. Bias shrinks with model capacity; variance grows with it. Regularisation and cross-validation pick a sweet spot.',
+    related: ['regularisation', 'ridge']
   }
 };
