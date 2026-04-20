@@ -21,8 +21,12 @@ const voltageLedDisplay = {
     { id: 'R23', type: 'resistor', x: 880, y: 880, rotation: 1, mirrorX: false, props: { R: '1k',  Tolerance: '5' } },
     { id: 'GND3', type: 'ground', x: 880, y: 960, rotation: 0, mirrorX: false, props: {} },
 
-    // --- Input signal (triangle sweep through all four thresholds) ---
-    { id: 'FG1', type: 'funcGen', x: 1000, y: 500, rotation: 0, mirrorX: false, props: { Vpp: '2', Freq: '2', Offset: '0.75', Phase: '0', Wave: 'triangle' } },
+    // --- Input signal (treble + bass sines stacked in series) ---
+    //   FG1 (bass) ties to GND and provides the slow sweep through all four
+    //   thresholds. FG2 (treble) floats on top of FG1's output, adding a
+    //   smaller fast flutter — the final signal is read off FG2 pin 0.
+    { id: 'FG1', type: 'funcGen', x: 1000, y: 500, rotation: 0, mirrorX: false, props: { Vpp: '2', Freq: '2', Offset: '0.75', Phase: '0', Wave: 'sine' } },
+    { id: 'FG2', type: 'funcGen', x: 880,  y: 500, rotation: 0, mirrorX: false, props: { Vpp: '0.2', Freq: '80', Offset: '0', Phase: '0', Wave: 'sine' } },
     { id: 'GND4', type: 'ground', x: 1000, y: 620, rotation: 0, mirrorX: false, props: {} },
 
     // --- Comparators U2 (thresholds 1.5 V and 1.0 V) and U3 (0.5 V, 0.25 V) ---
@@ -85,9 +89,12 @@ const voltageLedDisplay = {
     //  Tap D (0.25 V) = R22.1 / R23.0 → U3 2IN-
     { from: { id: 'R23', pin: 0 }, to: { id: 'U3', pin: 5 }, vertices: [{ x: 960, y: 840 }, { x: 1260, y: 840 }, { x: 1260, y: 860 }] },
 
-    // --- Function generator drives signal to all four + inputs ---
+    // --- Signal chain: FG1 (bass, tied to GND) stacks with FG2 (treble) ---
     { from: { id: 'FG1', pin: 1 }, to: { id: 'GND4', pin: 0 }, vertices: [] },
-    { from: { id: 'FG1', pin: 0 }, to: { id: 'J_SIG1', pin: 0 }, vertices: [{ x: 980, y: 660 }] },
+    // FG2 COM (pin 1) sits on FG1's output — the two sines add in series
+    { from: { id: 'FG2', pin: 1 }, to: { id: 'FG1', pin: 0 }, vertices: [] },
+    // Combined signal leaves on FG2 pin 0 and fans out to the comparator + inputs
+    { from: { id: 'FG2', pin: 0 }, to: { id: 'J_SIG1', pin: 0 }, vertices: [{ x: 860, y: 660 }] },
     { from: { id: 'J_SIG1', pin: 0 }, to: { id: 'U2', pin: 2 }, vertices: [{ x: 1120, y: 660 }] },
     { from: { id: 'J_SIG1', pin: 0 }, to: { id: 'U2', pin: 4 }, vertices: [{ x: 1120, y: 680 }, { x: 1240, y: 680 }] },
     { from: { id: 'J_SIG1', pin: 0 }, to: { id: 'J_SIG2', pin: 0 }, vertices: [{ x: 1120, y: 860 }] },
