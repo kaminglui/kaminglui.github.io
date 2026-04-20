@@ -744,6 +744,39 @@ function runSimulation(opts = {}) {
         op.clampOutput(finalSolution, dt);
       }
     });
+
+    // Pin each op-amp's output and re-solve once so nodes downstream of a
+    // saturated output come back consistent with the clamped value. The first
+    // solve used a high-gain VCVS, which is fine for the op-amp's own output
+    // slot (clampOutput rewrites it) but leaves any resistor / wire that
+    // connects to nOut reading a spurious "gain · differential" voltage.
+    // Re-stamping as an ideal source at the clamped value fixes that in one
+    // extra linear solve.
+    const pinnable = opAmpComponents.filter((op) =>
+      typeof op.pinOutput === 'function' && op.nOut != null && op.nOut !== -1
+    );
+    if (pinnable.length) {
+      pinnable.forEach((op) => {
+        const idx = mapNode(op.nOut);
+        op.pinOutput(finalSolution[idx] ?? 0);
+      });
+      const pinSystem = new MNASystem(mapping.nodeCount + 1);
+      const pinStamps = createStampHelpers(pinSystem, mapNode);
+      mapping.rootToNode.forEach((n) => {
+        if (n !== -1) pinStamps.stampConductance(n, -1, baselineLeak);
+      });
+      simComponents.forEach((comp) => {
+        if (typeof comp.stamp === 'function') comp.stamp(pinStamps);
+      });
+      const reSolved = solveWithRetry(pinSystem, {
+        baselineLeak,
+        nodeIndices: physicalNodeIndices
+      });
+      if (!reSolved.singular && reSolved.solution) {
+        finalSolution = reSolved.solution;
+      }
+      pinnable.forEach((op) => op.clearPin());
+    }
   }
 
   const nodeSolution = new Float64Array(mapping.nodeCount);

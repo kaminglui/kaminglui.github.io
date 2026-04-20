@@ -55,9 +55,32 @@ class IdealOpAmp {
         if (this.nNon !== -1) stamps.stampConductance(this.nNon, -1, this.inputLeak);
         if (this.nInv !== -1) stamps.stampConductance(this.nInv, -1, this.inputLeak);
         if (this.nOut !== -1) stamps.stampConductance(this.nOut, -1, this.outputLeak);
+        if (this.pinned && this.nOut !== -1) {
+            // Second-pass stamp: after clampOutput() decides what the output
+            // should actually be (rail / slew-limited / open loop), we re-stamp
+            // the op-amp as an ideal voltage source pinning nOut to that value
+            // and re-solve. Without this, downstream nodes — anything connected
+            // to nOut through resistors or junctions — still see the first-pass
+            // gain·differential output (which can easily hit ±1 MV for a
+            // saturated comparator), and any current / voltage read from those
+            // nodes is garbage even though clampOutput already fixed nOut
+            // itself. The extra solve makes the whole solution self-consistent.
+            stamps.stampVCVS(this.nOut, -1, -1, -1, 0, this.pinnedValue || 0);
+            return;
+        }
         // Input offset voltage adds gain·Vos to the VCVS branch constant so the
         // effective differential input is (Vnon − Vinv + Vos).
         stamps.stampVCVS(this.nOut, -1, this.nNon, this.nInv, this.gain, this.gain * this.inputOffset);
+    }
+
+    pinOutput(value) {
+        this.pinnedValue = value;
+        this.pinned = true;
+    }
+
+    clearPin() {
+        this.pinned = false;
+        this.pinnedValue = 0;
     }
 
     clampOutput(systemSolution, dt = 0) {
