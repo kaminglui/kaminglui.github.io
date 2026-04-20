@@ -29,6 +29,7 @@ import { createWiringApi } from './circuit-lab/wiring.js';
 import { createSharingApi } from './circuit-lab/sharing.js';
 import { createHistoryApi } from './circuit-lab/history.js';
 import { attachComponentSearch } from './circuit-lab/componentSearch.js';
+import { createMinimap } from './circuit-lab/minimap.js';
 import {
     fileTimestamp,
     validateSaveData,
@@ -4896,150 +4897,11 @@ function zoomInButton() { applyZoom(ZOOM_IN_STEP); }
 function zoomOutButton() { applyZoom(ZOOM_OUT_STEP); }
 
 /* ---------- MINIMAP ---------- */
-// World extents for the minimap: keep a bit of margin outside the board so edge
-// components still appear inside the frame.
-const MINIMAP_WORLD_PAD = 120;
-
-function getMinimapWorldBounds() {
-    return {
-        x: -MINIMAP_WORLD_PAD,
-        y: -MINIMAP_WORLD_PAD,
-        w: BOARD_W + MINIMAP_WORLD_PAD * 2,
-        h: BOARD_H + MINIMAP_WORLD_PAD * 2
-    };
-}
-
-function resizeMinimap() {
-    if (!minimapCanvas) return;
-    const dpr = window.devicePixelRatio || 1;
-    const rect = minimapCanvas.getBoundingClientRect();
-    const w = Math.max(1, Math.round(rect.width));
-    const h = Math.max(1, Math.round(rect.height));
-    if (minimapCanvas.width !== w * dpr || minimapCanvas.height !== h * dpr) {
-        minimapCanvas.width = w * dpr;
-        minimapCanvas.height = h * dpr;
-    }
-}
+// createMinimap() is constructed lazily inside init() once the DOM refs exist.
+let minimap = null;
 
 function drawMinimap() {
-    if (!minimapCanvas || !minimapCtx) return;
-    resizeMinimap();
-    const dpr = window.devicePixelRatio || 1;
-    const W = minimapCanvas.width;
-    const H = minimapCanvas.height;
-    minimapCtx.setTransform(1, 0, 0, 1, 0, 0);
-    minimapCtx.clearRect(0, 0, W, H);
-
-    const bounds = getMinimapWorldBounds();
-    const sx = W / bounds.w;
-    const sy = H / bounds.h;
-    const mapX = (wx) => (wx - bounds.x) * sx;
-    const mapY = (wy) => (wy - bounds.y) * sy;
-
-    // board backdrop
-    minimapCtx.fillStyle = 'rgba(35, 45, 60, 0.55)';
-    minimapCtx.fillRect(mapX(0), mapY(0), BOARD_W * sx, BOARD_H * sy);
-    minimapCtx.strokeStyle = 'rgba(120, 140, 170, 0.4)';
-    minimapCtx.lineWidth = 1;
-    minimapCtx.strokeRect(mapX(0), mapY(0), BOARD_W * sx, BOARD_H * sy);
-
-    // wires (thin so they read as connectivity)
-    if (wires && wires.length) {
-        minimapCtx.strokeStyle = 'rgba(140, 180, 210, 0.55)';
-        minimapCtx.lineWidth = Math.max(1, 1 * dpr);
-        minimapCtx.beginPath();
-        wires.forEach((w) => {
-            try {
-                const poly = (typeof w.getPolyline === 'function') ? w.getPolyline() : null;
-                const pts = Array.isArray(poly) && poly.length
-                    ? poly
-                    : [w.from?.c?.getPinPos?.(w.from.p), w.to?.c?.getPinPos?.(w.to.p)].filter(Boolean);
-                if (pts.length < 2) return;
-                minimapCtx.moveTo(mapX(pts[0].x), mapY(pts[0].y));
-                for (let i = 1; i < pts.length; i += 1) {
-                    minimapCtx.lineTo(mapX(pts[i].x), mapY(pts[i].y));
-                }
-            } catch { /* draw robustness: skip malformed wires */ }
-        });
-        minimapCtx.stroke();
-    }
-
-    // component dots, colored by broad category
-    const compColor = (c) => {
-        const k = (c && c.kind) || '';
-        if (k === 'voltagesource' || k === 'ground' || k === 'functiongenerator') return '#fbbf24';
-        if (k === 'oscilloscope') return '#38bdf8';
-        if (k === 'lf412') return '#a78bfa';
-        if (k === 'led') return '#f87171';
-        return '#cbd5e1';
-    };
-    components.forEach((c) => {
-        const r = 2 * dpr;
-        minimapCtx.fillStyle = compColor(c);
-        const cx = mapX(c.x);
-        const cy = mapY(c.y);
-        minimapCtx.beginPath();
-        minimapCtx.arc(cx, cy, r, 0, Math.PI * 2);
-        minimapCtx.fill();
-    });
-
-    // viewport rectangle
-    const viewW = (canvasDisplayWidth || canvas?.width || 0) / (zoom || 1);
-    const viewH = (canvasDisplayHeight || canvas?.height || 0) / (zoom || 1);
-    const vx = -viewOffsetX;
-    const vy = -viewOffsetY;
-    minimapCtx.strokeStyle = '#60a5fa';
-    minimapCtx.lineWidth = Math.max(1.5, 1.5 * dpr);
-    minimapCtx.strokeRect(mapX(vx), mapY(vy), viewW * sx, viewH * sy);
-    minimapCtx.fillStyle = 'rgba(96, 165, 250, 0.10)';
-    minimapCtx.fillRect(mapX(vx), mapY(vy), viewW * sx, viewH * sy);
-}
-
-function panViewToMinimapPoint(clientX, clientY) {
-    if (!minimapCanvas || !canvas) return;
-    const rect = minimapCanvas.getBoundingClientRect();
-    if (!rect.width || !rect.height) return;
-    const bounds = getMinimapWorldBounds();
-    const mx = ((clientX - rect.left) / rect.width) * bounds.w + bounds.x;
-    const my = ((clientY - rect.top) / rect.height) * bounds.h + bounds.y;
-    const viewW = (canvasDisplayWidth || canvas.width) / (zoom || 1);
-    const viewH = (canvasDisplayHeight || canvas.height) / (zoom || 1);
-    // Place the clicked point at the centre of the main canvas viewport.
-    viewOffsetX = -(mx - viewW / 2);
-    viewOffsetY = -(my - viewH / 2);
-    if (typeof clampView === 'function') clampView();
-}
-
-let minimapDragging = false;
-function attachMinimapHandlers() {
-    if (!minimapPanel) return;
-    const onDownMap = (e) => {
-        e.preventDefault();
-        minimapDragging = true;
-        panViewToMinimapPoint(e.clientX, e.clientY);
-    };
-    const onMoveMap = (e) => {
-        if (!minimapDragging) return;
-        panViewToMinimapPoint(e.clientX, e.clientY);
-    };
-    const onUpMap = () => { minimapDragging = false; };
-    minimapPanel.addEventListener('mousedown', onDownMap);
-    window.addEventListener('mousemove', onMoveMap);
-    window.addEventListener('mouseup', onUpMap);
-    minimapPanel.addEventListener('touchstart', (e) => {
-        const t = e.touches[0];
-        if (!t) return;
-        e.preventDefault();
-        minimapDragging = true;
-        panViewToMinimapPoint(t.clientX, t.clientY);
-    }, { passive: false });
-    minimapPanel.addEventListener('touchmove', (e) => {
-        const t = e.touches[0];
-        if (!t || !minimapDragging) return;
-        e.preventDefault();
-        panViewToMinimapPoint(t.clientX, t.clientY);
-    }, { passive: false });
-    minimapPanel.addEventListener('touchend', () => { minimapDragging = false; });
+    if (minimap) minimap.draw();
 }
 
 /* ---------- MEASUREMENT PROBE ---------- */
@@ -5326,7 +5188,24 @@ function reportInitError(message) {
         if (e.key === 'Shift') shiftHeldForWire = false;
     });
 
-    attachMinimapHandlers();
+    minimap = createMinimap({
+        minimapCanvas,
+        minimapPanel,
+        getComponents: () => components,
+        getWires: () => wires,
+        getCamera: () => ({ offsetX: viewOffsetX, offsetY: viewOffsetY, zoom }),
+        setCamera: ({ offsetX, offsetY }) => {
+            viewOffsetX = offsetX;
+            viewOffsetY = offsetY;
+            clampView();
+        },
+        getViewportSize: () => ({
+            w: canvasDisplayWidth || canvas?.width || 0,
+            h: canvasDisplayHeight || canvas?.height || 0
+        }),
+        getBoardSize: () => ({ w: BOARD_W, h: BOARD_H })
+    });
+    if (minimap) minimap.attachHandlers();
     attachComponentSearch();
 
     // Shared link takes precedence over locally-saved state so the user sees
