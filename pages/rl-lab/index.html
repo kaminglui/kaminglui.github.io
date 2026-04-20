@@ -1,0 +1,767 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="Play with the multi-armed bandit problem, then read a kid-friendly tour of reinforcement learning: MDPs, Bellman, value/policy iteration, Monte Carlo, TD, on/off-policy, importance sampling, and actor-critic."
+    />
+    <title>RL Lab — Ka Ming Lui</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fira+Code:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="../../assets/css/style.css" />
+    <link rel="stylesheet" href="../../assets/css/rl-lab.css" />
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css"
+      integrity="sha384-n8MVd4RsNIU0tAv4ct0nTaAbDJwPJzDEaqSD1odI+WdtXRGWt2kTvGFasHpSy3SV"
+      crossorigin="anonymous"
+    />
+  </head>
+  <body class="theme-light">
+    <div id="site-header"></div>
+
+    <main class="lab-main">
+      <section class="lab-hero">
+        <div class="container">
+          <div class="lab-hero__inner">
+            <p class="lab-hero__eyebrow">Interactive lab</p>
+            <h1 class="lab-hero__title">Reinforcement Learning Lab</h1>
+            <p class="lab-hero__lead">
+              Start with the simplest RL problem — the multi-armed bandit — and watch exploration beat exploitation
+              (or lose to it). Then walk through MDPs, the Bellman equation, value and policy iteration,
+              Monte Carlo, TD, on/off-policy learning, importance sampling, and actor-critic.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section class="lab-section" aria-labelledby="rl-title">
+        <div class="container">
+          <article class="card lab-card">
+            <header class="lab-card__header">
+              <p class="lab-card__eyebrow">Bandits → full RL</p>
+              <div class="lab-card__title-row">
+                <h2 class="lab-card__title" id="rl-title">Explore, exploit, and the rest of reinforcement learning</h2>
+                <div class="lab-card__chips">
+                  <span class="lab-chip">Bandits</span>
+                  <span class="lab-chip">MDP</span>
+                  <span class="lab-chip">Bellman</span>
+                  <span class="lab-chip">Actor-Critic</span>
+                </div>
+              </div>
+              <p class="lab-card__lead">
+                Every arm below is a slot machine with its own <em>unknown</em> mean payout μ and noise level σ.
+                The agent only sees the noisy rewards it collects — never μ or σ directly. Pick a strategy
+                (ε-greedy, UCB1, or Thompson sampling) and watch it guess which arm pays best while balancing
+                exploration against the pull count.
+              </p>
+            </header>
+
+            <aside class="lab-intro-steps" aria-label="Read this first">
+              <p class="lab-intro-steps__title">Read this first</p>
+              <ol>
+                <li>
+                  <strong>What it does</strong>
+                  The <em>multi-armed bandit</em> is RL with no state — just a row of slot machines, each with a
+                  secret mean payout μ and noise σ. Each pull pays μ plus a random wiggle ~ 𝒩(0, σ²). The only
+                  choice is <em>which arm to pull next</em>: balancing learning (exploration) with cashing in
+                  (exploitation).
+                </li>
+                <li>
+                  <strong>Try this</strong>
+                  Pick <em>ε-greedy</em> with ε = 0.1, press <em>Run 500 steps</em>, and watch the blue fills Q̂
+                  converge on the red ticks (true μ). The faded red bands around each tick show ± σ — wider band
+                  = noisier arm. Then switch to <em>Greedy</em> (ε = 0): it often locks onto a lucky-early arm
+                  and never finds the real best one.
+                </li>
+                <li>
+                  <strong>Look for this</strong>
+                  Regret = cumulative (μ* − μ<sub>chosen</sub>) over every pull, i.e. expected reward left on the
+                  table versus always pulling the best arm. A good strategy's regret grows slowly (ideally
+                  <em>log t</em>) then flattens; a bad one grows linearly forever.
+                </li>
+              </ol>
+            </aside>
+
+            <aside class="lab-intuition" aria-label="Plain-English intro">
+              <h3 class="lab-intuition__title">In plain English — what is reinforcement learning?</h3>
+              <p>
+                Imagine training a puppy. You don't write instructions — you let the puppy try things, and you hand
+                out treats when it does something right. Over time, the puppy figures out what behaviour earns treats
+                and does more of it. That is <strong>reinforcement learning</strong>: an <strong>agent</strong>
+                (the puppy) takes <strong>actions</strong> in an <strong>environment</strong> (your living room),
+                gets <strong>rewards</strong> (treats), and updates its <strong>policy</strong> (its habits) to earn
+                more treats over time.
+              </p>
+              <p>
+                The <strong>bandit</strong> below is the puppy version of this — there's no living room, no states,
+                just a row of buttons. Press one, get a treat or not, and remember how often each button pays.
+                The question is: how do you tell the <em>good</em> buttons from the <em>unlucky</em> ones without
+                wasting too many tries?
+              </p>
+              <p class="lab-intuition__note"><strong>Words that show up a lot:</strong></p>
+              <ul class="rl-glossary">
+                <li><strong>Agent</strong> — the learner that makes decisions (the puppy, the bandit player).</li>
+                <li><strong>Environment</strong> — the world the agent lives in; it responds with rewards and next states.</li>
+                <li><strong>Action</strong> — a choice the agent makes (pull arm 3, move left, accelerate).</li>
+                <li><strong>Reward</strong> — a number the environment hands back after an action. Positive = good, negative = bad.</li>
+                <li><strong>Policy (π)</strong> — the agent's strategy: a rule mapping situations to actions.</li>
+                <li><strong>Return</strong> — total reward the agent collects, usually future rewards discounted by γ.</li>
+                <li><strong>Exploration vs exploitation</strong> — try new things to learn (explore), or cash in on what you already know (exploit). The core RL dilemma.</li>
+              </ul>
+            </aside>
+
+            <div class="rl-controls" aria-label="Bandit controls">
+              <div class="rl-controls__row">
+                <div class="rl-controls__group">
+                  <label for="rl-strategy">Strategy</label>
+                  <select id="rl-strategy">
+                    <option value="greedy">Greedy (ε = 0)</option>
+                    <option value="epsilon" selected>ε-greedy</option>
+                    <option value="ucb">UCB1</option>
+                    <option value="thompson">Thompson sampling</option>
+                  </select>
+                </div>
+                <div class="rl-controls__group" data-strategy-only="epsilon">
+                  <label for="rl-epsilon">ε <span class="rl-controls__value" id="rl-epsilon-value">0.10</span></label>
+                  <input id="rl-epsilon" type="range" min="0" max="1" step="0.01" value="0.1" />
+                </div>
+                <div class="rl-controls__group" data-strategy-only="ucb" hidden>
+                  <label for="rl-ucb-c">UCB c <span class="rl-controls__value" id="rl-ucb-c-value">2.00</span></label>
+                  <input id="rl-ucb-c" type="range" min="0" max="4" step="0.05" value="2" />
+                </div>
+                <div class="rl-controls__group">
+                  <label for="rl-arms">Arms (k)</label>
+                  <input id="rl-arms" type="number" min="2" max="10" value="5" />
+                </div>
+                <div class="rl-controls__group">
+                  <label for="rl-steps">Steps per run</label>
+                  <input id="rl-steps" type="number" min="50" max="5000" step="50" value="500" />
+                </div>
+              </div>
+              <div class="rl-controls__actions">
+                <button type="button" id="rl-btn-step">Step</button>
+                <button type="button" id="rl-btn-run" class="is-primary">Run 500 steps</button>
+                <button type="button" id="rl-btn-pause" hidden>Pause</button>
+                <button type="button" id="rl-btn-reset">Reset</button>
+                <button type="button" id="rl-btn-new-arms">New arms</button>
+              </div>
+            </div>
+
+            <div class="rl-stage">
+              <div>
+                <div class="rl-arm-row" id="rl-arm-row" aria-label="Slot machine arms"></div>
+                <div class="rl-canvas-wrapper">
+                  <canvas id="rl-chart-canvas" width="800" height="350" aria-label="Reward and regret over time"></canvas>
+                </div>
+                <div class="rl-legend" aria-hidden="true">
+                  <span><span class="rl-legend__swatch" style="background:#3b82f6"></span>Avg reward (rolling)</span>
+                  <span><span class="rl-legend__swatch" style="background:#ef4444"></span>Cumulative regret</span>
+                  <span><span class="rl-legend__swatch" style="background:#22c55e"></span>Optimal-arm rate</span>
+                </div>
+              </div>
+              <aside class="rl-sidebar" aria-label="Run statistics">
+                <h3>Live stats</h3>
+                <div class="rl-stat-grid">
+                  <div class="rl-stat">
+                    <span class="rl-stat__label">Step</span>
+                    <span class="rl-stat__value" id="rl-stat-step">0</span>
+                  </div>
+                  <div class="rl-stat">
+                    <span class="rl-stat__label">Total reward</span>
+                    <span class="rl-stat__value" id="rl-stat-reward">0.00</span>
+                  </div>
+                  <div class="rl-stat">
+                    <span class="rl-stat__label">Regret</span>
+                    <span class="rl-stat__value rl-stat__value--accent" id="rl-stat-regret">0.00</span>
+                  </div>
+                  <div class="rl-stat">
+                    <span class="rl-stat__label">Optimal %</span>
+                    <span class="rl-stat__value" id="rl-stat-optimal">—</span>
+                  </div>
+                  <div class="rl-stat">
+                    <span class="rl-stat__label">Best arm (true)</span>
+                    <span class="rl-stat__value" id="rl-stat-best">—</span>
+                  </div>
+                  <div class="rl-stat">
+                    <span class="rl-stat__label">Best arm (est)</span>
+                    <span class="rl-stat__value" id="rl-stat-best-est">—</span>
+                  </div>
+                </div>
+                <p class="ml-hint" id="rl-hint">
+                  Tip: click an arm tile to force-pull it once (teaches the agent that arm directly).
+                </p>
+              </aside>
+            </div>
+
+            <section class="rl-theory" aria-labelledby="rl-theory-title">
+              <h3 id="rl-theory-title" class="visually-hidden">RL theory tour</h3>
+
+              <article class="rl-theory__panel" id="theory-bandits">
+                <h3>1 · Bandits: RL without state</h3>
+                <p class="rl-theory__kid">
+                  <strong>Kid version.</strong> A bandit is a row of gumball machines. You don't know which one has the
+                  most candy, so you try each a few times, then mostly use the best one — but sometimes you still try
+                  the others in case you were wrong.
+                </p>
+                <p>
+                  A bandit has <em>k</em> arms. Pulling arm <em>a</em> returns a random reward drawn from an
+                  unknown distribution with mean <em>μ<sub>a</sub></em> and (optionally) std <em>σ<sub>a</sub></em>.
+                  The agent keeps a running estimate <em>Q(a)</em> of μ<sub>a</sub> and a pull count
+                  <em>N(a)</em>, updated incrementally:
+                </p>
+                <div class="rl-equation" data-katex="Q_{t+1}(a) = Q_t(a) + \tfrac{1}{N_t(a) + 1}\,\bigl[r_t - Q_t(a)\bigr]" data-katex-display></div>
+                <ul>
+                  <li><strong>Q(a)</strong> — running mean-reward estimate for arm a (starts at 0).</li>
+                  <li><strong>r<sub>t</sub></strong> — the reward just observed after pulling a.</li>
+                  <li><strong>N(a)</strong> — number of times arm a has been pulled.</li>
+                </ul>
+                <p class="rl-theory__kid">
+                  <strong>Shape watch.</strong> <span data-katex="Q \leftarrow Q + \alpha\,[\text{target} - Q]"></span>
+                  is the update you'll see again in TD, SARSA, Q-learning — the step size α and the target change,
+                  but the skeleton "nudge the estimate toward a target" stays the same.
+                </p>
+
+                <p>Three rules for picking the next arm:</p>
+                <div class="rl-taxonomy">
+                  <div class="rl-taxonomy__card">
+                    <h4>ε-greedy</h4>
+                    <div class="rl-equation" data-katex="a_t = \begin{cases} \arg\max_a Q_t(a) & \text{w.p. } 1-\varepsilon \\ \text{uniform}(\mathcal{A}) & \text{w.p. } \varepsilon \end{cases}" data-katex-display></div>
+                    <ul>
+                      <li>ε — the exploration rate (0 = pure greedy).</li>
+                      <li>Simple, works, but wastes ε on known-bad arms forever.</li>
+                    </ul>
+                  </div>
+                  <div class="rl-taxonomy__card">
+                    <h4>UCB1 (optimism)</h4>
+                    <div class="rl-equation" data-katex="a_t = \arg\max_a \Bigl[ Q_t(a) + c\,\sigma_a\,\sqrt{\tfrac{\ln t}{N_t(a)}} \Bigr]" data-katex-display></div>
+                    <ul>
+                      <li>c — how much to trust the uncertainty bonus (≈ 1–2).</li>
+                      <li>Bonus is large when N(a) is small → uncertain arms get tried.</li>
+                      <li>Regret is O(log t); deterministic once seeded.</li>
+                    </ul>
+                  </div>
+                  <div class="rl-taxonomy__card">
+                    <h4>Thompson sampling</h4>
+                    <div class="rl-equation" data-katex="\tilde{\mu}_a \sim \mathcal{N}\!\left(Q_t(a),\, \tfrac{\sigma_a^2}{N_t(a)}\right),\quad a_t = \arg\max_a \tilde{\mu}_a" data-katex-display></div>
+                    <ul>
+                      <li>Draw one sample from each arm's posterior over μ, pick the highest.</li>
+                      <li>Explores more when posteriors are wide, less when tight.</li>
+                      <li>Bayesian, strong empirically, naturally randomised.</li>
+                    </ul>
+                  </div>
+                </div>
+                <p>
+                  Expected cumulative regret after <em>T</em> pulls:
+                </p>
+                <div class="rl-equation" data-katex="\mathcal{R}_T = \sum_{t=1}^{T} \bigl(\mu^* - \mu_{a_t}\bigr),\qquad \mu^* = \max_a \mu_a" data-katex-display></div>
+                <p>
+                  Why bandits matter for full RL: every RL algorithm still has to solve <em>which action next?</em>.
+                  Bandit ideas (ε-greedy, softmax, optimism, posterior sampling) get reused inside
+                  Q-learning, SARSA, actor-critic to pick actions at each state.
+                </p>
+                <p class="ml-hint">
+                  <strong>Is the bandit the "root" of RL?</strong> Partially. It's the simplest setting that isolates
+                  the exploration/exploitation trade-off. But full RL adds <em>state</em> and <em>long-horizon
+                  credit assignment</em> — problems bandits ignore. So: the root of the <em>exploration</em> half,
+                  not the whole tree.
+                </p>
+              </article>
+
+              <article class="rl-theory__panel" id="theory-mdp">
+                <h3>2 · MDP: adding state and time</h3>
+                <p class="rl-theory__kid">
+                  <strong>Kid version.</strong> A bandit is one room with buttons. An MDP is a whole house with
+                  doors — the button you press decides which <em>room</em> you end up in next, and different rooms
+                  have different buttons. Now you have to plan: "should I grab the candy in this room, or walk to
+                  the room with even better candy?"
+                </p>
+                <p>A Markov Decision Process is a 5-tuple:</p>
+                <div class="rl-equation" data-katex="\mathcal{M} = (\mathcal{S},\, \mathcal{A},\, P,\, R,\, \gamma)" data-katex-display></div>
+                <ul>
+                  <li><strong>𝒮</strong> — set of states the environment can be in (e.g. which room).</li>
+                  <li><strong>𝒜</strong> — set of actions the agent can take (e.g. left / stay / right).</li>
+                  <li><strong>P(s'|s, a)</strong> — transition probability into s' after doing a in s.
+                    <em>Markov property</em>: this depends only on the current (s, a), not on history.</li>
+                  <li><strong>R(s, a)</strong> — expected immediate reward for doing a in s.</li>
+                  <li><strong>γ ∈ [0, 1]</strong> — discount. γ ≈ 0 is myopic ("I want candy now"),
+                    γ → 1 is patient ("more candy later is fine").</li>
+                </ul>
+                <p>The agent's goal: maximise the expected <em>return</em> — the discounted sum of future rewards:</p>
+                <div class="rl-equation" data-katex="G_t = R_{t+1} + \gamma R_{t+2} + \gamma^2 R_{t+3} + \cdots = \sum_{k=0}^{\infty} \gamma^k\, R_{t+k+1}" data-katex-display></div>
+                <p>A <em>policy</em> <span data-katex="\pi(a\mid s)"></span> is the agent's strategy: a probability of picking action a in state s.</p>
+              </article>
+
+              <article class="rl-theory__panel" id="theory-values">
+                <h3>3 · Value functions: how good is this?</h3>
+                <p class="rl-theory__kid">
+                  <strong>Kid version.</strong> Imagine grading every room in the house ("this room is worth 7
+                  candies over the rest of the afternoon"). The room's grade is its <strong>state-value V(s)</strong>.
+                  Grading each <em>action</em> from a room ("opening <em>this</em> door is worth 9") is its
+                  <strong>action-value Q(s, a)</strong>.
+                </p>
+                <p>Three value functions. All three are expectations of the future return G<sub>t</sub> under policy π:</p>
+                <div class="rl-equation" data-katex="V^\pi(s) = \mathbb{E}_\pi[\,G_t \mid S_t = s\,]" data-katex-display></div>
+                <div class="rl-equation" data-katex="Q^\pi(s, a) = \mathbb{E}_\pi[\,G_t \mid S_t = s,\, A_t = a\,]" data-katex-display></div>
+                <div class="rl-equation" data-katex="A^\pi(s, a) = Q^\pi(s, a) - V^\pi(s)" data-katex-display></div>
+                <ul>
+                  <li><strong>V<sup>π</sup>(s)</strong> — "starting from s and following π, how much total reward do I expect?"</li>
+                  <li><strong>Q<sup>π</sup>(s, a)</strong> — "starting from s, taking a first, then following π."</li>
+                  <li><strong>A<sup>π</sup>(s, a)</strong> — the <em>advantage</em>: how much better than average is action a? Baseline-subtracted, lower-variance than Q.</li>
+                </ul>
+                <p>All three satisfy the <strong>Bellman expectation equations</strong> — one-step recursions that say
+                  "this state's value equals the reward I get plus the discounted value of the next state":</p>
+                <div class="rl-equation" data-katex="V^\pi(s) = \sum_{a} \pi(a\mid s) \sum_{s',\,r} P(s',r\mid s,a)\,\bigl[\,r + \gamma\, V^\pi(s')\,\bigr]" data-katex-display></div>
+                <div class="rl-equation" data-katex="Q^\pi(s, a) = \sum_{s',\,r} P(s',r\mid s,a)\,\Bigl[\,r + \gamma \sum_{a'} \pi(a'\mid s')\, Q^\pi(s', a')\,\Bigr]" data-katex-display></div>
+                <p>
+                  The <strong>optimal</strong> value functions V<sup>*</sup> and Q<sup>*</sup> satisfy the
+                  <em>Bellman optimality equations</em> — replace the policy-weighted sum over actions with a max:
+                </p>
+                <div class="rl-equation" data-katex="V^{*}(s) = \max_a \sum_{s',\,r} P(s',r\mid s,a)\,\bigl[\,r + \gamma\, V^{*}(s')\,\bigr]" data-katex-display></div>
+                <div class="rl-equation" data-katex="Q^{*}(s, a) = \sum_{s',\,r} P(s',r\mid s,a)\,\bigl[\,r + \gamma\, \max_{a'} Q^{*}(s', a')\,\bigr]" data-katex-display></div>
+                <p>
+                  Solve these and you're done: the greedy policy w.r.t. Q<sup>*</sup> is optimal. The rest of RL is
+                  <em>how do we solve (or approximate) these equations</em> when we don't know P and R, or when 𝒮 is
+                  too big to enumerate.
+                </p>
+              </article>
+
+              <article class="rl-theory__panel" id="theory-dp">
+                <h3>4 · Dynamic programming: when you know the model</h3>
+                <p class="rl-theory__kid">
+                  <strong>Kid version.</strong> If someone hands you the <em>rulebook</em> of the game (every door
+                  and every reward written down), you can sit at a desk and just solve it. No playing required.
+                  That's dynamic programming.
+                </p>
+                <p>
+                  When P and R are known, two classical algorithms solve for V<sup>*</sup> and an optimal π.
+                  Both are fixed-point iterations on the Bellman operator; they're duals of each other.
+                </p>
+                <table class="rl-compare">
+                  <thead>
+                    <tr>
+                      <th>Policy iteration</th>
+                      <th>Value iteration</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td>
+                        <strong>Policy evaluation.</strong> Fix π, iterate
+                        <span data-katex="V \leftarrow R^\pi + \gamma\, P^\pi\, V"></span>
+                        until V stabilises.
+                      </td>
+                      <td>
+                        <strong>One-step sweep.</strong>
+                        <span data-katex="V(s) \leftarrow \max_a \sum_{s'} P(s'\mid s,a)\,[r + \gamma V(s')]"></span>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td>
+                        <strong>Policy improvement.</strong>
+                        <span data-katex="\pi'(s) = \arg\max_a\, Q^\pi(s, a)"></span>.
+                        Repeat eval → improve until π stops changing.
+                      </td>
+                      <td>
+                        Repeat sweep until <span data-katex="\Delta_{\max} = \max_s |V_{\text{new}}(s) - V_{\text{old}}(s)|"></span> is small.
+                        Extract π as the greedy policy at the end.
+                      </td>
+                    </tr>
+                    <tr>
+                      <td>Fewer outer iterations, each one evaluates a whole policy.</td>
+                      <td>More outer iterations, each is cheap — fuses evaluation + improvement.</td>
+                    </tr>
+                  </tbody>
+                </table>
+                <p>
+                  Both converge to V<sup>*</sup> because the Bellman operator is a γ-contraction — each sweep
+                  shrinks the worst-case error by factor γ, so convergence is geometric: after <em>n</em> sweeps
+                  the residual is at most γ<sup>n</sup> R<sub>max</sub> / (1 − γ). The 1D-chain demo below
+                  plots this contraction live.
+                </p>
+                <p class="ml-hint">Both assume you can read P and R — which is almost never true in practice. The rest of the tour (§5–§7) is how to learn <em>without</em> the rulebook.</p>
+              </article>
+
+              <article class="rl-theory__panel" id="demo-chain">
+                <h3>Demo · 1D chain: value iteration in action</h3>
+                <p class="rl-theory__kid">
+                  <strong>Kid version.</strong> Seven rooms in a row. The rightmost room has a prize. You start on
+                  the left. Each turn you can step left, stand still, or step right — but you're a little clumsy,
+                  so you slip sideways 10 % of the time. The question is: what's the best habit in each room, and
+                  how many planning rounds does the computer need to figure that out?
+                </p>
+                <p>
+                  A small MDP with <strong>S</strong> = {0, 1, …, 6}, <strong>A</strong> = {← left, ◦ stay, → right},
+                  γ = 0.95, reward +1 for landing on state 6 (absorbing terminal), 0 elsewhere. Dynamics:
+                  the intended move happens with probability 0.8; with probability 0.1 each the agent slips one
+                  square in the other direction (walls bounce you in place).
+                </p>
+                <div class="rl-chain" id="chain">
+                  <div class="rl-chain__controls">
+                    <button type="button" id="chain-step">Value-iter step</button>
+                    <button type="button" id="chain-run" class="is-primary">Run to convergence</button>
+                    <button type="button" id="chain-simulate">Simulate greedy agent</button>
+                    <button type="button" id="chain-reset">Reset V</button>
+                    <div class="rl-chain__status" aria-live="polite">
+                      <span><strong>iter</strong><span id="chain-iter">0</span></span>
+                      <span><strong>Δ<sub>max</sub></strong><span id="chain-delta">—</span></span>
+                      <span><strong>steps to goal</strong><span id="chain-steps">—</span></span>
+                    </div>
+                  </div>
+                  <div class="rl-chain__grid" id="chain-grid" style="--chain-n: 7;"></div>
+                  <canvas class="rl-chain__delta-chart" id="chain-delta-chart" width="700" height="70" aria-label="Max value change per iteration"></canvas>
+                  <p class="ml-hint">
+                    The blue curve above tracks Δ<sub>max</sub> = max<sub>s</sub> |V<sub>new</sub>(s) − V<sub>old</sub>(s)| —
+                    the largest value change in an iteration. Value iteration is a <em>contraction</em>: each sweep
+                    shrinks this gap by a factor of γ, so it falls like a geometric decay. Convergence ≈
+                    log(ε / R<sub>max</sub>) / log(γ) iterations; for γ = 0.95 and tolerance 10⁻⁴, that's ≈ 180,
+                    but on a 7-state chain the value backup shortcut makes it finish in roughly <em>10</em>.
+                    Press <em>Simulate greedy agent</em> after convergence and count the actual environment steps
+                    it takes to reach the goal — a separate number from the planning iterations.
+                  </p>
+                </div>
+              </article>
+
+              <article class="rl-theory__panel" id="theory-mc-td">
+                <h3>5 · Model-free: Monte Carlo vs temporal difference</h3>
+                <p class="rl-theory__kid">
+                  <strong>Kid version.</strong> You don't have the rulebook, so you <em>play</em> the game a lot
+                  and learn from what actually happens.
+                  <em>Monte Carlo</em>: play a whole game, write down the final score, update. <em>TD</em>: after
+                  every move, look at the next square and update your guess a tiny bit — don't wait for the game
+                  to end.
+                </p>
+                <p>
+                  Two ways to learn V<sup>π</sup> from samples of experience (s<sub>t</sub>, a<sub>t</sub>, r<sub>t+1</sub>, s<sub>t+1</sub>) — no P and R needed:
+                </p>
+                <div class="rl-taxonomy">
+                  <div class="rl-taxonomy__card">
+                    <h4>Monte Carlo (MC)</h4>
+                    <div class="rl-equation" data-katex="V(s_t) \leftarrow V(s_t) + \alpha\,\bigl[\,G_t - V(s_t)\,\bigr]" data-katex-display></div>
+                    <ul>
+                      <li>G<sub>t</sub> — the <em>actual</em> return from the completed episode.</li>
+                      <li>Unbiased, high variance; needs the episode to terminate.</li>
+                    </ul>
+                  </div>
+                  <div class="rl-taxonomy__card">
+                    <h4>TD(0)</h4>
+                    <div class="rl-equation" data-katex="V(s_t) \leftarrow V(s_t) + \alpha\,\bigl[\,r_{t+1} + \gamma\, V(s_{t+1}) - V(s_t)\,\bigr]" data-katex-display></div>
+                    <ul>
+                      <li>Bootstrap: replace G<sub>t</sub> with r<sub>t+1</sub> + γ V(s<sub>t+1</sub>).</li>
+                      <li>Biased early, low variance, works online.</li>
+                    </ul>
+                  </div>
+                  <div class="rl-taxonomy__card">
+                    <h4>n-step / TD(λ)</h4>
+                    <div class="rl-equation" data-katex="G_t^{(n)} = \sum_{k=0}^{n-1} \gamma^k r_{t+k+1} + \gamma^n V(s_{t+n})" data-katex-display></div>
+                    <ul>
+                      <li>Interpolates MC (n = ∞) and TD(0) (n = 1).</li>
+                      <li>TD(λ) averages every n with weight (1−λ)λ<sup>n-1</sup>.</li>
+                    </ul>
+                  </div>
+                </div>
+                <p>
+                  The <strong>TD error</strong> — the core unit of bootstrap learning:
+                </p>
+                <div class="rl-equation" data-katex="\delta_t = r_{t+1} + \gamma\, V(s_{t+1}) - V(s_t)" data-katex-display></div>
+                <ul>
+                  <li><strong>δ<sub>t</sub></strong> — "surprise": how wrong my prediction was once I saw the next step.</li>
+                  <li><strong>α</strong> — step size (learning rate) ∈ (0, 1].</li>
+                  <li><strong>γ</strong> — same discount as before.</li>
+                </ul>
+                <p class="rl-theory__kid">
+                  <strong>Shape watch.</strong> Every update so far — and every update below — is
+                  <span data-katex="\text{estimate} \leftarrow \text{estimate} + \alpha\,\bigl[\,\text{target} - \text{estimate}\,\bigr]"></span>.
+                  Only the target changes between algorithms: G<sub>t</sub> (MC), r + γV (TD), r + γQ(s',a') (SARSA),
+                  r + γ max<sub>a</sub> Q (Q-learning). See §8 for the side-by-side view.
+                </p>
+              </article>
+
+              <article class="rl-theory__panel" id="theory-on-off">
+                <h3>6 · On-policy vs off-policy, and importance sampling</h3>
+                <p class="rl-theory__kid">
+                  <strong>Kid version.</strong> <em>On-policy</em>: learn from your <em>own</em> games, the ones
+                  you played with your current strategy. <em>Off-policy</em>: learn from <em>someone else's</em>
+                  games (your old self, a replay of a friend, a random walker). Watching others is cheaper — but
+                  you have to re-weight what you see, because their choices weren't your choices.
+                </p>
+                <p>
+                  SARSA and Q-learning are the textbook pair — the <em>only</em> difference is the target:
+                </p>
+                <div class="rl-equation" data-katex="\text{SARSA:}\quad Q(s_t, a_t) \leftarrow Q(s_t, a_t) + \alpha\,\bigl[\,r_{t+1} + \gamma\, Q(s_{t+1},\, \mathbf{a_{t+1}}) - Q(s_t, a_t)\,\bigr]" data-katex-display></div>
+                <div class="rl-equation" data-katex="\text{Q-learning:}\quad Q(s_t, a_t) \leftarrow Q(s_t, a_t) + \alpha\,\bigl[\,r_{t+1} + \gamma\, \mathbf{\max_{a'}}\, Q(s_{t+1},\, a') - Q(s_t, a_t)\,\bigr]" data-katex-display></div>
+                <ul>
+                  <li><strong>a<sub>t+1</sub></strong> (SARSA) — the action the <em>current</em> policy actually took next. Learns Q for whatever behaviour (ε-greedy, noisy) is being run.</li>
+                  <li><strong>max<sub>a'</sub></strong> (Q-learning) — the value of a <em>different</em>, greedy policy. Learns Q<sup>*</sup> regardless of what action was taken.</li>
+                </ul>
+                <table class="rl-compare">
+                  <thead>
+                    <tr><th></th><th>On-policy (SARSA)</th><th>Off-policy (Q-learning)</th></tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td>Data source</td>
+                      <td>Own trajectories from π</td>
+                      <td>Any behaviour policy μ — replay buffers, demonstrations</td>
+                    </tr>
+                    <tr>
+                      <td>Trade-off</td>
+                      <td>Safer during exploration (learns value of ε-greedy itself)</td>
+                      <td>Learns the optimal policy directly; can reuse old data</td>
+                    </tr>
+                  </tbody>
+                </table>
+                <p>
+                  When the data came from a different policy μ than the one we're evaluating π, rewards are
+                  weighted incorrectly. <strong>Importance sampling</strong> corrects this by reweighting each
+                  step by <em>ρ</em>:
+                </p>
+                <div class="rl-equation" data-katex="\mathbb{E}_{\pi}\!\bigl[\,f(\tau)\,\bigr] = \mathbb{E}_{\mu}\!\bigl[\,\rho(\tau)\, f(\tau)\,\bigr],\qquad \rho(\tau) = \prod_{t=0}^{T-1} \frac{\pi(a_t \mid s_t)}{\mu(a_t \mid s_t)}" data-katex-display></div>
+                <ul>
+                  <li><strong>π(a|s)</strong> — target policy (the one we want to evaluate).</li>
+                  <li><strong>μ(a|s)</strong> — behaviour policy (the one that actually generated the data).</li>
+                  <li><strong>ρ(τ)</strong> — product of per-step ratios over the trajectory τ.</li>
+                </ul>
+                <p>
+                  Unbiased but high-variance (the product over a long trajectory can explode). <em>Weighted</em>
+                  importance sampling (normalise by Σ ρ) is biased but much lower variance — practical off-policy
+                  methods lean on it. Q-learning sidesteps IS entirely by using a max that doesn't depend on which
+                  action was actually taken.
+                </p>
+              </article>
+
+              <article class="rl-theory__panel" id="theory-pg">
+                <h3>7 · Policy gradients and actor-critic</h3>
+                <p class="rl-theory__kid">
+                  <strong>Kid version.</strong> Instead of grading every room, just tweak your <em>habits</em>
+                  directly. Did that habit lead to good outcomes? Do more of it. Bad? Do less.
+                  <em>Actor-critic</em> combines both: the <strong>actor</strong> is the habit; the
+                  <strong>critic</strong> is the grader that tells the actor whether it did better or worse than
+                  expected.
+                </p>
+                <p>
+                  Value-based methods (Q-learning, DQN) learn Q, then act greedily. Policy-based methods skip Q and
+                  directly parameterise the policy <span data-katex="\pi_\theta(a\mid s)"></span>. The
+                  <strong>policy gradient theorem</strong>:
+                </p>
+                <div class="rl-equation" data-katex="\nabla_\theta J(\theta) = \mathbb{E}_{\pi_\theta}\!\bigl[\,\nabla_\theta \log \pi_\theta(a\mid s)\, \cdot\, \Psi_t\,\bigr]" data-katex-display></div>
+                <ul>
+                  <li><strong>θ</strong> — parameters of the policy network.</li>
+                  <li><strong>J(θ)</strong> — expected return under π<sub>θ</sub> (what we want to maximise).</li>
+                  <li><strong>∇<sub>θ</sub> log π<sub>θ</sub>(a|s)</strong> — "score function": which direction to nudge θ to make action a more likely at state s.</li>
+                  <li><strong>Ψ<sub>t</sub></strong> — a signal saying "was this good?". Lower variance = better choice.</li>
+                </ul>
+                <p>Gradient-ascent step (drop this into SGD/Adam):</p>
+                <div class="rl-equation" data-katex="\theta \leftarrow \theta + \alpha\, \nabla_\theta \log \pi_\theta(a_t\mid s_t)\, \cdot\, \Psi_t" data-katex-display></div>
+                <div class="rl-taxonomy">
+                  <div class="rl-taxonomy__card">
+                    <h4>REINFORCE</h4>
+                    <div class="rl-equation" data-katex="\Psi_t = G_t" data-katex-display></div>
+                    <ul>
+                      <li>Pure Monte Carlo policy gradient.</li>
+                      <li>Unbiased, very high variance.</li>
+                    </ul>
+                  </div>
+                  <div class="rl-taxonomy__card">
+                    <h4>Actor-Critic (A2C)</h4>
+                    <div class="rl-equation" data-katex="\Psi_t = \delta_t = r_{t+1} + \gamma\, V_\phi(s_{t+1}) - V_\phi(s_t)" data-katex-display></div>
+                    <ul>
+                      <li>Critic learns V<sub>φ</sub>; actor ascends along δ<sub>t</sub>.</li>
+                      <li>Lower variance, small bias, online.</li>
+                    </ul>
+                  </div>
+                  <div class="rl-taxonomy__card">
+                    <h4>PPO / TRPO</h4>
+                    <div class="rl-equation" data-katex="\Psi_t = \hat{A}_t^{\text{GAE}(\lambda)}" data-katex-display></div>
+                    <ul>
+                      <li>Actor-critic with a clipped ratio / trust region.</li>
+                      <li>Keeps policy updates small and stable.</li>
+                    </ul>
+                  </div>
+                </div>
+                <p>Deep off-policy actor-critic cousins — DDPG, TD3, SAC — use the same skeleton with different tricks for stability and exploration.</p>
+              </article>
+
+              <article class="rl-theory__panel" id="theory-shape">
+                <h3>8 · Same shape, different targets</h3>
+                <p class="rl-theory__kid">
+                  <strong>Kid version.</strong> Every algorithm in this tour is doing the same thing: "I had a
+                  guess, I got a new piece of news, I move my guess a little toward the news." The news is what
+                  changes.
+                </p>
+                <p>
+                  Every incremental update in RL is a special case of <em>stochastic approximation</em> with the
+                  same skeleton:
+                </p>
+                <div class="rl-equation" data-katex="\text{estimate} \leftarrow \text{estimate} + \alpha\, \bigl[\,\text{target} - \text{estimate}\,\bigr]" data-katex-display></div>
+                <p>The only thing that changes from algorithm to algorithm is <em>what goes in the target</em>:</p>
+                <div class="rl-updates">
+                  <div class="rl-updates__row">
+                    <span class="rl-updates__label">Bandit Q</span>
+                    <span class="rl-updates__eq" data-katex="Q(a) \leftarrow Q(a) + \alpha\,[\, \mathbf{r_t} - Q(a) \,]"></span>
+                  </div>
+                  <div class="rl-updates__row">
+                    <span class="rl-updates__label">MC</span>
+                    <span class="rl-updates__eq" data-katex="V(s) \leftarrow V(s) + \alpha\,[\, \mathbf{G_t} - V(s) \,]"></span>
+                  </div>
+                  <div class="rl-updates__row">
+                    <span class="rl-updates__label">TD(0)</span>
+                    <span class="rl-updates__eq" data-katex="V(s) \leftarrow V(s) + \alpha\,[\, \mathbf{r_{t+1} + \gamma V(s')} - V(s) \,]"></span>
+                  </div>
+                  <div class="rl-updates__row">
+                    <span class="rl-updates__label">SARSA</span>
+                    <span class="rl-updates__eq" data-katex="Q(s, a) \leftarrow Q(s, a) + \alpha\,[\, \mathbf{r_{t+1} + \gamma Q(s', a')} - Q(s, a) \,]"></span>
+                  </div>
+                  <div class="rl-updates__row">
+                    <span class="rl-updates__label">Q-learning</span>
+                    <span class="rl-updates__eq" data-katex="Q(s, a) \leftarrow Q(s, a) + \alpha\,[\, \mathbf{r_{t+1} + \gamma \max_{a'} Q(s', a')} - Q(s, a) \,]"></span>
+                  </div>
+                  <div class="rl-updates__row">
+                    <span class="rl-updates__label">Expected SARSA</span>
+                    <span class="rl-updates__eq" data-katex="Q(s, a) \leftarrow Q(s, a) + \alpha\,[\, \mathbf{r_{t+1} + \gamma \sum_{a'} \pi(a' \mid s') Q(s', a')} - Q(s, a) \,]"></span>
+                  </div>
+                  <div class="rl-updates__row">
+                    <span class="rl-updates__label">Actor-Critic</span>
+                    <span class="rl-updates__eq" data-katex="\theta \leftarrow \theta + \alpha\, \nabla_\theta \log \pi_\theta(a\mid s)\, \cdot\, \mathbf{\delta_t},\quad \delta_t = r_{t+1} + \gamma V_\phi(s') - V_\phi(s)"></span>
+                  </div>
+                </div>
+                <p class="rl-updates__note">
+                  Bolded piece = the <em>target</em>. Read top-to-bottom: bandit uses the raw reward; MC uses the
+                  full Monte-Carlo return; TD bootstraps with V(s'); SARSA bootstraps with the actual next action;
+                  Q-learning bootstraps with the <em>best</em> next action; Expected SARSA averages over actions;
+                  actor-critic uses the TD error directly as the policy-gradient weight. All of this is one
+                  skeleton, seven targets.
+                </p>
+              </article>
+
+              <article class="rl-theory__panel" id="theory-map">
+                <h3>9 · Method families — a clustering map</h3>
+                <p class="rl-theory__kid">
+                  <strong>Kid version.</strong> Every algorithm belongs to one of a few families. The families
+                  argue about the same three questions: do I know the rulebook? Do I grade states, or nudge habits
+                  directly? Do I only learn from my own games, or anyone's?
+                </p>
+                <div class="rl-clusters">
+                  <div class="rl-cluster" data-family="value">
+                    <span class="rl-cluster__eyebrow">Family A</span>
+                    <h4 class="rl-cluster__title">Value-based</h4>
+                    <p>Learn Q(s, a); act greedily. No explicit policy network.</p>
+                    <div class="rl-cluster__members">
+                      <span class="rl-cluster__member">SARSA</span>
+                      <span class="rl-cluster__member">Q-learning</span>
+                      <span class="rl-cluster__member">Expected SARSA</span>
+                      <span class="rl-cluster__member">DQN</span>
+                      <span class="rl-cluster__member">Double DQN</span>
+                      <span class="rl-cluster__member">Rainbow</span>
+                    </div>
+                    <ul class="rl-cluster__axes">
+                      <li><strong>update</strong>TD on Q</li>
+                      <li><strong>on/off</strong>SARSA on · rest off</li>
+                      <li><strong>explore</strong>ε-greedy / softmax</li>
+                      <li><strong>action space</strong>discrete only (argmax)</li>
+                    </ul>
+                  </div>
+
+                  <div class="rl-cluster" data-family="policy">
+                    <span class="rl-cluster__eyebrow">Family B</span>
+                    <h4 class="rl-cluster__title">Policy-based</h4>
+                    <p>Learn π<sub>θ</sub>(a|s) directly. No value function in the update.</p>
+                    <div class="rl-cluster__members">
+                      <span class="rl-cluster__member">REINFORCE</span>
+                      <span class="rl-cluster__member">CMA-ES</span>
+                      <span class="rl-cluster__member">Evolutionary</span>
+                    </div>
+                    <ul class="rl-cluster__axes">
+                      <li><strong>update</strong>MC policy gradient</li>
+                      <li><strong>on/off</strong>on-policy</li>
+                      <li><strong>explore</strong>policy stochasticity</li>
+                      <li><strong>variance</strong>high — full returns</li>
+                    </ul>
+                  </div>
+
+                  <div class="rl-cluster" data-family="ac">
+                    <span class="rl-cluster__eyebrow">Family C — hybrid</span>
+                    <h4 class="rl-cluster__title">Actor-critic</h4>
+                    <p>Learn π<sub>θ</sub> <em>and</em> V<sub>φ</sub> or Q<sub>φ</sub>. Value reduces variance of the policy gradient.</p>
+                    <div class="rl-cluster__members">
+                      <span class="rl-cluster__member">A2C / A3C</span>
+                      <span class="rl-cluster__member">PPO</span>
+                      <span class="rl-cluster__member">TRPO</span>
+                      <span class="rl-cluster__member">DDPG</span>
+                      <span class="rl-cluster__member">TD3</span>
+                      <span class="rl-cluster__member">SAC</span>
+                      <span class="rl-cluster__member">IMPALA</span>
+                    </div>
+                    <ul class="rl-cluster__axes">
+                      <li><strong>update</strong>PG + TD(0) on critic</li>
+                      <li><strong>on/off</strong>PPO on · SAC/DDPG/TD3 off</li>
+                      <li><strong>explore</strong>entropy bonus / noise</li>
+                      <li><strong>action space</strong>discrete or continuous</li>
+                    </ul>
+                  </div>
+
+                  <div class="rl-cluster" data-family="model">
+                    <span class="rl-cluster__eyebrow">Family D — orthogonal</span>
+                    <h4 class="rl-cluster__title">Model-based</h4>
+                    <p>Learn (or are given) P and R; plan by simulating. Can wrap any of the other families.</p>
+                    <div class="rl-cluster__members">
+                      <span class="rl-cluster__member">Value iteration</span>
+                      <span class="rl-cluster__member">Policy iteration</span>
+                      <span class="rl-cluster__member">Dyna-Q</span>
+                      <span class="rl-cluster__member">MCTS / AlphaZero</span>
+                      <span class="rl-cluster__member">MuZero</span>
+                      <span class="rl-cluster__member">PETS</span>
+                      <span class="rl-cluster__member">Dreamer</span>
+                    </div>
+                    <ul class="rl-cluster__axes">
+                      <li><strong>P, R</strong>known (DP) or learned (Dyna, Dreamer)</li>
+                      <li><strong>planner</strong>sweep / tree search / rollouts</li>
+                      <li><strong>pairs with</strong>any of A / B / C above</li>
+                    </ul>
+                  </div>
+                </div>
+                <p class="ml-hint">
+                  Names read as coordinates: <em>SAC</em> = actor-critic + off-policy + TD(0) + entropy bonus
+                  (continuous). <em>PPO</em> = actor-critic + on-policy + GAE target + clipped ratio. <em>MuZero</em>
+                  = actor-critic + model-based + MCTS planner. Pick a family here, a target from §8, and an
+                  exploration rule from §1 — you've named almost every algorithm in the field.
+                </p>
+              </article>
+            </section>
+          </article>
+        </div>
+      </section>
+    </main>
+
+    <div id="site-footer"></div>
+
+    <script type="module">
+      import { initMainLayout } from '../../assets/js/layout/mainLayout.js';
+      initMainLayout('rl-lab');
+    </script>
+    <script type="module" src="../../assets/js/main.js"></script>
+    <script type="module" src="../../assets/js/rl-lab.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+    <script>
+      document.addEventListener('DOMContentLoaded', () => {
+        const render = () => {
+          if (!window.katex) return;
+          document.querySelectorAll('[data-katex]').forEach((el) => {
+            const tex = el.getAttribute('data-katex');
+            if (!tex) return;
+            const displayMode = el.hasAttribute('data-katex-display');
+            window.katex.render(tex, el, { throwOnError: false, displayMode });
+          });
+        };
+        if (window.katex) render();
+        else window.addEventListener('load', render, { once: true });
+      });
+    </script>
+  </body>
+</html>

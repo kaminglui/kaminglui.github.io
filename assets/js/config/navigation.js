@@ -12,7 +12,8 @@ const NAV_LABS = [
   { id: 'circuit-lab', label: 'Circuit Lab', href: 'pages/circuit-lab/' },
   { id: 'transformer-lab', label: 'Transformer Lab', href: 'pages/transformer-lab/' },
   { id: 'ml-playground', label: 'Clustering Playground', href: 'pages/ml-playground/' },
-  { id: 'fourier-epicycles', label: 'Fourier Epicycles', href: 'pages/fourier-epicycles/' }
+  { id: 'fourier-epicycles', label: 'Fourier Epicycles', href: 'pages/fourier-epicycles/' },
+  { id: 'rl-lab', label: 'RL Lab', href: 'pages/rl-lab/' }
 ];
 
 const LOGO_TEXT = 'Ka Ming Lui';

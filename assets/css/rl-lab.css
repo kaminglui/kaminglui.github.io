@@ -1,0 +1,558 @@
+/* RL Lab — multi-armed bandit interactive + RL theory sections. The bandit
+   panel runs entirely in JS and drives three visualisations: the arm row
+   (true means vs estimates), the per-step reward/regret chart, and a
+   leaderboard of pull counts. Theory sections below follow the same
+   kid-callout + glossary pattern used by the other labs. */
+
+.rl-controls {
+  display: grid;
+  gap: 1rem;
+  padding: 1rem 1.25rem;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-sm);
+  margin-bottom: 1.25rem;
+}
+.rl-controls__row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1.25rem;
+  align-items: center;
+}
+.rl-controls__group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  min-width: 140px;
+}
+.rl-controls__group label {
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+}
+.rl-controls__group select,
+.rl-controls__group input[type='number'],
+.rl-controls__group input[type='range'] {
+  padding: 0.5rem 0.65rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: inherit;
+  min-width: 140px;
+}
+.rl-controls__group input[type='range'] { padding: 0; }
+.rl-controls__value {
+  font-family: var(--font-mono);
+  color: var(--color-accent);
+  font-size: 0.9rem;
+}
+.rl-controls__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+.rl-controls__actions button {
+  padding: 0.55rem 0.9rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+  background: var(--color-bg);
+  cursor: pointer;
+  font-weight: 600;
+  transition: border-color 150ms ease, transform 150ms ease;
+}
+.rl-controls__actions button:hover,
+.rl-controls__actions button:focus-visible {
+  border-color: var(--color-accent);
+  transform: translateY(-1px);
+}
+.rl-controls__actions button.is-primary {
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.15), rgba(59, 130, 246, 0.08));
+}
+.rl-controls__actions button:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+
+.rl-stage {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 360px);
+  gap: 1.25rem;
+  align-items: flex-start;
+}
+@media (max-width: 960px) {
+  .rl-stage { grid-template-columns: 1fr; }
+}
+
+.rl-arm-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+.rl-arm {
+  position: relative;
+  padding: 0.85rem 0.9rem 0.75rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-sm);
+  display: grid;
+  gap: 0.35rem;
+  cursor: pointer;
+  transition: transform 120ms ease, border-color 120ms ease, box-shadow 120ms ease;
+}
+.rl-arm:hover { transform: translateY(-1px); border-color: var(--color-accent); }
+.rl-arm.is-best { border-color: var(--color-accent); box-shadow: 0 0 0 2px var(--color-accent-muted); }
+.rl-arm.is-flash { animation: rl-flash 320ms ease-out; }
+@keyframes rl-flash {
+  0%   { background: var(--color-accent-muted); }
+  100% { background: var(--color-surface); }
+}
+.rl-arm__title {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-weight: 700;
+}
+.rl-arm__title small {
+  font-family: var(--font-mono);
+  color: var(--color-muted);
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+.rl-arm__meter {
+  position: relative;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--color-bg);
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+}
+.rl-arm__meter-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background: var(--color-accent);
+  transition: width 200ms ease;
+}
+.rl-arm__meter-true {
+  position: absolute;
+  top: -2px;
+  bottom: -2px;
+  width: 2px;
+  background: #ef4444;
+  z-index: 2;
+}
+.rl-arm__meter-band {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  background: rgba(239, 68, 68, 0.22);
+  z-index: 1;
+}
+.rl-arm__stats {
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  color: var(--color-muted);
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+.rl-arm__pull {
+  position: absolute;
+  right: 0.45rem;
+  top: 0.45rem;
+  font-size: 0.65rem;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  padding: 0.1rem 0.45rem;
+  color: var(--color-muted);
+}
+
+.rl-canvas-wrapper {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-sm);
+  padding: 0.5rem;
+}
+#rl-chart-canvas {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 16 / 7;
+  display: block;
+  background: var(--color-bg);
+  border-radius: var(--radius-sm);
+}
+
+.rl-sidebar {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-sm);
+  padding: 1rem 1.15rem;
+  display: grid;
+  gap: 0.85rem;
+}
+.rl-sidebar h3 {
+  margin: 0;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  color: var(--color-muted);
+}
+.rl-stat-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.6rem 0.9rem;
+}
+.rl-stat {
+  display: grid;
+  gap: 0.15rem;
+}
+.rl-stat__label {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--color-muted);
+}
+.rl-stat__value {
+  font-family: var(--font-mono);
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--color-text);
+}
+.rl-stat__value--accent { color: var(--color-accent); }
+
+.rl-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  font-size: 0.8rem;
+  color: var(--color-muted);
+}
+.rl-legend__swatch {
+  display: inline-block;
+  width: 0.7rem;
+  height: 0.7rem;
+  border-radius: 2px;
+  margin-right: 0.35rem;
+  vertical-align: middle;
+}
+
+.rl-theory {
+  display: grid;
+  gap: 1.25rem;
+  margin-top: 2rem;
+}
+.rl-theory__panel {
+  padding: 1.1rem 1.35rem;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  display: grid;
+  gap: 0.6rem;
+}
+.rl-theory__panel h3 {
+  margin: 0;
+  font-size: 1.15rem;
+  color: var(--color-accent);
+}
+.rl-theory__panel p,
+.rl-theory__panel li { line-height: 1.6; }
+.rl-theory__kid {
+  margin: 0;
+  padding: 0.75rem 0.9rem;
+  border-radius: var(--radius-sm);
+  background: var(--color-accent-muted);
+  color: var(--color-text);
+  border-left: 3px solid var(--color-accent);
+  font-size: 0.95rem;
+}
+.rl-theory__kid strong { color: var(--color-accent); }
+
+.rl-taxonomy {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 0.9rem;
+}
+.rl-taxonomy__card {
+  padding: 0.9rem 1rem;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-alt);
+  display: grid;
+  gap: 0.4rem;
+}
+.rl-taxonomy__card h4 {
+  margin: 0;
+  font-size: 0.95rem;
+  color: var(--color-accent);
+}
+.rl-taxonomy__card ul {
+  margin: 0;
+  padding-left: 1.1rem;
+  font-size: 0.88rem;
+  line-height: 1.5;
+}
+
+.rl-equation {
+  margin: 0.3rem 0;
+  padding: 0.6rem 0.85rem;
+  background: var(--color-bg-alt);
+  border-left: 3px solid var(--color-accent);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-mono);
+  font-size: 0.92rem;
+  overflow-x: auto;
+}
+
+.rl-compare {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 0.9rem;
+}
+.rl-compare th,
+.rl-compare td {
+  padding: 0.55rem 0.7rem;
+  border-bottom: 1px solid var(--color-border);
+  text-align: left;
+  vertical-align: top;
+}
+.rl-compare th {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--color-muted);
+  background: var(--color-bg-alt);
+}
+.rl-compare tr:last-child td { border-bottom: none; }
+
+/* 1D-chain MDP demo: 7 cells in a row, each cell shows V(s) in the body and
+   a policy arrow underneath. The agent pip sits on top of the active cell
+   during a simulated rollout. */
+.rl-chain {
+  display: grid;
+  gap: 0.6rem;
+  margin-top: 0.75rem;
+}
+.rl-chain__controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+.rl-chain__controls button {
+  padding: 0.5rem 0.8rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+  background: var(--color-bg);
+  cursor: pointer;
+  font-weight: 600;
+  transition: border-color 150ms ease, transform 150ms ease;
+}
+.rl-chain__controls button:hover,
+.rl-chain__controls button:focus-visible {
+  border-color: var(--color-accent);
+  transform: translateY(-1px);
+}
+.rl-chain__controls button.is-primary {
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.15), rgba(59, 130, 246, 0.08));
+}
+.rl-chain__controls button:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+.rl-chain__status {
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  color: var(--color-muted);
+  margin-left: auto;
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+.rl-chain__status strong {
+  color: var(--color-accent);
+  margin-right: 0.25rem;
+}
+.rl-chain__grid {
+  display: grid;
+  grid-template-columns: repeat(var(--chain-n, 7), minmax(0, 1fr));
+  gap: 0.4rem;
+  background: var(--color-bg-alt);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: 0.6rem;
+}
+.rl-cell {
+  position: relative;
+  aspect-ratio: 1 / 1;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  padding: 0.35rem 0.3rem 0.25rem;
+  text-align: center;
+  transition: background 160ms ease, border-color 160ms ease;
+}
+.rl-cell__label {
+  font-size: 0.7rem;
+  color: var(--color-muted);
+  font-family: var(--font-mono);
+}
+.rl-cell__value {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-mono);
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--color-text);
+}
+.rl-cell__policy {
+  font-family: var(--font-mono);
+  font-size: 1rem;
+  color: var(--color-accent);
+}
+.rl-cell.is-goal { background: rgba(34, 197, 94, 0.22); border-color: #22c55e; }
+.rl-cell.is-agent::after {
+  content: '';
+  position: absolute;
+  inset: auto 0 6px 0;
+  margin: 0 auto;
+  width: 12px;
+  height: 12px;
+  border-radius: 999px;
+  background: var(--color-accent);
+  box-shadow: 0 0 0 3px var(--color-accent-muted);
+}
+.rl-cell.is-updated { animation: rl-cell-flash 400ms ease-out; }
+@keyframes rl-cell-flash {
+  0%   { background: var(--color-accent-muted); }
+  100% { background: var(--color-surface); }
+}
+.rl-cell.is-goal.is-updated { animation: none; }
+.rl-chain__delta-chart {
+  width: 100%;
+  height: 70px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg);
+}
+
+/* "Same shape" side-by-side — stacks every update rule vertically so the
+   reader can see the estimate ← estimate + α[target − estimate] skeleton
+   repeat across MC, TD, SARSA, Q-learning, and policy gradient. */
+.rl-updates {
+  display: grid;
+  gap: 0.5rem;
+}
+.rl-updates__row {
+  display: grid;
+  grid-template-columns: 110px minmax(0, 1fr);
+  align-items: center;
+  gap: 0.9rem;
+  padding: 0.55rem 0.8rem;
+  background: var(--color-bg-alt);
+  border-left: 3px solid var(--color-accent);
+  border-radius: var(--radius-sm);
+}
+.rl-updates__label {
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  color: var(--color-accent);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.rl-updates__eq { font-size: 0.95rem; overflow-x: auto; }
+.rl-updates__note {
+  margin: 0.3rem 0 0;
+  color: var(--color-muted);
+  font-size: 0.88rem;
+}
+
+/* Algorithm clustering diagram: three coloured families (value / policy /
+   actor-critic) laid out as cards, each listing members and key axes. The
+   three families repeat the same colour across subtables so the reader
+   can track lineage at a glance. */
+.rl-clusters {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 0.9rem;
+  margin-top: 0.75rem;
+}
+.rl-cluster {
+  padding: 1rem 1.1rem;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  display: grid;
+  gap: 0.55rem;
+  border-top: 4px solid var(--family-accent, var(--color-accent));
+}
+.rl-cluster[data-family='value']  { --family-accent: #3b82f6; }
+.rl-cluster[data-family='policy'] { --family-accent: #a855f7; }
+.rl-cluster[data-family='ac']     { --family-accent: #f97316; }
+.rl-cluster[data-family='model']  { --family-accent: #22c55e; }
+.rl-cluster__eyebrow {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--color-muted);
+}
+.rl-cluster__title {
+  margin: 0;
+  font-size: 1rem;
+  color: var(--family-accent);
+}
+.rl-cluster__tag {
+  display: inline-block;
+  padding: 0.1rem 0.5rem;
+  margin: 0.15rem 0.3rem 0 0;
+  border-radius: 999px;
+  border: 1px solid var(--color-border);
+  background: var(--color-bg);
+  font-size: 0.75rem;
+  font-family: var(--font-mono);
+}
+.rl-cluster__members {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 0.35rem;
+}
+.rl-cluster__member {
+  padding: 0.25rem 0.55rem;
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--family-accent) 15%, transparent);
+  color: var(--family-accent);
+  border: 1px solid color-mix(in srgb, var(--family-accent) 30%, transparent);
+  font-size: 0.78rem;
+  font-family: var(--font-mono);
+}
+.rl-cluster__axes {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 0.2rem;
+  font-size: 0.82rem;
+  color: var(--color-muted);
+}
+.rl-cluster__axes li strong {
+  color: var(--color-text);
+  font-family: var(--font-mono);
+  margin-right: 0.35rem;
+}
+
+.rl-glossary {
+  margin: 0;
+  padding-left: 1.1rem;
+  display: grid;
+  gap: 0.4rem;
+}
+.rl-glossary li { line-height: 1.55; font-size: 0.95rem; }
+.rl-glossary li strong {
+  color: var(--color-accent);
+  font-family: var(--font-mono);
+  margin-right: 0.3rem;
+}
