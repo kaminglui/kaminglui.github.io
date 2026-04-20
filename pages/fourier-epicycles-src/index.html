@@ -73,6 +73,21 @@
               </ol>
             </aside>
 
+            <aside class="lab-intuition" aria-label="Why this works">
+              <h3 class="lab-intuition__title">Why can stacked circles draw anything?</h3>
+              <p>
+                One rotating vector traces a circle. Attach a second vector to the tip of the first — spinning faster
+                or slower — and the combined tip carves a richer curve: lobes, loops, even sharp cusps. Stack a third,
+                a fourth, and every extra term adds finer detail.
+              </p>
+              <p>
+                The Fourier claim is that with enough of these stacked rotations, at the right speeds and starting
+                phases, you can retrace <em>any</em> closed path exactly. The DFT is just the recipe that reads your
+                drawing and tells you each circle's radius (|X<sub>k</sub>|), starting angle (φ<sub>k</sub>), and
+                rotation speed (k cycles per trip around the path).
+              </p>
+            </aside>
+
             <div class="fourier-shell">
               <div id="fourier-root" class="fourier-root" aria-live="polite">
                 <div class="fourier-placeholder">
