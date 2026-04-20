@@ -45,6 +45,12 @@ import {
     syncViewportCssVars as syncViewportCssVarsRaw
 } from './layout/viewport.js';
 import {
+    getPinCenter,
+    offsetLabelFromPin as offsetLabelFromPinRaw,
+    getPinDirection,
+    worldToLocal
+} from './circuit-lab/pinGeometry.js';
+import {
     fileTimestamp,
     validateSaveData,
     serializeCircuitPayload,
@@ -306,52 +312,15 @@ function clampView() {
     viewOffsetY = Math.min(maxY, Math.max(minY, viewOffsetY));
 }
 
-function getPinCenter(comp) {
-    if (!comp || !comp.pins || !comp.pins.length) {
-        return { x: comp?.x || 0, y: comp?.y || 0 };
-    }
-    let sx = 0;
-    let sy = 0;
-    comp.pins.forEach((_, i) => {
-        const pos = comp.getPinPos(i);
-        sx += pos.x;
-        sy += pos.y;
-    });
-    return { x: sx / comp.pins.length, y: sy / comp.pins.length };
-}
-
-function offsetLabelFromPin(comp, pinIdx, distance = PIN_LABEL_DISTANCE, fallbackDir = { x: 0, y: 1 }) {
-    const center = getPinCenter(comp);
-    const pinPos = comp.getPinPos(pinIdx);
-    let dx = pinPos.x - center.x;
-    let dy = pinPos.y - center.y;
-    let len = Math.hypot(dx, dy);
-    if (len < 1e-6 && fallbackDir) {
-        dx = fallbackDir.x;
-        dy = fallbackDir.y;
-        len = Math.hypot(dx, dy) || 1;
-    }
-    const nx = dx / len;
-    const ny = dy / len;
-    return { x: pinPos.x + nx * distance, y: pinPos.y + ny * distance };
-}
+// Default the optional distance argument to PIN_LABEL_DISTANCE for local calls
+// that relied on the old signature — pure helper lives in circuit-lab/pinGeometry.js.
+const offsetLabelFromPin = (comp, pinIdx, distance = PIN_LABEL_DISTANCE, fallbackDir) =>
+    offsetLabelFromPinRaw(comp, pinIdx, distance, fallbackDir);
 
 function isEditableElement(el) {
     if (!el) return false;
     const tag = (el.tagName || '').toUpperCase();
     return EDITABLE_TAGS.has(tag) || el.isContentEditable;
-}
-
-function worldToLocal(comp, x, y) {
-    let px = x - comp.x;
-    let py = y - comp.y;
-    if (comp.mirrorX) px = -px;
-    for (let r = comp.rotation; r > 0; r--) {
-        const tx = px;
-        px = py;
-        py = -tx;
-    }
-    return { x: px, y: py };
 }
 
 /* === MATRIX SOLVER (for MNA) === */
@@ -815,22 +784,6 @@ function orthogonalizeWire(wire) {
     const verts = path.slice(1, Math.max(1, path.length - 1));
     wire.vertices = verts;
     wire.routePref = pref;
-}
-
-function getPinDirection(comp, pinIdx) {
-    const pin = comp.pins[pinIdx];
-    if (!pin) return null;
-    let px = pin.x, py = pin.y;
-    for (let r = 0; r < comp.rotation; r++) {
-        const tx = px;
-        px = -py;
-        py = tx;
-    }
-    if (comp.mirrorX) px = -px;
-    if (Math.abs(px) >= Math.abs(py)) {
-        return { x: Math.sign(px || 1), y: 0 };
-    }
-    return { x: 0, y: Math.sign(py || 1) };
 }
 
 function pruneFloatingJunctions() {
