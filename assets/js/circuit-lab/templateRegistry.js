@@ -1,6 +1,6 @@
 import mixerKaraoke from './templates/mixer-karaoke.js';
 import baxandallTone from './templates/baxandall-tone.js';
-import ee210BarGraph from './templates/ee210-bargraph.js';
+import voltageLedDisplay from './templates/voltage-led-display.js';
 
 const JSON_MANIFEST_URL = new URL('./templates/index.json', import.meta.url);
 const JSON_BASE_URL = new URL('./templates/', import.meta.url);
@@ -170,7 +170,7 @@ function logWarnings(id, warnings = [], warn = console.warn) {
   warnings.forEach((w) => warn?.(`${prefix} ${w}`));
 }
 
-const staticTemplates = [mixerKaraoke, baxandallTone, ee210BarGraph]
+const staticTemplates = [mixerKaraoke, baxandallTone, voltageLedDisplay]
   .filter(Boolean)
   .map(normalizeTemplateShape)
   .map((t) => {

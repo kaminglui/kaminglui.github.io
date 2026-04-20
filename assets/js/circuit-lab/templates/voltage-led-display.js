@@ -1,10 +1,10 @@
-// EE210 Penn State bar-graph voltage indicator (4 LEDs driven by 4 LF412
-// comparators against a 15 V divider). Thresholds R19:R20:R21:R22:R23 = 54:2:2:1:1
-// give tap voltages of 1.5 / 1.0 / 0.5 / 0.25 V. LED series resistor R14-R17 sized
+// Voltage LED display: 4 LEDs driven by 4 LF412 comparators against a 15 V
+// divider. Thresholds R19:R20:R21:R22:R23 = 54:2:2:1:1 give tap voltages of
+// 1.5 / 1.0 / 0.5 / 0.25 V. LED series resistors R14-R17 sized
 // (15 V − 3.3 V) / 10 mA ≈ 1170 Ω for a standard red LED at 10 mA.
-const ee210BarGraph = {
-  id: 'ee210-bargraph',
-  label: 'Bar-Graph Voltage Indicator',
+const voltageLedDisplay = {
+  id: 'voltage-led-display',
+  label: 'Voltage LED Display',
   icon: 'fas fa-signal',
   components: [
     // --- Power rails ---
@@ -113,4 +113,4 @@ const ee210BarGraph = {
   ]
 };
 
-export default ee210BarGraph;
+export default voltageLedDisplay;
