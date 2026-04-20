@@ -1,0 +1,676 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="Watch a 2D particle cloud noised into Gaussian static and denoised back with an analytic score, then read a kid-friendly tour of KL divergence, VAEs, random walks, DDPM, score matching, SDEs, and modern diffusion tricks."
+    />
+    <title>Diffusion Lab — Ka Ming Lui</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fira+Code:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="../../assets/css/style.css" />
+    <link rel="stylesheet" href="../../assets/css/rl-lab.css" />
+    <link rel="stylesheet" href="../../assets/css/diffusion-lab.css" />
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css"
+    />
+  </head>
+  <body class="theme-light">
+    <div id="site-header"></div>
+
+    <main class="lab-main">
+      <section class="lab-hero">
+        <div class="container">
+          <div class="lab-hero__inner">
+            <p class="lab-hero__eyebrow">Interactive lab</p>
+            <h1 class="lab-hero__title">Diffusion Lab</h1>
+            <p class="lab-hero__lead">
+              Watch a cloud of points dissolve into pure Gaussian static, then reassemble using an analytic score
+              of the target distribution. From that one picture, walk through KL divergence, VAEs, random walks,
+              DDPM, score matching, SDE unification, and the modern tricks (CFG, DDIM, latent, flow matching,
+              consistency) that made Stable Diffusion possible.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section class="lab-section" aria-labelledby="diff-title">
+        <div class="container">
+          <article class="card lab-card">
+            <header class="lab-card__header">
+              <p class="lab-card__eyebrow">Noise · Denoise · Sample</p>
+              <div class="lab-card__title-row">
+                <h2 class="lab-card__title" id="diff-title">From structure to static, and back</h2>
+                <div class="lab-card__chips">
+                  <span class="lab-chip">DDPM</span>
+                  <span class="lab-chip">Score matching</span>
+                  <span class="lab-chip">SDE</span>
+                  <span class="lab-chip">Flow matching</span>
+                </div>
+              </div>
+              <p class="lab-card__lead">
+                The particles below start sampled from a known Gaussian-mixture target. Press <em>Run forward</em>
+                and a fixed noise schedule smears them into an isotropic Gaussian. Press <em>Sample from noise</em>
+                and the reverse process — driven by the <em>analytic</em> score ∇ log q<sub>t</sub>(x) of the
+                target — reconstructs the modes. No neural network is trained; the math is closed-form for
+                isotropic mixtures.
+              </p>
+            </header>
+
+            <aside class="lab-intro-steps" aria-label="Read this first">
+              <p class="lab-intro-steps__title">Read this first</p>
+              <ol>
+                <li>
+                  <strong>What it does</strong>
+                  A <em>diffusion model</em> learns to reverse a fixed noising process. The forward process
+                  gradually adds Gaussian noise to data over T steps; the reverse process learns to remove
+                  that noise one step at a time. Generating a new sample = sampling pure noise, then iteratively
+                  denoising it into something that looks like data.
+                </li>
+                <li>
+                  <strong>Try this</strong>
+                  Press <em>Run forward</em> and watch the modes smear into an isotropic blob. Then press
+                  <em>Sample from noise</em> — the points re-assemble onto the target modes. Switch presets
+                  (grid · ring · two moons) to see the score learn different geometries. Slide <em>t</em>
+                  manually to freeze any point along the trajectory.
+                </li>
+                <li>
+                  <strong>Look for this</strong>
+                  At large t the score ≈ −x (everything points toward origin — pure Gaussian); at small t
+                  the score sharpens and points toward the nearest mode. This is why diffusion <em>must</em>
+                  take many small steps: the score is only reliable locally.
+                </li>
+              </ol>
+            </aside>
+
+            <aside class="lab-intuition" aria-label="Plain-English intro">
+              <h3 class="lab-intuition__title">In plain English — what is a diffusion model?</h3>
+              <p>
+                Imagine a photograph dropped in a snowstorm. Each second a little more snow sticks to it until
+                eventually it's just a white rectangle. That's the <strong>forward process</strong> — easy,
+                mechanical, always the same. A diffusion model learns the <strong>reverse</strong>: given a
+                snowed-over photo, guess what the photo looked like one second ago. Do that a thousand times
+                in a row and you've removed all the snow.
+              </p>
+              <p>
+                Generating a <em>new</em> photo is the magic trick: start with pure snow (an all-white rectangle
+                ≈ Gaussian noise) and apply the same "rewind one second" network over and over. The network has
+                never seen this noise before — but because the forward process always turns data into Gaussian
+                noise, the reverse is conditioned to turn Gaussian noise into data.
+              </p>
+              <p>
+                The particles below are 2D "pixels": x, y coordinates instead of RGB channels. The target is a
+                small Gaussian mixture you can see as faint circles on the canvas. Everything works identically
+                in 3 million dimensions (a 1024×1024 image) — we just can't draw that.
+              </p>
+              <p class="lab-intuition__note"><strong>Words that show up a lot:</strong></p>
+              <ul class="rl-glossary">
+                <li><strong>Latent variable</strong> — a hidden random variable that generates the data. In VAEs it's z; in diffusion it's every noisy x<sub>t</sub>.</li>
+                <li><strong>Noise schedule</strong> — the pre-chosen sequence β<sub>1</sub>, …, β<sub>T</sub> saying how much noise to add each step. Fixed; not learned.</li>
+                <li><strong>Score</strong> — the gradient of log-density, ∇<sub>x</sub> log p(x). Points from "unlikely" regions toward "more likely" ones.</li>
+                <li><strong>ELBO</strong> — Evidence Lower BOund on log p(x). VAEs and diffusion both maximise it.</li>
+                <li><strong>KL divergence</strong> — "distance" from distribution p to q. Not symmetric: KL(p‖q) ≠ KL(q‖p), and that asymmetry matters a lot in practice.</li>
+                <li><strong>Reparameterisation trick</strong> — write a sample as z = μ + σε with ε ~ 𝒩(0,I) so gradients flow through μ and σ.</li>
+                <li><strong>SDE</strong> — stochastic differential equation. Diffusion is cleanest in the continuous-time SDE view.</li>
+              </ul>
+            </aside>
+
+            <div class="rl-controls" aria-label="Diffusion controls">
+              <div class="rl-controls__row">
+                <div class="diff-presets" role="group" aria-label="Target presets">
+                  <span class="diff-presets__label">Target</span>
+                  <button type="button" class="diff-preset is-active" data-preset="grid">4-mode grid</button>
+                  <button type="button" class="diff-preset" data-preset="ring">8-mode ring</button>
+                  <button type="button" class="diff-preset" data-preset="moons">Two moons</button>
+                </div>
+                <div class="rl-controls__group">
+                  <label for="diff-particles">Particles</label>
+                  <select id="diff-particles">
+                    <option value="128">128</option>
+                    <option value="512" selected>512</option>
+                    <option value="1024">1024</option>
+                    <option value="2048">2048</option>
+                  </select>
+                </div>
+                <div class="rl-controls__group">
+                  <label for="diff-speed">Steps / frame</label>
+                  <select id="diff-speed">
+                    <option value="1">1</option>
+                    <option value="5" selected>5</option>
+                    <option value="25">25</option>
+                    <option value="100">100</option>
+                  </select>
+                </div>
+                <div class="rl-controls__group" style="min-width: 220px;">
+                  <label for="diff-t">t <span class="rl-controls__value" id="diff-t-value">0</span> / T−1</label>
+                  <input id="diff-t" type="range" min="0" max="999" step="1" value="0" />
+                </div>
+              </div>
+              <div class="rl-controls__actions">
+                <button type="button" id="diff-btn-step">Step</button>
+                <button type="button" id="diff-btn-forward" class="is-primary">Run forward</button>
+                <button type="button" id="diff-btn-reverse" class="is-primary">Run reverse</button>
+                <button type="button" id="diff-btn-pause" hidden>Pause</button>
+                <button type="button" id="diff-btn-noise">Sample from noise</button>
+                <button type="button" id="diff-btn-reset">Reset to target</button>
+              </div>
+            </div>
+
+            <div class="rl-stage">
+              <div>
+                <div class="diff-canvas-wrapper">
+                  <canvas id="diff-canvas" width="640" height="640" aria-label="2D particle field"></canvas>
+                </div>
+                <canvas id="diff-schedule" class="diff-schedule" width="800" height="70" aria-label="Noise schedule"></canvas>
+                <div class="rl-legend" aria-hidden="true">
+                  <span><span class="rl-legend__swatch" style="background:#3b82f6"></span>Particle x<sub>t</sub></span>
+                  <span><span class="rl-legend__swatch" style="background:rgba(239,68,68,0.5)"></span>Target mode (1σ)</span>
+                  <span><span class="rl-legend__swatch" style="background:#a855f7"></span>ᾱ<sub>t</sub> schedule</span>
+                </div>
+              </div>
+              <aside class="rl-sidebar" aria-label="Diffusion stats">
+                <h3>Live stats</h3>
+                <div class="rl-stat-grid">
+                  <div class="rl-stat">
+                    <span class="rl-stat__label">t</span>
+                    <span class="rl-stat__value" id="diff-stat-t">0</span>
+                  </div>
+                  <div class="rl-stat">
+                    <span class="rl-stat__label">ᾱ<sub>t</sub></span>
+                    <span class="rl-stat__value" id="diff-stat-abar">1.000</span>
+                  </div>
+                  <div class="rl-stat">
+                    <span class="rl-stat__label">√(1−ᾱ<sub>t</sub>)</span>
+                    <span class="rl-stat__value" id="diff-stat-sigma">0.000</span>
+                  </div>
+                  <div class="rl-stat">
+                    <span class="rl-stat__label">Mean ‖x‖²</span>
+                    <span class="rl-stat__value" id="diff-stat-norm">—</span>
+                  </div>
+                  <div class="rl-stat">
+                    <span class="rl-stat__label">Direction</span>
+                    <span class="rl-stat__value rl-stat__value--accent" id="diff-stat-dir">idle</span>
+                  </div>
+                  <div class="rl-stat">
+                    <span class="rl-stat__label">Preset</span>
+                    <span class="rl-stat__value" id="diff-stat-preset">grid</span>
+                  </div>
+                </div>
+                <p class="ml-hint">
+                  At t=0 particles sit on the target. As t increases, √(1−ᾱ<sub>t</sub>) grows until particles
+                  are indistinguishable from 𝒩(0, I). The reverse sweep undoes exactly this path.
+                </p>
+              </aside>
+            </div>
+
+            <section class="rl-theory" aria-labelledby="diff-theory-title">
+              <h3 id="diff-theory-title" class="visually-hidden">Diffusion theory tour</h3>
+
+              <article class="rl-theory__panel" id="theory-kl">
+                <h3>1 · KL divergence: the tape measure between distributions</h3>
+                <p class="rl-theory__kid">
+                  <strong>Kid version.</strong> You have two guesses for where stuff lives: yours and the truth.
+                  KL divergence is a number that gets bigger the more your guess <em>misses</em> places the truth
+                  cares about. It's not symmetric: missing a peak costs differently depending on whose side you
+                  read it from.
+                </p>
+                <div class="rl-equation" data-katex="D_{\mathrm{KL}}(p \,\|\, q) = \mathbb{E}_{x \sim p}\!\left[\,\log \tfrac{p(x)}{q(x)}\,\right] = \int p(x)\,\log\tfrac{p(x)}{q(x)}\,dx" data-katex-display></div>
+                <ul>
+                  <li><strong>p</strong> — the "reference" distribution (the one the expectation is taken under).</li>
+                  <li><strong>q</strong> — the model being compared against p.</li>
+                  <li>D<sub>KL</sub> ≥ 0 with equality iff p = q almost everywhere. Not a metric (not symmetric, no triangle inequality).</li>
+                </ul>
+                <p>Two orderings matter. In ML, the same symbols flip meaning depending on which side you put data:</p>
+                <table class="rl-compare">
+                  <thead>
+                    <tr><th></th><th>Forward KL — D<sub>KL</sub>(p<sub>data</sub> ‖ q<sub>θ</sub>)</th><th>Reverse KL — D<sub>KL</sub>(q<sub>θ</sub> ‖ p)</th></tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td>Minimises to</td>
+                      <td>Maximum likelihood: <span data-katex="\max_\theta \mathbb{E}_{p_{\text{data}}}[\log q_\theta(x)]"></span></td>
+                      <td>Variational inference: model ducks low-probability regions of p</td>
+                    </tr>
+                    <tr>
+                      <td>Behaviour</td>
+                      <td>Mean-seeking / mass-covering — q<sub>θ</sub> spreads over every mode of p</td>
+                      <td>Mode-seeking — q<sub>θ</sub> locks onto one mode, ignores the rest</td>
+                    </tr>
+                    <tr>
+                      <td>Who uses it</td>
+                      <td>Normalising flows, autoregressive LLMs, <em>diffusion</em> (ELBO)</td>
+                      <td>Classic VI, some VAE variants (reverse-KL formulation)</td>
+                    </tr>
+                  </tbody>
+                </table>
+                <p>
+                  Diffusion training minimises a forward-KL on the joint of noisy variables — not a single
+                  D<sub>KL</sub>(p<sub>data</sub> ‖ q<sub>θ</sub>), but a sum of per-step KLs between
+                  q(x<sub>t−1</sub>|x<sub>t</sub>, x<sub>0</sub>) and p<sub>θ</sub>(x<sub>t−1</sub>|x<sub>t</sub>).
+                  Each term is a Gaussian-vs-Gaussian KL, which collapses to a closed-form L2 loss. See §4.
+                </p>
+              </article>
+
+              <article class="rl-theory__panel" id="theory-vae">
+                <h3>2 · VAE: the ancestor of diffusion</h3>
+                <p class="rl-theory__kid">
+                  <strong>Kid version.</strong> Imagine compressing a photo to a short code, then building the
+                  photo back from the code. A <em>variational</em> autoencoder does this but with randomness:
+                  each photo maps to a <em>fuzzy ball</em> in code-space, and decoding samples from that ball.
+                  The fuzzy ball is what lets you later sample <em>new</em> photos by just grabbing a random
+                  code.
+                </p>
+                <p>A VAE has three pieces:</p>
+                <ul>
+                  <li><strong>Encoder</strong> <span data-katex="q_\phi(z\mid x)"></span> — maps data x to a distribution over latents z (usually Gaussian with learned mean and variance).</li>
+                  <li><strong>Decoder</strong> <span data-katex="p_\theta(x\mid z)"></span> — maps a latent z back to a distribution over data.</li>
+                  <li><strong>Prior</strong> <span data-katex="p(z) = \mathcal{N}(0, I)"></span> — a simple distribution we can sample.</li>
+                </ul>
+                <p>The <strong>ELBO</strong> (Evidence Lower BOund) is the loss you can actually optimise:</p>
+                <div class="rl-equation" data-katex="\log p_\theta(x) \;\ge\; \underbrace{\mathbb{E}_{q_\phi(z\mid x)}\!\left[\log p_\theta(x\mid z)\right]}_{\text{reconstruction}} \;-\; \underbrace{D_{\mathrm{KL}}\!\bigl(q_\phi(z\mid x)\,\|\,p(z)\bigr)}_{\text{latent regulariser}}" data-katex-display></div>
+                <p>
+                  Two terms with clear jobs: reconstruction (decoder should reproduce x from its latent) and
+                  regularisation (encoder shouldn't wander too far from the prior). The <em>gap</em> in the
+                  inequality equals <span data-katex="D_{\mathrm{KL}}(q_\phi(z\mid x)\,\|\,p_\theta(z\mid x))"></span> —
+                  tightening the bound makes the encoder match the true posterior.
+                </p>
+                <p>
+                  <strong>Reparameterisation trick.</strong> Sampling
+                  <span data-katex="z \sim \mathcal{N}(\mu_\phi(x), \sigma_\phi^2(x))"></span>
+                  has no gradient through the random draw. Rewrite it as
+                </p>
+                <div class="rl-equation" data-katex="z = \mu_\phi(x) + \sigma_\phi(x) \odot \varepsilon, \qquad \varepsilon \sim \mathcal{N}(0, I)" data-katex-display></div>
+                <p>
+                  Now gradients flow through μ<sub>φ</sub> and σ<sub>φ</sub>. This same trick is at the heart
+                  of every diffusion loss — you'll see ε live on as the <em>thing diffusion predicts</em>.
+                </p>
+                <p class="rl-theory__kid">
+                  <strong>Bridge to diffusion.</strong> A diffusion model <em>is</em> a hierarchical VAE with a
+                  fixed (non-learned) encoder — the forward process — and T latent layers
+                  x<sub>1</sub>, …, x<sub>T</sub>. Every algorithm below inherits the VAE's ELBO machinery.
+                </p>
+              </article>
+
+              <article class="rl-theory__panel" id="theory-rw">
+                <h3>3 · Random walk → Brownian motion → forward diffusion</h3>
+                <p class="rl-theory__kid">
+                  <strong>Kid version.</strong> Flip a coin: step left or right. Do it a thousand times. Your
+                  position spreads out in a bell shape. Make the steps tiny and fast and that's <em>Brownian
+                  motion</em>. Do the same thing to every pixel of a photograph and that's the <em>forward
+                  diffusion process</em>.
+                </p>
+                <p>A discrete random walk in 1-D with Gaussian steps:</p>
+                <div class="rl-equation" data-katex="x_{t+1} = x_t + \eta_t,\qquad \eta_t \sim \mathcal{N}(0,\, \sigma^2)" data-katex-display></div>
+                <p>After t steps, Var(x<sub>t</sub>) = t σ². Take the continuous-time limit with σ² = Δt:</p>
+                <div class="rl-equation" data-katex="dx = dW,\qquad W_t \sim \mathcal{N}(0, t)\;\;\text{(standard Brownian motion)}" data-katex-display></div>
+                <p>Add a drift f(x, t) and state-dependent diffusion g(t) and you get an <strong>Itô SDE</strong>:</p>
+                <div class="rl-equation" data-katex="dx = f(x, t)\, dt + g(t)\, dW" data-katex-display></div>
+                <ul>
+                  <li><strong>f(x, t)</strong> — drift: deterministic nudge at each instant.</li>
+                  <li><strong>g(t)</strong> — diffusion coefficient: scale of the random kicks.</li>
+                  <li><strong>dW</strong> — Brownian increment, 𝒩(0, dt) in each dimension.</li>
+                </ul>
+                <p>
+                  Diffusion's forward process is exactly this SDE, discretised. The drift pulls x toward zero
+                  (so the marginal doesn't explode), the diffusion coefficient adds noise. Different choices
+                  of (f, g) give the VP and VE flavours in §6.
+                </p>
+              </article>
+
+              <article class="rl-theory__panel" id="theory-ddpm">
+                <h3>4 · DDPM: the Ho/Jain/Abbeel recipe</h3>
+                <p class="rl-theory__kid">
+                  <strong>Kid version.</strong> Each step blurs the picture a tiny bit with Gaussian snow.
+                  Training means: pick a random t, show the network "here's the picture with t snowstorms
+                  worth of snow — guess the snow." The network learns to <em>predict the noise</em>.
+                </p>
+                <p>
+                  <strong>Forward process</strong>: a fixed Markov chain with variance schedule
+                  β<sub>1</sub>, …, β<sub>T</sub>. At each step:
+                </p>
+                <div class="rl-equation" data-katex="q(x_t \mid x_{t-1}) = \mathcal{N}\!\bigl(x_t;\ \sqrt{1-\beta_t}\, x_{t-1},\ \beta_t\, I\bigr)" data-katex-display></div>
+                <p>Because compositions of Gaussians are Gaussian, the marginal has a closed form. Let α<sub>t</sub> = 1 − β<sub>t</sub> and ᾱ<sub>t</sub> = ∏<sub>s=1</sub><sup>t</sup> α<sub>s</sub>:</p>
+                <div class="rl-equation" data-katex="q(x_t \mid x_0) = \mathcal{N}\!\bigl(x_t;\ \sqrt{\bar\alpha_t}\, x_0,\ (1 - \bar\alpha_t)\, I\bigr)" data-katex-display></div>
+                <div class="rl-equation" data-katex="x_t = \sqrt{\bar\alpha_t}\, x_0 \;+\; \sqrt{1 - \bar\alpha_t}\, \varepsilon,\qquad \varepsilon \sim \mathcal{N}(0, I)" data-katex-display></div>
+                <ul>
+                  <li><strong>β<sub>t</sub></strong> — per-step noise variance (schedule). Linear, cosine, etc.</li>
+                  <li><strong>α<sub>t</sub></strong>, <strong>ᾱ<sub>t</sub></strong> — signal-preservation factors: √ᾱ<sub>t</sub> is how much of x<sub>0</sub> survives to step t.</li>
+                  <li><strong>ε</strong> — the noise that <em>created</em> x<sub>t</sub>. Knowing ε is equivalent to knowing x<sub>0</sub>.</li>
+                </ul>
+                <p><strong>Reverse process</strong>: we don't know q(x<sub>t−1</sub>|x<sub>t</sub>), but it's Gaussian when conditioned on x<sub>0</sub>:</p>
+                <div class="rl-equation" data-katex="q(x_{t-1} \mid x_t, x_0) = \mathcal{N}\!\bigl(x_{t-1};\ \tilde\mu_t(x_t, x_0),\ \tilde\beta_t\, I\bigr)" data-katex-display></div>
+                <p>
+                  Parameterise the model to predict ε instead of x<sub>0</sub> or μ directly, and the variational
+                  lower bound collapses to a strikingly simple loss:
+                </p>
+                <div class="rl-equation" data-katex="\mathcal{L}_{\text{simple}}(\theta) = \mathbb{E}_{t,\, x_0,\, \varepsilon}\Bigl[\,\bigl\lVert\, \varepsilon - \varepsilon_\theta\!\bigl(\sqrt{\bar\alpha_t}\,x_0 + \sqrt{1-\bar\alpha_t}\,\varepsilon,\; t\bigr)\,\bigr\rVert^2\,\Bigr]" data-katex-display></div>
+                <p>That's it. The entire training loop is: sample (x<sub>0</sub>, t, ε), noise x<sub>0</sub> to x<sub>t</sub>, ask the network to predict ε, regress. At inference:</p>
+                <div class="rl-equation" data-katex="x_{t-1} = \tfrac{1}{\sqrt{\alpha_t}}\!\left(\,x_t - \tfrac{1 - \alpha_t}{\sqrt{1 - \bar\alpha_t}}\, \varepsilon_\theta(x_t, t)\,\right) \;+\; \tilde\sigma_t\, z,\qquad z \sim \mathcal{N}(0, I)" data-katex-display></div>
+                <p class="ml-hint">
+                  The demo above uses the <em>analytic</em> score of the GMM target — no network — and reverses
+                  via this exact update (with ε<sub>θ</sub> replaced by the closed-form ε).
+                </p>
+              </article>
+
+              <article class="rl-theory__panel" id="theory-score">
+                <h3>5 · Score matching and Langevin sampling</h3>
+                <p class="rl-theory__kid">
+                  <strong>Kid version.</strong> Instead of teaching the net "what does data look like?", teach
+                  it "which way is uphill on the data distribution?" — the <em>score</em>. Then climb that hill
+                  while adding a little noise so you don't get stuck.
+                </p>
+                <p>
+                  The <strong>score</strong> of a density p is the gradient of log-density:
+                </p>
+                <div class="rl-equation" data-katex="s(x) = \nabla_x \log p(x)" data-katex-display></div>
+                <p>
+                  Score matching (Hyvärinen 2005) fits s<sub>θ</sub>(x) ≈ ∇<sub>x</sub> log p(x) without ever
+                  computing p(x). The practical form for noisy data — <strong>denoising score matching</strong>
+                  (Vincent 2011) — is the bridge to diffusion:
+                </p>
+                <div class="rl-equation" data-katex="\mathcal{L}_{\mathrm{DSM}}(\theta) = \mathbb{E}_{\sigma,\, x,\, \tilde x}\!\left[\,\bigl\lVert\, s_\theta(\tilde x, \sigma) - \nabla_{\tilde x} \log q_\sigma(\tilde x \mid x)\,\bigr\rVert^2\,\right]" data-katex-display></div>
+                <p>With q<sub>σ</sub>(x̃|x) = 𝒩(x̃; x, σ²I), the gradient simplifies to <span data-katex="(x - \tilde x)/\sigma^2"></span> — the direction from noisy back to clean, normalised by variance.</p>
+                <p>
+                  <strong>Langevin dynamics</strong> turns a score into samples:
+                </p>
+                <div class="rl-equation" data-katex="x_{k+1} = x_k + \tfrac{\eta}{2}\, s_\theta(x_k) + \sqrt{\eta}\, z_k,\qquad z_k \sim \mathcal{N}(0, I)" data-katex-display></div>
+                <p>
+                  As η → 0 and K → ∞, x<sub>K</sub> is distributed according to p. Song & Ermon (2019) showed
+                  that running Langevin at <em>decreasing</em> noise scales (annealed SMLD) produces high-quality
+                  samples — and that this is mathematically equivalent to DDPM up to parameterisation:
+                </p>
+                <div class="rl-equation" data-katex="\varepsilon_\theta(x_t, t) \;=\; -\sqrt{1 - \bar\alpha_t}\, s_\theta(x_t, t)" data-katex-display></div>
+                <p class="rl-theory__kid">
+                  <strong>Two sides of one coin.</strong> "Predict the noise" and "predict the score" are the
+                  same object wearing different scalars. The interactive above uses the closed-form score of
+                  the GMM — every denoising step is one stochastic Langevin climb at the current noise level.
+                </p>
+              </article>
+
+              <article class="rl-theory__panel" id="theory-sde">
+                <h3>6 · The SDE view: VP, VE, and the probability-flow ODE</h3>
+                <p class="rl-theory__kid">
+                  <strong>Kid version.</strong> Take DDPM and make the steps infinitely small. You get a
+                  stochastic differential equation that you can reverse in closed form. Two popular choices
+                  differ only in how they balance "shrink the signal" vs "add noise."
+                </p>
+                <p>
+                  Song et al. (2021) showed that both DDPM and SMLD are discretisations of a continuous-time
+                  <em>forward SDE</em>:
+                </p>
+                <div class="rl-equation" data-katex="dx = f(x, t)\, dt + g(t)\, dW" data-katex-display></div>
+                <p>And — using Anderson's (1982) time-reversal identity — the <strong>reverse SDE</strong> is:</p>
+                <div class="rl-equation" data-katex="dx = \bigl[\,f(x, t) - g(t)^2\, \nabla_x \log p_t(x)\,\bigr]\, dt \;+\; g(t)\, d\bar W" data-katex-display></div>
+                <p>
+                  The only unknown is the score ∇ log p<sub>t</sub>. Train s<sub>θ</sub> once; integrate this
+                  backward to generate.
+                </p>
+                <div class="rl-taxonomy">
+                  <div class="rl-taxonomy__card">
+                    <h4>VP-SDE (DDPM)</h4>
+                    <div class="rl-equation" data-katex="f = -\tfrac{1}{2}\beta(t)\, x,\quad g = \sqrt{\beta(t)}" data-katex-display></div>
+                    <ul>
+                      <li>Variance Preserving: marginal stays bounded.</li>
+                      <li>Continuous version of DDPM.</li>
+                    </ul>
+                  </div>
+                  <div class="rl-taxonomy__card">
+                    <h4>VE-SDE (SMLD)</h4>
+                    <div class="rl-equation" data-katex="f = 0,\quad g = \sqrt{\tfrac{d[\sigma^2]}{dt}}" data-katex-display></div>
+                    <ul>
+                      <li>Variance Exploding: marginal variance grows to σ<sub>max</sub>².</li>
+                      <li>Continuous version of annealed Langevin / SMLD.</li>
+                    </ul>
+                  </div>
+                  <div class="rl-taxonomy__card">
+                    <h4>Probability-flow ODE</h4>
+                    <div class="rl-equation" data-katex="dx = \bigl[\,f - \tfrac{1}{2} g^2\, \nabla \log p_t\,\bigr]\, dt" data-katex-display></div>
+                    <ul>
+                      <li>Deterministic. Same marginals as the SDE.</li>
+                      <li>Enables exact likelihood, fast ODE solvers (DPM-Solver, Heun).</li>
+                    </ul>
+                  </div>
+                </div>
+                <p class="ml-hint">
+                  The PF-ODE is why a 1000-step DDPM can be compressed to 20–50 ODE-solver steps with almost no
+                  quality loss — the stochastic dW doesn't carry sampling information, only diversity.
+                </p>
+              </article>
+
+              <article class="rl-theory__panel" id="theory-modern">
+                <h3>7 · Modern tricks — guidance, DDIM, latent, flow matching, consistency</h3>
+                <p class="rl-theory__kid">
+                  <strong>Kid version.</strong> The five ideas that took diffusion from "cute 2019 MNIST demo"
+                  to "Stable Diffusion / Veo / Sora in production."
+                </p>
+                <div class="rl-taxonomy">
+                  <div class="rl-taxonomy__card">
+                    <h4>Classifier-free guidance</h4>
+                    <div class="rl-equation" data-katex="\tilde\varepsilon = (1 + w)\,\varepsilon_\theta(x, c) - w\,\varepsilon_\theta(x, \varnothing)" data-katex-display></div>
+                    <ul>
+                      <li>c — conditioning (text prompt, class label).</li>
+                      <li>w — guidance scale; w=0 is unconditional, w→∞ is over-confident.</li>
+                      <li>Trick: train one model with and without c; extrapolate at inference.</li>
+                    </ul>
+                  </div>
+                  <div class="rl-taxonomy__card">
+                    <h4>DDIM (non-Markov)</h4>
+                    <div class="rl-equation" data-katex="x_{t-1} = \sqrt{\bar\alpha_{t-1}}\,\hat x_0 + \sqrt{1-\bar\alpha_{t-1}}\,\varepsilon_\theta" data-katex-display></div>
+                    <ul>
+                      <li>Deterministic (σ=0) sampling path.</li>
+                      <li>Skip steps; 1000 → 50 inference steps.</li>
+                      <li>Same training loss as DDPM.</li>
+                    </ul>
+                  </div>
+                  <div class="rl-taxonomy__card">
+                    <h4>Latent diffusion (SD, Imagen)</h4>
+                    <ul>
+                      <li>Pre-train a VAE that maps 512×512 images to 64×64 latents.</li>
+                      <li>Run diffusion in latent space — 64× fewer FLOPs per step.</li>
+                      <li>Unlocks text-to-image at consumer GPU scale.</li>
+                    </ul>
+                  </div>
+                  <div class="rl-taxonomy__card">
+                    <h4>Flow matching</h4>
+                    <div class="rl-equation" data-katex="x_t = (1 - t)\, x_0 + t\, x_1,\quad \mathcal{L} = \mathbb{E}\,\lVert v_\theta(x_t, t) - (x_1 - x_0)\rVert^2" data-katex-display></div>
+                    <ul>
+                      <li>Regress a velocity field along straight paths between data and noise.</li>
+                      <li>No noise schedule; simpler than diffusion.</li>
+                      <li>Stable Diffusion 3, Flux, Veo use this.</li>
+                    </ul>
+                  </div>
+                  <div class="rl-taxonomy__card">
+                    <h4>Consistency models</h4>
+                    <div class="rl-equation" data-katex="f_\theta(x_t, t) \approx f_\theta(x_0, 0)\;\;\forall\, t" data-katex-display></div>
+                    <ul>
+                      <li>Train so the model predicts the <em>end of the trajectory</em> directly.</li>
+                      <li>1-step sampling (with small quality loss) or 2-4 step.</li>
+                      <li>LCM, SDXL-Turbo, Dreamshaper-LCM.</li>
+                    </ul>
+                  </div>
+                </div>
+              </article>
+
+              <article class="rl-theory__panel" id="theory-shape">
+                <h3>8 · Same shape, different targets</h3>
+                <p class="rl-theory__kid">
+                  <strong>Kid version.</strong> Every generative model in this tour is doing the same thing:
+                  "regress a target that depends on the noise level, weighted by something." The thing
+                  predicted changes; the shape stays.
+                </p>
+                <p>
+                  Each loss is a weighted L2 regression with schedule-dependent target and weight:
+                </p>
+                <div class="rl-equation" data-katex="\mathcal{L}(\theta) = \mathbb{E}_{t,\, x_0,\, \varepsilon}\!\left[\,w(t)\, \bigl\lVert\, \underbrace{\text{target}(t, x_0, \varepsilon)}_{\text{depends on the family}} - f_\theta(x_t, t)\,\bigr\rVert^2\,\right]" data-katex-display></div>
+                <div class="rl-updates">
+                  <div class="rl-updates__row">
+                    <span class="rl-updates__label">VAE</span>
+                    <span class="rl-updates__eq" data-katex="\lVert \mathbf{x} - p_\theta(x \mid z) \rVert^2 + D_{\mathrm{KL}}(q_\phi \,\|\, p)"></span>
+                  </div>
+                  <div class="rl-updates__row">
+                    <span class="rl-updates__label">DDPM (ε-pred)</span>
+                    <span class="rl-updates__eq" data-katex="\lVert\, \mathbf{\varepsilon} - \varepsilon_\theta(x_t, t) \,\rVert^2"></span>
+                  </div>
+                  <div class="rl-updates__row">
+                    <span class="rl-updates__label">DDPM (x₀-pred)</span>
+                    <span class="rl-updates__eq" data-katex="\lVert\, \mathbf{x_0} - \hat x_\theta(x_t, t) \,\rVert^2"></span>
+                  </div>
+                  <div class="rl-updates__row">
+                    <span class="rl-updates__label">DSM (score)</span>
+                    <span class="rl-updates__eq" data-katex="\lVert\, \mathbf{(x - \tilde x)/\sigma^2} - s_\theta(\tilde x, \sigma) \,\rVert^2"></span>
+                  </div>
+                  <div class="rl-updates__row">
+                    <span class="rl-updates__label">Flow matching</span>
+                    <span class="rl-updates__eq" data-katex="\lVert\, \mathbf{(x_1 - x_0)} - v_\theta(x_t, t) \,\rVert^2"></span>
+                  </div>
+                  <div class="rl-updates__row">
+                    <span class="rl-updates__label">Consistency</span>
+                    <span class="rl-updates__eq" data-katex="\lVert\, f_\theta(x_{t+\Delta}, t+\Delta) - f_{\theta^-}(x_t, t) \,\rVert^2"></span>
+                  </div>
+                </div>
+                <p class="rl-updates__note">
+                  Bolded piece = the target. Reparameterisations of DDPM (ε, x₀, v-pred) all give
+                  <em>exactly</em> the same optimum — just with different numerical conditioning at each noise
+                  level. Flow matching swaps the target for a velocity and drops the noise-schedule complication
+                  entirely. Consistency distils <em>multi-step</em> sampling into a <em>single-step</em>
+                  regression.
+                </p>
+              </article>
+
+              <article class="rl-theory__panel" id="theory-map">
+                <h3>9 · Method families — a clustering map</h3>
+                <p class="rl-theory__kid">
+                  <strong>Kid version.</strong> All modern generative models are variations on "turn noise into
+                  data by following a path." Families disagree about what the path looks like, what we learn
+                  along it, and how we sample.
+                </p>
+                <div class="rl-clusters">
+                  <div class="rl-cluster" data-family="likelihood">
+                    <span class="rl-cluster__eyebrow">Family A</span>
+                    <h4 class="rl-cluster__title">Likelihood models</h4>
+                    <p>Learn an explicit p<sub>θ</sub>(x), train by maximum likelihood or an ELBO on it.</p>
+                    <div class="rl-cluster__members">
+                      <span class="rl-cluster__member">VAE</span>
+                      <span class="rl-cluster__member">β-VAE</span>
+                      <span class="rl-cluster__member">VQ-VAE</span>
+                      <span class="rl-cluster__member">RealNVP</span>
+                      <span class="rl-cluster__member">Glow</span>
+                      <span class="rl-cluster__member">IAF</span>
+                      <span class="rl-cluster__member">PixelCNN</span>
+                    </div>
+                    <ul class="rl-cluster__axes">
+                      <li><strong>path</strong>one-shot encode/decode</li>
+                      <li><strong>loss</strong>ELBO or exact log-lik</li>
+                      <li><strong>sampling</strong>single forward pass</li>
+                      <li><strong>limit</strong>blurry / rigid coupling</li>
+                    </ul>
+                  </div>
+
+                  <div class="rl-cluster" data-family="score">
+                    <span class="rl-cluster__eyebrow">Family B</span>
+                    <h4 class="rl-cluster__title">Score / diffusion</h4>
+                    <p>Many-step stochastic denoising. Train a score or noise predictor; integrate a reverse SDE.</p>
+                    <div class="rl-cluster__members">
+                      <span class="rl-cluster__member">DDPM</span>
+                      <span class="rl-cluster__member">SMLD / NCSN</span>
+                      <span class="rl-cluster__member">DDIM</span>
+                      <span class="rl-cluster__member">Score SDE</span>
+                      <span class="rl-cluster__member">EDM</span>
+                      <span class="rl-cluster__member">DPM-Solver</span>
+                      <span class="rl-cluster__member">Latent Diffusion / SD</span>
+                      <span class="rl-cluster__member">Imagen</span>
+                    </div>
+                    <ul class="rl-cluster__axes">
+                      <li><strong>path</strong>Gaussian diffusion</li>
+                      <li><strong>loss</strong>weighted ‖ε − ε<sub>θ</sub>‖²</li>
+                      <li><strong>sampling</strong>10–1000 steps</li>
+                      <li><strong>strength</strong>quality + diversity</li>
+                    </ul>
+                  </div>
+
+                  <div class="rl-cluster" data-family="flow">
+                    <span class="rl-cluster__eyebrow">Family C</span>
+                    <h4 class="rl-cluster__title">Flow-based (rectified)</h4>
+                    <p>Regress a velocity field along simple paths between x<sub>0</sub> and x<sub>1</sub> = noise.</p>
+                    <div class="rl-cluster__members">
+                      <span class="rl-cluster__member">Flow matching</span>
+                      <span class="rl-cluster__member">Rectified flow</span>
+                      <span class="rl-cluster__member">Stochastic interpolants</span>
+                      <span class="rl-cluster__member">CNF</span>
+                      <span class="rl-cluster__member">SD 3</span>
+                      <span class="rl-cluster__member">Flux</span>
+                    </div>
+                    <ul class="rl-cluster__axes">
+                      <li><strong>path</strong>straight (x<sub>0</sub>→x<sub>1</sub>)</li>
+                      <li><strong>loss</strong>‖v − (x<sub>1</sub>−x<sub>0</sub>)‖²</li>
+                      <li><strong>sampling</strong>ODE solver</li>
+                      <li><strong>trend</strong>replacing diffusion at frontier</li>
+                    </ul>
+                  </div>
+
+                  <div class="rl-cluster" data-family="consistency">
+                    <span class="rl-cluster__eyebrow">Family D</span>
+                    <h4 class="rl-cluster__title">Consistency / distillation</h4>
+                    <p>Collapse a multi-step teacher into a 1–4 step student. Keeps most quality, drops most cost.</p>
+                    <div class="rl-cluster__members">
+                      <span class="rl-cluster__member">Consistency Models</span>
+                      <span class="rl-cluster__member">LCM</span>
+                      <span class="rl-cluster__member">SDXL-Turbo</span>
+                      <span class="rl-cluster__member">ADD</span>
+                      <span class="rl-cluster__member">CTM</span>
+                      <span class="rl-cluster__member">Progressive distillation</span>
+                    </div>
+                    <ul class="rl-cluster__axes">
+                      <li><strong>path</strong>inherited from teacher</li>
+                      <li><strong>loss</strong>self-consistency or adversarial</li>
+                      <li><strong>sampling</strong>1–4 steps</li>
+                      <li><strong>use</strong>real-time generation</li>
+                    </ul>
+                  </div>
+                </div>
+                <p class="ml-hint">
+                  Names read as coordinates: <em>Stable Diffusion</em> = score/diffusion + latent space + CFG.
+                  <em>SD 3</em> = flow matching + latent + MM-DiT backbone. <em>LCM</em> = consistency distilled
+                  from latent diffusion. Pick a family here, a target from §8, and an exploration-of-noise
+                  schedule from §4 — you've named every SOTA generative model of 2023–2026.
+                </p>
+              </article>
+            </section>
+          </article>
+        </div>
+      </section>
+    </main>
+
+    <div id="site-footer"></div>
+
+    <script type="module">
+      import { initMainLayout } from '../../assets/js/layout/mainLayout.js';
+      initMainLayout('diffusion-lab');
+    </script>
+    <script type="module" src="../../assets/js/main.js"></script>
+    <script type="module" src="../../assets/js/diffusion-lab.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+    <script>
+      document.addEventListener('DOMContentLoaded', () => {
+        const render = () => {
+          if (!window.katex) return;
+          document.querySelectorAll('[data-katex]').forEach((el) => {
+            const tex = el.getAttribute('data-katex');
+            if (!tex) return;
+            const displayMode = el.hasAttribute('data-katex-display');
+            window.katex.render(tex, el, { throwOnError: false, displayMode });
+          });
+        };
+        if (window.katex) render();
+        else window.addEventListener('load', render, { once: true });
+      });
+    </script>
+  </body>
+</html>
