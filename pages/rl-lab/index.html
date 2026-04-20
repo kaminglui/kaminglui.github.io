@@ -2,7 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
     <meta
       name="description"
       content="Play with the multi-armed bandit problem, then read a kid-friendly tour of reinforcement learning: MDPs, Bellman, value/policy iteration, Monte Carlo, TD, on/off-policy, importance sampling, and actor-critic."
@@ -75,10 +75,11 @@
                 </li>
                 <li>
                   <strong>Try this</strong>
-                  Pick <em>ε-greedy</em> with ε = 0.1, press <em>Run 500 steps</em>, and watch the blue fills Q̂
-                  converge on the red ticks (true μ). The faded red bands around each tick show ± σ — wider band
-                  = noisier arm. Then switch to <em>Greedy</em> (ε = 0): it often locks onto a lucky-early arm
-                  and never finds the real best one.
+                  Pick <em>ε-greedy</em> with ε = 0.1 — so 10 % of steps try a <strong>random</strong> arm
+                  (explore), 90 % use the <strong>current best</strong> arm (exploit). Press <em>Run 500
+                  steps</em> and watch the blue fills Q̂ converge on the red ticks (true μ). The faded red bands
+                  show ± σ — wider band = noisier arm. Then switch to <em>Greedy</em> (ε = 0, never explore):
+                  it often locks onto a lucky-early arm and never finds the real best one.
                 </li>
                 <li>
                   <strong>Look for this</strong>
@@ -232,9 +233,10 @@
                 <div class="rl-taxonomy">
                   <div class="rl-taxonomy__card">
                     <h4 data-g="epsilon-greedy">ε-greedy</h4>
-                    <div class="rl-equation" data-katex="a_t = \begin{cases} \arg\max_a Q_t(a) & \text{w.p. } 1-\varepsilon \\ \text{uniform}(\mathcal{A}) & \text{w.p. } \varepsilon \end{cases}" data-katex-display></div>
+                    <div class="rl-equation" data-katex="a_t = \begin{cases} \arg\max_a Q_t(a) & \text{w.p. } 1-\varepsilon\ \ (\text{exploit}) \\ \text{uniform}(\mathcal{A}) & \text{w.p. } \varepsilon\ \ (\text{explore}) \end{cases}" data-katex-display></div>
                     <ul>
-                      <li><span data-g="epsilon">ε</span> — the exploration rate (0 = pure greedy).</li>
+                      <li><span data-g="epsilon">ε ∈ [0, 1]</span> — the probability of <em>exploring</em> (picking a random arm). Complement 1 − ε is the probability of <em>exploiting</em> (picking the current best-estimated arm).</li>
+                      <li>ε = 0 is pure exploitation — never tries a new arm, will freeze on whatever looked best after the first pulls. ε = 1 is pure exploration — ignores everything learned. 0.05–0.1 is typical; "decay ε over time" is common.</li>
                       <li>Simple, works, but wastes ε on known-bad arms forever.</li>
                     </ul>
                   </div>

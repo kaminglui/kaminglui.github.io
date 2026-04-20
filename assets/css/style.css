@@ -1,4 +1,87 @@
 /* Restored site styles after asset cleanup. */
+
+/* Mobile / touch UX baseline shared across every page.
+   - Tap-highlight: iOS/Android flash a translucent grey on every tap; kill it.
+   - Text-size-adjust: keep font sizes fixed when rotating to landscape.
+   - touch-action: manipulation on clickable elements suppresses the 300 ms
+     double-tap-zoom delay without breaking pinch-to-zoom inside canvases.
+   - user-select: none on the chrome (header, nav, controls, buttons, labels)
+     so dragging a slider doesn't accidentally select a label. Body prose,
+     equations, and glossary tooltips explicitly reinstate selection below. */
+html {
+  -webkit-tap-highlight-color: transparent;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+body {
+  -webkit-touch-callout: none;
+}
+button,
+select,
+input,
+label,
+.site-header,
+.nav-pill,
+.nav-dropdown-menu,
+.mode-toggle,
+.mode-toggle__btn,
+.status-chip,
+.lab-chip,
+.rl-controls,
+.rl-controls__actions,
+.rl-controls__group label,
+.rl-chain__controls,
+.rl-darts__controls,
+.rl-bayes__controls,
+.rl-bayes__priors label,
+.diff-presets,
+.math-presets,
+.ml-presets,
+.ml-preset,
+.ml-mode-bar,
+.ml-status-chips,
+.rl-cluster__member,
+.rl-updates__label,
+.rl-legend,
+.math-legend,
+[data-gd-preset],
+[data-pca-preset] {
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+}
+button,
+select,
+input[type='button'],
+input[type='range'],
+input[type='number'],
+.mode-toggle__btn,
+.nav-pill,
+.lab-chip,
+.rl-preset,
+.ml-preset,
+.math-preset,
+.diff-preset,
+[data-g] {
+  touch-action: manipulation;
+}
+/* Keep text content selectable even though the surrounding chrome isn't. */
+.lab-intuition,
+.lab-intro-steps,
+.lab-card__lead,
+.lab-card__title,
+.rl-theory__panel,
+.rl-theory__kid,
+.rl-equation,
+.rl-compare,
+.lab-tooltip,
+.ml-hint {
+  -webkit-user-select: text;
+  -moz-user-select: text;
+  user-select: text;
+}
+
 :root {
   --font-base: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --font-mono: 'Fira Code', SFMono-Regular, Consolas, 'Liberation Mono', Menlo, monospace;
