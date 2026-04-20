@@ -52,6 +52,24 @@
               </p>
             </header>
 
+            <aside class="lab-intro-steps" aria-label="Read this first">
+              <p class="lab-intro-steps__title">Read this first</p>
+              <ol>
+                <li>
+                  <strong>What it does</strong>
+                  K-means partitions points into <em>k</em> clusters by alternating two moves: assign each point to the nearest centroid, then recompute each centroid as the mean of its members.
+                </li>
+                <li>
+                  <strong>Try this</strong>
+                  Click to drop ~20 points in a few visible groups, press <em>Initialize centroids</em>, then <em>Step</em> a few times to watch centroids march toward the groups they own.
+                </li>
+                <li>
+                  <strong>Look for this</strong>
+                  The SSE chip drops on every step until assignments stop changing — that's convergence. Different starting centroids can land on different local minima.
+                </li>
+              </ol>
+            </aside>
+
             <section class="ml-tabs" aria-label="Clustering playground sections">
           <div class="ml-tablist" role="tablist" aria-label="Playground tabs">
             <button class="ml-tab is-active" role="tab" id="tab-playground" aria-selected="true" aria-controls="panel-playground">

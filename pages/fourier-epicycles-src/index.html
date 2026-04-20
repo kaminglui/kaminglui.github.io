@@ -55,6 +55,24 @@
               </p>
             </header>
 
+            <aside class="lab-intro-steps" aria-label="Read this first">
+              <p class="lab-intro-steps__title">Read this first</p>
+              <ol>
+                <li>
+                  <strong>What it does</strong>
+                  Any closed path is a sum of rotating vectors. The DFT splits your stroke into frequencies; the visualizer draws those vectors as nested circles that retrace your drawing.
+                </li>
+                <li>
+                  <strong>Try this</strong>
+                  Pick a preset or sketch a shape, then drag <em>Precision</em> down to 3–5. The path coarsens but you can see exactly which frequencies are doing the work.
+                </li>
+                <li>
+                  <strong>Look for this</strong>
+                  Large low-frequency circles set the overall shape; small high-frequency ones add detail. Open the math panel to check coefficient magnitude |X<sub>k</sub>| and phase φ<sub>k</sub>.
+                </li>
+              </ol>
+            </aside>
+
             <div class="fourier-shell">
               <div id="fourier-root" class="fourier-root" aria-live="polite">
                 <div class="fourier-placeholder">
