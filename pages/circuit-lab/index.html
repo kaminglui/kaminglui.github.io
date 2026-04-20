@@ -49,19 +49,23 @@
             --sidebar-w: 260px;
         }
 
-        /* Circuit Lab is dark-only by design; the site-wide theme toggle is hidden on this page. */
-        .theme-toggle { display: none !important; }
 
         /* --- BASE RESET --- */
         html, body { height: 100%; width: 100%; overflow: hidden; margin: 0; }
         
         body {
-            background-color: var(--bg-app);
-            color: var(--text-primary);
             font-family: 'Inter', -apple-system, system-ui, sans-serif;
             display: flex;
             flex-direction: column;
             user-select: none; /* Prevents text highlighting while dragging components */
+        }
+
+        /* The main app workspace (sidebar + canvas) stays dark regardless of the
+           site-wide theme so the schematic always reads like a PCB, while the
+           site header / nav follow the visitor's light or dark preference. */
+        #circuit-lab-root {
+            background-color: var(--bg-app);
+            color: var(--text-primary);
         }
 
         /* --- LAYOUT CONTAINER --- */
@@ -143,6 +147,7 @@
         #sim-bar {
             min-height: var(--simbar-h);
             background: var(--bg-panel);
+            color: var(--text-primary);
             border-top: 1px solid var(--border-subtle);
             display: flex;
             align-items: center;
@@ -786,7 +791,7 @@
     </style>
 
 </head>
-<body class="theme-dark">
+<body class="theme-light">
 
     <div id="site-header"></div>
 
@@ -1391,7 +1396,7 @@
 
     <script type="module">
         import { initMainLayout } from '../../assets/js/layout/mainLayout.js';
-        initMainLayout('circuit-lab', { themeOptions: { forceTheme: 'dark' } });
+        initMainLayout('circuit-lab');
     </script>
 
     <script type="module" src="../../assets/js/sim/engine.js"></script>
