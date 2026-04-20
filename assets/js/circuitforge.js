@@ -30,6 +30,7 @@ import { createSharingApi } from './circuit-lab/sharing.js';
 import { createHistoryApi } from './circuit-lab/history.js';
 import { attachComponentSearch } from './circuit-lab/componentSearch.js';
 import { createMinimap } from './circuit-lab/minimap.js';
+import { createProbe } from './circuit-lab/probe.js';
 import {
     fileTimestamp,
     validateSaveData,
@@ -245,8 +246,6 @@ let canvasCssWidth = 0;
 let canvasCssHeight = 0;
 
 // Probe mode — when true, hovering a pin or wire shows its live voltage near the cursor.
-let probeMode = false;
-let probeHover = null; // { kind: 'pin'|'wire', target, screen: {x,y}, voltage }
 
 // Voltage heatmap — when true, wires colorize by voltage level. Default on.
 let heatmapEnabled = true;
@@ -3986,8 +3985,8 @@ function onCanvasMove(e) {
         updatePinch(e);
         return;
     }
-    if (probeMode && typeof e?.clientX === 'number') {
-        updateProbeHover(e.clientX, e.clientY);
+    if (probe?.isActive() && typeof e?.clientX === 'number') {
+        probe.updateHover(e.clientX, e.clientY);
     }
     if (draggingComponent || draggingWire || isPanning) return;
     onMove(e);
@@ -4905,83 +4904,11 @@ function drawMinimap() {
 }
 
 /* ---------- MEASUREMENT PROBE ---------- */
-function toggleProbeMode(forceOn) {
-    const next = (typeof forceOn === 'boolean') ? forceOn : !probeMode;
-    probeMode = next;
-    const shell = document.querySelector('.canvas-shell');
-    if (shell) shell.classList.toggle('probe-mode', probeMode);
-    const btn = document.getElementById('probe-btn');
-    if (btn) btn.classList.toggle('active-tool', probeMode);
-    if (!probeMode) {
-        probeHover = null;
-        if (probeReadout) probeReadout.classList.add('hidden');
-    }
-}
-
-function readVoltageForPin(c, pinIdx) {
-    if (!c || !lastSim.getNodeIndex) return null;
-    const n = lastSim.getNodeIndex(c, pinIdx);
-    if (n === -1 || n == null) return 0; // reference / floating
-    const sol = lastSim.solution;
-    return (sol && Number.isFinite(sol[n])) ? sol[n] : null;
-}
-
-function readVoltageForWire(w) {
-    if (!w || !lastSim.getNodeIndex) return null;
-    const n = lastSim.getNodeIndex(w.from?.c, w.from?.p);
-    if (n === -1 || n == null) return 0;
-    const sol = lastSim.solution;
-    return (sol && Number.isFinite(sol[n])) ? sol[n] : null;
-}
-
-function formatProbeVoltage(v) {
-    if (!Number.isFinite(v)) return '—';
-    const abs = Math.abs(v);
-    if (abs < 1e-3) return `${(v * 1e6).toFixed(1)} µV`;
-    if (abs < 1)    return `${(v * 1e3).toFixed(1)} mV`;
-    return `${v.toFixed(3)} V`;
-}
-
-function updateProbeHover(clientX, clientY) {
-    if (!probeMode || !canvas) {
-        probeHover = null;
-        return;
-    }
-    const m = screenToWorld(clientX, clientY);
-    const pin = findPinAt(m);
-    let wireHit = null;
-    if (!pin && typeof pickWireAt === 'function') {
-        wireHit = pickWireAt(m, WIRE_HIT_DISTANCE);
-    }
-    if (pin) {
-        const v = readVoltageForPin(pin.c, pin.p);
-        probeHover = { kind: 'pin', target: pin, screen: { x: clientX, y: clientY }, voltage: v, label: `${(pin.c.id || pin.c.kind)}·${pin.p}` };
-    } else if (wireHit) {
-        const v = readVoltageForWire(wireHit);
-        probeHover = { kind: 'wire', target: wireHit, screen: { x: clientX, y: clientY }, voltage: v, label: 'wire' };
-    } else {
-        probeHover = null;
-    }
-}
-
-function updateProbeReadout() {
-    if (!probeReadout) return;
-    if (!probeMode || !probeHover) {
-        probeReadout.classList.add('hidden');
-        return;
-    }
-    const { screen, voltage, label } = probeHover;
-    probeReadout.classList.remove('hidden');
-    probeReadout.textContent = `${label}  ${formatProbeVoltage(voltage)}`;
-    // Position relative to the main workspace root (minimap is placed inside canvas-shell).
-    const shell = document.querySelector('.canvas-shell');
-    if (!shell) return;
-    const rect = shell.getBoundingClientRect();
-    const left = Math.round(screen.x - rect.left + 14);
-    const top = Math.round(screen.y - rect.top + 14);
-    probeReadout.style.left = `${left}px`;
-    probeReadout.style.top  = `${top}px`;
-}
+// createProbe() is constructed inside init(). Stub functions keep call sites
+// stable during early boot.
+let probe = null;
+const toggleProbeMode = (f) => probe?.toggle(f);
+const updateProbeReadout = () => probe?.updateReadout();
 
 /* ---------- SHAREABLE URL STATE ---------- */
 const sharing = createSharingApi({
@@ -5206,6 +5133,15 @@ function reportInitError(message) {
         getBoardSize: () => ({ w: BOARD_W, h: BOARD_H })
     });
     if (minimap) minimap.attachHandlers();
+    probe = createProbe({
+        canvas,
+        probeReadout,
+        screenToWorld,
+        findPinAt,
+        pickWireAt,
+        wireHitDistance: WIRE_HIT_DISTANCE,
+        getSim: () => lastSim
+    });
     attachComponentSearch();
 
     // Shared link takes precedence over locally-saved state so the user sees
