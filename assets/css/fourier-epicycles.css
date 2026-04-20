@@ -204,19 +204,6 @@ body.theme-dark .fourier-math-panel {
   box-shadow: var(--shadow-lg);
 }
 
-.lab-card__title-row {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  flex-wrap: wrap;
-}
-
-.lab-card__chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-}
-
 .fourier-card .lab-card__header {
   padding-bottom: 1.5rem;
   margin-bottom: 1rem;

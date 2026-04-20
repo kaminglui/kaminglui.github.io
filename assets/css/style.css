@@ -1311,6 +1311,20 @@ body.theme-dark .project-card {
   font-size: 1.05rem;
 }
 
+/* Title + chip row shared across every lab so Fourier / ML / Transformer
+   all line up their subject-matter chips next to the h2. */
+.lab-card__title-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+.lab-card__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
 /* "Read this first" introductory ladder — three numbered beats that frame a
    lab before the reader lands on the canvas. Shared across labs so the
    vocabulary (What it does → Try this → Look for this) stays consistent. */
