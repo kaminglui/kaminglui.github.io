@@ -52,10 +52,12 @@ export default function createSwitch({
                         names: ['A', 'B'],
                         pins: [
                             { x: -30, y: 0 }, // A
-                            { x: 30, y: 0 } // B
+                            { x: 30, y: 0 }  // B
                         ],
+                        // Tall body gives the SPST lever room to swing up when
+                        // opened without colliding with labels or nearby parts.
                         w: 80,
-                        h: 40
+                        h: 64
                     };
             }
         }
@@ -125,53 +127,112 @@ export default function createSwitch({
         drawSwitch(ctx, filled = false) {
             ctx.save();
             ctx.lineWidth = 2;
-            ctx.strokeStyle = '#e5e7eb';
+            ctx.strokeStyle = '#ffffff';
+            ctx.fillStyle = '#ffffff';
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
             if (filled) {
                 ctx.fillStyle = '#0f172a';
                 ctx.fillRect(-this.w / 2, -this.h / 2, this.w, this.h);
                 ctx.strokeRect(-this.w / 2, -this.h / 2, this.w, this.h);
+                ctx.fillStyle = '#ffffff';
             }
 
+            const pos = (this.props.Position === 'B') ? 'B' : 'A';
+            const isSpst = this.props.Type === 'SPST';
+
+            // Draw one "pole" (common + two throws). For SPST we pass the same
+            // pin as both throws and draw only one contact, but the lever still
+            // rotates up off that contact when open — giving the same "lifts off"
+            // affordance users expect from a schematic switch.
             const drawPole = (comIdx, aIdx, bIdx) => {
                 const com = this.pins[comIdx];
                 const a = this.pins[aIdx];
                 const b = this.pins[bIdx];
                 if (!com || !a || !b) return;
                 const lead = (com.x < a.x || com.x < b.x) ? 10 : -10;
+                const dir = Math.sign(lead) || 1;
+                const pivot = { x: com.x + lead, y: com.y };
+                const padA = { x: a.x - lead * 0.5, y: a.y };
+                const padB = { x: b.x - lead * 0.5, y: b.y };
 
-                // fixed contacts
+                // Contact stubs (short spurs from the outer pin toward the centre).
+                ctx.strokeStyle = '#ffffff';
                 ctx.beginPath();
                 ctx.moveTo(a.x, a.y);
-                ctx.lineTo(a.x - lead * 0.5, a.y);
-                ctx.stroke();
-                ctx.beginPath();
-                ctx.moveTo(b.x, b.y);
-                ctx.lineTo(b.x - lead * 0.5, b.y);
-                ctx.stroke();
-
-                // pads
-                ctx.beginPath();
-                ctx.arc(a.x, a.y, 3, 0, Math.PI * 2);
-                ctx.stroke();
-                ctx.beginPath();
-                ctx.arc(b.x, b.y, 3, 0, Math.PI * 2);
-                ctx.stroke();
-
-                // common stub
-                ctx.beginPath();
+                ctx.lineTo(padA.x, padA.y);
+                if (!isSpst) {
+                    ctx.moveTo(b.x, b.y);
+                    ctx.lineTo(padB.x, padB.y);
+                }
+                // Common lead stub, pin → pivot.
                 ctx.moveTo(com.x, com.y);
-                ctx.lineTo(com.x + lead, com.y);
+                ctx.lineTo(pivot.x, pivot.y);
                 ctx.stroke();
 
-                const pos = (this.props.Position === 'B') ? 'B' : 'A';
-                const target = (this.props.Type === 'SPST' && pos === 'B')
-                    ? { x: com.x + lead + 8, y: com.y - 14 }
-                    : (pos === 'A' ? a : b);
-
+                // Contact pads — filled dots so they clearly read as fixed terminals.
+                ctx.fillStyle = '#ffffff';
                 ctx.beginPath();
-                ctx.moveTo(com.x + lead, com.y);
-                ctx.lineTo(target.x - (lead * 0.3), target.y + (pos === 'B' && this.props.Type === 'SPST' ? 0 : 0));
+                ctx.arc(padA.x, padA.y, 3, 0, Math.PI * 2);
+                ctx.fill();
+                if (!isSpst) {
+                    ctx.beginPath();
+                    ctx.arc(padB.x, padB.y, 3, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+
+                // Pivot (ring around the common-end of the lever).
+                ctx.beginPath();
+                ctx.arc(pivot.x, pivot.y, 3, 0, Math.PI * 2);
                 ctx.stroke();
+
+                // Lever geometry. When closed, the lever lies flat against the
+                // selected contact; when an SPST is open, it rotates ~32° up from
+                // its closed angle (toward pin A) so the gap is visible.
+                const closedTarget = (pos === 'A') ? padA : padB;
+                const vx = closedTarget.x - pivot.x;
+                const vy = closedTarget.y - pivot.y;
+                const leverLen = Math.hypot(vx, vy) || 1;
+                const closedAngle = Math.atan2(vy, vx);
+
+                let tip;
+                if (isSpst && pos === 'B') {
+                    // Rotate the lever upward (CCW when reading left-to-right,
+                    // CW when pivot is on the right-hand side).
+                    const openAngle = closedAngle - (Math.PI * 32 / 180) * dir;
+                    tip = {
+                        x: pivot.x + leverLen * Math.cos(openAngle),
+                        y: pivot.y + leverLen * Math.sin(openAngle)
+                    };
+                } else {
+                    // Closed lever stops just short of the pad so the pad ring
+                    // stays visible underneath.
+                    tip = {
+                        x: pivot.x + (leverLen - 3) * Math.cos(closedAngle),
+                        y: pivot.y + (leverLen - 3) * Math.sin(closedAngle)
+                    };
+                }
+
+                ctx.strokeStyle = '#ffffff';
+                ctx.lineWidth = 2.2;
+                ctx.beginPath();
+                ctx.moveTo(pivot.x, pivot.y);
+                ctx.lineTo(tip.x, tip.y);
+                ctx.stroke();
+
+                // Handle bead — filled for closed (connected), outlined for open.
+                ctx.lineWidth = 1.5;
+                ctx.beginPath();
+                ctx.arc(tip.x, tip.y, 2.4, 0, Math.PI * 2);
+                if (isSpst && pos === 'B') {
+                    ctx.fillStyle = '#0f172a';
+                    ctx.fill();
+                    ctx.stroke();
+                } else {
+                    ctx.fillStyle = '#ffffff';
+                    ctx.fill();
+                }
+                ctx.lineWidth = 2;
             };
 
             if (this.props.Type === 'DPDT') {
@@ -192,7 +253,7 @@ export default function createSwitch({
         drawLabels(ctx) {
             ctx.save();
             ctx.font = LABEL_FONT_SMALL;
-            ctx.fillStyle = '#d1d5db';
+            ctx.fillStyle = '#9ca3af';
             this.pinNames.forEach((name, idx) => {
                 const dir = getPinDirection(this, idx) || { x: 0, y: 1 };
                 const pos = offsetLabelFromPin(this, idx, LABEL_OUTSIDE_OFFSET, dir);
@@ -200,12 +261,15 @@ export default function createSwitch({
                 ctx.textBaseline = 'middle';
                 ctx.fillText(name, pos.x, pos.y);
             });
+            // Position the type label below the lever swing so SPST's open-state
+            // lever never collides with it.
             const center = getPinCenter(this);
             ctx.font = LABEL_FONT_BOLD;
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
-            ctx.fillStyle = '#94a3b8';
-            ctx.fillText(this.props.Type, center.x, center.y);
+            ctx.fillStyle = '#9ca3af';
+            const labelY = this.props.Type === 'SPST' ? center.y + 22 : center.y;
+            ctx.fillText(this.props.Type, center.x, labelY);
             ctx.restore();
         }
     };

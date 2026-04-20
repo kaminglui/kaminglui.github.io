@@ -70,7 +70,7 @@ export default function createCapacitor({
             const center = getPinCenter(this);
             const pos = { x: center.x, y: center.y - LABEL_GAP_MEDIUM };
             ctx.save();
-            ctx.fillStyle = '#aaa';
+            ctx.fillStyle = '#9ca3af';
             ctx.font = LABEL_FONT_MEDIUM;
             ctx.textAlign = 'center';
             ctx.fillText(this.props.C, pos.x, pos.y);

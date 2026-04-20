@@ -123,7 +123,7 @@ export default function createBJT({
         drawLabels(ctx, mode) {
             if (mode !== 'schematic') return;
             ctx.save();
-            ctx.fillStyle = '#aaa';
+            ctx.fillStyle = '#9ca3af';
             ctx.font = LABEL_FONT_SMALL;
             ctx.textAlign = 'left';
             const worldLabel = this.localToWorld(24, -4);

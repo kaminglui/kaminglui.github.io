@@ -58,7 +58,7 @@ export default function createVoltageSource({ Component }) {
             ctx.save();
             if (mode === 'schematic') {
                 const pos = this.localToWorld(10, 0);
-                ctx.fillStyle = '#aaaaaa';
+                ctx.fillStyle = '#9ca3af';
                 ctx.font = '10px monospace';
                 ctx.textAlign = 'left';
                 ctx.fillText(`${this.props.Vdc} V`, pos.x, pos.y);

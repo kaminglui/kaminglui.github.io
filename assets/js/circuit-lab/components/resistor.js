@@ -15,7 +15,7 @@ export default function createResistor({
 
         drawSym(ctx) {
             ctx.save();
-            ctx.strokeStyle = '#e0e0e0';
+            ctx.strokeStyle = '#ffffff';
             ctx.lineWidth = 2;
             ctx.lineJoin = 'round';
             ctx.lineCap = 'round';
@@ -71,7 +71,7 @@ export default function createResistor({
             const center = getPinCenter(this);
             const pos = { x: center.x, y: center.y - LABEL_GAP_SMALL };
             ctx.save();
-            ctx.fillStyle = '#aaa';
+            ctx.fillStyle = '#9ca3af';
             ctx.font = LABEL_FONT_MEDIUM;
             ctx.textAlign = 'center';
             ctx.fillText(this.props.R, pos.x, pos.y);

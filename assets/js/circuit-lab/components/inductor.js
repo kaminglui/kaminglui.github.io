@@ -87,7 +87,7 @@ export default function createInductor({
             const center = getPinCenter(this);
             const pos = { x: center.x, y: center.y - LABEL_GAP_MEDIUM };
             ctx.save();
-            ctx.fillStyle = '#aaa';
+            ctx.fillStyle = '#9ca3af';
             ctx.font = LABEL_FONT_MEDIUM;
             ctx.textAlign = 'center';
             ctx.fillText(this.props.L + 'H', pos.x, pos.y);
