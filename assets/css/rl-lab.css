@@ -440,6 +440,183 @@
   background: var(--color-bg);
 }
 
+/* Monte-Carlo darts demo (RL §5): square with inscribed circle. Each dart
+   lands uniform in [-1, 1]²; the ratio of hits inside the unit circle
+   times 4 estimates π. The same sampling pattern underlies every MC
+   return estimate — collect random samples, average. */
+.rl-darts {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(240px, 320px);
+  gap: 1rem;
+  margin-top: 0.75rem;
+  align-items: flex-start;
+}
+@media (max-width: 860px) { .rl-darts { grid-template-columns: 1fr; } }
+.rl-darts__canvas-wrap {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  padding: 0.45rem;
+  box-shadow: var(--shadow-sm);
+}
+#darts-canvas {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  display: block;
+  background: var(--color-bg);
+  border-radius: var(--radius-sm);
+}
+.rl-darts__sidebar {
+  display: grid;
+  gap: 0.7rem;
+  padding: 0.9rem 1rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-sm);
+}
+.rl-darts__controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+.rl-darts__controls button {
+  padding: 0.45rem 0.7rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+  background: var(--color-bg);
+  cursor: pointer;
+  font-weight: 600;
+}
+.rl-darts__controls button:hover,
+.rl-darts__controls button:focus-visible {
+  border-color: var(--color-accent);
+}
+.rl-darts__controls button:disabled { opacity: 0.6; cursor: not-allowed; }
+.rl-darts__controls button.is-primary {
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.15), rgba(59, 130, 246, 0.08));
+}
+.rl-darts__stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.45rem 0.9rem;
+  font-family: var(--font-mono);
+  font-size: 0.88rem;
+}
+.rl-darts__stats dt {
+  color: var(--color-muted);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.rl-darts__stats dd { margin: 0; font-weight: 700; }
+.rl-darts__stats dd.is-accent { color: var(--color-accent); }
+
+/* Bayesian coin demo (RL §1 · Thompson). Beta(α, β) prior → Bernoulli
+   likelihood → Beta(α+h, β+n-h) posterior. Canvas plots all three curves
+   over p ∈ [0, 1] with the likelihood explicitly rescaled for display (and
+   the note that it doesn't integrate to 1 in general). */
+.rl-bayes {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(240px, 320px);
+  gap: 1rem;
+  margin-top: 0.75rem;
+  align-items: flex-start;
+}
+@media (max-width: 860px) { .rl-bayes { grid-template-columns: 1fr; } }
+.rl-bayes__canvas-wrap {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  padding: 0.45rem;
+  box-shadow: var(--shadow-sm);
+}
+#bayes-canvas {
+  width: 100%;
+  aspect-ratio: 2 / 1;
+  display: block;
+  background: var(--color-bg);
+  border-radius: var(--radius-sm);
+}
+.rl-bayes__sidebar {
+  display: grid;
+  gap: 0.75rem;
+  padding: 0.9rem 1rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-sm);
+}
+.rl-bayes__controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+.rl-bayes__controls button {
+  padding: 0.45rem 0.75rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+  background: var(--color-bg);
+  cursor: pointer;
+  font-weight: 600;
+}
+.rl-bayes__controls button.is-heads { border-color: #3b82f6; color: #3b82f6; }
+.rl-bayes__controls button.is-tails { border-color: #f97316; color: #f97316; }
+.rl-bayes__controls button:hover,
+.rl-bayes__controls button:focus-visible {
+  background: var(--color-accent-muted);
+}
+.rl-bayes__priors {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.4rem 0.7rem;
+  font-size: 0.82rem;
+}
+.rl-bayes__priors label {
+  font-size: 0.72rem;
+  color: var(--color-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.rl-bayes__priors input[type='number'] {
+  width: 70px;
+  padding: 0.3rem 0.4rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-mono);
+}
+.rl-bayes__stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.45rem 0.9rem;
+  font-family: var(--font-mono);
+  font-size: 0.88rem;
+}
+.rl-bayes__stats dt {
+  color: var(--color-muted);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.rl-bayes__stats dd { margin: 0; font-weight: 700; }
+.rl-bayes__legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  font-size: 0.78rem;
+  color: var(--color-muted);
+}
+.rl-bayes__swatch {
+  display: inline-block;
+  width: 0.7rem;
+  height: 0.7rem;
+  border-radius: 2px;
+  margin-right: 0.3rem;
+  vertical-align: middle;
+}
+
 /* "Same shape" side-by-side — stacks every update rule vertically so the
    reader can see the estimate ← estimate + α[target − estimate] skeleton
    repeat across MC, TD, SARSA, Q-learning, and policy gradient. */
@@ -555,4 +732,99 @@
   color: var(--color-accent);
   font-family: var(--font-mono);
   margin-right: 0.3rem;
+}
+
+/* -------- Hover/focus glossary tooltip (shared across labs) ----------
+   Any element with data-g="key" becomes a hoverable term. The tooltip
+   lives once in <body> and is repositioned per target. Styling is
+   intentionally muted so the annotated text still reads cleanly. */
+[data-g] {
+  cursor: help;
+  border-bottom: 1px dotted color-mix(in srgb, var(--color-accent) 55%, transparent);
+  outline: none;
+}
+[data-g]:hover,
+[data-g]:focus-visible {
+  background: var(--color-accent-muted);
+  border-bottom-color: var(--color-accent);
+}
+[data-g]:focus-visible {
+  box-shadow: 0 0 0 2px var(--color-accent-muted);
+  border-radius: 2px;
+}
+.lab-tooltip {
+  position: absolute;
+  z-index: 1000;
+  max-width: min(360px, calc(100vw - 24px));
+  padding: 0.8rem 0.95rem;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: 0 14px 36px -10px rgba(0, 0, 0, 0.4);
+  font-size: 0.88rem;
+  line-height: 1.5;
+  color: var(--color-text);
+  display: grid;
+  gap: 0.45rem;
+  pointer-events: auto;
+}
+.lab-tooltip[hidden] { display: none; }
+.lab-tooltip__title {
+  font-weight: 700;
+  color: var(--color-accent);
+  font-size: 0.95rem;
+  letter-spacing: 0.01em;
+}
+.lab-tooltip__body { color: var(--color-text); }
+.lab-tooltip__body code {
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  background: var(--color-bg-alt);
+  border-radius: 3px;
+  padding: 0.05rem 0.3rem;
+}
+.lab-tooltip__related {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  align-items: center;
+  padding-top: 0.35rem;
+  border-top: 1px dashed var(--color-border);
+}
+.lab-tooltip__meta {
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+  margin-right: 0.2rem;
+}
+.lab-tooltip__chip,
+.lab-tooltip__section {
+  font-family: inherit;
+  font-size: 0.78rem;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  border: 1px solid var(--color-border);
+  background: var(--color-bg);
+  color: var(--color-text);
+  cursor: pointer;
+  transition: background 0.12s ease, border-color 0.12s ease, color 0.12s ease;
+}
+.lab-tooltip__chip:hover,
+.lab-tooltip__chip:focus-visible,
+.lab-tooltip__section:hover,
+.lab-tooltip__section:focus-visible {
+  background: var(--color-accent-muted);
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
+.lab-tooltip__sections {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+.lab-tooltip__section {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--color-muted);
 }

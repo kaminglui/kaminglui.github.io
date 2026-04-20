@@ -111,9 +111,9 @@
                 <li><strong>Environment</strong> — the world the agent lives in; it responds with rewards and next states.</li>
                 <li><strong>Action</strong> — a choice the agent makes (pull arm 3, move left, accelerate).</li>
                 <li><strong>Reward</strong> — a number the environment hands back after an action. Positive = good, negative = bad.</li>
-                <li><strong>Policy (π)</strong> — the agent's strategy: a rule mapping situations to actions.</li>
-                <li><strong>Return</strong> — total reward the agent collects, usually future rewards discounted by γ.</li>
-                <li><strong>Exploration vs exploitation</strong> — try new things to learn (explore), or cash in on what you already know (exploit). The core RL dilemma.</li>
+                <li><strong data-g="policy">Policy (π)</strong> — the agent's strategy: a rule mapping situations to actions.</li>
+                <li><strong data-g="return">Return</strong> — total reward the agent collects, usually future rewards discounted by <span data-g="gamma">γ</span>.</li>
+                <li><strong data-g="exploration-exploitation">Exploration vs exploitation</strong> — try new things to learn (explore), or cash in on what you already know (exploit). The core RL dilemma.</li>
               </ul>
             </aside>
 
@@ -218,7 +218,7 @@
                 </p>
                 <div class="rl-equation" data-katex="Q_{t+1}(a) = Q_t(a) + \tfrac{1}{N_t(a) + 1}\,\bigl[r_t - Q_t(a)\bigr]" data-katex-display></div>
                 <ul>
-                  <li><strong>Q(a)</strong> — running mean-reward estimate for arm a (starts at 0).</li>
+                  <li><strong data-g="q-value">Q(a)</strong> — running mean-reward estimate for arm a (starts at 0).</li>
                   <li><strong>r<sub>t</sub></strong> — the reward just observed after pulling a.</li>
                   <li><strong>N(a)</strong> — number of times arm a has been pulled.</li>
                 </ul>
@@ -231,24 +231,24 @@
                 <p>Three rules for picking the next arm:</p>
                 <div class="rl-taxonomy">
                   <div class="rl-taxonomy__card">
-                    <h4>ε-greedy</h4>
+                    <h4 data-g="epsilon-greedy">ε-greedy</h4>
                     <div class="rl-equation" data-katex="a_t = \begin{cases} \arg\max_a Q_t(a) & \text{w.p. } 1-\varepsilon \\ \text{uniform}(\mathcal{A}) & \text{w.p. } \varepsilon \end{cases}" data-katex-display></div>
                     <ul>
-                      <li>ε — the exploration rate (0 = pure greedy).</li>
+                      <li><span data-g="epsilon">ε</span> — the exploration rate (0 = pure greedy).</li>
                       <li>Simple, works, but wastes ε on known-bad arms forever.</li>
                     </ul>
                   </div>
                   <div class="rl-taxonomy__card">
-                    <h4>UCB1 (optimism)</h4>
+                    <h4 data-g="ucb1">UCB1 (optimism)</h4>
                     <div class="rl-equation" data-katex="a_t = \arg\max_a \Bigl[ Q_t(a) + c\,\sigma_a\,\sqrt{\tfrac{\ln t}{N_t(a)}} \Bigr]" data-katex-display></div>
                     <ul>
                       <li>c — how much to trust the uncertainty bonus (≈ 1–2).</li>
                       <li>Bonus is large when N(a) is small → uncertain arms get tried.</li>
-                      <li>Regret is O(log t); deterministic once seeded.</li>
+                      <li><span data-g="regret">Regret</span> is O(log t); deterministic once seeded.</li>
                     </ul>
                   </div>
                   <div class="rl-taxonomy__card">
-                    <h4>Thompson sampling</h4>
+                    <h4 data-g="thompson">Thompson sampling</h4>
                     <div class="rl-equation" data-katex="\tilde{\mu}_a \sim \mathcal{N}\!\left(Q_t(a),\, \tfrac{\sigma_a^2}{N_t(a)}\right),\quad a_t = \arg\max_a \tilde{\mu}_a" data-katex-display></div>
                     <ul>
                       <li>Draw one sample from each arm's posterior over μ, pick the highest.</li>
@@ -261,6 +261,76 @@
                   Expected cumulative regret after <em>T</em> pulls:
                 </p>
                 <div class="rl-equation" data-katex="\mathcal{R}_T = \sum_{t=1}^{T} \bigl(\mu^* - \mu_{a_t}\bigr),\qquad \mu^* = \max_a \mu_a" data-katex-display></div>
+
+                <h4 style="margin-top:0.9rem;">Demo — Bayesian coin: prior · likelihood · posterior</h4>
+                <p class="rl-theory__kid">
+                  <strong>Kid version.</strong> You have a coin; you're not sure it's fair. You start with a
+                  <em>guess</em> of how biased it is (that's the <strong data-g="prior">prior</strong>). You flip
+                  it and watch how heads/tails come out (<strong data-g="likelihood">likelihood</strong> — how
+                  probable the data is for each possible bias). You update your guess to account for what you
+                  saw (<strong data-g="posterior">posterior</strong>). Repeat. The more flips, the sharper your
+                  belief.
+                </p>
+                <p><span data-g="bayes-rule">Bayes' rule</span> — the update machinery behind Thompson sampling:</p>
+                <div class="rl-equation" data-katex="\underbrace{p(\theta \mid \mathcal{D})}_{\text{posterior}} \;=\; \frac{\overbrace{p(\mathcal{D} \mid \theta)}^{\text{likelihood}}\, \overbrace{p(\theta)}^{\text{prior}}}{\underbrace{p(\mathcal{D})}_{\text{evidence}}}" data-katex-display></div>
+                <ul>
+                  <li><strong>θ</strong> — unknown parameter (here, the coin's head-probability p ∈ [0, 1]).</li>
+                  <li><strong>𝒟</strong> — observed data (here, the sequence of h heads and t tails).</li>
+                  <li><strong>Prior p(θ)</strong> — belief before seeing data. <em>Is</em> a probability distribution (integrates to 1).</li>
+                  <li><strong>Likelihood p(𝒟|θ)</strong> — how probable the data is, <em>viewed as a function of θ</em>. <em>Is not</em> a probability distribution over θ — doesn't integrate to 1; in fact, it has no units of "density over θ" at all.</li>
+                  <li><strong>Evidence p(𝒟)</strong> — marginal probability of the data; just the constant that renormalises the posterior.</li>
+                </ul>
+                <p>
+                  For a coin with bias p, the Bernoulli likelihood after h heads + t tails is
+                  <span data-katex="p(\mathcal{D}\mid p) = p^{\,h}\,(1-p)^{\,t}"></span>. Pair this with a
+                  <strong data-g="beta-distribution">Beta(α, β)</strong> prior — the conjugate prior on [0, 1] —
+                  and the posterior is another Beta:
+                </p>
+                <div class="rl-equation" data-katex="\text{Beta}(\alpha, \beta) \;\xrightarrow{\,h\text{ heads},\, t\text{ tails}\,}\; \text{Beta}(\alpha + h,\ \beta + t)" data-katex-display></div>
+                <div class="rl-bayes">
+                  <div class="rl-bayes__canvas-wrap">
+                    <canvas id="bayes-canvas" width="640" height="320" aria-label="Bayesian coin: prior, likelihood, posterior over bias p"></canvas>
+                  </div>
+                  <div class="rl-bayes__sidebar">
+                    <div class="rl-bayes__priors">
+                      <div>
+                        <label for="bayes-alpha">Prior α</label>
+                        <input id="bayes-alpha" type="number" min="0.5" max="50" step="0.5" value="1" />
+                      </div>
+                      <div>
+                        <label for="bayes-beta">Prior β</label>
+                        <input id="bayes-beta" type="number" min="0.5" max="50" step="0.5" value="1" />
+                      </div>
+                    </div>
+                    <div class="rl-bayes__controls">
+                      <button type="button" id="bayes-heads" class="is-heads">+ Heads</button>
+                      <button type="button" id="bayes-tails" class="is-tails">+ Tails</button>
+                      <button type="button" id="bayes-flip">Flip 10× (p = 0.7)</button>
+                      <button type="button" id="bayes-reset">Reset</button>
+                    </div>
+                    <dl class="rl-bayes__stats">
+                      <dt>Heads h</dt><dd id="bayes-h">0</dd>
+                      <dt>Tails t</dt><dd id="bayes-t">0</dd>
+                      <dt data-g="posterior">Posterior mean</dt><dd id="bayes-mean">—</dd>
+                      <dt data-g="map-estimate">MAP p̂</dt><dd id="bayes-map">—</dd>
+                      <dt data-g="credible-interval">95% CI</dt><dd id="bayes-ci">—</dd>
+                      <dt>σ (uncertainty)</dt><dd id="bayes-sd">—</dd>
+                    </dl>
+                    <div class="rl-bayes__legend">
+                      <span><span class="rl-bayes__swatch" style="background:rgba(59,130,246,0.4)"></span>Prior</span>
+                      <span><span class="rl-bayes__swatch" style="background:rgba(168,85,247,0.8)"></span>Likelihood (rescaled — <em>not</em> a density in p)</span>
+                      <span><span class="rl-bayes__swatch" style="background:#f97316"></span>Posterior</span>
+                    </div>
+                  </div>
+                </div>
+                <p class="ml-hint">
+                  Press <em>+ Heads</em> / <em>+ Tails</em> to add one flip at a time. <em>Flip 10× (p = 0.7)</em>
+                  simulates draws from a hidden biased coin — watch the posterior narrow around 0.7 as evidence
+                  accumulates. Tweak the prior α, β to see how strong priors slow (or bias) learning; α = β = 1
+                  is a flat prior (same as no prior). This <em>same</em> Beta-Bernoulli update is what Thompson
+                  sampling runs per-arm above.
+                </p>
+
                 <p>
                   Why bandits matter for full RL: every RL algorithm still has to solve <em>which action next?</em>.
                   Bandit ideas (ε-greedy, softmax, optimism, posterior sampling) get reused inside
@@ -290,7 +360,7 @@
                   <li><strong>P(s'|s, a)</strong> — transition probability into s' after doing a in s.
                     <em>Markov property</em>: this depends only on the current (s, a), not on history.</li>
                   <li><strong>R(s, a)</strong> — expected immediate reward for doing a in s.</li>
-                  <li><strong>γ ∈ [0, 1]</strong> — discount. γ ≈ 0 is myopic ("I want candy now"),
+                  <li><strong data-g="gamma">γ</strong> ∈ [0, 1] — discount. γ ≈ 0 is myopic ("I want candy now"),
                     γ → 1 is patient ("more candy later is fine").</li>
                 </ul>
                 <p>The agent's goal: maximise the expected <em>return</em> — the discounted sum of future rewards:</p>
@@ -311,9 +381,9 @@
                 <div class="rl-equation" data-katex="Q^\pi(s, a) = \mathbb{E}_\pi[\,G_t \mid S_t = s,\, A_t = a\,]" data-katex-display></div>
                 <div class="rl-equation" data-katex="A^\pi(s, a) = Q^\pi(s, a) - V^\pi(s)" data-katex-display></div>
                 <ul>
-                  <li><strong>V<sup>π</sup>(s)</strong> — "starting from s and following π, how much total reward do I expect?"</li>
-                  <li><strong>Q<sup>π</sup>(s, a)</strong> — "starting from s, taking a first, then following π."</li>
-                  <li><strong>A<sup>π</sup>(s, a)</strong> — the <em>advantage</em>: how much better than average is action a? Baseline-subtracted, lower-variance than Q.</li>
+                  <li><strong data-g="v-value">V<sup>π</sup>(s)</strong> — "starting from s and following π, how much total reward do I expect?"</li>
+                  <li><strong data-g="q-value">Q<sup>π</sup>(s, a)</strong> — "starting from s, taking a first, then following π."</li>
+                  <li><strong data-g="advantage">A<sup>π</sup>(s, a)</strong> — the <em>advantage</em>: how much better than average is action a? Baseline-subtracted, lower-variance than Q.</li>
                 </ul>
                 <p>All three satisfy the <strong>Bellman expectation equations</strong> — one-step recursions that say
                   "this state's value equals the reward I get plus the discounted value of the next state":</p>
@@ -343,6 +413,11 @@
                   When P and R are known, two classical algorithms solve for V<sup>*</sup> and an optimal π.
                   Both are fixed-point iterations on the Bellman operator; they're duals of each other.
                 </p>
+                <ul>
+                  <li><strong>R<sup>π</sup></strong> — vector of expected immediate rewards under π: R<sup>π</sup>(s) = Σ<sub>a</sub> π(a|s) R(s, a).</li>
+                  <li><strong>P<sup>π</sup></strong> — transition matrix under π: P<sup>π</sup>(s, s') = Σ<sub>a</sub> π(a|s) P(s'|s, a).</li>
+                  <li><strong>Δ<sub>max</sub></strong> — worst-case change across states in one sweep; the contraction metric.</li>
+                </ul>
                 <table class="rl-compare">
                   <thead>
                     <tr>
@@ -403,12 +478,17 @@
                   square in the other direction (walls bounce you in place).
                 </p>
                 <div class="rl-chain" id="chain">
+                  <div class="mode-toggle" role="group" aria-label="Algorithm">
+                    <button class="mode-toggle__btn is-active" type="button" data-chain-mode="vi" aria-pressed="true">Value iteration</button>
+                    <button class="mode-toggle__btn" type="button" data-chain-mode="pi" aria-pressed="false">Policy iteration</button>
+                  </div>
                   <div class="rl-chain__controls">
-                    <button type="button" id="chain-step">Value-iter step</button>
+                    <button type="button" id="chain-step">Step</button>
                     <button type="button" id="chain-run" class="is-primary">Run to convergence</button>
                     <button type="button" id="chain-simulate">Simulate greedy agent</button>
-                    <button type="button" id="chain-reset">Reset V</button>
+                    <button type="button" id="chain-reset">Reset V &amp; π</button>
                     <div class="rl-chain__status" aria-live="polite">
+                      <span><strong>phase</strong><span id="chain-phase">—</span></span>
                       <span><strong>iter</strong><span id="chain-iter">0</span></span>
                       <span><strong>Δ<sub>max</sub></strong><span id="chain-delta">—</span></span>
                       <span><strong>steps to goal</strong><span id="chain-steps">—</span></span>
@@ -417,13 +497,17 @@
                   <div class="rl-chain__grid" id="chain-grid" style="--chain-n: 7;"></div>
                   <canvas class="rl-chain__delta-chart" id="chain-delta-chart" width="700" height="70" aria-label="Max value change per iteration"></canvas>
                   <p class="ml-hint">
-                    The blue curve above tracks Δ<sub>max</sub> = max<sub>s</sub> |V<sub>new</sub>(s) − V<sub>old</sub>(s)| —
-                    the largest value change in an iteration. Value iteration is a <em>contraction</em>: each sweep
-                    shrinks this gap by a factor of γ, so it falls like a geometric decay. Convergence ≈
-                    log(ε / R<sub>max</sub>) / log(γ) iterations; for γ = 0.95 and tolerance 10⁻⁴, that's ≈ 180,
-                    but on a 7-state chain the value backup shortcut makes it finish in roughly <em>10</em>.
-                    Press <em>Simulate greedy agent</em> after convergence and count the actual environment steps
-                    it takes to reach the goal — a separate number from the planning iterations.
+                    <strong>VI mode</strong>: each <em>Step</em> is one full-state Bellman-optimality sweep
+                    V(s) ← max<sub>a</sub> Σ P(s'|s,a)[r + γV(s')]. Blue curve tracks
+                    Δ<sub>max</sub> = max<sub>s</sub> |V<sub>new</sub>(s) − V<sub>old</sub>(s)|, the contraction
+                    metric.
+                    <strong>PI mode</strong>: each <em>Step</em> advances one phase — either a
+                    <em>policy-evaluation</em> sweep (V ← R<sup>π</sup> + γP<sup>π</sup>V for the current π,
+                    repeated until V stabilises) or a <em>policy-improvement</em> pass (π ← argmax<sub>a</sub>
+                    Q<sup>π</sup>(s,a)). Phase indicator up top tells you which. PI converges in far fewer
+                    <em>outer</em> iterations than VI takes sweeps, but each outer iteration does more work.
+                    Press <em>Simulate greedy agent</em> after convergence and count the environment steps to
+                    reach the goal — a separate number from planning iterations.
                   </p>
                 </div>
               </article>
@@ -442,15 +526,15 @@
                 </p>
                 <div class="rl-taxonomy">
                   <div class="rl-taxonomy__card">
-                    <h4>Monte Carlo (MC)</h4>
+                    <h4 data-g="monte-carlo">Monte Carlo (MC)</h4>
                     <div class="rl-equation" data-katex="V(s_t) \leftarrow V(s_t) + \alpha\,\bigl[\,G_t - V(s_t)\,\bigr]" data-katex-display></div>
                     <ul>
-                      <li>G<sub>t</sub> — the <em>actual</em> return from the completed episode.</li>
+                      <li><span data-g="return">G<sub>t</sub></span> — the <em>actual</em> return from the completed episode.</li>
                       <li>Unbiased, high variance; needs the episode to terminate.</li>
                     </ul>
                   </div>
                   <div class="rl-taxonomy__card">
-                    <h4>TD(0)</h4>
+                    <h4 data-g="td0">TD(0)</h4>
                     <div class="rl-equation" data-katex="V(s_t) \leftarrow V(s_t) + \alpha\,\bigl[\,r_{t+1} + \gamma\, V(s_{t+1}) - V(s_t)\,\bigr]" data-katex-display></div>
                     <ul>
                       <li>Bootstrap: replace G<sub>t</sub> with r<sub>t+1</sub> + γ V(s<sub>t+1</sub>).</li>
@@ -458,7 +542,7 @@
                     </ul>
                   </div>
                   <div class="rl-taxonomy__card">
-                    <h4>n-step / TD(λ)</h4>
+                    <h4 data-g="td-lambda">n-step / TD(λ)</h4>
                     <div class="rl-equation" data-katex="G_t^{(n)} = \sum_{k=0}^{n-1} \gamma^k r_{t+k+1} + \gamma^n V(s_{t+n})" data-katex-display></div>
                     <ul>
                       <li>Interpolates MC (n = ∞) and TD(0) (n = 1).</li>
@@ -471,9 +555,9 @@
                 </p>
                 <div class="rl-equation" data-katex="\delta_t = r_{t+1} + \gamma\, V(s_{t+1}) - V(s_t)" data-katex-display></div>
                 <ul>
-                  <li><strong>δ<sub>t</sub></strong> — "surprise": how wrong my prediction was once I saw the next step.</li>
-                  <li><strong>α</strong> — step size (learning rate) ∈ (0, 1].</li>
-                  <li><strong>γ</strong> — same discount as before.</li>
+                  <li><strong data-g="td-error">δ<sub>t</sub></strong> — "surprise": how wrong my prediction was once I saw the next step.</li>
+                  <li><strong data-g="alpha-step">α</strong> — step size (learning rate) ∈ (0, 1].</li>
+                  <li><strong data-g="gamma">γ</strong> — same discount as before.</li>
                 </ul>
                 <p class="rl-theory__kid">
                   <strong>Shape watch.</strong> Every update so far — and every update below — is
@@ -481,6 +565,45 @@
                   Only the target changes between algorithms: G<sub>t</sub> (MC), r + γV (TD), r + γQ(s',a') (SARSA),
                   r + γ max<sub>a</sub> Q (Q-learning). See §8 for the side-by-side view.
                 </p>
+
+                <h4 style="margin-top:0.9rem;">Demo — Monte Carlo by throwing darts</h4>
+                <p class="rl-theory__kid">
+                  <strong>Kid version.</strong> Draw a circle inside a square. Throw random darts at the square.
+                  Count how many land inside the circle. The ratio — hits over total — tells you the circle's
+                  area as a fraction of the square's. That's <em data-g="mc-integration">Monte Carlo
+                  integration</em>: estimate an expectation by averaging random samples.
+                </p>
+                <p>
+                  For the unit circle inside the 2×2 square: area ratio = π/4, so
+                  <span data-katex="\hat\pi = 4 \cdot \tfrac{\text{hits}}{\text{throws}}"></span>.
+                  Standard error of the estimate shrinks as
+                  <span data-katex="O(1/\sqrt{n})"></span> — doubling the darts halves the noise, no matter
+                  the dimension of the integral. That property is why every MC return estimate G<sub>t</sub>
+                  in RL is just "average lots of trajectories" — no bias, but you pay √n for convergence.
+                </p>
+                <div class="rl-darts">
+                  <div class="rl-darts__canvas-wrap">
+                    <canvas id="darts-canvas" width="420" height="420" aria-label="Monte Carlo π estimation"></canvas>
+                  </div>
+                  <div class="rl-darts__sidebar">
+                    <div class="rl-darts__controls">
+                      <button type="button" id="darts-step" class="is-primary">+100 darts</button>
+                      <button type="button" id="darts-run">Run 10 k</button>
+                      <button type="button" id="darts-pause" hidden>Pause</button>
+                      <button type="button" id="darts-reset">Reset</button>
+                    </div>
+                    <dl class="rl-darts__stats">
+                      <dt>Throws</dt><dd id="darts-throws">0</dd>
+                      <dt>Hits (inside)</dt><dd id="darts-hits">0</dd>
+                      <dt>π estimate</dt><dd class="is-accent" id="darts-pi">—</dd>
+                      <dt>Error vs π</dt><dd id="darts-err">—</dd>
+                    </dl>
+                    <p class="ml-hint" style="margin:0;">
+                      Blue = inside circle, grey = outside. Each dart is ~1 pixel; colour density shows the
+                      sampling distribution (uniform in the square). The π estimate updates live.
+                    </p>
+                  </div>
+                </div>
               </article>
 
               <article class="rl-theory__panel" id="theory-on-off">
@@ -497,8 +620,8 @@
                 <div class="rl-equation" data-katex="\text{SARSA:}\quad Q(s_t, a_t) \leftarrow Q(s_t, a_t) + \alpha\,\bigl[\,r_{t+1} + \gamma\, Q(s_{t+1},\, \mathbf{a_{t+1}}) - Q(s_t, a_t)\,\bigr]" data-katex-display></div>
                 <div class="rl-equation" data-katex="\text{Q-learning:}\quad Q(s_t, a_t) \leftarrow Q(s_t, a_t) + \alpha\,\bigl[\,r_{t+1} + \gamma\, \mathbf{\max_{a'}}\, Q(s_{t+1},\, a') - Q(s_t, a_t)\,\bigr]" data-katex-display></div>
                 <ul>
-                  <li><strong>a<sub>t+1</sub></strong> (SARSA) — the action the <em>current</em> policy actually took next. Learns Q for whatever behaviour (ε-greedy, noisy) is being run.</li>
-                  <li><strong>max<sub>a'</sub></strong> (Q-learning) — the value of a <em>different</em>, greedy policy. Learns Q<sup>*</sup> regardless of what action was taken.</li>
+                  <li><strong data-g="sarsa">a<sub>t+1</sub></strong> (SARSA) — the action the <em>current</em> policy actually took next. Learns Q for whatever behaviour (ε-greedy, noisy) is being run.</li>
+                  <li><strong data-g="q-learning">max<sub>a'</sub></strong> (Q-learning) — the value of a <em>different</em>, greedy policy. Learns Q<sup>*</sup> regardless of what action was taken.</li>
                 </ul>
                 <table class="rl-compare">
                   <thead>
@@ -524,9 +647,9 @@
                 </p>
                 <div class="rl-equation" data-katex="\mathbb{E}_{\pi}\!\bigl[\,f(\tau)\,\bigr] = \mathbb{E}_{\mu}\!\bigl[\,\rho(\tau)\, f(\tau)\,\bigr],\qquad \rho(\tau) = \prod_{t=0}^{T-1} \frac{\pi(a_t \mid s_t)}{\mu(a_t \mid s_t)}" data-katex-display></div>
                 <ul>
-                  <li><strong>π(a|s)</strong> — target policy (the one we want to evaluate).</li>
+                  <li><strong data-g="policy">π(a|s)</strong> — target policy (the one we want to evaluate).</li>
                   <li><strong>μ(a|s)</strong> — behaviour policy (the one that actually generated the data).</li>
-                  <li><strong>ρ(τ)</strong> — product of per-step ratios over the trajectory τ.</li>
+                  <li><strong data-g="rho-ratio">ρ(τ)</strong> — product of per-step ratios over the trajectory τ.</li>
                 </ul>
                 <p>
                   Unbiased but high-variance (the product over a long trajectory can explode). <em>Weighted</em>
@@ -552,7 +675,8 @@
                 </p>
                 <div class="rl-equation" data-katex="\nabla_\theta J(\theta) = \mathbb{E}_{\pi_\theta}\!\bigl[\,\nabla_\theta \log \pi_\theta(a\mid s)\, \cdot\, \Psi_t\,\bigr]" data-katex-display></div>
                 <ul>
-                  <li><strong>θ</strong> — parameters of the policy network.</li>
+                  <li><strong data-g="theta-policy">θ</strong> — parameters of the policy (actor) network π<sub>θ</sub>.</li>
+                  <li><strong data-g="phi-critic">φ</strong> — parameters of the critic network V<sub>φ</sub> or Q<sub>φ</sub> (actor-critic only).</li>
                   <li><strong>J(θ)</strong> — expected return under π<sub>θ</sub> (what we want to maximise).</li>
                   <li><strong>∇<sub>θ</sub> log π<sub>θ</sub>(a|s)</strong> — "score function": which direction to nudge θ to make action a more likely at state s.</li>
                   <li><strong>Ψ<sub>t</sub></strong> — a signal saying "was this good?". Lower variance = better choice.</li>
@@ -561,7 +685,7 @@
                 <div class="rl-equation" data-katex="\theta \leftarrow \theta + \alpha\, \nabla_\theta \log \pi_\theta(a_t\mid s_t)\, \cdot\, \Psi_t" data-katex-display></div>
                 <div class="rl-taxonomy">
                   <div class="rl-taxonomy__card">
-                    <h4>REINFORCE</h4>
+                    <h4 data-g="reinforce">REINFORCE</h4>
                     <div class="rl-equation" data-katex="\Psi_t = G_t" data-katex-display></div>
                     <ul>
                       <li>Pure Monte Carlo policy gradient.</li>
@@ -569,7 +693,7 @@
                     </ul>
                   </div>
                   <div class="rl-taxonomy__card">
-                    <h4>Actor-Critic (A2C)</h4>
+                    <h4 data-g="actor-critic">Actor-Critic (A2C)</h4>
                     <div class="rl-equation" data-katex="\Psi_t = \delta_t = r_{t+1} + \gamma\, V_\phi(s_{t+1}) - V_\phi(s_t)" data-katex-display></div>
                     <ul>
                       <li>Critic learns V<sub>φ</sub>; actor ascends along δ<sub>t</sub>.</li>
@@ -577,11 +701,12 @@
                     </ul>
                   </div>
                   <div class="rl-taxonomy__card">
-                    <h4>PPO / TRPO</h4>
+                    <h4><span data-g="ppo">PPO</span> / <span data-g="trpo">TRPO</span></h4>
                     <div class="rl-equation" data-katex="\Psi_t = \hat{A}_t^{\text{GAE}(\lambda)}" data-katex-display></div>
                     <ul>
                       <li>Actor-critic with a clipped ratio / trust region.</li>
                       <li>Keeps policy updates small and stable.</li>
+                      <li>GAE(λ) — Generalised Advantage Estimation: exponentially-weighted average of n-step TD advantages Σ (γλ)<sup>k</sup> δ<sub>t+k</sub>. λ=0 is TD(0); λ=1 is Monte Carlo.</li>
                     </ul>
                   </div>
                 </div>
@@ -653,12 +778,12 @@
                     <h4 class="rl-cluster__title">Value-based</h4>
                     <p>Learn Q(s, a); act greedily. No explicit policy network.</p>
                     <div class="rl-cluster__members">
-                      <span class="rl-cluster__member">SARSA</span>
-                      <span class="rl-cluster__member">Q-learning</span>
-                      <span class="rl-cluster__member">Expected SARSA</span>
-                      <span class="rl-cluster__member">DQN</span>
-                      <span class="rl-cluster__member">Double DQN</span>
-                      <span class="rl-cluster__member">Rainbow</span>
+                      <span class="rl-cluster__member" data-g="sarsa">SARSA</span>
+                      <span class="rl-cluster__member" data-g="q-learning">Q-learning</span>
+                      <span class="rl-cluster__member" data-g="expected-sarsa">Expected SARSA</span>
+                      <span class="rl-cluster__member" data-g="dqn">DQN</span>
+                      <span class="rl-cluster__member" data-g="dqn">Double DQN</span>
+                      <span class="rl-cluster__member" data-g="dqn">Rainbow</span>
                     </div>
                     <ul class="rl-cluster__axes">
                       <li><strong>update</strong>TD on Q</li>
@@ -673,7 +798,7 @@
                     <h4 class="rl-cluster__title">Policy-based</h4>
                     <p>Learn π<sub>θ</sub>(a|s) directly. No value function in the update.</p>
                     <div class="rl-cluster__members">
-                      <span class="rl-cluster__member">REINFORCE</span>
+                      <span class="rl-cluster__member" data-g="reinforce">REINFORCE</span>
                       <span class="rl-cluster__member">CMA-ES</span>
                       <span class="rl-cluster__member">Evolutionary</span>
                     </div>
@@ -690,12 +815,12 @@
                     <h4 class="rl-cluster__title">Actor-critic</h4>
                     <p>Learn π<sub>θ</sub> <em>and</em> V<sub>φ</sub> or Q<sub>φ</sub>. Value reduces variance of the policy gradient.</p>
                     <div class="rl-cluster__members">
-                      <span class="rl-cluster__member">A2C / A3C</span>
-                      <span class="rl-cluster__member">PPO</span>
-                      <span class="rl-cluster__member">TRPO</span>
-                      <span class="rl-cluster__member">DDPG</span>
-                      <span class="rl-cluster__member">TD3</span>
-                      <span class="rl-cluster__member">SAC</span>
+                      <span class="rl-cluster__member" data-g="actor-critic">A2C / A3C</span>
+                      <span class="rl-cluster__member" data-g="ppo">PPO</span>
+                      <span class="rl-cluster__member" data-g="trpo">TRPO</span>
+                      <span class="rl-cluster__member" data-g="ddpg">DDPG</span>
+                      <span class="rl-cluster__member" data-g="ddpg">TD3</span>
+                      <span class="rl-cluster__member" data-g="sac">SAC</span>
                       <span class="rl-cluster__member">IMPALA</span>
                     </div>
                     <ul class="rl-cluster__axes">
@@ -711,8 +836,8 @@
                     <h4 class="rl-cluster__title">Model-based</h4>
                     <p>Learn (or are given) P and R; plan by simulating. Can wrap any of the other families.</p>
                     <div class="rl-cluster__members">
-                      <span class="rl-cluster__member">Value iteration</span>
-                      <span class="rl-cluster__member">Policy iteration</span>
+                      <span class="rl-cluster__member" data-g="value-iteration">Value iteration</span>
+                      <span class="rl-cluster__member" data-g="policy-iteration">Policy iteration</span>
                       <span class="rl-cluster__member">Dyna-Q</span>
                       <span class="rl-cluster__member">MCTS / AlphaZero</span>
                       <span class="rl-cluster__member">MuZero</span>
@@ -747,6 +872,7 @@
     </script>
     <script type="module" src="../../assets/js/main.js"></script>
     <script type="module" src="../../assets/js/rl-lab.js"></script>
+    <script type="module" src="../../assets/js/lab-tooltips.js"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
     <script>
       document.addEventListener('DOMContentLoaded', () => {
