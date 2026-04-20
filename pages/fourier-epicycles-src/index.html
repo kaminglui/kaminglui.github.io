@@ -266,6 +266,116 @@
                 exist (Rader, Bluestein, mixed-radix) but they're slightly slower and trickier to implement.
               </p>
             </div>
+
+            <section class="fourier-extra" aria-label="Three more ways to think about the transform">
+              <h3 class="fourier-extra__title">Three more ways to think about the transform</h3>
+              <p class="fourier-extra__lead">
+                The same DFT sits in different mental models depending on who's using it. A linear-algebra view explains
+                <em>what</em> the transform is; the 2D extension explains how images plug in; and the DSP view explains
+                <em>why</em> people bother.
+              </p>
+
+              <article class="fourier-extra__topic">
+                <header>
+                  <span class="fourier-extra__num">1</span>
+                  <div>
+                    <p class="fourier-extra__tag">Matrix + polar coordinates</p>
+                    <h4>The DFT is one matrix multiplication</h4>
+                  </div>
+                </header>
+                <p>
+                  Every frequency bin <code>X<sub>k</sub></code> is a dot product of the signal vector with one row of
+                  a fixed <em>N</em>×<em>N</em> matrix — the <strong>DFT matrix</strong>. Its entries are all powers of
+                  a single complex number <code>ω = e<sup>−i 2π/N</sup></code>.
+                </p>
+                <div class="fourier-extra__formula" data-katex="\begin{bmatrix} X_0 \\ X_1 \\ X_2 \\ X_3 \end{bmatrix} = \begin{bmatrix} 1 &amp; 1 &amp; 1 &amp; 1 \\ 1 &amp; \omega &amp; \omega^2 &amp; \omega^3 \\ 1 &amp; \omega^2 &amp; \omega^4 &amp; \omega^6 \\ 1 &amp; \omega^3 &amp; \omega^6 &amp; \omega^9 \end{bmatrix} \begin{bmatrix} x_0 \\ x_1 \\ x_2 \\ x_3 \end{bmatrix}, \quad \omega = e^{-i 2\pi / 4}" data-katex-display></div>
+                <p>
+                  Each row of the matrix is a <em>sampled complex exponential</em> of a different frequency. Multiplying
+                  by the signal asks "how much of this exponential is in there?" The FFT is just a clever recursive way
+                  of doing this matrix multiply without writing the matrix out.
+                </p>
+                <p>
+                  Each <code>X<sub>k</sub></code> is a complex number, which lives more naturally in polar form:
+                </p>
+                <div class="fourier-extra__formula" data-katex="X_k = |X_k|\, e^{i \phi_k}" data-katex-display></div>
+                <p>
+                  The magnitude <code>|X<sub>k</sub>|</code> is <em>how much</em> of that frequency; the phase
+                  <code>φ<sub>k</sub></code> is <em>where</em> it starts. That's literally what the epicycle canvas
+                  above is drawing — each circle's radius is <code>|X<sub>k</sub>|</code>, its starting angle is
+                  <code>φ<sub>k</sub></code>, and its rotation speed is <em>k</em> cycles per trip around the path.
+                  The polar form <strong>is</strong> the picture.
+                </p>
+              </article>
+
+              <article class="fourier-extra__topic">
+                <header>
+                  <span class="fourier-extra__num">2</span>
+                  <div>
+                    <p class="fourier-extra__tag">Higher dimensions · 2D FFT</p>
+                    <h4>From 1D signals to 2D images</h4>
+                  </div>
+                </header>
+                <p>
+                  An image is a 2D signal <code>x[m, n]</code>. The 2D DFT decomposes it into a grid of 2D "plane waves"
+                  — sinusoids that ripple in both directions at once.
+                </p>
+                <div class="fourier-extra__formula" data-katex="X[k, \ell] = \sum_{m=0}^{M-1} \sum_{n=0}^{N-1} x[m, n]\, e^{-i 2\pi \left( \frac{k m}{M} + \frac{\ell n}{N} \right)}" data-katex-display></div>
+                <p>
+                  The saving grace is <strong>separability</strong>: that 2D sum factors into a 1D FFT on every row,
+                  followed by a 1D FFT on every column. A naive 2D DFT of an <em>N</em>×<em>N</em> image would cost
+                  <em>N</em>⁴; the row-then-column FFT strategy brings it down to ~2·<em>N</em>²·log<sub>2</sub> <em>N</em>.
+                </p>
+                <p class="fourier-extra__examples">
+                  <strong>Common block sizes:</strong>
+                  <span class="fourier-extra__chip">8×8 — JPEG DCT blocks</span>
+                  <span class="fourier-extra__chip">16×16 — video motion estimation</span>
+                  <span class="fourier-extra__chip">32×32 &amp; 64×64 — FFT-based image convolution, texture synthesis</span>
+                </p>
+                <p class="fourier-extra__note">
+                  Smaller blocks localise the spectrum (they only mix nearby pixels); larger blocks catch coarser
+                  patterns but smear local detail. JPEG's 8×8 is a compromise between compressibility and visible
+                  block artifacts; 32×32 or 64×64 give much better frequency resolution for scientific imaging.
+                </p>
+              </article>
+
+              <article class="fourier-extra__topic">
+                <header>
+                  <span class="fourier-extra__num">3</span>
+                  <div>
+                    <p class="fourier-extra__tag">Digital signal processing</p>
+                    <h4>Where engineers actually use this</h4>
+                  </div>
+                </header>
+                <p>
+                  In DSP, the FFT is a tool, not a trophy. It earns its keep in three big ways:
+                </p>
+                <ul class="fourier-extra__list">
+                  <li>
+                    <strong>Filtering via the convolution theorem.</strong> Convolving in time is the same as
+                    multiplying in frequency. To apply a low-pass filter to an audio signal: FFT the signal, multiply
+                    each bin by the filter's response, inverse FFT back. Goes from <em>N</em>² additions to
+                    <em>N</em>·log <em>N</em> — the move behind every real-time reverb, noise reduction, and echo
+                    cancelling plugin.
+                  </li>
+                  <li>
+                    <strong>Spectral analysis.</strong> Watching <code>|X<sub>k</sub>|</code> change over time (a
+                    <em>spectrogram</em>) reveals a signal's fingerprint: pitch in speech, modes in a vibrating
+                    bridge, a tumour's texture under ultrasound, interference in a radio link.
+                  </li>
+                  <li>
+                    <strong>Lossy compression.</strong> MP3, JPEG, and MPEG all transform into a frequency-like
+                    domain, quantise small coefficients aggressively, and rely on the human eye/ear not missing what
+                    they threw away. Without the FFT's speed, those codecs wouldn't be feasible on consumer hardware.
+                  </li>
+                </ul>
+                <div class="fourier-extra__formula" data-katex="\mathcal{F}\{\, x * h \,\} = X \cdot H" data-katex-display></div>
+                <p>
+                  That one-line identity — convolution in time, multiplication in frequency — is the reason the FFT
+                  shows up in places that look nothing like spinning circles: polynomial multiplication, large-integer
+                  arithmetic, cross-correlation, GPS signal acquisition, partial differential equation solvers.
+                </p>
+              </article>
+            </section>
           </article>
         </div>
       </section>
