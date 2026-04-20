@@ -662,3 +662,16 @@ body.theme-dark .fourier-notes {
   padding-top: 0.55rem;
   border-top: 1px dashed var(--color-border);
 }
+
+/* --- Cooley-Tukey matrix-factorization proof ------------------------- */
+.fourier-proof {
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 2px var(--color-accent-muted);
+}
+.fourier-proof h5 {
+  margin: 0.5rem 0 0.2rem;
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  color: var(--color-accent);
+}

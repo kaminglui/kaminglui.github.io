@@ -338,6 +338,78 @@
                 </p>
               </article>
 
+              <article class="fourier-extra__topic fourier-proof">
+                <header>
+                  <span class="fourier-extra__num">★</span>
+                  <div>
+                    <p class="fourier-extra__tag">Matrix factorization proof</p>
+                    <h4>Why N² becomes N log N — the Cooley–Tukey derivation</h4>
+                  </div>
+                </header>
+                <p>
+                  The "split by parity, recurse" story above is really a <em>matrix factorization</em> in disguise.
+                  Making it explicit shows why the FFT has to exist: the DFT matrix has so much algebraic redundancy
+                  that it can be written as a product of sparse pieces, and applying those pieces in sequence is
+                  dramatically cheaper than applying the dense matrix directly.
+                </p>
+
+                <h5>Step 1 · every DFT entry is a root of unity</h5>
+                <p>
+                  Define <code>ω<sub>N</sub> = e<sup>i 2π/N</sup></code>. These are the <strong>N-th roots of unity</strong>
+                  — <em>N</em> equally spaced points on the unit circle. For <em>N</em> = 6 it's a regular hexagon; for
+                  <em>N</em> = 32 it's a 32-gon; and so on. Every entry of the DFT matrix is one of these raised to some power.
+                </p>
+                <div class="fourier-extra__formula" data-katex="\omega_N = e^{i 2\pi / N} = \cos\tfrac{2\pi}{N} + i \sin\tfrac{2\pi}{N}, \qquad (F_N)_{jk} = \omega_N^{\,jk}" data-katex-display></div>
+                <p>
+                  The symmetry that unlocks the speedup is that <code>ω<sub>N</sub><sup>k + N/2</sup> = −ω<sub>N</sub><sup>k</sup></code>
+                  — half the powers are just sign flips of the other half. That's a lot of redundancy to exploit.
+                </p>
+
+                <h5>Step 2 · F<sub>N</sub> splits into two F<sub>N/2</sub>'s</h5>
+                <p>
+                  After permuting inputs into even-indexed and odd-indexed halves (<code>P</code> below),
+                  F<sub>N</sub> factorises as:
+                </p>
+                <div class="fourier-extra__formula" data-katex="F_N = \begin{bmatrix} I &amp; D \\ I &amp; -D \end{bmatrix} \begin{bmatrix} F_{N/2} &amp; 0 \\ 0 &amp; F_{N/2} \end{bmatrix} P" data-katex-display></div>
+                <p>
+                  Here <code>I</code> is the (N/2)×(N/2) identity and <code>D = diag(1, ω<sub>N</sub>, ω<sub>N</sub>², …, ω<sub>N</sub><sup>N/2−1</sup>)</code>
+                  holds the <strong>twiddle factors</strong>. The left "butterfly" block <code>[I D; I −D]</code>
+                  costs <code>N</code> operations to apply (one diagonal multiply + one add/subtract per element).
+                  The middle block is two independent F<sub>N/2</sub>'s on the two halves. The permutation is free.
+                </p>
+
+                <h5>Step 3 · recurse all the way down</h5>
+                <p>
+                  The same trick applies to each F<sub>N/2</sub>, which splits into two F<sub>N/4</sub>'s, and so on.
+                  After <code>log<sub>2</sub> N</code> levels the recursion reaches <code>F<sub>1</sub> = [1]</code>
+                  and every layer between is just butterflies and permutations. The operation count satisfies
+                  the classic recurrence:
+                </p>
+                <div class="fourier-extra__formula" data-katex="T(N) = 2\, T(N/2) + N, \qquad \Rightarrow \qquad T(N) = \tfrac{1}{2}\, N \log_2 N" data-katex-display></div>
+                <p>
+                  Concretely the blackboard tallies it level by level: <code>T(64) = 2·T(32) + 64</code>,
+                  <code>T(32) = 2·T(16) + 32</code>, ... down to log<sub>2</sub> 64 = 6 layers of work. Total for N=64:
+                  ~6 · 32 = 192 complex multiplies instead of 64² = 4096.
+                </p>
+
+                <h5>Step 4 · the payoff</h5>
+                <p>For <em>N</em> = 1024 = 2<sup>10</sup>:</p>
+                <ul class="fourier-extra__list">
+                  <li>Direct DFT: <code>N² = 1,048,576</code> multiplications — over a million.</li>
+                  <li>FFT: <code>(N/2) · log<sub>2</sub> N = 512 · 10 = 5,120</code> — just <em>5× N</em>.</li>
+                  <li>Speedup: <strong>~200×</strong>.</li>
+                </ul>
+
+                <p class="fourier-extra__note">
+                  <strong>The philosophical takeaway:</strong> FFT is a form of information compression — not of the
+                  data, but of the <em>work</em> needed to analyse it. The DFT matrix's algebraic structure
+                  (everything is a root-of-unity power) lets us factor a dense N² object into log<sub>2</sub> N sparse
+                  layers. Same output; orders of magnitude less effort. That's why Gilbert Strang called the FFT
+                  "the most important algorithm of our lifetime" and why it shows up in every corner of numerical
+                  computing.
+                </p>
+              </article>
+
               <article class="fourier-extra__topic">
                 <header>
                   <span class="fourier-extra__num">3</span>
