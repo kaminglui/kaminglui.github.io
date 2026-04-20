@@ -19,18 +19,40 @@
   <body class="theme-light">
     <div id="site-header"></div>
 
-    <main class="container ml-playground-page">
-      <div class="ml-playground-shell">
-        <header class="ml-playground__header">
-          <p class="card__eyebrow">Interactive clustering</p>
-          <h1>Clustering Playground - K-Means Explorer</h1>
-          <p class="ml-playground__lead">
-            Add, drag, and regroup data points to see how K-means clusters them. Switch modes to create or move points, step
-            through each iteration, or let the algorithm run to convergence while you watch the objective change.
-          </p>
-        </header>
+    <main class="lab-main">
+      <section class="lab-hero">
+        <div class="container">
+          <div class="lab-hero__inner">
+            <p class="lab-hero__eyebrow">Interactive lab</p>
+            <h1 class="lab-hero__title">Clustering Playground</h1>
+            <p class="lab-hero__lead">
+              Drop data points on a canvas and watch K-means group them into clusters. Step through each assign-update
+              pass, let the loop converge, and see the objective fall as centroids settle.
+            </p>
+          </div>
+        </div>
+      </section>
 
-        <section class="ml-tabs" aria-label="Clustering playground sections">
+      <section class="lab-section" aria-labelledby="ml-title">
+        <div class="container">
+          <article class="card lab-card">
+            <header class="lab-card__header">
+              <p class="lab-card__eyebrow">K-means step-by-step</p>
+              <div class="lab-card__title-row">
+                <h2 class="lab-card__title" id="ml-title">Cluster points and watch centroids converge</h2>
+                <div class="lab-card__chips">
+                  <span class="lab-chip">K-means</span>
+                  <span class="lab-chip">Canvas</span>
+                  <span class="lab-chip">Lloyd's</span>
+                </div>
+              </div>
+              <p class="lab-card__lead">
+                Create mode drops points where you click; Drag mode reshuffles them. Initialize centroids, then step or
+                run — the calculation panel breaks down per-point distances in real time.
+              </p>
+            </header>
+
+            <section class="ml-tabs" aria-label="Clustering playground sections">
           <div class="ml-tablist" role="tablist" aria-label="Playground tabs">
             <button class="ml-tab is-active" role="tab" id="tab-playground" aria-selected="true" aria-controls="panel-playground">
               Playground
@@ -244,8 +266,10 @@
               </article>
             </div>
           </section>
-        </section>
-      </div>
+            </section>
+          </article>
+        </div>
+      </section>
     </main>
 
     <div id="site-footer"></div>
