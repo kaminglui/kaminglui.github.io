@@ -35,7 +35,7 @@ describe('main layout header/footer', () => {
     expect(header?.querySelector('.edit-toggle')).not.toBeNull();
   });
 
-  it('applies root prefix and footer preset on lab pages', async () => {
+  it('applies root prefix on lab pages and renders a minimal footer', async () => {
     window.history.replaceState({}, '', '/pages/transformer-lab/');
     const { initMainLayout } = await import('../mainLayout.js');
     initMainLayout('transformer-lab');
@@ -48,8 +48,9 @@ describe('main layout header/footer', () => {
     );
     expect(activeLab?.getAttribute('aria-current')).toBe('page');
 
-    const footerAction = document.querySelector('.footer__actions a.button--primary');
-    expect(footerAction?.getAttribute('href')).toBe('../../index.html#projects');
+    // The footer was simplified to a single "Back to top" link — preset
+    // heading / body / action buttons / meta lines are intentionally gone.
+    expect(document.querySelector('.footer__actions')).toBeNull();
     expect(document.querySelector('.back-to-top')?.getAttribute('href')).toBe('#top');
   });
 

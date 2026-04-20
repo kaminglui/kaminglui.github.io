@@ -43,44 +43,15 @@ function renderSiteFooter(options = {}) {
   }
 
   const preset = resolvePreset(footer, options.preset);
-  const rootPrefix = resolveRootPrefix({
-    explicitPrefix: options.rootPrefix,
-    element: footer,
-    fallbackPathname: window.location?.pathname
-  });
-  const layoutClass = preset.layoutClass || 'footer__layout';
-
-  let headingMarkup = '';
-  let bodyMarkup = '';
-  let actionsMarkup = '';
-  let metaMarkup = '';
-
-  if (preset.useContentBindings) {
-    headingMarkup = '<h2 data-content="contact.title"></h2>';
-    bodyMarkup = '<p data-content="contact.body"></p>';
-    actionsMarkup = '<div class="footer__actions" data-contact-actions></div>';
-    metaMarkup = '<p data-content="contact.meta"></p>' + buildMetaMarkup([DEFAULT_META]);
-  } else {
-    headingMarkup = preset.heading ? `<h2>${escapeHtml(preset.heading)}</h2>` : '';
-    bodyMarkup = preset.body ? `<p>${escapeHtml(preset.body)}</p>` : '';
-    actionsMarkup = `<div class="footer__actions">${buildActionMarkup(preset.actions, rootPrefix)}</div>`;
-    metaMarkup = buildMetaMarkup(preset.meta || [DEFAULT_META]);
-  }
-
   const backToTopLabel = preset.backToTopLabel || 'Back to top';
 
+  // Footer has been simplified to a single "Back to top" link. Preset
+  // content (contact headings, actions, meta lines) is intentionally
+  // dropped — keeps every page's bottom edge uniform and uncluttered.
   footer.innerHTML = `
-    <div class="container ${layoutClass}">
-      <div>
-        ${headingMarkup}
-        ${bodyMarkup}
-        ${actionsMarkup}
-      </div>
-      <div class="footer__meta">
-        ${metaMarkup}
-      </div>
+    <div class="container footer__layout footer__layout--minimal">
+      <a class="back-to-top" href="#top">${escapeHtml(backToTopLabel)}</a>
     </div>
-    <a class="back-to-top" href="#top">${escapeHtml(backToTopLabel)}</a>
   `.trim();
 
   footer.classList.add('site-footer');

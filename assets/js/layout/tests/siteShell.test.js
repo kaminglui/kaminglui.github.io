@@ -48,14 +48,16 @@ describe('assets/js/layout/mainLayout.js', () => {
     expect(footerTarget?.innerHTML).toBe('');
   });
 
-  it('uses transformer-lab footer preset content and rootPrefix', async () => {
+  it('renders a minimal back-to-top footer on lab pages', async () => {
     window.history.replaceState({}, '', '/pages/transformer-lab/');
     const { initMainLayout } = await import('../mainLayout.js');
 
     initMainLayout('transformer-lab');
 
+    // Footer simplified to just a back-to-top link. Preset-specific content
+    // (CTA heading, project-link button, meta lines) is intentionally dropped.
     const footer = document.querySelector('[data-site-footer]');
-    expect(footer?.textContent).toContain('Ready for more machine learning stories?');
-    expect(footer?.querySelector('a[href="../../index.html#projects"]')).not.toBeNull();
+    expect(footer?.textContent?.trim()).toBe('Back to top');
+    expect(footer?.querySelector('.back-to-top')?.getAttribute('href')).toBe('#top');
   });
 });

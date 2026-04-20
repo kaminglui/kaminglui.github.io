@@ -635,12 +635,24 @@ body.theme-dark .project-card {
 .site-footer {
   background: var(--color-surface);
   border-top: 1px solid var(--color-border);
-  padding: clamp(3rem, 6vw, 4.5rem) 0;
+  padding: 1.5rem 0;
 }
 
 .footer__layout {
   display: grid;
   gap: 2rem;
+}
+
+/* Minimal footer: only the "Back to top" link, centered. The legacy preset
+   fields (heading / body / actions / meta) are intentionally unused so the
+   bottom of every page stays quiet and uniform. */
+.footer__layout--minimal {
+  display: flex;
+  justify-content: center;
+  gap: 0;
+}
+.footer__layout--minimal .back-to-top {
+  margin: 0;
 }
 
 .footer__layout h2 {
