@@ -2777,3 +2777,182 @@ body.theme-dark .pipeline-overview__note {
   font-family: var(--font-mono);
   margin-right: 0.3rem;
 }
+
+/* ---------- Home-page Labs map ----------
+   Three-tier dependency graph of the educational labs. Each tier is a row
+   of linked cards; between tiers a small "builds on" divider hints at the
+   pedagogical dependency. Circuit Lab sits below as a separate track.
+   The layout collapses from 2-3 columns on desktop to 1 column on mobile. */
+.labs-section {
+  padding: clamp(2rem, 4vw, 3rem) 0 clamp(2rem, 4vw, 3rem);
+  background: linear-gradient(180deg, transparent, rgba(59, 130, 246, 0.03));
+}
+.labs-section__header {
+  max-width: 880px;
+  margin: 0 0 1.5rem;
+}
+.labs-section__title {
+  margin: 0.3rem 0 0.7rem;
+  font-size: clamp(1.6rem, 3vw, 2.1rem);
+  letter-spacing: -0.02em;
+}
+.labs-section__lead {
+  margin: 0;
+  color: var(--color-muted);
+  font-size: 1.02rem;
+  line-height: 1.55;
+}
+.labs-map {
+  display: grid;
+  gap: 1.1rem;
+}
+.labs-map__tier {
+  display: grid;
+  gap: 0.7rem;
+}
+.labs-map__tier-label {
+  font-size: 0.72rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+.labs-map__tier-label span {
+  display: inline-block;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  background: var(--color-accent-muted);
+  color: var(--color-accent);
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
+}
+.labs-map__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 0.85rem;
+}
+.labs-map__card {
+  display: grid;
+  gap: 0.5rem;
+  padding: 1.1rem 1.2rem 1.05rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-sm);
+  color: inherit;
+  text-decoration: none;
+  transition: transform 140ms ease, border-color 140ms ease, box-shadow 140ms ease;
+}
+.labs-map__card:hover,
+.labs-map__card:focus-visible {
+  border-color: var(--color-accent);
+  transform: translateY(-2px);
+  box-shadow: 0 18px 36px -18px rgba(59, 130, 246, 0.35);
+}
+.labs-map__card:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 3px;
+}
+.labs-map__eyebrow {
+  margin: 0;
+  color: var(--color-accent);
+  font-size: 0.72rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  font-family: var(--font-mono);
+}
+.labs-map__heading {
+  margin: 0;
+  font-size: 1.08rem;
+  line-height: 1.35;
+  color: var(--color-text);
+}
+.labs-map__body {
+  margin: 0;
+  color: var(--color-muted);
+  font-size: 0.93rem;
+  line-height: 1.5;
+}
+.labs-map__chips {
+  margin: 0.3rem 0 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+.labs-map__chips li {
+  padding: 0.2rem 0.55rem;
+  font-size: 0.72rem;
+  font-family: var(--font-mono);
+  border-radius: 999px;
+  background: var(--color-bg-alt);
+  color: var(--color-muted);
+  border: 1px solid var(--color-border);
+}
+.labs-map__divider {
+  position: relative;
+  height: 1.4rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.labs-map__divider::before {
+  content: '';
+  position: absolute;
+  left: 10%;
+  right: 10%;
+  top: 50%;
+  border-top: 1px dashed var(--color-border);
+}
+.labs-map__divider span {
+  position: relative;
+  background: var(--color-bg);
+  padding: 0 0.6rem;
+  font-size: 0.7rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+  font-family: var(--font-mono);
+}
+.labs-map__aside {
+  margin-top: 1.25rem;
+  display: grid;
+  gap: 0.55rem;
+}
+.labs-map__aside-label {
+  font-size: 0.72rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+}
+.labs-map__card--aside {
+  max-width: 720px;
+  background: var(--color-bg-alt);
+}
+
+/* Mobile: single-column cards, tighter spacing, divider still shows. */
+@media (max-width: 720px) {
+  .labs-section {
+    padding: 1.5rem 0 1.75rem;
+  }
+  .labs-map__grid {
+    grid-template-columns: 1fr;
+    gap: 0.7rem;
+  }
+  .labs-map__card {
+    padding: 0.95rem 1rem;
+  }
+  .labs-map__heading {
+    font-size: 1rem;
+  }
+  .labs-map__body {
+    font-size: 0.9rem;
+  }
+  .labs-map__chips li {
+    font-size: 0.68rem;
+  }
+}

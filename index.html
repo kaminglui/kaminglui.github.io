@@ -33,21 +33,6 @@
   <body class="theme-light">
     <div id="site-header"></div>
 
-    <div class="edit-toolbar" hidden>
-      <div class="container edit-toolbar__inner" role="region" aria-live="polite">
-        <p class="edit-toolbar__status">Editing site content</p>
-        <div class="edit-toolbar__actions" role="toolbar" aria-label="Content editors">
-          <button type="button" data-editor="intro">Intro</button>
-          <button type="button" data-editor="about">About</button>
-          <button type="button" data-editor="learning">Learning topics</button>
-          <button type="button" data-editor="posts">Posts</button>
-          <button type="button" data-editor="projects">Projects</button>
-          <button type="button" data-editor="sidebar">Sidebar blocks</button>
-          <button type="button" data-action="reset">Reset</button>
-        </div>
-      </div>
-    </div>
-
     <main>
       <section class="hero" id="hero">
         <div class="container hero__layout">
@@ -73,36 +58,160 @@
         </div>
       </section>
 
+      <section class="labs-section" id="labs" aria-labelledby="labs-title">
+        <div class="container">
+          <header class="labs-section__header">
+            <p class="card__eyebrow">Labs</p>
+            <h2 class="labs-section__title" id="labs-title">How the labs fit together</h2>
+            <p class="labs-section__lead">
+              Seven interactive labs covering the math and methods behind modern machine learning. They build
+              on each other — skim the tier you already know, spend time on the one you don't. Hover any chip
+              to see what a term means; click to jump straight to that section.
+            </p>
+          </header>
+
+          <div class="labs-map" role="list">
+            <div class="labs-map__tier">
+              <div class="labs-map__tier-label"><span>Tier 1</span> Foundations</div>
+              <div class="labs-map__grid">
+                <a class="labs-map__card" href="pages/math-lab/" role="listitem">
+                  <p class="labs-map__eyebrow">Math Foundations</p>
+                  <h3 class="labs-map__heading">Optimisation · Linear algebra · PCA</h3>
+                  <p class="labs-map__body">
+                    Calculus, linear algebra, and PCA — what every ML method reuses. Interactive GD/SGD/SA on
+                    a 2D landscape, and a live PCA of a 2D scatter.
+                  </p>
+                  <ul class="labs-map__chips">
+                    <li>argmin · Lagrangian</li>
+                    <li>GD / SGD / momentum</li>
+                    <li>eigenvalues · SVD</li>
+                    <li>universal approx</li>
+                  </ul>
+                </a>
+                <a class="labs-map__card" href="pages/fourier-epicycles/" role="listitem">
+                  <p class="labs-map__eyebrow">Fourier Epicycles</p>
+                  <h3 class="labs-map__heading">Signals, DFT, FFT</h3>
+                  <p class="labs-map__body">
+                    Decompose any signal into rotating circles. DFT, FFT (Cooley-Tukey), 2D Fourier, and the
+                    SDE bridge that shows up again in Diffusion.
+                  </p>
+                  <ul class="labs-map__chips">
+                    <li>DFT · FFT</li>
+                    <li>Cooley-Tukey matrix proof</li>
+                    <li>2D Fourier</li>
+                    <li>Convolution theorem</li>
+                  </ul>
+                </a>
+              </div>
+            </div>
+
+            <div class="labs-map__divider" aria-hidden="true"><span>builds on</span></div>
+
+            <div class="labs-map__tier">
+              <div class="labs-map__tier-label"><span>Tier 2</span> Classical ML</div>
+              <div class="labs-map__grid">
+                <a class="labs-map__card" href="pages/classical-ml/" role="listitem">
+                  <p class="labs-map__eyebrow">Classical ML Lab</p>
+                  <h3 class="labs-map__heading">OLS · Logistic · SVM · MLE</h3>
+                  <p class="labs-map__body">
+                    Three supervised workhorses from MLE first principles. Closed-form OLS, GD on
+                    cross-entropy, subgradient SVM with margin lines + support vectors.
+                  </p>
+                  <ul class="labs-map__chips">
+                    <li>squared / hinge / cross-entropy loss</li>
+                    <li>MLE · MAP · regularisation</li>
+                    <li>kernel trick</li>
+                    <li>bias-variance</li>
+                  </ul>
+                </a>
+                <a class="labs-map__card" href="pages/ml-playground/" role="listitem">
+                  <p class="labs-map__eyebrow">Clustering Playground</p>
+                  <h3 class="labs-map__heading">K-means & GMM</h3>
+                  <p class="labs-map__body">
+                    Unsupervised clustering. Hard K-means vs soft Gaussian mixtures via EM — toggle between
+                    them on the same point cloud.
+                  </p>
+                  <ul class="labs-map__chips">
+                    <li>K-means (Lloyd's)</li>
+                    <li>GMM · EM</li>
+                    <li>responsibilities</li>
+                    <li>log-likelihood</li>
+                  </ul>
+                </a>
+              </div>
+            </div>
+
+            <div class="labs-map__divider" aria-hidden="true"><span>builds on</span></div>
+
+            <div class="labs-map__tier">
+              <div class="labs-map__tier-label"><span>Tier 3</span> Modern deep learning</div>
+              <div class="labs-map__grid">
+                <a class="labs-map__card" href="pages/rl-lab/" role="listitem">
+                  <p class="labs-map__eyebrow">RL Lab</p>
+                  <h3 class="labs-map__heading">Bandits → MDP → actor-critic</h3>
+                  <p class="labs-map__body">
+                    Agents that learn from reward. Bandits, value iteration on a 1D chain, Monte Carlo darts,
+                    Bayesian coin update, and nine KaTeX theory panels ending in a method clustering map.
+                  </p>
+                  <ul class="labs-map__chips">
+                    <li>ε-greedy · UCB · Thompson</li>
+                    <li>value / policy iteration</li>
+                    <li>TD · SARSA · Q-learning</li>
+                    <li>actor-critic (PPO / SAC)</li>
+                  </ul>
+                </a>
+                <a class="labs-map__card" href="pages/transformer-lab/" role="listitem">
+                  <p class="labs-map__eyebrow">Transformer Lab</p>
+                  <h3 class="labs-map__heading">Live attention pipeline</h3>
+                  <p class="labs-map__body">
+                    Type a sentence and watch it turn into tokens, Q/K/V projections, an attention heatmap,
+                    and a blended context vector — every number computed live.
+                  </p>
+                  <ul class="labs-map__chips">
+                    <li>tokens · embeddings</li>
+                    <li>Q · K · V</li>
+                    <li>softmax attention</li>
+                    <li>context vectors</li>
+                  </ul>
+                </a>
+                <a class="labs-map__card" href="pages/diffusion-lab/" role="listitem">
+                  <p class="labs-map__eyebrow">Diffusion Lab</p>
+                  <h3 class="labs-map__heading">Noise → data</h3>
+                  <p class="labs-map__body">
+                    Watch a 2D particle cloud dissolve into Gaussian static and re-assemble using the analytic
+                    score of the target mixture. VAEs, DDPM, score matching, SDEs, flow matching.
+                  </p>
+                  <ul class="labs-map__chips">
+                    <li>KL · ELBO · VAE</li>
+                    <li>DDPM · score matching</li>
+                    <li>VP / VE SDE · PF-ODE</li>
+                    <li>flow matching · consistency</li>
+                  </ul>
+                </a>
+              </div>
+            </div>
+
+            <div class="labs-map__aside" aria-hidden="true">
+              <span class="labs-map__aside-label">Separate track</span>
+              <a class="labs-map__card labs-map__card--aside" href="pages/circuit-lab/">
+                <p class="labs-map__eyebrow">Circuit Lab</p>
+                <h3 class="labs-map__heading">Analog circuit simulator</h3>
+                <p class="labs-map__body">
+                  Hardware / EE side of the site — a full in-browser SPICE-style simulator for resistors, caps,
+                  inductors, op-amps, diodes, BJTs, MOSFETs. Independent of the ML track above.
+                </p>
+              </a>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <div class="container content-grid">
         <div class="primary">
           <section class="card card--section" id="about">
             <p class="card__eyebrow">About</p>
             <h2 class="card__title" data-content="about.title"></h2>
             <div class="card__body stack" id="about-body"></div>
-          </section>
-
-          <section class="card card--section" id="learning">
-            <p class="card__eyebrow">Learning Tracks</p>
-            <h2 class="card__title" data-content="learning.title"></h2>
-            <ul class="bullet-list" id="learning-list"></ul>
-            <p class="card__note" id="learning-empty" hidden>No learning topics yet.</p>
-          </section>
-
-          <section class="card card--section" id="posts">
-            <p class="card__eyebrow">Posts</p>
-            <div class="card__header">
-              <h2 class="card__title" data-content="posts.title"></h2>
-              <a class="text-link" data-content="posts.ctaLabel" data-action="posts"></a>
-            </div>
-            <div class="post-list" id="post-list" aria-live="polite"></div>
-            <p class="card__note" id="posts-empty" hidden>No posts yet.</p>
-          </section>
-
-          <section class="card card--section" id="projects">
-            <p class="card__eyebrow">Projects</p>
-            <h2 class="card__title" data-content="projects.title"></h2>
-            <div class="project-list" id="project-list"></div>
-            <p class="card__note" id="projects-empty" hidden>No projects yet.</p>
           </section>
 
           <section class="card card--section" id="experience">
@@ -135,239 +244,9 @@
 
     <div id="site-footer"></div>
 
-    <dialog class="editor-dialog" id="manage-dialog">
-      <form method="dialog" class="editor-form" data-form="manage">
-        <h2>Update this site</h2>
-        <p class="editor-note">
-          GitHub Pages hosts this site, so publishing changes happens through GitHub instead of an on-site login.
-        </p>
-        <ol class="editor-steps">
-          <li>
-            Open the repository in <a href="https://github.dev/kaminglui/kaminglui.github.io" target="_blank" rel="noreferrer">github.dev</a>
-            (press <kbd>.</kbd> on the repo) for a full browser editor. Edit the copy inside <code>assets/js/content.js</code> or add Markdown posts, then commit.
-          </li>
-          <li>
-            Prefer static site generators? Use GitHub Pages with Jekyll or Quarto and a Pages GitHub Action to build and deploy, all within GitHub infrastructure.
-          </li>
-          <li>
-            Draft rich posts locally with Editor.js and export to Markdown, then commit via GitHub for a safe, token-free workflow.
-          </li>
-        </ol>
-        <p class="editor-note">Need to tweak copy quickly? Enable the local edit toolbar to prototype changes before committing.</p>
-        <menu class="editor-actions">
-          <button type="button" data-action="disable-edit">Hide edit toolbar</button>
-          <span class="spacer"></span>
-          <button type="button" data-action="enable-edit">Enable edit toolbar</button>
-          <button type="button" data-close>Done</button>
-        </menu>
-      </form>
-    </dialog>
-
-    <dialog class="editor-dialog" id="intro-editor">
-      <form method="dialog" class="editor-form" data-form="intro">
-        <h2>Edit intro</h2>
-        <label>
-          Eyebrow
-          <input type="text" name="eyebrow" required />
-        </label>
-        <label>
-          Title
-          <textarea name="title" rows="2" required></textarea>
-        </label>
-        <label>
-          Lead paragraph
-          <textarea name="lead" rows="4" required></textarea>
-        </label>
-        <label>
-          Primary action label
-          <input type="text" name="primaryLabel" required />
-        </label>
-        <label>
-          Primary action URL
-          <input type="url" name="primaryUrl" required />
-        </label>
-        <label>
-          Secondary action label
-          <input type="text" name="secondaryLabel" required />
-        </label>
-        <label>
-          Secondary action URL
-          <input type="url" name="secondaryUrl" required />
-        </label>
-        <label>
-          Current highlights (one per line)
-          <textarea name="current" rows="4"></textarea>
-        </label>
-        <label>
-          Focus areas (one per line)
-          <textarea name="focus" rows="4"></textarea>
-        </label>
-        <menu class="editor-actions">
-          <button value="cancel" type="button" data-close>Cancel</button>
-          <button value="confirm" type="submit">Save</button>
-        </menu>
-      </form>
-    </dialog>
-
-    <dialog class="editor-dialog" id="about-editor">
-      <form method="dialog" class="editor-form" data-form="about">
-        <h2>Edit about section</h2>
-        <label>
-          Title
-          <input type="text" name="title" required />
-        </label>
-        <label>
-          Paragraphs (one per line)
-          <textarea name="paragraphs" rows="6"></textarea>
-        </label>
-        <menu class="editor-actions">
-          <button value="cancel" type="button" data-close>Cancel</button>
-          <button value="confirm" type="submit">Save</button>
-        </menu>
-      </form>
-    </dialog>
-
-    <dialog class="editor-dialog" id="learning-editor">
-      <form method="dialog" class="editor-form" data-form="learning">
-        <h2>Manage learning topics</h2>
-        <label>
-          Section title
-          <input type="text" name="title" required />
-        </label>
-        <label>
-          Topics (one per line)
-          <textarea name="topics" rows="8"></textarea>
-        </label>
-        <menu class="editor-actions">
-          <button value="cancel" type="button" data-close>Cancel</button>
-          <button value="confirm" type="submit">Save</button>
-        </menu>
-      </form>
-    </dialog>
-
-    <dialog class="editor-dialog" id="posts-editor">
-      <div class="editor-form" data-form="posts">
-        <form class="posts-editor__form">
-          <h2>Manage posts</h2>
-          <label>
-            Section title
-            <input type="text" name="title" required />
-          </label>
-          <label>
-            Call-to-action label
-            <input type="text" name="ctaLabel" required />
-          </label>
-          <label>
-            Call-to-action URL
-            <input type="url" name="ctaUrl" required />
-          </label>
-          <div class="posts-editor__list" role="listbox" aria-label="Posts"></div>
-          <fieldset class="posts-editor__details">
-            <legend>Post details</legend>
-            <label>
-              Category
-              <input type="text" name="eyebrow" required />
-            </label>
-            <label>
-              Title
-              <input type="text" name="postTitle" required />
-            </label>
-            <label>
-              Summary
-              <textarea name="summary" rows="4" required></textarea>
-            </label>
-            <label>
-              Date
-              <input type="date" name="date" required />
-            </label>
-          </fieldset>
-          <menu class="editor-actions posts-editor__actions">
-            <button type="button" data-command="delete" class="danger">Delete</button>
-            <span class="spacer"></span>
-            <button type="button" data-command="cancel" data-close>Cancel</button>
-            <button type="button" data-command="new">New</button>
-            <button type="submit" data-command="save">Save</button>
-          </menu>
-        </form>
-      </div>
-    </dialog>
-
-    <dialog class="editor-dialog" id="projects-editor">
-      <div class="editor-form" data-form="projects">
-        <form class="projects-editor__form">
-          <h2>Manage projects</h2>
-          <label>
-            Section title
-            <input type="text" name="title" required />
-          </label>
-          <div class="projects-editor__list" role="listbox" aria-label="Projects"></div>
-          <fieldset class="projects-editor__details">
-            <legend>Project details</legend>
-            <label>
-              Title
-              <input type="text" name="projectTitle" required />
-            </label>
-            <label>
-              Summary
-              <textarea name="summary" rows="3" required></textarea>
-            </label>
-            <label>
-              Highlights (one per line)
-              <textarea name="highlights" rows="4"></textarea>
-            </label>
-          </fieldset>
-          <menu class="editor-actions projects-editor__actions">
-            <button type="button" data-command="delete" class="danger">Delete</button>
-            <span class="spacer"></span>
-            <button type="button" data-command="cancel" data-close>Cancel</button>
-            <button type="button" data-command="new">New</button>
-            <button type="submit" data-command="save">Save</button>
-          </menu>
-        </form>
-      </div>
-    </dialog>
-
-    <dialog class="editor-dialog" id="sidebar-editor">
-      <div class="editor-form" data-form="sidebar">
-        <form class="sidebar-editor__form">
-          <h2>Sidebar blocks</h2>
-          <div class="sidebar-editor__list" role="listbox" aria-label="Sidebar blocks"></div>
-          <fieldset class="sidebar-editor__details">
-            <legend>Block details</legend>
-            <label>
-              Title
-              <input type="text" name="blockTitle" required />
-            </label>
-            <label>
-              Type
-              <select name="blockType">
-                <option value="text">Text</option>
-                <option value="list">List</option>
-              </select>
-            </label>
-            <label data-field="text">
-              Body
-              <textarea name="blockBody" rows="4"></textarea>
-            </label>
-            <label data-field="list">
-              Items (one per line)
-              <textarea name="blockItems" rows="4"></textarea>
-            </label>
-          </fieldset>
-          <menu class="editor-actions sidebar-editor__actions">
-            <button type="button" data-command="delete" class="danger">Delete</button>
-            <span class="spacer"></span>
-            <button type="button" data-command="cancel" data-close>Cancel</button>
-            <button type="button" data-command="new">New</button>
-            <button type="submit" data-command="save">Save</button>
-          </menu>
-        </form>
-      </div>
-    </dialog>
-
     <script type="module">
       import { initMainLayout } from './assets/js/layout/mainLayout.js';
-      initMainLayout('home', { showEditToggle: true, useLocalAnchors: true });
+      initMainLayout('home', { useLocalAnchors: true });
     </script>
     <script type="module" src="assets/js/main.js"></script>
   </body>

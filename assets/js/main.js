@@ -274,12 +274,14 @@ function renderAbout() {
 }
 
 function renderLearning() {
+  if (!learningElements.title || !learningElements.list || !learningElements.empty) return;
   learningElements.title.textContent = formatTitleCase(content.learning.title);
   renderList(learningElements.list, content.learning.topics);
   learningElements.empty.hidden = content.learning.topics.length > 0;
 }
 
 function renderPosts() {
+  if (!postElements.title || !postElements.list || !postElements.empty) return;
   postElements.title.textContent = formatTitleCase(content.posts.title);
   postElements.cta.textContent = content.posts.ctaLabel;
   postElements.cta.href = content.posts.ctaUrl;
@@ -312,6 +314,7 @@ function renderPosts() {
 }
 
 function renderProjects() {
+  if (!projectElements.title || !projectElements.list || !projectElements.empty) return;
   projectElements.title.textContent = formatTitleCase(content.projects.title);
   projectElements.list.innerHTML = '';
 
@@ -969,6 +972,10 @@ function getFieldValue(form, name) {
   return '';
 }
 
+// Placeholder sections (learning / posts / projects) were removed from the
+// home page; their renderers are skipped when their DOM scaffold isn't
+// present, so the scaffold check now only requires elements that are
+// actually rendered.
 const hasContentScaffold = Boolean(
   heroElements.eyebrow &&
   heroElements.title &&
@@ -979,16 +986,6 @@ const hasContentScaffold = Boolean(
   heroElements.focus &&
   aboutElements.title &&
   aboutElements.body &&
-  learningElements.title &&
-  learningElements.list &&
-  learningElements.empty &&
-  postElements.title &&
-  postElements.cta &&
-  postElements.list &&
-  postElements.empty &&
-  projectElements.title &&
-  projectElements.list &&
-  projectElements.empty &&
   sidebarElements.container &&
   sidebarElements.empty &&
   contactElements.title &&
