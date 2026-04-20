@@ -43,9 +43,16 @@ const MLPlayground = (() => {
     dragPointId: null,
     activePointerId: null,
     interactionMode: 'create',
+    // Clustering algorithm: 'kmeans' (hard assignments) or 'gmm' (soft / EM).
+    // GMM components are stored in state.centroids[*].mean/sigma/weight; each
+    // point keeps its responsibility vector in point.resp (only in GMM mode).
+    algorithm: 'kmeans',
     isRunning: false,
-    sse: null
+    sse: null,
+    logLik: null
   };
+
+  let algoButtons;
 
   let pixelRatio = 1;
 
@@ -75,6 +82,7 @@ const MLPlayground = (() => {
     tabButtons = document.querySelectorAll('.ml-tab');
     tabPanels = document.querySelectorAll('.ml-tab-panel');
     modeButtons = document.querySelectorAll('[data-mode]');
+    algoButtons = document.querySelectorAll('[data-algo]');
 
     if (!canvas || !ctx) return;
 
@@ -106,6 +114,37 @@ const MLPlayground = (() => {
       });
     });
 
+    algoButtons?.forEach((button) => {
+      button.addEventListener('click', () => {
+        const algo = button.getAttribute('data-algo') ?? 'kmeans';
+        if (algo === state.algorithm) return;
+        state.algorithm = algo;
+        algoButtons.forEach((b) => {
+          const active = b === button;
+          b.classList.toggle('is-active', active);
+          b.setAttribute('aria-pressed', active ? 'true' : 'false');
+        });
+        const metricLabel = document.getElementById('status-metric-label');
+        if (metricLabel) metricLabel.textContent = algo === 'gmm' ? 'log ℒ' : 'SSE';
+        // Re-initialise so the visualisation switches cleanly.
+        resetAssignments();
+        if (state.points.length >= state.currentK) {
+          initializeCentroids(state.currentK);
+          if (algo === 'gmm') {
+            initGMMFromCentroids();
+            gmmEStep();
+            gmmMStep();
+          } else {
+            assignPointsToNearestCentroid();
+            recomputeCentroids();
+          }
+          updateAfterStateChange();
+        } else {
+          draw();
+        }
+      });
+    });
+
     tabButtons?.forEach((button) => {
       button.addEventListener('click', () => activateTab(button));
     });
@@ -133,15 +172,22 @@ const MLPlayground = (() => {
       state.iteration = 0;
       const initialized = initializeCentroids(state.currentK);
       if (initialized) {
-        assignPointsToNearestCentroid();
-        recomputeCentroids();
+        if (state.algorithm === 'gmm') {
+          initGMMFromCentroids();
+          gmmEStep();
+          gmmMStep();
+        } else {
+          assignPointsToNearestCentroid();
+          recomputeCentroids();
+        }
       }
       updateAfterStateChange();
     });
 
     btnStep?.addEventListener('click', () => {
       if (!ensureCentroids()) return;
-      stepKMeans();
+      if (state.algorithm === 'gmm') stepGMM();
+      else stepKMeans();
       draw();
     });
 
@@ -476,11 +522,165 @@ const MLPlayground = (() => {
     }, 0);
   }
 
+  /**
+   * Seed GMM parameters from already-placed centroid positions.
+   * Each component gets an equal mixing weight π_k = 1/K and an isotropic
+   * variance seeded from the median pairwise distance to the centroid.
+   * Keeping covariances isotropic (σ² I) instead of full 2×2 avoids the
+   * ellipse-degeneration cases that bite vanilla EM on small data sets.
+   */
+  function initGMMFromCentroids() {
+    if (!state.centroids.length || !state.points.length) return;
+    const k = state.centroids.length;
+    // Start σ from the average distance of every point to its nearest centroid.
+    let sumD = 0;
+    let n = 0;
+    state.points.forEach((p) => {
+      let best = Infinity;
+      state.centroids.forEach((c) => {
+        const d2 = distanceSquared(p, c);
+        if (d2 < best) best = d2;
+      });
+      sumD += best;
+      n += 1;
+    });
+    const seedVar = Math.max(sumD / Math.max(n, 1), 100); // guard against σ → 0
+    state.centroids.forEach((c) => {
+      c.variance = seedVar;
+      c.weight = 1 / k;
+    });
+    state.points.forEach((p) => {
+      p.resp = new Array(k).fill(1 / k);
+      p.clusterIndex = 0; // kept for drawing fallbacks and the calc panel.
+    });
+  }
+
+  /**
+   * E-step: compute the responsibility matrix r_{i,k}.
+   *   r_{i,k} = π_k · 𝒩(x_i; μ_k, σ_k² I) / Σ_j π_j · 𝒩(x_i; μ_j, σ_j² I)
+   * Uses log-sum-exp for numerical stability — without it responsibilities
+   * underflow for points far from every component.
+   */
+  function gmmEStep() {
+    if (!state.centroids.length) return;
+    const k = state.centroids.length;
+    state.points.forEach((p) => {
+      const logs = new Array(k);
+      let maxLog = -Infinity;
+      for (let j = 0; j < k; j += 1) {
+        const c = state.centroids[j];
+        const v = Math.max(c.variance, 1);
+        const d2 = distanceSquared(p, c);
+        // log[π_j 𝒩(x; μ_j, v·I)] for 2-D isotropic: log π − log(2πv) − d²/(2v)
+        const logp = Math.log(Math.max(c.weight, 1e-12)) - Math.log(2 * Math.PI * v) - d2 / (2 * v);
+        logs[j] = logp;
+        if (logp > maxLog) maxLog = logp;
+      }
+      let denom = 0;
+      for (let j = 0; j < k; j += 1) denom += Math.exp(logs[j] - maxLog);
+      p.resp = new Array(k);
+      for (let j = 0; j < k; j += 1) p.resp[j] = Math.exp(logs[j] - maxLog) / denom;
+      // Hard label for display purposes = argmax of soft responsibilities.
+      let bestJ = 0;
+      let bestR = -Infinity;
+      for (let j = 0; j < k; j += 1) {
+        if (p.resp[j] > bestR) { bestR = p.resp[j]; bestJ = j; }
+      }
+      p.clusterIndex = bestJ;
+    });
+  }
+
+  /**
+   * M-step: re-estimate μ_k, σ_k², π_k from the responsibilities.
+   *   N_k = Σ_i r_{i,k}; μ_k = (1/N_k) Σ r_{i,k} x_i;
+   *   σ_k² = (1/(D·N_k)) Σ r_{i,k} ‖x_i − μ_k‖² (isotropic, D = 2 here);
+   *   π_k = N_k / N.
+   */
+  function gmmMStep() {
+    if (!state.centroids.length || !state.points.length) return;
+    const k = state.centroids.length;
+    const N = state.points.length;
+    const nK = new Array(k).fill(0);
+    const sumX = new Array(k).fill(0);
+    const sumY = new Array(k).fill(0);
+    state.points.forEach((p) => {
+      for (let j = 0; j < k; j += 1) {
+        nK[j] += p.resp[j];
+        sumX[j] += p.resp[j] * p.x;
+        sumY[j] += p.resp[j] * p.y;
+      }
+    });
+    for (let j = 0; j < k; j += 1) {
+      const c = state.centroids[j];
+      if (nK[j] > 1e-9) {
+        c.x = sumX[j] / nK[j];
+        c.y = sumY[j] / nK[j];
+        c.weight = nK[j] / N;
+      }
+    }
+    // second pass for variance, now that means are updated.
+    const sumD2 = new Array(k).fill(0);
+    state.points.forEach((p) => {
+      for (let j = 0; j < k; j += 1) {
+        const c = state.centroids[j];
+        sumD2[j] += p.resp[j] * distanceSquared(p, c);
+      }
+    });
+    for (let j = 0; j < k; j += 1) {
+      const c = state.centroids[j];
+      if (nK[j] > 1e-9) {
+        // D = 2 for the 2-D canvas.
+        c.variance = Math.max(sumD2[j] / (2 * nK[j]), 50);
+      }
+    }
+  }
+
+  function computeLogLik() {
+    if (!state.centroids.length || !state.points.length) return null;
+    const k = state.centroids.length;
+    let ll = 0;
+    state.points.forEach((p) => {
+      let maxLog = -Infinity;
+      const logs = new Array(k);
+      for (let j = 0; j < k; j += 1) {
+        const c = state.centroids[j];
+        const v = Math.max(c.variance, 1);
+        const d2 = distanceSquared(p, c);
+        logs[j] = Math.log(Math.max(c.weight, 1e-12)) - Math.log(2 * Math.PI * v) - d2 / (2 * v);
+        if (logs[j] > maxLog) maxLog = logs[j];
+      }
+      let s = 0;
+      for (let j = 0; j < k; j += 1) s += Math.exp(logs[j] - maxLog);
+      ll += maxLog + Math.log(s);
+    });
+    return ll;
+  }
+
+  function stepGMM() {
+    gmmEStep();
+    gmmMStep();
+    state.iteration += 1;
+    state.logLik = computeLogLik();
+    updateStatus();
+    updateSSE(computeSSE());
+    ensureSelectedPoint();
+    updateCalculationPanel();
+    // Return "changed" signal for runToConvergence (use log-lik improvement).
+    return true;
+  }
+
   function updateSSE(value) {
     state.sse = value;
     const display = value === null ? '—' : value.toFixed(2);
-    statusSSE.textContent = display;
-    calculationSSE.textContent = display;
+    // In GMM mode the status chip shows log-likelihood instead of SSE.
+    if (state.algorithm === 'gmm') {
+      const lik = state.logLik === null || !isFinite(state.logLik) ? '—' : state.logLik.toFixed(2);
+      statusSSE.textContent = lik;
+      calculationSSE.textContent = display;
+    } else {
+      statusSSE.textContent = display;
+      calculationSSE.textContent = display;
+    }
   }
 
   function updateStatus() {
@@ -524,7 +724,7 @@ const MLPlayground = (() => {
     const maxIterations = 50;
 
     const loop = () => {
-      const changed = stepKMeans();
+      const changed = state.algorithm === 'gmm' ? stepGMM() : stepKMeans();
       draw();
       iterations += 1;
       if (!changed || iterations >= maxIterations) {
@@ -554,12 +754,30 @@ const MLPlayground = (() => {
     ctx.lineWidth = 1;
     ctx.strokeRect(0.5, 0.5, width - 1, height - 1);
 
-    state.points.forEach((point) => {
-      const color =
-        point.clusterIndex === null
-          ? 'rgba(148, 163, 184, 0.8)'
-          : state.centroids[point.clusterIndex]?.color || 'rgba(148, 163, 184, 0.8)';
+    // GMM: draw 1σ and 2σ circles for each component before the points.
+    if (state.algorithm === 'gmm' && state.centroids.length) {
+      state.centroids.forEach((c) => {
+        const sigma = Math.sqrt(Math.max(c.variance || 0, 0));
+        if (sigma <= 0) return;
+        ctx.strokeStyle = c.color;
+        ctx.fillStyle = `${c.color}1a`; // ~10% alpha suffix on a 7-char hex
+        ctx.globalAlpha = 1;
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.arc(c.x, c.y, sigma, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+        ctx.lineWidth = 1;
+        ctx.setLineDash([3, 3]);
+        ctx.beginPath();
+        ctx.arc(c.x, c.y, 2 * sigma, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.setLineDash([]);
+      });
+    }
 
+    state.points.forEach((point) => {
+      const color = pointColor(point);
       ctx.beginPath();
       ctx.arc(point.x, point.y, POINT_RADIUS, 0, Math.PI * 2);
       ctx.fillStyle = color;
@@ -589,8 +807,42 @@ const MLPlayground = (() => {
       ctx.font = '12px Inter, system-ui, sans-serif';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.fillText(String(index + 1), centroid.x, centroid.y);
+      const label = state.algorithm === 'gmm' && typeof centroid.weight === 'number'
+        ? `${index + 1}`
+        : `${index + 1}`;
+      ctx.fillText(label, centroid.x, centroid.y);
     });
+  }
+
+  // In GMM mode blend the point's colour from the component palette weighted
+  // by its responsibility vector — a visible measure of "how sure is this
+  // point of its membership?" Hard K-means always paints the argmax colour.
+  function pointColor(point) {
+    if (state.algorithm === 'gmm' && Array.isArray(point.resp) && state.centroids.length) {
+      let r = 0;
+      let g = 0;
+      let b = 0;
+      state.centroids.forEach((c, j) => {
+        const w = point.resp[j] ?? 0;
+        const rgb = hexToRgb(c.color);
+        r += w * rgb.r;
+        g += w * rgb.g;
+        b += w * rgb.b;
+      });
+      return `rgb(${Math.round(r)}, ${Math.round(g)}, ${Math.round(b)})`;
+    }
+    if (point.clusterIndex === null) return 'rgba(148, 163, 184, 0.8)';
+    return state.centroids[point.clusterIndex]?.color || 'rgba(148, 163, 184, 0.8)';
+  }
+
+  function hexToRgb(hex) {
+    const m = hex.replace('#', '');
+    if (m.length !== 6) return { r: 148, g: 163, b: 184 };
+    return {
+      r: parseInt(m.slice(0, 2), 16),
+      g: parseInt(m.slice(2, 4), 16),
+      b: parseInt(m.slice(4, 6), 16)
+    };
   }
 
   function updateCalculationPanel() {

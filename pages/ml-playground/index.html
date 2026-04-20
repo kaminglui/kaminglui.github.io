@@ -106,10 +106,18 @@
                 </button>
                 <button class="mode-toggle__btn" type="button" data-mode="drag" aria-pressed="false">Drag mode</button>
               </div>
+              <div class="mode-toggle" role="group" aria-label="Clustering algorithm">
+                <button class="mode-toggle__btn is-active" type="button" data-algo="kmeans" aria-pressed="true">
+                  Hard (K-means)
+                </button>
+                <button class="mode-toggle__btn" type="button" data-algo="gmm" aria-pressed="false">
+                  Soft (GMM)
+                </button>
+              </div>
               <div class="ml-status-chips" aria-live="polite">
                 <span class="status-chip">k = <span id="status-k">3</span></span>
                 <span class="status-chip">Iteration <span id="status-iter">0</span></span>
-                <span class="status-chip">SSE <span id="status-sse">—</span></span>
+                <span class="status-chip"><span id="status-metric-label">SSE</span> <span id="status-sse">—</span></span>
               </div>
               <div class="ml-presets" aria-label="Sample data">
                 <span class="ml-presets__label">Sample data</span>
