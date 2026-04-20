@@ -52,6 +52,14 @@ import {
 } from './circuit-lab/pinGeometry.js';
 import { createComponentBase } from './circuit-lab/componentBase.js';
 import {
+    normalizeTemplateComponent,
+    getTemplateBounds,
+    getTemplateCenter,
+    mapTemplateEndpoint,
+    serializeTemplate as serializeTemplateRaw,
+    serializeTemplateLibrary as serializeTemplateLibraryRaw
+} from './circuit-lab/templates.js';
+import {
     fileTimestamp,
     validateSaveData,
     serializeCircuitPayload,
@@ -1807,28 +1815,6 @@ function getTemplateLibrary() {
     return [];
 }
 
-function getTemplateBounds(template) {
-    const comps = template?.components || [];
-    if (!comps.length) {
-        return { x1: 0, y1: 0, x2: 0, y2: 0 };
-    }
-    let x1 = Infinity, y1 = Infinity, x2 = -Infinity, y2 = -Infinity;
-    comps.forEach((c) => {
-        const cx = c?.x || 0;
-        const cy = c?.y || 0;
-        x1 = Math.min(x1, cx);
-        y1 = Math.min(y1, cy);
-        x2 = Math.max(x2, cx);
-        y2 = Math.max(y2, cy);
-    });
-    return { x1, y1, x2, y2 };
-}
-
-function getTemplateCenter(template) {
-    const b = getTemplateBounds(template);
-    return { x: (b.x1 + b.x2) / 2, y: (b.y1 + b.y2) / 2 };
-}
-
 function getTemplateOrigin() {
     if (!canvas) return { x: 0, y: 0 };
     const rect = canvas.getBoundingClientRect();
@@ -1843,18 +1829,6 @@ function getTemplateOrigin() {
     };
     templatePlacementCount++;
     return origin;
-}
-
-function normalizeTemplateComponent(def = {}) {
-    return {
-        type: def.type || def.kind,
-        id: def.id,
-        x: def.x || 0,
-        y: def.y || 0,
-        rotation: def.rotation ?? 0,
-        mirrorX: !!def.mirrorX,
-        props: def.props || {}
-    };
 }
 
 function instantiateTemplateComponents(template, origin) {
@@ -1887,85 +1861,24 @@ function instantiateTemplateComponents(template, origin) {
     return { created, center, idMap, indexMap };
 }
 
-function mapTemplateEndpoint(endpoint, idMap, indexMap) {
-    if (!endpoint) return { comp: null, pin: null };
-    const idx = endpoint.index ?? endpoint.i;
-    const comp = (idx != null) ? indexMap.get(idx) : idMap.get(endpoint.id);
-    const pin = endpoint.pin ?? endpoint.p ?? 0;
-    return { comp, pin };
-}
-
+// Circuit Lab-specific adapters around the pure helpers in circuit-lab/templates.js.
 function serializeTemplate(selection = null) {
-    const selected = Array.isArray(selection) && selection.length
-        ? selection.slice()
-        : components.slice();
-    if (!selected.length) return { components: [], wires: [] };
-
-    const minX = Math.min(...selected.map(c => c.x || 0));
-    const minY = Math.min(...selected.map(c => c.y || 0));
-
-    const compEntries = [];
-    const compIndexMap = new Map();
-    selected.forEach((c) => {
-        const type = getComponentTypeId(c);
-        if (!type) return;
-        const idx = compEntries.length;
-        compEntries.push({
-            type,
-            x: (c.x || 0) - minX,
-            y: (c.y || 0) - minY,
-            rotation: c.rotation ?? 0,
-            mirrorX: !!c.mirrorX,
-            props: { ...c.props }
-        });
-        compIndexMap.set(c, idx);
+    const input = Array.isArray(selection) && selection.length ? selection : components;
+    return serializeTemplateRaw({
+        selection: input,
+        wires,
+        getComponentTypeId,
+        normalizeVertex: (v) => snapToBoardPoint(v.x, v.y)
     });
-
-    const normalizeVertex = (v = {}) => snapToBoardPoint((v.x || 0) - minX, (v.y || 0) - minY);
-    const serialWires = wires
-        .filter(w => compIndexMap.has(w.from.c) && compIndexMap.has(w.to.c))
-        .map(w => ({
-            from: { index: compIndexMap.get(w.from.c), pin: w.from.p },
-            to: { index: compIndexMap.get(w.to.c), pin: w.to.p },
-            vertices: (w.vertices || []).map(normalizeVertex)
-        }));
-
-    return { components: compEntries, wires: serialWires };
 }
 
 function serializeTemplateLibrary(selection = null) {
-    const selected = Array.isArray(selection) && selection.length
-        ? selection.slice()
-        : components.slice();
-    if (!selected.length) return { components: [], wires: [] };
-
-    const compEntries = [];
-    const compIndexMap = new Map();
-    selected.forEach((c) => {
-        const type = getComponentTypeId(c);
-        if (!type) return;
-        const idx = compEntries.length;
-        compEntries.push({
-            id: c.id,
-            type,
-            x: c.x || 0,
-            y: c.y || 0,
-            rotation: c.rotation ?? 0,
-            mirrorX: !!c.mirrorX,
-            props: { ...c.props }
-        });
-        compIndexMap.set(c, idx);
+    const input = Array.isArray(selection) && selection.length ? selection : components;
+    return serializeTemplateLibraryRaw({
+        selection: input,
+        wires,
+        getComponentTypeId
     });
-
-    const serialWires = wires
-        .filter(w => compIndexMap.has(w.from.c) && compIndexMap.has(w.to.c))
-        .map(w => ({
-            from: { id: w.from.c?.id, pin: w.from.p, index: compIndexMap.get(w.from.c) },
-            to: { id: w.to.c?.id, pin: w.to.p, index: compIndexMap.get(w.to.c) },
-            vertices: (w.vertices || []).map(v => ({ x: v.x || 0, y: v.y || 0 }))
-        }));
-
-    return { components: compEntries, wires: serialWires };
 }
 
 const QUICK_CONTROL_GROUPS = [
