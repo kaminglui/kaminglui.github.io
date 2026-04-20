@@ -167,6 +167,76 @@ const MLPlayground = (() => {
       }
       updateCalculationPanel();
     });
+
+    // Sample-data presets: pick a shape, populate the canvas with a synthetic
+    // point cloud, and kick off a fresh K-means run so the reader sees the
+    // different behaviours (clean separation vs. overlap vs. non-spherical)
+    // without having to click-paint points themselves.
+    document.querySelectorAll('.ml-preset').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const kind = btn.dataset.preset || 'separated';
+        loadPreset(kind);
+      });
+    });
+  }
+
+  function loadPreset(kind) {
+    clearAll();
+    const rect = canvas.getBoundingClientRect();
+    const W = rect.width || canvas.width;
+    const H = rect.height || canvas.height;
+    const rand = seededRandom(0xC0FFEE ^ kind.length);
+    const gauss = (cx, cy, spread, count) => {
+      for (let i = 0; i < count; i += 1) {
+        // Box-Muller sample for a nicer-looking cluster than uniform noise.
+        const u1 = Math.max(1e-6, rand());
+        const u2 = rand();
+        const r = Math.sqrt(-2 * Math.log(u1)) * spread;
+        const theta = 2 * Math.PI * u2;
+        addPoint(cx + r * Math.cos(theta), cy + r * Math.sin(theta));
+      }
+    };
+
+    if (kind === 'separated') {
+      state.currentK = 3;
+      gauss(W * 0.25, H * 0.3, 20, 22);
+      gauss(W * 0.75, H * 0.35, 22, 22);
+      gauss(W * 0.5,  H * 0.75, 24, 22);
+    } else if (kind === 'overlap') {
+      state.currentK = 3;
+      gauss(W * 0.4, H * 0.45, 55, 28);
+      gauss(W * 0.6, H * 0.55, 55, 28);
+      gauss(W * 0.5, H * 0.5,  40, 18);
+    } else if (kind === 'moons') {
+      state.currentK = 2;
+      // Two interlocking crescents — the classic case where K-means struggles
+      // because the clusters aren't convex blobs.
+      for (let i = 0; i < 42; i += 1) {
+        const t = rand() * Math.PI;
+        const jitter = (rand() - 0.5) * 14;
+        addPoint(W * 0.35 + Math.cos(t) * 120 + jitter, H * 0.55 - Math.sin(t) * 80 + jitter);
+        addPoint(W * 0.65 - Math.cos(t) * 120 + jitter, H * 0.45 + Math.sin(t) * 80 + jitter);
+      }
+    }
+    if (kInput) kInput.value = String(state.currentK);
+    updateStatus();
+    initializeCentroids(state.currentK);
+    assignPointsToNearestCentroid();
+    recomputeCentroids();
+    updateAfterStateChange();
+  }
+
+  // Tiny seeded PRNG so every click of the same preset produces the same point
+  // cloud — reproducible demos are easier to reason about.
+  function seededRandom(seed) {
+    let s = seed >>> 0 || 1;
+    return () => {
+      s = (s + 0x6D2B79F5) >>> 0;
+      let t = s;
+      t = Math.imul(t ^ (t >>> 15), t | 1);
+      t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
   }
 
   function handlePointerDown(event) {

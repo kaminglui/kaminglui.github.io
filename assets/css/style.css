@@ -882,6 +882,51 @@ body.theme-dark .project-card {
   flex-wrap: wrap;
 }
 
+.ml-presets {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  margin-left: auto;
+}
+.ml-presets__label {
+  font-size: 0.78rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+  margin-right: 0.2rem;
+}
+.ml-preset {
+  padding: 0.3rem 0.65rem;
+  border-radius: 999px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-muted);
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: background 0.12s ease, color 0.12s ease, border-color 0.12s ease;
+}
+.ml-preset:hover,
+.ml-preset:focus-visible {
+  background: var(--color-accent-muted);
+  color: var(--color-accent);
+  border-color: var(--color-accent);
+}
+
+.ml-readouts {
+  margin-top: 1.5rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--color-border);
+}
+.ml-readouts h3 {
+  margin: 0 0 0.9rem;
+  font-size: 1.1rem;
+}
+.ml-readouts h4 {
+  margin: 0 0 0.4rem;
+  font-size: 1rem;
+}
+
 .status-chip {
   display: inline-flex;
   align-items: center;
