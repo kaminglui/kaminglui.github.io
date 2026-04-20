@@ -445,6 +445,139 @@ describe('Ideal current source', () => {
   });
 });
 
+describe('Bar-graph voltage indicator', () => {
+  // Replicates the voltage-led-display template: four LF412 comparators driven
+  // by a 54 : 2 : 2 : 1 : 1 divider on the 15 V rail, producing thresholds at
+  // 1.5 / 1.0 / 0.5 / 0.25 V. As the input voltage rises through each
+  // threshold one more comparator output should swing to the positive rail,
+  // which would turn on its LED on the schematic.
+  //
+  // We check the comparator OUTPUT voltage directly rather than LED current:
+  // the engine's op-amp model clamps saturated outputs to their rail after
+  // the linear solve, but doesn't re-propagate that clamp into downstream
+  // nodes like the LED series resistor — so checking iR gives garbage when
+  // the comparator is saturated open-loop. The actual bar-graph logic is
+  // whether each comparator is above or below threshold, which clampOutput
+  // does handle correctly.
+  function buildBarGraph(inputV) {
+    const circuit = buildCircuit();
+    const gnd = makeGround();
+    const vPos = makeVoltageSource(15);
+    const vNeg = makeVoltageSource(15);
+    const vin = makeVoltageSource(inputV);
+
+    const r19 = makeResistor(54e3);
+    const r20 = makeResistor(2e3);
+    const r21 = makeResistor(2e3);
+    const r22 = makeResistor(1e3);
+    const r23 = makeResistor(1e3);
+
+    // Each LF412 has two op-amp halves, so two chips cover the four comparators.
+    const u2 = makeOpAmp(); // halves handle the 1.5 V and 1.0 V thresholds
+    const u3 = makeOpAmp(); // halves handle the 0.5 V and 0.25 V thresholds
+
+    // High-impedance pull-down loads on each output — without them the output
+    // nodes are floating after we drop the LED+resistor chain, and the solver
+    // flags the matrix as singular.
+    const rLoad1 = makeResistor(1e6);
+    const rLoad2 = makeResistor(1e6);
+    const rLoad3 = makeResistor(1e6);
+    const rLoad4 = makeResistor(1e6);
+
+    circuit.add(gnd, vPos, vNeg, vin, r19, r20, r21, r22, r23, u2, u3, rLoad1, rLoad2, rLoad3, rLoad4);
+
+    // Power rails — vPos pin 0 = +15 V, vNeg pin 1 = -15 V (pin 0 is grounded).
+    circuit.connect(vPos, 1, gnd, 0);
+    circuit.connect(vNeg, 0, gnd, 0);
+    circuit.connect(vPos, 0, r19, 0);
+    circuit.connect(vPos, 0, u2, 7);
+    circuit.connect(vPos, 0, u3, 7);
+    circuit.connect(vNeg, 1, u2, 3);
+    circuit.connect(vNeg, 1, u3, 3);
+
+    // Divider chain.
+    circuit.connect(r19, 1, r20, 0);
+    circuit.connect(r20, 1, r21, 0);
+    circuit.connect(r21, 1, r22, 0);
+    circuit.connect(r22, 1, r23, 0);
+    circuit.connect(r23, 1, gnd, 0);
+
+    // Tap voltages feed each comparator's inverting input.
+    circuit.connect(r19, 1, u2, 1); // 1.5 V → U2 1IN-
+    circuit.connect(r20, 1, u2, 5); // 1.0 V → U2 2IN-
+    circuit.connect(r21, 1, u3, 1); // 0.5 V → U3 1IN-
+    circuit.connect(r22, 1, u3, 5); // 0.25 V → U3 2IN-
+
+    // Input signal goes to every non-inverting input.
+    circuit.connect(vin, 1, gnd, 0);
+    circuit.connect(vin, 0, u2, 2);
+    circuit.connect(vin, 0, u2, 4);
+    circuit.connect(vin, 0, u3, 2);
+    circuit.connect(vin, 0, u3, 4);
+
+    // Pull each op-amp output down to ground through a large load so the
+    // node is definitely referenced.
+    circuit.connect(u2, 0, rLoad1, 0);
+    circuit.connect(rLoad1, 1, gnd, 0);
+    circuit.connect(u2, 6, rLoad2, 0);
+    circuit.connect(rLoad2, 1, gnd, 0);
+    circuit.connect(u3, 0, rLoad3, 0);
+    circuit.connect(rLoad3, 1, gnd, 0);
+    circuit.connect(u3, 6, rLoad4, 0);
+    circuit.connect(rLoad4, 1, gnd, 0);
+
+    return { circuit, u2, u3 };
+  }
+
+  // Returns the four LED states (true = on = comparator output near +rail).
+  function readLeds(inputV) {
+    const { circuit, u2, u3 } = buildBarGraph(inputV);
+    // Op-amp slew rate is ~3 V/µs so a 500 µs transient easily settles
+    // every comparator from its initial 0 V state to its rail.
+    const { samples } = runTransient(circuit, {
+      duration: 500e-6,
+      dt: 1e-6,
+      samplePoints: [499e-6],
+      measure: ({ sim }) => ({
+        // U2 half-A output is pin 0 (threshold 1.5 V), half-B output is pin 6 (1.0 V).
+        // U3 half-A output is pin 0 (0.5 V), half-B output is pin 6 (0.25 V).
+        out_1_5: sim.voltage(u2, 0),
+        out_1_0: sim.voltage(u2, 6),
+        out_0_5: sim.voltage(u3, 0),
+        out_0_25: sim.voltage(u3, 6)
+      })
+    });
+    const last = samples[samples.length - 1];
+    const high = (v) => v > 5; // well above the halfway point between rails
+    return {
+      led1: high(last.out_1_5),
+      led2: high(last.out_1_0),
+      led3: high(last.out_0_5),
+      led4: high(last.out_0_25)
+    };
+  }
+
+  it('lights no LEDs when the input sits below the lowest threshold', () => {
+    expect(readLeds(0.1)).toEqual({ led1: false, led2: false, led3: false, led4: false });
+  });
+
+  it('lights only LED4 between 0.25 V and 0.5 V', () => {
+    expect(readLeds(0.35)).toEqual({ led1: false, led2: false, led3: false, led4: true });
+  });
+
+  it('lights LED3 and LED4 between 0.5 V and 1.0 V', () => {
+    expect(readLeds(0.75)).toEqual({ led1: false, led2: false, led3: true, led4: true });
+  });
+
+  it('lights LED2, LED3, LED4 between 1.0 V and 1.5 V', () => {
+    expect(readLeds(1.2)).toEqual({ led1: false, led2: true, led3: true, led4: true });
+  });
+
+  it('lights all four LEDs when the input exceeds the highest threshold', () => {
+    expect(readLeds(2.0)).toEqual({ led1: true, led2: true, led3: true, led4: true });
+  });
+});
+
 describe('MOSFET subthreshold leakage', () => {
   it('leaks far more than a fully-off transistor but far less than when biased above Vth', () => {
     // Vgs = 0.4 V (below Vth = 0.7 V). Expect current << saturation but >> off.
