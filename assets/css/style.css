@@ -2645,3 +2645,52 @@ body.theme-dark .pipeline-overview__note {
     transform: none !important;
   }
 }
+
+/* --- ML Playground kid-friendly extras ------------------------------- */
+.ml-recipe {
+  counter-reset: ml-step;
+  list-style: none;
+  padding: 0;
+  margin: 0 0 0.75rem;
+  display: grid;
+  gap: 0.4rem;
+}
+.ml-recipe li {
+  counter-increment: ml-step;
+  position: relative;
+  padding: 0.25rem 0 0.25rem 2.2rem;
+  line-height: 1.55;
+}
+.ml-recipe li::before {
+  content: counter(ml-step);
+  position: absolute;
+  top: 0.2rem;
+  left: 0;
+  width: 1.55rem;
+  height: 1.55rem;
+  border-radius: 999px;
+  background: var(--color-accent);
+  color: #fff;
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.ml-glossary {
+  margin: 0;
+  padding-left: 1.1rem;
+  display: grid;
+  gap: 0.4rem;
+  color: var(--color-text);
+}
+.ml-glossary li {
+  line-height: 1.55;
+  font-size: 0.95rem;
+}
+.ml-glossary li strong {
+  color: var(--color-accent);
+  font-family: var(--font-mono);
+  margin-right: 0.3rem;
+}

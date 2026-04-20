@@ -70,6 +70,35 @@
               </ol>
             </aside>
 
+            <aside class="lab-intuition" aria-label="Plain-English intro">
+              <h3 class="lab-intuition__title">In plain English — what is K-means?</h3>
+              <p>
+                Imagine a party with kids scattered around a gym. You want to split them into <em>k</em> friend groups
+                — say <em>k</em> = 3. Here's the trick K-means uses:
+              </p>
+              <ol class="ml-recipe">
+                <li>Pick 3 random <strong>meeting spots</strong> on the floor.</li>
+                <li>Every kid walks to the <em>nearest</em> meeting spot — that's their new group.</li>
+                <li>Each group finds the <strong>middle</strong> of itself, and the meeting spot moves there.</li>
+                <li>Repeat steps 2 and 3 until nobody needs to change groups any more. Done!</li>
+              </ol>
+              <p>
+                That's the whole idea. The dots on the canvas below are the kids; the big filled shapes are the
+                meeting spots (officially: <strong>centroids</strong>). <em>Initialize centroids</em> does step 1;
+                <em>Step</em> runs one round of 2 + 3; <em>Run to convergence</em> repeats until nobody moves.
+              </p>
+              <p class="lab-intuition__note"><strong>Words that show up a lot:</strong></p>
+              <ul class="ml-glossary">
+                <li><strong>Cluster</strong> — a group of points that belong together.</li>
+                <li><strong>Centroid</strong> — the middle of a cluster. Its "meeting spot". Moves each round.</li>
+                <li><strong>k</strong> — how many clusters you're asking for. You pick this before you start.</li>
+                <li><strong>Iteration</strong> — one full round of "walk to nearest spot, then recompute the spots".</li>
+                <li><strong>SSE (Sum of Squared Errors)</strong> — total of every kid's distance to their meeting spot, squared. Smaller = tighter groups. The algorithm's whole job is to make SSE as small as it can.</li>
+                <li><strong>Convergence</strong> — when nobody switches groups between iterations. The algorithm stops.</li>
+                <li><strong>Local minimum</strong> — a <em>pretty good</em> arrangement that isn't the <em>best possible</em>. K-means can get stuck here; re-running with different random starting spots often escapes.</li>
+              </ul>
+            </aside>
+
             <div class="ml-mode-bar">
               <div class="mode-toggle" role="group" aria-label="Interaction mode">
                 <button class="mode-toggle__btn is-active" type="button" data-mode="create" aria-pressed="true">
