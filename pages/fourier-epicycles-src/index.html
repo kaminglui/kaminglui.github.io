@@ -412,6 +412,58 @@
                   patterns but smear local detail. JPEG's 8×8 is a compromise between compressibility and visible
                   block artifacts; 32×32 or 64×64 give much better frequency resolution for scientific imaging.
                 </p>
+
+                <figure class="fourier-dft-figure">
+                  <div class="fourier-dft-figure__row">
+                    <div class="fourier-dft-figure__panel">
+                      <span class="fourier-dft-figure__label">original (16×16)</span>
+                      <canvas data-dft-panel="original" width="16" height="16" aria-label="Original 16x16 grayscale image of a filled circle"></canvas>
+                    </div>
+                    <div class="fourier-dft-figure__panel">
+                      <span class="fourier-dft-figure__label">|X[k, ℓ]|  (log, centred)</span>
+                      <canvas data-dft-panel="spectrum" width="16" height="16" aria-label="2D DFT magnitude spectrum, DC centred"></canvas>
+                    </div>
+                    <div class="fourier-dft-figure__panel">
+                      <span class="fourier-dft-figure__label">top-5 reconstruction</span>
+                      <canvas data-dft-panel="top5" width="16" height="16" aria-label="Reconstruction from the 5 largest-magnitude coefficients"></canvas>
+                    </div>
+                    <div class="fourier-dft-figure__panel">
+                      <span class="fourier-dft-figure__label">top-20 reconstruction</span>
+                      <canvas data-dft-panel="top20" width="16" height="16" aria-label="Reconstruction from the 20 largest-magnitude coefficients"></canvas>
+                    </div>
+                  </div>
+                  <figcaption class="fourier-dft-figure__caption">
+                    Same idea as JPEG. The 16×16 disc on the left has 256 possible Fourier coefficients.
+                    Keep only the 5 with the biggest magnitudes and IDFT back: a blob, but you can tell
+                    it's a blob. Keep the top 20 (~8% of the spectrum) and the disc is back. Images
+                    compress because most of the visual information lives in just a handful of low-
+                    frequency coefficients; the rest is tail.
+                  </figcaption>
+                </figure>
+                <script type="module">
+                  (function renderDftFigure() {
+                    const panels = {
+                      original: '000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000ffffffffffff000000000000000000ffffffffffffffff0000000000000000ffffffffffffffff0000000000000000ffffffffffffffff0000000000000000ffffffffffffffff0000000000000000ffffffffffffffff0000000000000000ffffffffffffffff000000000000000000ffffffffffff000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000',
+                      spectrum: '000000000000000000000000000000000053394552125f6967695f125245395300391d332e2637103a1037262e331d39004533344b1157747b7457114b34334500522e4b443b501b531b503b444b2e52001226113b44458ea08e45443b112612005f375750455c2260225c455057375f006910741b8e22cde7cd228e1b74106900673a7b53a060e7ffe760a0537b3a67006910741b8e22cde7cd228e1b741069005f375750455c2260225c455057375f001226113b44458ea08e45443b11261200522e4b443b501b531b503b444b2e52004533344b1157747b7457114b34334500391d332e2637103a1037262e331d390053394552125f6967695f1252453953',
+                      top5: '000a1c334c6476808076644c331c0a000a13253d566e7f89897f6e563d25130a1c25374f687f919b9b917f684f37251c333d4f667f97a9b3b3a9977f664f3d334c56687f99b0c2ccccc2b0998068564c646e7f97b0c8dae3e3dac8b0977f6e64767f91a9c2daecf5f5ecdac2a991807680899bb3cce3f5fffff5e3ccb39b898080899bb3cce3f5fffff5e3ccb39b8980768091a9c2daecf5f5ecdac2a9918076646e8097b0c8dae3e3dac8b0977f6e644c56687f99b0c2ccccc2b0997f68564c333d4f668097a9b3b3a9977f664f3d331c25374f687f919b9b917f684f37251c0a13253d566e808989806e563d25130a000a1c334c6476808076644c331c0a00',
+                      top20: '151819191a1d2122211e1d1c1b1915131f1d150e0c0d0c0703040c131514151a261f120c111612060007141a1510141f231b131e3b5456494149514629100e1b1a13163b7aadbaaea6adab8546130613160d164fa6ebfdefe8f1e8b0581402101b0c124faef3ffece8f7f1b456110417220c0d49a4e2e5cecde3e2a64b0d092121090d4ba6e2e3cdcee5e2a4490d0c2217041156b4f1f7e8ecfff3ae4f120c1b10021458b0e8f1e8effdeba64f160d161306134685abada6aebaad7a3b16131a1b0e1029465149414956543b1e131b231f1410151a140700061216110c121f261a151415130c0403070c0d0c0e151d1f1315191b1c1d1e2122211d1a19191815'
+                    };
+                    for (const [key, hex] of Object.entries(panels)) {
+                      const canvas = document.querySelector(`canvas[data-dft-panel="${key}"]`);
+                      if (!canvas) continue;
+                      const ctx = canvas.getContext('2d');
+                      const img = ctx.createImageData(16, 16);
+                      for (let i = 0; i < 256; i++) {
+                        const v = parseInt(hex.substring(i * 2, i * 2 + 2), 16);
+                        img.data[i * 4 + 0] = v;
+                        img.data[i * 4 + 1] = v;
+                        img.data[i * 4 + 2] = v;
+                        img.data[i * 4 + 3] = 255;
+                      }
+                      ctx.putImageData(img, 0, 0);
+                    }
+                  })();
+                </script>
               </article>
 
               <article class="fourier-extra__topic fourier-proof">

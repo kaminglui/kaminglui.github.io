@@ -163,9 +163,13 @@ initialising at different μ₀). Remaining:
 
 ## Fourier Lab — 2D extension
 
-- **2D DFT figure** — Fourier Lab's chips mention 2D Fourier but the lab only ships 1D.
-  A single 2D DFT figure plus image reconstruction from top-k frequencies would close
-  the gap between chip and content.
+- **2D DFT figure** — shipped. Four-panel composite inside the "Higher dimensions · 2D
+  FFT" article: 16×16 filled-disc original, log-magnitude spectrum (DC-centred),
+  reconstruction from the top-5 magnitudes, reconstruction from the top-20. Pixel data
+  precomputed offline (hex-encoded, ~2KB total), rendered to `<canvas>` at load via a
+  tiny inline script. `image-rendering: pixelated` keeps the tiles crisp when scaled
+  up. Makes the JPEG intuition visible — most visual information lives in a handful of
+  low-frequency coefficients.
 
 ## Polish / infra
 

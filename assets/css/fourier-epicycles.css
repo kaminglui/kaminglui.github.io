@@ -587,6 +587,48 @@ body.theme-dark .fourier-notes {
   border-radius: var(--radius-lg);
   background: var(--color-bg-alt);
 }
+
+/* 2D DFT figure — four side-by-side pixelated thumbnails. Canvases are
+   drawn at native 16×16 and scaled up via CSS; image-rendering: pixelated
+   keeps them crisp rather than blurred by default bilinear scaling. */
+.fourier-dft-figure {
+  margin: 0.5rem 0 0;
+  display: grid;
+  gap: 0.5rem;
+}
+.fourier-dft-figure__row {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+@media (max-width: 640px) {
+  .fourier-dft-figure__row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+.fourier-dft-figure__panel {
+  display: grid;
+  gap: 0.35rem;
+}
+.fourier-dft-figure__label {
+  font-size: 0.72rem;
+  color: var(--color-muted);
+  text-align: center;
+  letter-spacing: 0.02em;
+}
+.fourier-dft-figure__panel canvas {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  background: #000;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+}
+.fourier-dft-figure__caption {
+  margin: 0.4rem 0 0;
+  font-size: 0.82rem;
+  color: var(--color-muted);
+  line-height: 1.45;
+}
 .fourier-extra__topic > header {
   display: grid;
   grid-template-columns: auto 1fr;
