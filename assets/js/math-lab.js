@@ -1059,14 +1059,24 @@ function klTraceTopPath(ctx, mu, sigma, cssW, cssH, maxY) {
 }
 
 function klDrawFilledDensity(ctx, mu, sigma, cssW, cssH, maxY, fill, stroke) {
+  // The fill path must be a single continuous subpath so closePath connects
+  // the last point back to the initial baseline-left point. Using
+  // klTraceTopPath here would start a second subpath (its first step is a
+  // moveTo), which would make closePath draw a diagonal from baseline-right
+  // back up to the top-left sample — visible as a sloped triangle when one
+  // distribution's mean sits near a domain edge.
   const baselineY = klYToPx(0, cssH, maxY);
   ctx.beginPath();
   ctx.moveTo(klXToPx(KL_DOMAIN_MIN, cssW), baselineY);
-  klTraceTopPath(ctx, mu, sigma, cssW, cssH, maxY);
+  for (let i = 0; i <= KL_SAMPLES; i++) {
+    const x = KL_DOMAIN_MIN + (i / KL_SAMPLES) * (KL_DOMAIN_MAX - KL_DOMAIN_MIN);
+    ctx.lineTo(klXToPx(x, cssW), klYToPx(gaussianPDF(x, mu, sigma), cssH, maxY));
+  }
   ctx.lineTo(klXToPx(KL_DOMAIN_MAX, cssW), baselineY);
   ctx.closePath();
   ctx.fillStyle = fill;
   ctx.fill();
+  // Separate stroke of just the top curve — fresh path, moveTo at i=0 is fine.
   ctx.beginPath();
   klTraceTopPath(ctx, mu, sigma, cssW, cssH, maxY);
   ctx.strokeStyle = stroke;
