@@ -92,23 +92,28 @@ const GD_FNS = {
   }
 };
 
+// In compare mode these four methods run in parallel from the same start.
+const COMPARE_METHODS = [
+  { key: 'gd',       label: 'GD',       color: '#3b82f6' },
+  { key: 'sgd',      label: 'SGD',      color: '#a855f7' },
+  { key: 'momentum', label: 'Momentum', color: '#f97316' },
+  { key: 'sa',       label: 'SA',       color: '#22c55e' }
+];
+
 const gd = {
   preset: 'quadratic',
   method: 'gd',
+  viewMode: '2d',   // '2d' contour | '3d' isometric surface
+  compareMode: 'single', // 'single' | 'all'
   lr: 0.05,
   noise: 0.3,
   momentum: 0.8,
   temp0: 2,
-  theta: [1.8, 1.2],
-  vel: [0, 0],
-  trail: [],
-  step: 0,
-  temperature: 2,
-  accepts: 0,
-  proposals: 0,
+  speed: 5,
+  start: [1.8, 1.2],
+  runners: [],
   running: false,
-  rafId: null,
-  stopAt: 0
+  rafId: null
 };
 
 const gdDom = {};
@@ -117,65 +122,108 @@ function gdCurrentFn() {
   return GD_FNS[gd.preset];
 }
 
-function gdResetTrail(startPos) {
-  if (startPos) {
-    gd.theta = startPos.slice();
+function gdMakeRunner(methodKey, startPos, color) {
+  return {
+    method: methodKey,
+    color,
+    theta: startPos.slice(),
+    vel: [0, 0],
+    trail: [startPos.slice()],
+    step: 0,
+    temperature: gd.temp0,
+    accepts: 0,
+    proposals: 0,
+    converged: false,
+    lossHistory: [gdCurrentFn().f(startPos[0], startPos[1])]
+  };
+}
+
+function gdResetRunners(startPos) {
+  if (startPos) gd.start = startPos.slice();
+  if (gd.compareMode === 'all') {
+    gd.runners = COMPARE_METHODS.map((m) => gdMakeRunner(m.key, gd.start, m.color));
+  } else {
+    gd.runners = [gdMakeRunner(gd.method, gd.start, '#3b82f6')];
   }
-  gd.vel = [0, 0];
-  gd.trail = [gd.theta.slice()];
-  gd.step = 0;
-  gd.temperature = gd.temp0;
-  gd.accepts = 0;
-  gd.proposals = 0;
+}
+
+// Convergence test per runner. Deterministic methods check gradient norm.
+// Stochastic ones (SGD, SA) check whether loss has flatlined over a window.
+function gdConverged(r) {
+  if (r.converged) return true;
+  const fn = gdCurrentFn();
+  if (r.step < 30) return false;
+  if (r.method === 'gd' || r.method === 'momentum') {
+    const [gx, gy] = fn.grad(r.theta[0], r.theta[1]);
+    return Math.sqrt(gx * gx + gy * gy) < 1e-3;
+  }
+  if (r.method === 'sa') {
+    return r.temperature < 5e-3 && r.step > 200;
+  }
+  // SGD: look at loss variance in the last 80 steps.
+  const hist = r.lossHistory;
+  if (hist.length < 80) return false;
+  const tail = hist.slice(-80);
+  const mean = tail.reduce((a, b) => a + b, 0) / tail.length;
+  const variance = tail.reduce((s, v) => s + (v - mean) ** 2, 0) / tail.length;
+  return Math.sqrt(variance) < 2e-3;
 }
 
 function gdRandomStart() {
   // Avoid the saddle/min exactly; bias away from origin a little.
   const x = (Math.random() - 0.5) * 4;
   const y = (Math.random() - 0.5) * 4;
-  gdResetTrail([x, y]);
+  gdResetRunners([x, y]);
 }
 
-function gdStep() {
+/**
+ * Advance a single runner by one step using its own method. Side-effect only;
+ * returns nothing. Runs no-op once r.converged is set.
+ */
+function gdStepRunner(r) {
+  if (r.converged) return;
   const fn = gdCurrentFn();
-  if (gd.method === 'sa') {
-    // Simulated annealing: propose a Gaussian perturbation, accept with
-    // Metropolis probability exp(-ΔL / T).
-    const sigma = Math.max(0.15, 0.05 + 0.25 * gd.temperature);
-    const proposal = [gd.theta[0] + sigma * gaussianSample(), gd.theta[1] + sigma * gaussianSample()];
-    const fOld = fn.f(gd.theta[0], gd.theta[1]);
+  if (r.method === 'sa') {
+    const sigma = Math.max(0.15, 0.05 + 0.25 * r.temperature);
+    const proposal = [r.theta[0] + sigma * gaussianSample(), r.theta[1] + sigma * gaussianSample()];
+    const fOld = fn.f(r.theta[0], r.theta[1]);
     const fNew = fn.f(proposal[0], proposal[1]);
     const dL = fNew - fOld;
-    gd.proposals += 1;
-    const T = Math.max(gd.temperature, 1e-3);
+    r.proposals += 1;
+    const T = Math.max(r.temperature, 1e-3);
     if (dL <= 0 || Math.random() < Math.exp(-dL / T)) {
-      gd.theta = proposal;
-      gd.accepts += 1;
+      r.theta = proposal;
+      r.accepts += 1;
     }
-    // Geometric cooling.
-    gd.temperature *= 0.995;
+    r.temperature *= 0.995;
   } else {
-    const [gx, gy] = fn.grad(gd.theta[0], gd.theta[1]);
+    const [gx, gy] = fn.grad(r.theta[0], r.theta[1]);
     let stepX = gx;
     let stepY = gy;
-    if (gd.method === 'sgd') {
+    if (r.method === 'sgd') {
       stepX += gd.noise * gaussianSample();
       stepY += gd.noise * gaussianSample();
     }
-    if (gd.method === 'momentum') {
-      gd.vel[0] = gd.momentum * gd.vel[0] + stepX;
-      gd.vel[1] = gd.momentum * gd.vel[1] + stepY;
-      gd.theta = [gd.theta[0] - gd.lr * gd.vel[0], gd.theta[1] - gd.lr * gd.vel[1]];
+    if (r.method === 'momentum') {
+      r.vel[0] = gd.momentum * r.vel[0] + stepX;
+      r.vel[1] = gd.momentum * r.vel[1] + stepY;
+      r.theta = [r.theta[0] - gd.lr * r.vel[0], r.theta[1] - gd.lr * r.vel[1]];
     } else {
-      gd.theta = [gd.theta[0] - gd.lr * stepX, gd.theta[1] - gd.lr * stepY];
+      r.theta = [r.theta[0] - gd.lr * stepX, r.theta[1] - gd.lr * stepY];
     }
   }
-  // Clip to world bounds so extreme learning rates don't run off to ∞.
-  gd.theta[0] = Math.max(-WORLD * 1.5, Math.min(WORLD * 1.5, gd.theta[0]));
-  gd.theta[1] = Math.max(-WORLD * 1.5, Math.min(WORLD * 1.5, gd.theta[1]));
-  gd.trail.push(gd.theta.slice());
-  if (gd.trail.length > 2000) gd.trail.shift();
-  gd.step += 1;
+  r.theta[0] = Math.max(-WORLD * 1.5, Math.min(WORLD * 1.5, r.theta[0]));
+  r.theta[1] = Math.max(-WORLD * 1.5, Math.min(WORLD * 1.5, r.theta[1]));
+  r.trail.push(r.theta.slice());
+  if (r.trail.length > 2000) r.trail.shift();
+  r.lossHistory.push(fn.f(r.theta[0], r.theta[1]));
+  if (r.lossHistory.length > 2000) r.lossHistory.shift();
+  r.step += 1;
+  if (gdConverged(r)) r.converged = true;
+}
+
+function gdStepAll() {
+  gd.runners.forEach(gdStepRunner);
 }
 
 function gdDrawContours(ctx, cssW, cssH) {
@@ -239,88 +287,274 @@ function gdDrawContours(ctx, cssW, cssH) {
   });
 }
 
+/* -------- 3D isometric surface view --------
+   Project (x, y, z) ∈ world to 2D canvas via an isometric transform. The
+   surface is drawn as a mesh quad strip, sorted back-to-front (painter's
+   algorithm) with simple shading by z so hills read as lighter and valleys
+   darker. Cheap on a 48×48 grid, still conveys the "this valley is deeper
+   than that ridge" intuition a flat contour map doesn't. */
+const ISO_ANGLE = Math.PI / 6; // 30° tilt
+function projectIso(x, y, z, size, offsetX, offsetY, zScale) {
+  // Scale world coords to pixel space.
+  const scale = size / (2 * WORLD);
+  const sx = x * scale;
+  const sy = y * scale;
+  // Rotate around z by 30° then tilt so +z goes up-and-back.
+  const cos30 = Math.cos(ISO_ANGLE);
+  const sin30 = Math.sin(ISO_ANGLE);
+  const px = (sx - sy) * cos30;
+  const py = (sx + sy) * sin30 - z * zScale;
+  return [offsetX + size / 2 + px, offsetY + size / 2 + py * 0.9];
+}
+
+function gdDraw3D(ctx, cssW, cssH) {
+  const fn = gdCurrentFn();
+  const size = Math.min(cssW, cssH);
+  const offsetX = cssW / 2 - size / 2;
+  const offsetY = cssH / 2 - size / 2;
+  // Sample on a coarser grid for speed.
+  const N = 40;
+  const Z = new Float32Array((N + 1) * (N + 1));
+  let zMin = Infinity;
+  let zMax = -Infinity;
+  for (let j = 0; j <= N; j += 1) {
+    for (let i = 0; i <= N; i += 1) {
+      const xw = -WORLD + (2 * WORLD * i) / N;
+      const yw = WORLD - (2 * WORLD * j) / N;
+      const v = fn.f(xw, yw);
+      Z[j * (N + 1) + i] = v;
+      if (v < zMin) zMin = v;
+      if (v > zMax) zMax = v;
+    }
+  }
+  // zScale sized so the peak rises ~35% of canvas.
+  const zScale = (size * 0.35) / Math.max(zMax - zMin, 1e-6);
+  // Paint cells from back (far corner, larger world x + y) to front.
+  const cells = [];
+  for (let j = 0; j < N; j += 1) {
+    for (let i = 0; i < N; i += 1) {
+      cells.push({ i, j, depth: -(i + j) });
+    }
+  }
+  cells.sort((a, b) => a.depth - b.depth);
+  for (const { i, j } of cells) {
+    const x0 = -WORLD + (2 * WORLD * i) / N;
+    const x1 = -WORLD + (2 * WORLD * (i + 1)) / N;
+    const y0 = WORLD - (2 * WORLD * j) / N;
+    const y1 = WORLD - (2 * WORLD * (j + 1)) / N;
+    const za = Z[j * (N + 1) + i] - zMin;
+    const zb = Z[j * (N + 1) + i + 1] - zMin;
+    const zc = Z[(j + 1) * (N + 1) + i + 1] - zMin;
+    const zd = Z[(j + 1) * (N + 1) + i] - zMin;
+    const [pax, pay] = projectIso(x0, y0, za, size, offsetX, offsetY, zScale);
+    const [pbx, pby] = projectIso(x1, y0, zb, size, offsetX, offsetY, zScale);
+    const [pcx, pcy] = projectIso(x1, y1, zc, size, offsetX, offsetY, zScale);
+    const [pdx, pdy] = projectIso(x0, y1, zd, size, offsetX, offsetY, zScale);
+    const avgZ = (za + zb + zc + zd) / 4;
+    const t = avgZ / Math.max(zMax - zMin, 1e-6);
+    const shade = Math.pow(t, 0.6);
+    const r = Math.round(40 + 170 * shade);
+    const g = Math.round(70 + 130 * shade);
+    const b = Math.round(150 - 70 * shade);
+    ctx.fillStyle = `rgb(${r}, ${g}, ${b})`;
+    ctx.strokeStyle = 'rgba(15, 23, 42, 0.12)';
+    ctx.lineWidth = 0.6;
+    ctx.beginPath();
+    ctx.moveTo(pax, pay);
+    ctx.lineTo(pbx, pby);
+    ctx.lineTo(pcx, pcy);
+    ctx.lineTo(pdx, pdy);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+  }
+  return { size, offsetX, offsetY, zScale, zMin };
+}
+
 function gdRender() {
   const { ctx, cssW, cssH, size } = ensureCanvasSize(gdDom.canvas);
   ctx.clearRect(0, 0, cssW, cssH);
-  gdDrawContours(ctx, cssW, cssH);
-
   const fn = gdCurrentFn();
-
-  // Global minimum marker (unless saddle's global min is y = −∞ along a ridge).
-  if (fn.min && fn.min[0] !== null && fn.min[1] !== null) {
-    const [mx, my] = worldToPx(fn.min[0], fn.min[1], size);
-    ctx.strokeStyle = '#22c55e';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.arc(cssW / 2 - size / 2 + mx, cssH / 2 - size / 2 + my, 8, 0, Math.PI * 2);
-    ctx.stroke();
-    // Also mark Himmelblau's other three minima for completeness.
-    if (gd.preset === 'himmelblau') {
-      [[-2.805118, 3.131312], [-3.779310, -3.283186], [3.584428, -1.848126]].forEach(([ax, ay]) => {
-        const [px, py] = worldToPx(ax, ay, size);
-        ctx.beginPath();
-        ctx.arc(cssW / 2 - size / 2 + px, cssH / 2 - size / 2 + py, 6, 0, Math.PI * 2);
-        ctx.stroke();
-      });
-    }
-    if (gd.preset === 'two-wells') {
-      const [px, py] = worldToPx(-1, 0, size);
-      ctx.beginPath();
-      ctx.arc(cssW / 2 - size / 2 + px, cssH / 2 - size / 2 + py, 8, 0, Math.PI * 2);
-      ctx.stroke();
-    }
-  }
-
-  // Trail.
-  if (gd.trail.length > 1) {
-    ctx.strokeStyle = '#3b82f6';
-    ctx.lineWidth = 1.5;
-    ctx.beginPath();
-    const offsetX = cssW / 2 - size / 2;
-    const offsetY = cssH / 2 - size / 2;
-    for (let i = 0; i < gd.trail.length; i += 1) {
-      const [tx, ty] = gd.trail[i];
-      const [px, py] = worldToPx(tx, ty, size);
-      if (i === 0) ctx.moveTo(offsetX + px, offsetY + py);
-      else ctx.lineTo(offsetX + px, offsetY + py);
-    }
-    ctx.stroke();
-  }
-
-  // Current θ.
-  const [cx, cy] = worldToPx(gd.theta[0], gd.theta[1], size);
   const offsetX = cssW / 2 - size / 2;
   const offsetY = cssH / 2 - size / 2;
-  ctx.fillStyle = '#f97316';
+
+  let iso = null;
+  if (gd.viewMode === '3d') {
+    iso = gdDraw3D(ctx, cssW, cssH);
+  } else {
+    gdDrawContours(ctx, cssW, cssH);
+  }
+
+  // Minimum markers — in 2D draw rings on the map, in 3D project onto the surface.
+  const drawMinMarker = (mx, my) => {
+    if (iso) {
+      const zMarker = fn.f(mx, my) - iso.zMin;
+      const [px, py] = projectIso(mx, my, zMarker, iso.size, iso.offsetX, iso.offsetY, iso.zScale);
+      ctx.strokeStyle = '#22c55e';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(px, py, 7, 0, Math.PI * 2);
+      ctx.stroke();
+    } else {
+      const [px, py] = worldToPx(mx, my, size);
+      ctx.strokeStyle = '#22c55e';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(offsetX + px, offsetY + py, 8, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+  };
+  if (fn.min && fn.min[0] !== null && fn.min[1] !== null) {
+    drawMinMarker(fn.min[0], fn.min[1]);
+    if (gd.preset === 'himmelblau') {
+      [[-2.805118, 3.131312], [-3.779310, -3.283186], [3.584428, -1.848126]]
+        .forEach(([ax, ay]) => drawMinMarker(ax, ay));
+    }
+    if (gd.preset === 'two-wells') drawMinMarker(-1, 0);
+  }
+
+  // Draw every runner's trail + current θ. In 3D the trail is lifted to the
+  // surface height so it drapes over valleys and ridges.
+  gd.runners.forEach((r) => {
+    if (r.trail.length > 1) {
+      ctx.strokeStyle = r.color;
+      ctx.lineWidth = gd.runners.length > 1 ? 1.6 : 1.8;
+      ctx.beginPath();
+      for (let i = 0; i < r.trail.length; i += 1) {
+        const [tx, ty] = r.trail[i];
+        let px;
+        let py;
+        if (iso) {
+          const z = fn.f(tx, ty) - iso.zMin;
+          [px, py] = projectIso(tx, ty, z, iso.size, iso.offsetX, iso.offsetY, iso.zScale);
+        } else {
+          const [ox, oy] = worldToPx(tx, ty, size);
+          px = offsetX + ox;
+          py = offsetY + oy;
+        }
+        if (i === 0) ctx.moveTo(px, py);
+        else ctx.lineTo(px, py);
+      }
+      ctx.stroke();
+    }
+    // Current θ marker.
+    const [tx, ty] = r.theta;
+    let px;
+    let py;
+    if (iso) {
+      const z = fn.f(tx, ty) - iso.zMin;
+      [px, py] = projectIso(tx, ty, z, iso.size, iso.offsetX, iso.offsetY, iso.zScale);
+    } else {
+      const [ox, oy] = worldToPx(tx, ty, size);
+      px = offsetX + ox;
+      py = offsetY + oy;
+    }
+    ctx.fillStyle = gd.runners.length > 1 ? r.color : '#f97316';
+    ctx.beginPath();
+    ctx.arc(px, py, r.converged ? 7 : 5, 0, Math.PI * 2);
+    ctx.fill();
+    if (r.converged) {
+      ctx.strokeStyle = '#0f172a';
+      ctx.lineWidth = 1.2;
+      ctx.stroke();
+    }
+  });
+}
+
+/**
+ * Loss-vs-step chart on the small canvas below. In single mode shows one
+ * series; in compare mode overlays all four with shared y-scale so the
+ * reader can eyeball "which method drops fastest / gets stuck."
+ */
+function gdRenderLossChart() {
+  const canvas = gdDom.lossCanvas;
+  if (!canvas) return;
+  const { ctx, cssW, cssH } = ensureCanvasSize(canvas);
+  ctx.clearRect(0, 0, cssW, cssH);
+  const pad = { top: 10, right: 10, bottom: 18, left: 36 };
+  const plotW = cssW - pad.left - pad.right;
+  const plotH = cssH - pad.top - pad.bottom;
+
+  // Axes
+  ctx.strokeStyle = 'rgba(148,163,184,0.35)';
+  ctx.lineWidth = 1;
   ctx.beginPath();
-  ctx.arc(offsetX + cx, offsetY + cy, 6, 0, Math.PI * 2);
-  ctx.fill();
+  ctx.moveTo(pad.left, pad.top);
+  ctx.lineTo(pad.left, pad.top + plotH);
+  ctx.lineTo(pad.left + plotW, pad.top + plotH);
+  ctx.stroke();
+
+  const allHistories = gd.runners.map((r) => r.lossHistory).filter((h) => h.length);
+  if (!allHistories.length) return;
+  const maxLen = Math.max(...allHistories.map((h) => h.length));
+  let lossMin = Infinity;
+  let lossMax = -Infinity;
+  allHistories.forEach((h) => {
+    h.forEach((v) => {
+      if (v < lossMin) lossMin = v;
+      if (v > lossMax) lossMax = v;
+    });
+  });
+  if (lossMax - lossMin < 1e-6) lossMax = lossMin + 1;
+
+  ctx.fillStyle = 'rgba(148,163,184,0.85)';
+  ctx.font = '10px "Fira Code", monospace';
+  ctx.textAlign = 'right';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(lossMax.toFixed(2), pad.left - 4, pad.top + 6);
+  ctx.fillText(lossMin.toFixed(2), pad.left - 4, pad.top + plotH - 4);
+  ctx.textAlign = 'left';
+  ctx.fillText(`step ${maxLen}`, pad.left + 4, pad.top + plotH + 12);
+
+  gd.runners.forEach((r) => {
+    if (!r.lossHistory.length) return;
+    ctx.strokeStyle = r.color;
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    const n = r.lossHistory.length;
+    for (let i = 0; i < n; i += 1) {
+      const x = pad.left + (plotW * i) / Math.max(maxLen - 1, 1);
+      const v = r.lossHistory[i];
+      const y = pad.top + plotH - (plotH * (v - lossMin)) / (lossMax - lossMin);
+      if (i === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+  });
 }
 
 function gdRenderStats() {
   if (!gdDom.statStep) return;
+  // Stats panel reports the first runner (primary, or GD in compare mode).
+  const r = gd.runners[0];
+  if (!r) return;
   const fn = gdCurrentFn();
-  const loss = fn.f(gd.theta[0], gd.theta[1]);
-  const [gx, gy] = fn.grad(gd.theta[0], gd.theta[1]);
-  gdDom.statStep.textContent = gd.step.toString();
+  const loss = fn.f(r.theta[0], r.theta[1]);
+  const [gx, gy] = fn.grad(r.theta[0], r.theta[1]);
+  gdDom.statStep.textContent = r.step.toString();
   gdDom.statLoss.textContent = loss.toFixed(4);
-  gdDom.statTheta.textContent = `(${gd.theta[0].toFixed(2)}, ${gd.theta[1].toFixed(2)})`;
+  gdDom.statTheta.textContent = `(${r.theta[0].toFixed(2)}, ${r.theta[1].toFixed(2)})`;
   gdDom.statGrad.textContent = Math.sqrt(gx * gx + gy * gy).toFixed(3);
-  gdDom.statAccept.textContent = gd.proposals === 0 ? '—' : `${gd.accepts}/${gd.proposals}`;
-  gdDom.statTemp.textContent = gd.method === 'sa' ? gd.temperature.toFixed(3) : '—';
+  gdDom.statAccept.textContent = r.proposals === 0 ? '—' : `${r.accepts}/${r.proposals}`;
+  gdDom.statTemp.textContent = r.method === 'sa' ? r.temperature.toFixed(3) : '—';
 }
 
 function gdRedraw() {
   gdRender();
+  gdRenderLossChart();
   gdRenderStats();
+}
+
+function gdAllConverged() {
+  return gd.runners.length > 0 && gd.runners.every((r) => r.converged);
 }
 
 function gdRunLoop() {
   if (!gd.running) return;
-  // ~10 steps / frame so Rosenbrock & Himmelblau don't take forever.
-  for (let i = 0; i < 10; i += 1) gdStep();
+  const stepsPerFrame = Math.max(1, gd.speed);
+  for (let i = 0; i < stepsPerFrame; i += 1) gdStepAll();
   gdRedraw();
-  if (gd.step >= gd.stopAt) {
+  if (gdAllConverged() || (gd.runners[0] && gd.runners[0].step > 10000)) {
     gd.running = false;
     gdSetRunningUI(false);
     return;
@@ -330,7 +564,7 @@ function gdRunLoop() {
 
 function gdRun() {
   if (gd.running) return;
-  gd.stopAt = gd.step + 300;
+  gd.runners.forEach((r) => { r.converged = false; }); // re-enable after a prior stop
   gd.running = true;
   gdSetRunningUI(true);
   gd.rafId = requestAnimationFrame(gdRunLoop);
@@ -350,6 +584,14 @@ function gdSetRunningUI(running) {
   [gdDom.step, gdDom.newStart, gdDom.reset, gdDom.method, gdDom.lr].forEach((el) => {
     if (el) el.disabled = running;
   });
+}
+
+function gdApplyCompareMode() {
+  const isCompare = gd.compareMode === 'all';
+  if (gdDom.legendSingle) gdDom.legendSingle.hidden = isCompare;
+  if (gdDom.legendCompare) gdDom.legendCompare.hidden = !isCompare;
+  // Method dropdown and any per-method-only controls only matter in single mode.
+  if (gdDom.method) gdDom.method.disabled = isCompare;
 }
 
 function gdSyncMethodControls() {
@@ -382,21 +624,53 @@ function initGD() {
   gdDom.statAccept = document.getElementById('gd-stat-accept');
   gdDom.statTemp = document.getElementById('gd-stat-temp');
   gdDom.presetButtons = Array.from(document.querySelectorAll('[data-gd-preset]'));
+  gdDom.viewButtons = Array.from(document.querySelectorAll('[data-gd-view]'));
+  gdDom.compareButtons = Array.from(document.querySelectorAll('[data-gd-compare]'));
+  gdDom.speed = document.getElementById('gd-speed');
+  gdDom.speedValue = document.getElementById('gd-speed-value');
+  gdDom.lossCanvas = document.getElementById('gd-loss-chart');
+  gdDom.legendSingle = document.getElementById('gd-legend-single');
+  gdDom.legendCompare = document.getElementById('gd-legend-compare');
 
   gdDom.presetButtons.forEach((btn) => {
     btn.addEventListener('click', () => {
       gd.preset = btn.getAttribute('data-gd-preset');
-      gdDom.presetButtons.forEach((b) => {
+      gdDom.presetButtons.forEach((b) => b.classList.toggle('is-active', b === btn));
+      gdRandomStart();
+      gdRedraw();
+    });
+  });
+  gdDom.viewButtons.forEach((btn) => {
+    btn.addEventListener('click', () => {
+      gd.viewMode = btn.getAttribute('data-gd-view');
+      gdDom.viewButtons.forEach((b) => {
         const active = b === btn;
         b.classList.toggle('is-active', active);
+        b.setAttribute('aria-pressed', active ? 'true' : 'false');
       });
-      gdRandomStart();
+      gdRedraw();
+    });
+  });
+  gdDom.compareButtons.forEach((btn) => {
+    btn.addEventListener('click', () => {
+      gd.compareMode = btn.getAttribute('data-gd-compare');
+      gdDom.compareButtons.forEach((b) => {
+        const active = b === btn;
+        b.classList.toggle('is-active', active);
+        b.setAttribute('aria-pressed', active ? 'true' : 'false');
+      });
+      gdApplyCompareMode();
+      gdResetRunners();
       gdRedraw();
     });
   });
   gdDom.method.addEventListener('change', () => {
     gd.method = gdDom.method.value;
     gdSyncMethodControls();
+    if (gd.compareMode === 'single') {
+      gdResetRunners();
+      gdRedraw();
+    }
   });
   gdDom.lr.addEventListener('input', () => {
     gd.lr = parseFloat(gdDom.lr.value);
@@ -412,12 +686,16 @@ function initGD() {
   });
   gdDom.temp.addEventListener('input', () => {
     gd.temp0 = parseFloat(gdDom.temp.value);
-    gd.temperature = gd.temp0;
+    gd.runners.forEach((r) => { r.temperature = gd.temp0; });
     gdDom.tempValue.textContent = gd.temp0.toFixed(2);
+  });
+  gdDom.speed.addEventListener('input', () => {
+    gd.speed = parseInt(gdDom.speed.value, 10) || 5;
+    gdDom.speedValue.textContent = gd.speed.toString();
   });
   gdDom.step.addEventListener('click', () => {
     gdPause();
-    gdStep();
+    gdStepAll();
     gdRedraw();
   });
   gdDom.run.addEventListener('click', gdRun);
@@ -429,10 +707,13 @@ function initGD() {
   });
   gdDom.reset.addEventListener('click', () => {
     gdPause();
-    gdResetTrail(gd.trail.length ? gd.trail[0] : [1.8, 1.2]);
+    gdResetRunners();
     gdRedraw();
   });
   gdDom.canvas.addEventListener('click', (e) => {
+    // Picking a start from the canvas only makes sense in 2D — the iso
+    // projection doesn't map a click cleanly back to world coords.
+    if (gd.viewMode !== '2d') return;
     gdPause();
     const rect = gdDom.canvas.getBoundingClientRect();
     const size = Math.min(rect.width, rect.height);
@@ -441,12 +722,13 @@ function initGD() {
     const px = e.clientX - rect.left - offsetX;
     const py = e.clientY - rect.top - offsetY;
     const [wx, wy] = pxToWorld(px, py, size);
-    gdResetTrail([wx, wy]);
+    gdResetRunners([wx, wy]);
     gdRedraw();
   });
-  window.addEventListener('resize', gdRender);
+  window.addEventListener('resize', gdRedraw);
 
   gdSyncMethodControls();
+  gdApplyCompareMode();
   gdRandomStart();
   gdRedraw();
 }

@@ -140,6 +140,16 @@
                   <button type="button" class="math-preset" data-gd-preset="rosenbrock">Rosenbrock valley</button>
                   <button type="button" class="math-preset" data-gd-preset="himmelblau">Himmelblau (4 mins)</button>
                 </div>
+                <div class="mode-toggle" role="group" aria-label="View mode">
+                  <button class="mode-toggle__btn is-active" type="button" data-gd-view="2d" aria-pressed="true">2D contour</button>
+                  <button class="mode-toggle__btn" type="button" data-gd-view="3d" aria-pressed="false">3D surface</button>
+                </div>
+                <div class="mode-toggle" role="group" aria-label="Compare mode">
+                  <button class="mode-toggle__btn is-active" type="button" data-gd-compare="single" aria-pressed="true">Single method</button>
+                  <button class="mode-toggle__btn" type="button" data-gd-compare="all" aria-pressed="false">Compare all</button>
+                </div>
+              </div>
+              <div class="rl-controls__row">
                 <div class="rl-controls__group">
                   <label for="gd-method">Optimiser</label>
                   <select id="gd-method">
@@ -149,26 +159,30 @@
                     <option value="sa">Simulated annealing</option>
                   </select>
                 </div>
-                <div class="rl-controls__group" style="min-width: 200px;">
+                <div class="rl-controls__group" style="min-width: 180px;">
                   <label for="gd-lr">α <span class="rl-controls__value" id="gd-lr-value">0.05</span></label>
                   <input id="gd-lr" type="range" min="0.001" max="0.3" step="0.001" value="0.05" />
                 </div>
-                <div class="rl-controls__group" data-method-only="sgd" hidden style="min-width: 200px;">
+                <div class="rl-controls__group" data-method-only="sgd" hidden style="min-width: 180px;">
                   <label for="gd-noise">SGD σ <span class="rl-controls__value" id="gd-noise-value">0.30</span></label>
                   <input id="gd-noise" type="range" min="0" max="1.5" step="0.01" value="0.3" />
                 </div>
-                <div class="rl-controls__group" data-method-only="momentum" hidden style="min-width: 200px;">
+                <div class="rl-controls__group" data-method-only="momentum" hidden style="min-width: 180px;">
                   <label for="gd-mom">β <span class="rl-controls__value" id="gd-mom-value">0.80</span></label>
                   <input id="gd-mom" type="range" min="0" max="0.99" step="0.01" value="0.8" />
                 </div>
-                <div class="rl-controls__group" data-method-only="sa" hidden style="min-width: 200px;">
+                <div class="rl-controls__group" data-method-only="sa" hidden style="min-width: 180px;">
                   <label for="gd-temp">T<sub>0</sub> <span class="rl-controls__value" id="gd-temp-value">2.00</span></label>
                   <input id="gd-temp" type="range" min="0.01" max="5" step="0.01" value="2" />
+                </div>
+                <div class="rl-controls__group" style="min-width: 180px;">
+                  <label for="gd-speed">Speed <span class="rl-controls__value" id="gd-speed-value">5</span> steps/frame</label>
+                  <input id="gd-speed" type="range" min="1" max="40" step="1" value="5" />
                 </div>
               </div>
               <div class="rl-controls__actions">
                 <button type="button" id="gd-step">Step</button>
-                <button type="button" id="gd-run" class="is-primary">Run 300</button>
+                <button type="button" id="gd-run" class="is-primary">Run to convergence</button>
                 <button type="button" id="gd-pause" hidden>Pause</button>
                 <button type="button" id="gd-new-start">New start</button>
                 <button type="button" id="gd-reset">Reset</button>
@@ -180,10 +194,21 @@
                 <div class="math-canvas-wrapper">
                   <canvas id="gd-canvas" width="640" height="640" aria-label="Gradient-descent landscape"></canvas>
                 </div>
+                <div class="math-canvas-wrapper" style="margin-top: 0.5rem;">
+                  <canvas id="gd-loss-chart" width="640" height="180" aria-label="Loss over time"></canvas>
+                </div>
                 <p class="math-legend" aria-hidden="true">
-                  <span><span class="math-legend__swatch" style="background:#3b82f6"></span>Trajectory</span>
-                  <span><span class="math-legend__swatch" style="background:#f97316"></span>Current θ</span>
-                  <span><span class="math-legend__swatch" style="background:#22c55e"></span>Global minimum</span>
+                  <span id="gd-legend-single">
+                    <span><span class="math-legend__swatch" style="background:#3b82f6"></span>Trajectory</span>
+                    <span><span class="math-legend__swatch" style="background:#f97316"></span>Current θ</span>
+                    <span><span class="math-legend__swatch" style="background:#22c55e"></span>Global minimum</span>
+                  </span>
+                  <span id="gd-legend-compare" hidden>
+                    <span><span class="math-legend__swatch" style="background:#3b82f6"></span>GD</span>
+                    <span><span class="math-legend__swatch" style="background:#a855f7"></span>SGD</span>
+                    <span><span class="math-legend__swatch" style="background:#f97316"></span>Momentum</span>
+                    <span><span class="math-legend__swatch" style="background:#22c55e"></span>Sim. annealing</span>
+                  </span>
                   <span>Click the canvas to set a new starting point.</span>
                 </p>
               </div>
