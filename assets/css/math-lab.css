@@ -1,8 +1,9 @@
-/* Math Foundations Lab — interactive GD/SGD/SA on 2D landscapes plus PCA
-   on 2D scatter. Layout classes (.rl-theory, .rl-equation, .rl-compare,
-   .rl-clusters, .rl-taxonomy) are reused from rl-lab.css; this file only
-   adds selectors for the two canvases, preset chips, and the family
-   accents used by the §7 clustering map. */
+/* Math Foundations Lab — interactive GD/SGD/SA, PCA, KL visualiser, and
+   mode-covering vs mode-seeking KL fit demo. Layout classes (.rl-theory,
+   .rl-equation, .rl-compare, .rl-clusters, .rl-taxonomy) are reused from
+   rl-lab.css; this file only adds selectors for the canvases, preset
+   chips, KL-fit panels, and the family accents used by the clustering
+   map at the end. */
 
 .math-canvas-wrapper {
   border: 1px solid var(--color-border);

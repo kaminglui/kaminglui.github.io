@@ -1245,7 +1245,6 @@ function klfitDrawGaussian(ctx, mu, sigma, cssW, cssH, maxY, stroke) {
 }
 
 function klfitPickMaxY(target, fit) {
-  const SQRT_2PI = Math.sqrt(2 * Math.PI);
   const modePeak = Math.max(
     target.weights[0] / (target.components[0].sigma * SQRT_2PI),
     target.weights[1] / (target.components[1].sigma * SQRT_2PI)
