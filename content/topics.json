@@ -54,15 +54,15 @@
         "continuesIn": [
           {
             "ref": "classical-ml/demo-linreg",
-            "label": "ML Lab · §{n} Linear regression (OLS)"
+            "label": "Machine Learning · §{n} Linear regression (OLS)"
           },
           {
             "ref": "classical-ml/theory-mle",
-            "label": "ML Lab · §{n} Maximum Likelihood Estimation"
+            "label": "Machine Learning · §{n} Maximum Likelihood Estimation"
           },
           {
             "ref": "rl-lab/theory-dp",
-            "label": "RL · §{n} DP"
+            "label": "Reinforcement Learning · §{n} DP"
           },
           {
             "ref": "diffusion-lab/theory-vae",
@@ -76,8 +76,8 @@
       }
     },
     "classical-ml": {
-      "title": "ML Lab",
-      "shortName": "ML Lab",
+      "title": "Machine Learning Lab",
+      "shortName": "Machine Learning",
       "slug": "classical-ml",
       "page": "pages/classical-ml/index.html",
       "managed": false,
@@ -112,20 +112,20 @@
         },
         {
           "id": "theory-map",
-          "title": "ML method families — a clustering map"
+          "title": "Machine Learning method families — a clustering map"
         }
       ]
     },
     "rl-lab": {
-      "title": "RL Lab",
-      "shortName": "RL",
+      "title": "Reinforcement Learning Lab",
+      "shortName": "Reinforcement Learning",
       "slug": "rl-lab",
       "page": "pages/rl-lab/index.html",
       "managed": false,
       "sections": [
         {
           "id": "theory-bandits",
-          "title": "Bandits: RL without state"
+          "title": "Bandits: Reinforcement Learning without state"
         },
         {
           "id": "theory-mdp",
