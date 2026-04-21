@@ -1,0 +1,13 @@
+node_modules/
+.env
+npm-debug.log*
+yarn-error.log
+.DS_Store
+dist/
+pages/fourier-epicycles-src/dist/
+pages/fourier-epicycles/
+*.log
+.vite/
+coverage/
+_site/
+assets/css/tailwind.css

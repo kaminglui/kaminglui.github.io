@@ -1,0 +1,27 @@
+{
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:e2e": "node scripts/e2e-fourier.mjs",
+    "test:fourier": "npm --prefix pages/fourier-epicycles-src test && npm --prefix pages/fourier-epicycles-src run build && node scripts/e2e-fourier.mjs",
+    "build:css": "tailwindcss -i ./assets/css/tailwind.src.css -o ./assets/css/tailwind.css --minify",
+    "build:css:watch": "tailwindcss -i ./assets/css/tailwind.src.css -o ./assets/css/tailwind.css --watch",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
+  },
+  "dependencies": {
+    "puppeteer-core": "^24.31.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.2.1",
+    "eslint-config-prettier": "^10.1.8",
+    "globals": "^17.5.0",
+    "jsdom": "^26.0.0",
+    "prettier": "^3.8.3",
+    "tailwindcss": "^3.4.19",
+    "vitest": "^4.0.15"
+  }
+}

@@ -1,0 +1,77 @@
+# Simple workflow for deploying static content to GitHub Pages
+name: Deploy static content to Pages
+
+on:
+  # Runs on pushes targeting the default branch
+  push:
+    branches: ["main"]
+
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+# Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Allow only one concurrent deployment, skipping runs queued between the run in-progress and latest queued.
+# However, do NOT cancel in-progress runs as we want to allow these production deployments to complete.
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  # Single deploy job since we're just deploying
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - name: Install deps
+        run: npm ci
+      - name: Install Fourier deps
+        run: npm ci --prefix pages/fourier-epicycles-src
+      - name: Build Fourier
+        run: npm run build --prefix pages/fourier-epicycles-src
+      - name: Build CSS
+        run: npm run build:css
+      - name: Stage site
+        run: |
+          mkdir -p _site
+          rsync -a --delete \
+            --exclude='.git/' \
+            --exclude='.github/' \
+            --exclude='.gitignore' \
+            --exclude='README.md' \
+            --exclude='docs/' \
+            --exclude='scripts/' \
+            --exclude='node_modules/' \
+            --exclude='**/node_modules/' \
+            --exclude='package.json' \
+            --exclude='package-lock.json' \
+            --exclude='vitest.config.js' \
+            --exclude='tailwind.config.js' \
+            --exclude='assets/css/tailwind.src.css' \
+            --exclude='pages/fourier-epicycles-src/' \
+            --exclude='**/*.test.js' \
+            --exclude='**/tests/' \
+            --exclude='_site/' \
+            ./ _site/
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: '_site'
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

@@ -1,0 +1,2130 @@
+import { Point } from '../types';
+
+export type EdgeMethod = 'canny' | 'dog' | 'sobel' | 'legacy';
+
+export interface EdgeOptions {
+  method?: EdgeMethod;
+  sigma?: number;
+  lowRatio?: number;
+  highPercentile?: number;
+  minEdgeFrac?: number;
+  maxEdgeFrac?: number;
+  sampleRate?: number;
+  morphRadius?: number;
+}
+
+export interface EdgeProcessingOptions extends EdgeOptions {
+  threshold?: number;
+  maxPoints?: number;
+  smoothingWindow?: number;
+  blurRadius?: number;
+  detail?: number;
+}
+
+export type OutlinePolarity = 'auto' | 'normal' | 'invert';
+
+export interface ExtractPathOptions {
+  polarity?: OutlinePolarity;
+  targetPoints?: number;
+  speed?: number;
+}
+
+export const WORK_SIZE = 768;
+
+const defaultEdgeOptions: Required<EdgeOptions> = {
+  method: 'canny',
+  sigma: 1.2,
+  lowRatio: 0.4,
+  highPercentile: 90,
+  minEdgeFrac: 0.001,
+  maxEdgeFrac: 0.15,
+  sampleRate: 1,
+  morphRadius: 1
+};
+
+const defaultOptions: Required<EdgeProcessingOptions> = {
+  ...defaultEdgeOptions,
+  threshold: 30,
+  maxPoints: 1500,
+  smoothingWindow: 4,
+  blurRadius: 1,
+  detail: 0.9
+};
+
+const DEFAULT_DENOISE_SIGMA = 1.3;
+const POLARITY_DELTA = 12;
+const INK_CLOSE_RADIUS = 1;
+const INK_DILATE_RADIUS = 2;
+const JOIN_EPS_RATIO = 0.003;
+const SIMPLIFY_EPS_RATIO = 0.002;
+const MIN_COMPONENT_LEN_RATIO = 0.01;
+const RESAMPLE_MIN = 900;
+const RESAMPLE_MAX = 2600;
+
+const buildPath = (points: Point[]): Point[] => {
+  if (points.length === 0) return [];
+
+  const sortedPoints: Point[] = [];
+  const visited = new Set<number>();
+  let currentIdx = 0; // Start at first point
+
+  sortedPoints.push(points[0]);
+  visited.add(0);
+
+  while (sortedPoints.length < points.length) {
+    let nearestDist = Infinity;
+    let nearestIdx = -1;
+    
+    const currentPoint = points[currentIdx];
+
+    for (let i = 0; i < points.length; i++) {
+      if (!visited.has(i)) {
+        const p = points[i];
+        const d = (currentPoint.x - p.x) ** 2 + (currentPoint.y - p.y) ** 2;
+        if (d < nearestDist) {
+          nearestDist = d;
+          nearestIdx = i;
+        }
+      }
+    }
+
+    if (nearestIdx !== -1) {
+      visited.add(nearestIdx);
+      sortedPoints.push(points[nearestIdx]);
+      currentIdx = nearestIdx;
+    } else {
+      break;
+    }
+  }
+
+  return sortedPoints;
+};
+
+const clampInt = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value));
+const clamp01 = (value: number) => Math.max(0, Math.min(1, value));
+const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
+const clampByte = (value: number) => (value < 0 ? 0 : value > 255 ? 255 : value);
+
+const downsampleGrayscale = (
+  data: Uint8ClampedArray,
+  width: number,
+  height: number,
+  sampleRate: number
+): { gray: Uint8Array; w: number; h: number; step: number } => {
+  const step = Math.max(1, Math.floor(sampleRate || 1));
+  const w = Math.max(1, Math.floor(width / step));
+  const h = Math.max(1, Math.floor(height / step));
+  const gray = new Uint8Array(w * h);
+
+  for (let y = 0; y < h; y++) {
+    const srcY = clampInt(y * step, 0, height - 1);
+    for (let x = 0; x < w; x++) {
+      const srcX = clampInt(x * step, 0, width - 1);
+      const idx = (srcY * width + srcX) * 4;
+      const r = data[idx] ?? 0;
+      const g = data[idx + 1] ?? 0;
+      const b = data[idx + 2] ?? 0;
+      gray[y * w + x] = Math.round(0.2126 * r + 0.7152 * g + 0.0722 * b);
+    }
+  }
+
+  return { gray, w, h, step };
+};
+
+const boxBlurGray = (src: Uint8Array, w: number, h: number, radius: number): Uint8Array => {
+  const r = Math.max(0, Math.floor(radius || 0));
+  if (r === 0 || w * h === 0) return src;
+
+  const dst = new Uint8Array(w * h);
+  const windowSize = (2 * r + 1) * (2 * r + 1);
+
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      let sum = 0;
+      for (let dy = -r; dy <= r; dy++) {
+        const yy = clampInt(y + dy, 0, h - 1);
+        for (let dx = -r; dx <= r; dx++) {
+          const xx = clampInt(x + dx, 0, w - 1);
+          sum += src[yy * w + xx] ?? 0;
+        }
+      }
+      dst[y * w + x] = Math.round(sum / windowSize);
+    }
+  }
+
+  return dst;
+};
+
+export const median3x3 = (src: Uint8Array, w: number, h: number): Uint8Array => {
+  if (w * h === 0) return new Uint8Array(0);
+  const out = new Uint8Array(src.length);
+  const window = new Uint8Array(9);
+
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      let k = 0;
+      for (let dy = -1; dy <= 1; dy++) {
+        const yy = clampInt(y + dy, 0, h - 1);
+        const row = yy * w;
+        for (let dx = -1; dx <= 1; dx++) {
+          const xx = clampInt(x + dx, 0, w - 1);
+          window[k++] = src[row + xx] ?? 0;
+        }
+      }
+
+      for (let i = 1; i < window.length; i++) {
+        const v = window[i];
+        let j = i - 1;
+        while (j >= 0 && window[j] > v) {
+          window[j + 1] = window[j];
+          j--;
+        }
+        window[j + 1] = v;
+      }
+      out[y * w + x] = window[4];
+    }
+  }
+
+  return out;
+};
+
+export const otsuThreshold = (gray: Uint8Array): number => {
+  const hist = new Uint32Array(256);
+  for (let i = 0; i < gray.length; i++) hist[gray[i]]++;
+
+  const total = gray.length || 1;
+  let sumAll = 0;
+  for (let i = 0; i < 256; i++) sumAll += i * hist[i];
+
+  let sumB = 0;
+  let wB = 0;
+  let maxBetween = -1;
+  let threshold = 128;
+  let bestSum = 0;
+  let bestCount = 0;
+
+  for (let t = 0; t < 256; t++) {
+    const count = hist[t];
+    wB += count;
+    if (wB === 0) continue;
+
+    const wF = total - wB;
+    if (wF === 0) break;
+
+    sumB += t * count;
+    const mB = sumB / wB;
+    const mF = (sumAll - sumB) / wF;
+    const between = wB * wF * (mB - mF) * (mB - mF);
+    if (between > maxBetween + 1e-6) {
+      maxBetween = between;
+      threshold = t;
+      bestSum = t;
+      bestCount = 1;
+    } else if (Math.abs(between - maxBetween) <= 1e-6) {
+      bestSum += t;
+      bestCount += 1;
+    }
+  }
+
+  if (bestCount > 1) {
+    threshold = Math.round(bestSum / bestCount);
+  }
+  return threshold;
+};
+
+const meanBorderGray = (gray: Uint8Array, w: number, h: number) => {
+  if (w === 0 || h === 0) return 0;
+  let sum = 0;
+  let count = 0;
+  for (let x = 0; x < w; x++) {
+    sum += gray[x] ?? 0;
+    sum += gray[(h - 1) * w + x] ?? 0;
+    count += 2;
+  }
+  for (let y = 1; y < h - 1; y++) {
+    sum += gray[y * w] ?? 0;
+    sum += gray[y * w + (w - 1)] ?? 0;
+    count += 2;
+  }
+  return count > 0 ? sum / count : 0;
+};
+
+const meanRegionGray = (
+  gray: Uint8Array,
+  w: number,
+  h: number,
+  x0: number,
+  y0: number,
+  x1: number,
+  y1: number
+) => {
+  const xs = clampInt(Math.min(x0, x1), 0, w - 1);
+  const xe = clampInt(Math.max(x0, x1), 0, w - 1);
+  const ys = clampInt(Math.min(y0, y1), 0, h - 1);
+  const ye = clampInt(Math.max(y0, y1), 0, h - 1);
+  let sum = 0;
+  let count = 0;
+  for (let y = ys; y <= ye; y++) {
+    const row = y * w;
+    for (let x = xs; x <= xe; x++) {
+      sum += gray[row + x] ?? 0;
+      count++;
+    }
+  }
+  return count > 0 ? sum / count : 0;
+};
+
+export const decidePolarity = (gray: Uint8Array, w: number, h: number): 'normal' | 'invert' => {
+  if (w === 0 || h === 0) return 'normal';
+  const borderMean = meanBorderGray(gray, w, h);
+  const cx0 = Math.floor(w * 0.25);
+  const cy0 = Math.floor(h * 0.25);
+  const cx1 = Math.floor(w * 0.75);
+  const cy1 = Math.floor(h * 0.75);
+  const centerMean = meanRegionGray(gray, w, h, cx0, cy0, cx1, cy1);
+  return borderMean + POLARITY_DELTA < centerMean ? 'invert' : 'normal';
+};
+
+const dilateMask = (mask: Uint8Array, w: number, h: number, radius: number): Uint8Array => {
+  const r = Math.max(1, Math.floor(radius || 1));
+  const out = new Uint8Array(mask.length);
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      let on = 0;
+      for (let dy = -r; dy <= r && !on; dy++) {
+        const yy = y + dy;
+        if (yy < 0 || yy >= h) continue;
+        for (let dx = -r; dx <= r; dx++) {
+          const xx = x + dx;
+          if (xx < 0 || xx >= w) continue;
+          if (mask[yy * w + xx]) {
+            on = 255;
+            break;
+          }
+        }
+      }
+      out[y * w + x] = on;
+    }
+  }
+  return out;
+};
+
+const erodeMask = (mask: Uint8Array, w: number, h: number, radius: number): Uint8Array => {
+  const r = Math.max(1, Math.floor(radius || 1));
+  const out = new Uint8Array(mask.length);
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      let on = 255;
+      for (let dy = -r; dy <= r && on; dy++) {
+        const yy = y + dy;
+        if (yy < 0 || yy >= h) {
+          on = 0;
+          break;
+        }
+        for (let dx = -r; dx <= r; dx++) {
+          const xx = x + dx;
+          if (xx < 0 || xx >= w || !mask[yy * w + xx]) {
+            on = 0;
+            break;
+          }
+        }
+      }
+      out[y * w + x] = on;
+    }
+  }
+  return out;
+};
+
+const closeMask = (mask: Uint8Array, w: number, h: number, radius: number): Uint8Array => {
+  const r = Math.max(1, Math.floor(radius || 1));
+  return erodeMask(dilateMask(mask, w, h, r), w, h, r);
+};
+
+const keepLargestComponent = (mask: Uint8Array, w: number, h: number): Uint8Array => {
+  const visited = new Uint8Array(mask.length);
+  let best: number[] = [];
+  const stack: number[] = [];
+
+  const pushIf = (idx: number) => {
+    if (idx < 0 || idx >= mask.length) return;
+    if (!mask[idx] || visited[idx]) return;
+    visited[idx] = 1;
+    stack.push(idx);
+  };
+
+  for (let i = 0; i < mask.length; i++) {
+    if (!mask[i] || visited[i]) continue;
+
+    const component: number[] = [];
+    stack.length = 0;
+    visited[i] = 1;
+    stack.push(i);
+
+    while (stack.length) {
+      const idx = stack.pop()!;
+      component.push(idx);
+      const x = idx % w;
+      const y = (idx - x) / w;
+      if (x > 0) pushIf(idx - 1);
+      if (x < w - 1) pushIf(idx + 1);
+      if (y > 0) pushIf(idx - w);
+      if (y < h - 1) pushIf(idx + w);
+    }
+
+    if (component.length > best.length) best = component;
+  }
+
+  const out = new Uint8Array(mask.length);
+  best.forEach((idx) => {
+    out[idx] = 255;
+  });
+  return out;
+};
+
+const hasBoundaryNeighbor = (mask: Uint8Array, w: number, h: number, x: number, y: number): boolean => {
+  const idx = y * w + x;
+  if (!mask[idx]) return false;
+  const left = x > 0 ? mask[idx - 1] : 0;
+  const right = x < w - 1 ? mask[idx + 1] : 0;
+  const up = y > 0 ? mask[idx - w] : 0;
+  const down = y < h - 1 ? mask[idx + w] : 0;
+  return !(left && right && up && down);
+};
+
+const traceContour = (mask: Uint8Array, w: number, h: number): Array<{ x: number; y: number }> => {
+  if (w < 2 || h < 2) return [];
+  let startX = -1;
+  let startY = -1;
+
+  for (let y = 0; y < h && startX === -1; y++) {
+    for (let x = 0; x < w; x++) {
+      if (hasBoundaryNeighbor(mask, w, h, x, y)) {
+        startX = x;
+        startY = y;
+        break;
+      }
+    }
+  }
+
+  if (startX === -1 || startY === -1) return [];
+
+  const dirs: Array<[number, number]> = [
+    [1, 0],
+    [1, 1],
+    [0, 1],
+    [-1, 1],
+    [-1, 0],
+    [-1, -1],
+    [0, -1],
+    [1, -1]
+  ];
+
+  const dirIndex = (dx: number, dy: number) =>
+    dirs.findIndex((d) => d[0] === dx && d[1] === dy);
+
+  const isOn = (x: number, y: number) => {
+    if (x < 0 || x >= w || y < 0 || y >= h) return false;
+    return mask[y * w + x] !== 0;
+  };
+
+  const start = { x: startX, y: startY };
+  const b0 = { x: startX - 1, y: startY };
+  let p = { ...start };
+  let b = { ...b0 };
+  const contour: Array<{ x: number; y: number }> = [{ ...p }];
+
+  const maxSteps = w * h * 4;
+  for (let steps = 0; steps < maxSteps; steps++) {
+    const dx = Math.sign(b.x - p.x);
+    const dy = Math.sign(b.y - p.y);
+    const backDir = dirIndex(dx, dy);
+    const startDir = backDir === -1 ? 0 : (backDir + 1) % 8;
+
+    let found = false;
+    let next = { x: p.x, y: p.y };
+    let nextBack = { x: b.x, y: b.y };
+
+    for (let i = 0; i < 8; i++) {
+      const d = (startDir + i) % 8;
+      const nx = p.x + dirs[d][0];
+      const ny = p.y + dirs[d][1];
+      if (isOn(nx, ny)) {
+        next = { x: nx, y: ny };
+        const bd = (d + 7) % 8;
+        nextBack = { x: p.x + dirs[bd][0], y: p.y + dirs[bd][1] };
+        found = true;
+        break;
+      }
+    }
+
+    if (!found) break;
+    p = next;
+    b = nextBack;
+    contour.push({ ...p });
+
+    if (p.x === start.x && p.y === start.y && b.x === b0.x && b.y === b0.y) {
+      break;
+    }
+  }
+
+  return contour;
+};
+
+const smoothClosed = (points: Point[], windowSize: number): Point[] => {
+  const w = Math.max(0, Math.floor(windowSize || 0));
+  if (w <= 0 || points.length < 3) return points;
+  const out: Point[] = [];
+  const n = points.length;
+  for (let i = 0; i < n; i++) {
+    let sumX = 0;
+    let sumY = 0;
+    let count = 0;
+    for (let j = -w; j <= w; j++) {
+      const idx = (i + j + n) % n;
+      sumX += points[idx].x;
+      sumY += points[idx].y;
+      count++;
+    }
+    out.push({ x: sumX / count, y: sumY / count });
+  }
+  return out;
+};
+
+const toPoints = (
+  contour: Array<{ x: number; y: number }>,
+  originalW: number,
+  originalH: number,
+  step: number,
+  maxPoints: number
+): Point[] => {
+  if (!contour.length) return [];
+
+  const decimation = contour.length > maxPoints ? Math.ceil(contour.length / maxPoints) : 1;
+  const points: Point[] = [];
+  for (let i = 0; i < contour.length; i += decimation) {
+    const p = contour[i];
+    const x = p.x * step - originalW / 2;
+    const y = p.y * step - originalH / 2;
+    points.push({ x, y });
+  }
+
+  return points;
+};
+
+const closeLoop = (points: Point[]): Point[] => {
+  if (points.length < 2) return points;
+  const first = points[0];
+  const last = points[points.length - 1];
+  if (first.x === last.x && first.y === last.y) return points;
+  return [...points, { ...first }];
+};
+
+const buildMaskFromOtsu = (gray: Uint8Array, thr: number, pickDark: boolean): Uint8Array => {
+  const out = new Uint8Array(gray.length);
+  for (let i = 0; i < gray.length; i++) {
+    const v = gray[i];
+    out[i] = pickDark ? (v <= thr ? 255 : 0) : (v >= thr ? 255 : 0);
+  }
+  return out;
+};
+
+const buildMaskFromBackgroundDiff = (
+  gray: Uint8Array,
+  w: number,
+  h: number,
+  delta: number
+): Uint8Array => {
+  const border = meanBorderGray(gray, w, h);
+  const d = Math.max(1, Math.floor(delta));
+  const out = new Uint8Array(gray.length);
+  for (let i = 0; i < gray.length; i++) {
+    out[i] = Math.abs(gray[i] - border) >= d ? 255 : 0;
+  }
+  return out;
+};
+
+const buildMaskFromSobel = (gray: Uint8Array, w: number, h: number): Uint8Array => {
+  if (w < 3 || h < 3) return new Uint8Array(gray.length);
+  const mag = new Uint16Array(gray.length);
+  const hist = new Uint32Array(1025);
+  for (let y = 1; y < h - 1; y++) {
+    for (let x = 1; x < w - 1; x++) {
+      const idx = y * w + x;
+      const a00 = gray[idx - w - 1];
+      const a01 = gray[idx - w];
+      const a02 = gray[idx - w + 1];
+      const a10 = gray[idx - 1];
+      const a12 = gray[idx + 1];
+      const a20 = gray[idx + w - 1];
+      const a21 = gray[idx + w];
+      const a22 = gray[idx + w + 1];
+
+      const gx = -a00 + a02 - 2 * a10 + 2 * a12 - a20 + a22;
+      const gy = -a00 - 2 * a01 - a02 + a20 + 2 * a21 + a22;
+      const m = Math.min(1024, Math.abs(gx) + Math.abs(gy));
+      mag[idx] = m;
+      hist[m]++;
+    }
+  }
+
+  const total = (w - 2) * (h - 2);
+  let target = Math.floor(total * 0.08);
+  target = clampInt(target, 50, total);
+
+  let cumulative = 0;
+  let threshold = 1024;
+  for (let v = 1024; v >= 0; v--) {
+    cumulative += hist[v];
+    if (cumulative >= target) {
+      threshold = v;
+      break;
+    }
+  }
+
+  const out = new Uint8Array(gray.length);
+  for (let i = 0; i < mag.length; i++) {
+    out[i] = mag[i] >= threshold && mag[i] > 0 ? 255 : 0;
+  }
+  return out;
+};
+
+const countOn = (mask: Uint8Array) => {
+  let count = 0;
+  for (let i = 0; i < mask.length; i++) count += mask[i] ? 1 : 0;
+  return count;
+};
+
+const gaussianKernel1D = (sigma: number): Float32Array => {
+  const s = Math.max(0.01, sigma);
+  const radius = Math.max(1, Math.ceil(3 * s));
+  const size = radius * 2 + 1;
+  const kernel = new Float32Array(size);
+  const denom = 2 * s * s;
+  let sum = 0;
+
+  for (let i = -radius; i <= radius; i++) {
+    const weight = Math.exp(-(i * i) / denom);
+    kernel[i + radius] = weight;
+    sum += weight;
+  }
+
+  if (sum > 0) {
+    for (let i = 0; i < kernel.length; i++) kernel[i] /= sum;
+  }
+
+  return kernel;
+};
+
+export const gaussianBlurGray = (src: Uint8Array, w: number, h: number, sigma: number): Uint8Array => {
+  const n = w * h;
+  const s = Math.max(0, sigma);
+  if (n === 0) return new Uint8Array(0);
+
+  if (s <= 0.01) {
+    return src.slice();
+  }
+
+  const kernel = gaussianKernel1D(s);
+  const radius = (kernel.length - 1) / 2;
+  const tmp = new Float32Array(n);
+  const out = new Uint8Array(n);
+
+  for (let y = 0; y < h; y++) {
+    const row = y * w;
+    for (let x = 0; x < w; x++) {
+      let acc = 0;
+      for (let k = -radius; k <= radius; k++) {
+        const xx = clampInt(x + k, 0, w - 1);
+        acc += kernel[k + radius] * (src[row + xx] ?? 0);
+      }
+      tmp[row + x] = acc;
+    }
+  }
+
+  for (let y = 0; y < h; y++) {
+    const row = y * w;
+    for (let x = 0; x < w; x++) {
+      let acc = 0;
+      for (let k = -radius; k <= radius; k++) {
+        const yy = clampInt(y + k, 0, h - 1);
+        acc += kernel[k + radius] * (tmp[yy * w + x] ?? 0);
+      }
+      const v = Math.round(acc);
+      out[row + x] = v < 0 ? 0 : v > 255 ? 255 : v;
+    }
+  }
+
+  return out;
+};
+
+const buildDoGEdgeMask = (
+  gray: Uint8Array,
+  w: number,
+  h: number,
+  detail: number,
+  blurRadius: number
+): Uint8Array => {
+  const n = w * h;
+  if (w < 3 || h < 3 || n === 0) return new Uint8Array(n);
+
+  const minDim = Math.min(w, h);
+  const blurScale = Math.max(0.35, blurRadius || 1);
+  const baseSigma = lerp(2.4, 0.7, detail) * blurScale;
+  const maxSigma = Math.max(0.35, minDim / 4);
+  const sigma1 = Math.min(Math.max(0.35, baseSigma), maxSigma);
+  const sigma2 = Math.min(Math.max(sigma1 * 1.6, sigma1 + 0.15), maxSigma * 1.6);
+
+  const b1 = gaussianBlurGray(gray, w, h, sigma1);
+  const b2 = gaussianBlurGray(gray, w, h, sigma2);
+  const dog = new Float32Array(n);
+  for (let i = 0; i < n; i++) dog[i] = b1[i] - b2[i];
+
+  const strength = new Uint16Array(n);
+  const hist = new Uint32Array(1025);
+  let nonZero = 0;
+
+  const qScale = 4;
+  const offsets = [-w - 1, -w, -w + 1, -1, 1, w - 1, w, w + 1];
+
+  for (let y = 1; y < h - 1; y++) {
+    const row = y * w;
+    for (let x = 1; x < w - 1; x++) {
+      const idx = row + x;
+      const v = dog[idx];
+      const s0 = v >= 0;
+      let best = 0;
+
+      for (let i = 0; i < offsets.length; i++) {
+        const nIdx = idx + offsets[i];
+        const nv = dog[nIdx];
+        if ((nv >= 0) === s0) continue;
+        const diff = Math.abs(v - nv);
+        if (diff > best) best = diff;
+      }
+
+      if (best > 0) {
+        const q = clampInt(Math.round(best * qScale), 0, 1024);
+        strength[idx] = q;
+        hist[q]++;
+        nonZero++;
+      }
+    }
+  }
+
+  if (nonZero === 0) return new Uint8Array(n);
+
+  const strongFraction = lerp(0.02, 0.08, detail);
+  const desiredStrong = clampInt(Math.floor(nonZero * strongFraction), 1, nonZero);
+
+  let cumulative = 0;
+  let high = 1024;
+  for (let v = 1024; v >= 1; v--) {
+    cumulative += hist[v];
+    if (cumulative >= desiredStrong) {
+      high = v;
+      break;
+    }
+  }
+
+  const lowRatio = lerp(0.6, 0.22, detail);
+  const low = Math.max(1, Math.floor(high * lowRatio));
+
+  const edges = new Uint8Array(n);
+  const stack: number[] = [];
+
+  for (let idx = 0; idx < n; idx++) {
+    if (strength[idx] >= high) {
+      edges[idx] = 255;
+      stack.push(idx);
+    }
+  }
+
+  const dx = [1, 1, 0, -1, -1, -1, 0, 1];
+  const dy = [0, 1, 1, 1, 0, -1, -1, -1];
+
+  while (stack.length) {
+    const idx = stack.pop()!;
+    const x = idx % w;
+    const y = (idx - x) / w;
+
+    for (let d = 0; d < 8; d++) {
+      const nx = x + dx[d];
+      const ny = y + dy[d];
+      if (nx < 0 || nx >= w || ny < 0 || ny >= h) continue;
+      const nIdx = ny * w + nx;
+      if (edges[nIdx]) continue;
+      if (strength[nIdx] >= low) {
+        edges[nIdx] = 255;
+        stack.push(nIdx);
+      }
+    }
+  }
+
+  return edges;
+};
+
+const CANNY_HIST_BINS = 2048;
+
+export const sobelGradients = (gray: Uint8Array, w: number, h: number): { mag: Uint16Array; dir: Uint8Array } => {
+  const n = w * h;
+  const mag = new Uint16Array(n);
+  const dir = new Uint8Array(n);
+  if (w < 3 || h < 3) return { mag, dir };
+
+  const magMax = CANNY_HIST_BINS - 1;
+  for (let y = 1; y < h - 1; y++) {
+    const row = y * w;
+    for (let x = 1; x < w - 1; x++) {
+      const idx = row + x;
+
+      const a00 = gray[idx - w - 1];
+      const a01 = gray[idx - w];
+      const a02 = gray[idx - w + 1];
+      const a10 = gray[idx - 1];
+      const a12 = gray[idx + 1];
+      const a20 = gray[idx + w - 1];
+      const a21 = gray[idx + w];
+      const a22 = gray[idx + w + 1];
+
+      const gx = -a00 + a02 - 2 * a10 + 2 * a12 - a20 + a22;
+      const gy = -a00 - 2 * a01 - a02 + a20 + 2 * a21 + a22;
+      const absGx = Math.abs(gx);
+      const absGy = Math.abs(gy);
+
+      const m = Math.min(magMax, absGx + absGy);
+      mag[idx] = m;
+
+      let d = 0;
+      if (absGx >= absGy) {
+        if (absGy * 2 <= absGx) {
+          d = 0;
+        } else {
+          d = gx * gy >= 0 ? 1 : 3;
+        }
+      } else {
+        if (absGx * 2 <= absGy) {
+          d = 2;
+        } else {
+          d = gx * gy >= 0 ? 1 : 3;
+        }
+      }
+      dir[idx] = d;
+    }
+  }
+
+  return { mag, dir };
+};
+
+export const nonMaxSuppression = (mag: Uint16Array, dir: Uint8Array, w: number, h: number): Uint16Array => {
+  const nms = new Uint16Array(w * h);
+  if (w < 3 || h < 3) return nms;
+
+  for (let y = 1; y < h - 1; y++) {
+    const row = y * w;
+    for (let x = 1; x < w - 1; x++) {
+      const idx = row + x;
+      const m = mag[idx];
+      if (m === 0) continue;
+
+      const d = dir[idx];
+      let m1 = 0;
+      let m2 = 0;
+      if (d === 0) {
+        m1 = mag[idx - 1];
+        m2 = mag[idx + 1];
+      } else if (d === 2) {
+        m1 = mag[idx - w];
+        m2 = mag[idx + w];
+      } else if (d === 1) {
+        m1 = mag[idx - w + 1];
+        m2 = mag[idx + w - 1];
+      } else {
+        m1 = mag[idx - w - 1];
+        m2 = mag[idx + w + 1];
+      }
+
+      if (m >= m1 && m >= m2) {
+        nms[idx] = m;
+      }
+    }
+  }
+
+  return nms;
+};
+
+const buildNmsHistogram = (nms: Uint16Array) => {
+  const hist = new Uint32Array(CANNY_HIST_BINS);
+  let nonZero = 0;
+  let maxVal = 0;
+  for (let i = 0; i < nms.length; i++) {
+    const v = nms[i];
+    if (v === 0) continue;
+    nonZero++;
+    if (v > maxVal) maxVal = v;
+    const bin = v < CANNY_HIST_BINS ? v : CANNY_HIST_BINS - 1;
+    hist[bin]++;
+  }
+  return { hist, nonZero, maxVal };
+};
+
+const thresholdFromPercentile = (hist: Uint32Array, nonZero: number, percentile: number) => {
+  if (nonZero <= 0) return Number.POSITIVE_INFINITY;
+  const pct = Math.max(50, Math.min(99, percentile));
+  const targetStrong = Math.max(1, Math.floor(nonZero * (1 - pct / 100)));
+  let cumulative = 0;
+  for (let v = hist.length - 1; v >= 1; v--) {
+    cumulative += hist[v];
+    if (cumulative >= targetStrong) return v;
+  }
+  return 1;
+};
+
+const countHistAbove = (hist: Uint32Array, threshold: number) => {
+  const start = clampInt(Math.floor(threshold), 1, hist.length - 1);
+  let count = 0;
+  for (let v = start; v < hist.length; v++) count += hist[v];
+  return count;
+};
+
+export const pickCannyThresholds = (nms: Uint16Array, w: number, h: number, options: EdgeOptions = {}) => {
+  const { hist, nonZero } = buildNmsHistogram(nms);
+  if (nonZero === 0) {
+    return { low: Number.POSITIVE_INFINITY, high: Number.POSITIVE_INFINITY };
+  }
+
+  const lowRatio = Math.max(0.05, Math.min(0.9, options.lowRatio ?? defaultEdgeOptions.lowRatio));
+  const minEdgeFrac = Math.max(0, Math.min(1, options.minEdgeFrac ?? defaultEdgeOptions.minEdgeFrac));
+  const maxEdgeFrac = Math.max(minEdgeFrac, Math.min(1, options.maxEdgeFrac ?? defaultEdgeOptions.maxEdgeFrac));
+  let highPercentile = Math.max(50, Math.min(99, options.highPercentile ?? defaultEdgeOptions.highPercentile));
+
+  const totalPixels = Math.max(1, w * h);
+  let high = Number.POSITIVE_INFINITY;
+  let low = Number.POSITIVE_INFINITY;
+
+  for (let attempt = 0; attempt < 3; attempt++) {
+    high = thresholdFromPercentile(hist, nonZero, highPercentile);
+    const highFloor = Math.max(1, Math.floor(high));
+    low = Math.max(1, Math.floor(highFloor * lowRatio));
+
+    const edgeCount = countHistAbove(hist, low);
+    const edgeFrac = edgeCount / totalPixels;
+    if (edgeFrac < minEdgeFrac) {
+      highPercentile = Math.max(50, highPercentile - 7);
+      continue;
+    }
+    if (edgeFrac > maxEdgeFrac) {
+      highPercentile = Math.min(99, highPercentile + 5);
+      continue;
+    }
+    break;
+  }
+
+  return { low, high };
+};
+
+export const hysteresis = (nms: Uint16Array, w: number, h: number, low: number, high: number): Uint8Array => {
+  const n = w * h;
+  const edges = new Uint8Array(n);
+  if (!Number.isFinite(low) || !Number.isFinite(high) || n === 0) return edges;
+
+  const lowThr = Math.max(1, Math.floor(low));
+  const highThr = Math.max(lowThr, Math.floor(high));
+  const stack: number[] = [];
+
+  for (let idx = 0; idx < n; idx++) {
+    if (nms[idx] >= highThr) {
+      edges[idx] = 255;
+      stack.push(idx);
+    }
+  }
+
+  if (stack.length === 0) return edges;
+
+  const dx = [1, 1, 0, -1, -1, -1, 0, 1];
+  const dy = [0, 1, 1, 1, 0, -1, -1, -1];
+
+  while (stack.length) {
+    const idx = stack.pop()!;
+    const x = idx % w;
+    const y = (idx - x) / w;
+
+    for (let d = 0; d < 8; d++) {
+      const nx = x + dx[d];
+      const ny = y + dy[d];
+      if (nx < 0 || nx >= w || ny < 0 || ny >= h) continue;
+      const nIdx = ny * w + nx;
+      if (edges[nIdx]) continue;
+      if (nms[nIdx] >= lowThr) {
+        edges[nIdx] = 255;
+        stack.push(nIdx);
+      }
+    }
+  }
+
+  return edges;
+};
+
+const buildLegacyEdgeMaskFromGray = (gray: Uint8Array, w: number, h: number, threshold: number): Uint8Array => {
+  const out = new Uint8Array(gray.length);
+  const thr = Math.max(1, Math.floor(threshold));
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      if (x <= 0 || y <= 0) continue;
+      const idx = y * w + x;
+      const leftIdx = idx - 1;
+      const topIdx = idx - w;
+      const v = gray[idx];
+      const diff = Math.abs(v - gray[leftIdx]) + Math.abs(v - gray[topIdx]);
+      if (diff > thr) out[idx] = 255;
+    }
+  }
+  return out;
+};
+
+const downsampleGray = (
+  gray: Uint8Array,
+  width: number,
+  height: number,
+  sampleRate: number
+): { gray: Uint8Array; w: number; h: number; step: number } => {
+  const step = Math.max(1, Math.floor(sampleRate || 1));
+  const w = Math.max(1, Math.floor(width / step));
+  const h = Math.max(1, Math.floor(height / step));
+  if (step <= 1) return { gray, w: width, h: height, step: 1 };
+
+  const out = new Uint8Array(w * h);
+  for (let y = 0; y < h; y++) {
+    const srcY = clampInt(y * step, 0, height - 1);
+    for (let x = 0; x < w; x++) {
+      const srcX = clampInt(x * step, 0, width - 1);
+      out[y * w + x] = gray[srcY * width + srcX] ?? 0;
+    }
+  }
+
+  return { gray: out, w, h, step };
+};
+
+const upsampleMask = (
+  mask: Uint8Array,
+  srcW: number,
+  srcH: number,
+  width: number,
+  height: number,
+  step: number
+): Uint8Array => {
+  const out = new Uint8Array(width * height);
+  for (let y = 0; y < srcH; y++) {
+    const dstY = y * step;
+    if (dstY >= height) break;
+    for (let x = 0; x < srcW; x++) {
+      const v = mask[y * srcW + x];
+      if (!v) continue;
+      const dstX = x * step;
+      if (dstX >= width) continue;
+      const maxY = Math.min(height, dstY + step);
+      const maxX = Math.min(width, dstX + step);
+      for (let yy = dstY; yy < maxY; yy++) {
+        const row = yy * width;
+        for (let xx = dstX; xx < maxX; xx++) {
+          out[row + xx] = v;
+        }
+      }
+    }
+  }
+  return out;
+};
+
+const buildCannyEdgeMaskFromGray = (gray: Uint8Array, w: number, h: number, options: EdgeOptions): Uint8Array => {
+  if (w < 3 || h < 3) return new Uint8Array(gray.length);
+
+  const sigma = Math.max(0, options.sigma ?? defaultEdgeOptions.sigma);
+  const blurred = sigma > 0 ? gaussianBlurGray(gray, w, h, sigma) : gray;
+  const { mag, dir } = sobelGradients(blurred, w, h);
+  const nms = nonMaxSuppression(mag, dir, w, h);
+  const { hist, nonZero } = buildNmsHistogram(nms);
+
+  if (nonZero === 0) return new Uint8Array(gray.length);
+
+  const lowRatio = Math.max(0.05, Math.min(0.9, options.lowRatio ?? defaultEdgeOptions.lowRatio));
+  const minEdgeFrac = Math.max(0, Math.min(1, options.minEdgeFrac ?? defaultEdgeOptions.minEdgeFrac));
+  const maxEdgeFrac = Math.max(minEdgeFrac, Math.min(1, options.maxEdgeFrac ?? defaultEdgeOptions.maxEdgeFrac));
+  let highPercentile = Math.max(50, Math.min(99, options.highPercentile ?? defaultEdgeOptions.highPercentile));
+
+  const totalPixels = Math.max(1, w * h);
+  let edges = new Uint8Array(w * h);
+
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const high = thresholdFromPercentile(hist, nonZero, highPercentile);
+    const highFloor = Math.max(1, Math.floor(high));
+    const low = Math.max(1, Math.floor(highFloor * lowRatio));
+    edges = hysteresis(nms, w, h, low, highFloor);
+
+    const edgeCount = countOn(edges);
+    const edgeFrac = edgeCount / totalPixels;
+    if (edgeCount === 0 && attempt < 2) {
+      highPercentile = Math.max(50, highPercentile - 10);
+      continue;
+    }
+    if (edgeFrac < minEdgeFrac && attempt < 2) {
+      highPercentile = Math.max(50, highPercentile - 7);
+      continue;
+    }
+    if (edgeFrac > maxEdgeFrac && attempt < 2) {
+      highPercentile = Math.min(99, highPercentile + 5);
+      continue;
+    }
+    break;
+  }
+
+  return edges;
+};
+
+export const buildEdgeMaskFromGray = (
+  gray: Uint8Array,
+  width: number,
+  height: number,
+  options: EdgeOptions = {}
+): Uint8Array => {
+  const merged = { ...defaultEdgeOptions, ...options };
+  const sampleRate = Math.max(1, Math.floor(merged.sampleRate || 1));
+  const morphRadius = Math.max(0, Math.floor(merged.morphRadius || 0));
+
+  if (sampleRate > 1 && width > 0 && height > 0) {
+    const down = downsampleGray(gray, width, height, sampleRate);
+    const smallMask = buildEdgeMaskFromGray(down.gray, down.w, down.h, {
+      ...merged,
+      sampleRate: 1,
+      morphRadius: 0
+    });
+    const upsampled = upsampleMask(smallMask, down.w, down.h, width, height, sampleRate);
+    return morphRadius > 0
+      ? closeMask(upsampled, width, height, morphRadius)
+      : upsampled;
+  }
+
+  let mask: Uint8Array;
+  switch (merged.method) {
+    case 'dog': {
+      const detail = clamp01((options as EdgeProcessingOptions).detail ?? defaultOptions.detail);
+      const blurRadius = Math.max(0, Math.floor((options as EdgeProcessingOptions).blurRadius ?? defaultOptions.blurRadius));
+      mask = buildDoGEdgeMask(gray, width, height, detail, blurRadius);
+      break;
+    }
+    case 'sobel':
+      mask = buildMaskFromSobel(gray, width, height);
+      break;
+    case 'legacy': {
+      const threshold = Math.max(1, Math.floor((options as EdgeProcessingOptions).threshold ?? defaultOptions.threshold));
+      mask = buildLegacyEdgeMaskFromGray(gray, width, height, threshold);
+      break;
+    }
+    case 'canny':
+    default:
+      mask = buildCannyEdgeMaskFromGray(gray, width, height, merged);
+      break;
+  }
+
+  if (morphRadius > 0) {
+    mask = closeMask(mask, width, height, morphRadius);
+  }
+
+  return mask;
+};
+
+const edgeMaskToPolylines = (mask: Uint8Array, w: number, h: number): number[][] => {
+  const dx = [1, 1, 0, -1, -1, -1, 0, 1];
+  const dy = [0, 1, 1, 1, 0, -1, -1, -1];
+  const opp = [4, 5, 6, 7, 0, 1, 2, 3];
+
+  const degree = new Uint8Array(mask.length);
+  const edgeIndices: number[] = [];
+
+  for (let idx = 0; idx < mask.length; idx++) {
+    if (!mask[idx]) continue;
+    const x = idx % w;
+    const y = (idx - x) / w;
+    let deg = 0;
+    for (let d = 0; d < 8; d++) {
+      const nx = x + dx[d];
+      const ny = y + dy[d];
+      if (nx < 0 || nx >= w || ny < 0 || ny >= h) continue;
+      if (mask[ny * w + nx]) deg++;
+    }
+    degree[idx] = deg;
+    if (deg > 0) edgeIndices.push(idx);
+  }
+
+  const used = new Uint8Array(mask.length);
+  const polylines: number[][] = [];
+
+  const hasNeighbor = (idx: number, d: number) => {
+    const x = idx % w;
+    const y = (idx - x) / w;
+    const nx = x + dx[d];
+    const ny = y + dy[d];
+    if (nx < 0 || nx >= w || ny < 0 || ny >= h) return -1;
+    const nIdx = ny * w + nx;
+    return mask[nIdx] ? nIdx : -1;
+  };
+
+  const markUsed = (a: number, d: number, b: number) => {
+    used[a] |= 1 << d;
+    used[b] |= 1 << opp[d];
+  };
+
+  const traceChain = (startIdx: number, startDir: number, stopAtBranch: boolean) => {
+    const firstNeighbor = hasNeighbor(startIdx, startDir);
+    if (firstNeighbor < 0) return [];
+
+    const poly: number[] = [startIdx];
+    let prevDir = startDir;
+    let curIdx = firstNeighbor;
+    markUsed(startIdx, startDir, curIdx);
+    poly.push(curIdx);
+
+    const maxSteps = w * h * 2;
+    for (let steps = 0; steps < maxSteps; steps++) {
+      const deg = degree[curIdx];
+      if (stopAtBranch && deg !== 2) break;
+
+      const backDir = opp[prevDir];
+      let nextDir = -1;
+      for (let d = 0; d < 8; d++) {
+        if (d === backDir) continue;
+        const nIdx = hasNeighbor(curIdx, d);
+        if (nIdx >= 0) {
+          nextDir = d;
+          break;
+        }
+      }
+      if (nextDir < 0) break;
+      if (used[curIdx] & (1 << nextDir)) break;
+
+      const nextIdx = hasNeighbor(curIdx, nextDir);
+      if (nextIdx < 0) break;
+      markUsed(curIdx, nextDir, nextIdx);
+      curIdx = nextIdx;
+      prevDir = nextDir;
+      poly.push(curIdx);
+      if (!stopAtBranch && curIdx === startIdx) break;
+    }
+
+    return poly;
+  };
+
+  for (const idx of edgeIndices) {
+    const deg = degree[idx];
+    if (deg === 0 || deg === 2) continue;
+    for (let d = 0; d < 8; d++) {
+      const nIdx = hasNeighbor(idx, d);
+      if (nIdx < 0) continue;
+      if (used[idx] & (1 << d)) continue;
+      const poly = traceChain(idx, d, true);
+      if (poly.length > 1) polylines.push(poly);
+    }
+  }
+
+  for (const idx of edgeIndices) {
+    for (let d = 0; d < 8; d++) {
+      const nIdx = hasNeighbor(idx, d);
+      if (nIdx < 0) continue;
+      if (used[idx] & (1 << d)) continue;
+      const poly = traceChain(idx, d, false);
+      if (poly.length > 1) {
+        if (poly[0] === poly[poly.length - 1]) {
+          polylines.push(poly);
+        } else {
+          polylines.push([...poly, poly[0]]);
+        }
+      }
+    }
+  }
+
+  return polylines;
+};
+
+const idxToPoint = (idx: number, w: number, step: number, originalW: number, originalH: number): Point => {
+  const x = idx % w;
+  const y = (idx - x) / w;
+  return { x: x * step - originalW / 2, y: y * step - originalH / 2 };
+};
+
+const dedupeConsecutive = (points: Point[]): Point[] => {
+  if (points.length === 0) return [];
+  const out: Point[] = [points[0]];
+  for (let i = 1; i < points.length; i++) {
+    const prev = out[out.length - 1];
+    const p = points[i];
+    if (prev.x !== p.x || prev.y !== p.y) out.push(p);
+  }
+  return out;
+};
+
+const simplifyRDP = (points: Point[], epsilon: number): Point[] => {
+  if (points.length < 3 || epsilon <= 0) return points;
+
+  const epsilonSq = epsilon * epsilon;
+  const keep = new Uint8Array(points.length);
+  keep[0] = 1;
+  keep[points.length - 1] = 1;
+
+  const distSqPointToSegment = (p: Point, a: Point, b: Point) => {
+    const vx = b.x - a.x;
+    const vy = b.y - a.y;
+    const wx = p.x - a.x;
+    const wy = p.y - a.y;
+    const c1 = vx * wx + vy * wy;
+    if (c1 <= 0) return wx * wx + wy * wy;
+    const c2 = vx * vx + vy * vy;
+    if (c2 <= c1) {
+      const dx = p.x - b.x;
+      const dy = p.y - b.y;
+      return dx * dx + dy * dy;
+    }
+    const t = c1 / c2;
+    const projX = a.x + t * vx;
+    const projY = a.y + t * vy;
+    const dx = p.x - projX;
+    const dy = p.y - projY;
+    return dx * dx + dy * dy;
+  };
+
+  const stack: Array<[number, number]> = [[0, points.length - 1]];
+  while (stack.length) {
+    const [start, end] = stack.pop()!;
+    let maxDistSq = 0;
+    let idx = -1;
+    const a = points[start];
+    const b = points[end];
+    for (let i = start + 1; i < end; i++) {
+      const dSq = distSqPointToSegment(points[i], a, b);
+      if (dSq > maxDistSq) {
+        maxDistSq = dSq;
+        idx = i;
+      }
+    }
+    if (idx !== -1 && maxDistSq > epsilonSq) {
+      keep[idx] = 1;
+      stack.push([start, idx], [idx, end]);
+    }
+  }
+
+  const out: Point[] = [];
+  for (let i = 0; i < points.length; i++) {
+    if (keep[i]) out.push(points[i]);
+  }
+  return out;
+};
+
+const joinPolylines = (polylines: Point[][], detail: number): Point[] => {
+  if (polylines.length === 0) return [];
+  const remaining = [...polylines].sort((a, b) => b.length - a.length);
+  let path: Point[] = [...remaining.shift()!];
+
+  const distSq = (a: Point, b: Point) => {
+    const dx = a.x - b.x;
+    const dy = a.y - b.y;
+    return dx * dx + dy * dy;
+  };
+
+  const bridgeSteps = clampInt(Math.round(lerp(2, 10, detail)), 2, 12);
+
+  while (remaining.length) {
+    const end = path[path.length - 1];
+    let bestIdx = 0;
+    let bestReverse = false;
+    let bestDist = Infinity;
+
+    for (let i = 0; i < remaining.length; i++) {
+      const poly = remaining[i];
+      const dStart = distSq(end, poly[0]);
+      const dEnd = distSq(end, poly[poly.length - 1]);
+      if (dStart < bestDist) {
+        bestDist = dStart;
+        bestIdx = i;
+        bestReverse = false;
+      }
+      if (dEnd < bestDist) {
+        bestDist = dEnd;
+        bestIdx = i;
+        bestReverse = true;
+      }
+    }
+
+    const next = remaining.splice(bestIdx, 1)[0];
+    if (bestReverse) next.reverse();
+
+    const start = next[0];
+    const dx = start.x - end.x;
+    const dy = start.y - end.y;
+    const dist = Math.hypot(dx, dy);
+    if (dist > 1e-6) {
+      for (let i = 1; i <= bridgeSteps; i++) {
+        const t = i / (bridgeSteps + 1);
+        path.push({ x: end.x + dx * t, y: end.y + dy * t });
+      }
+    }
+
+    if (path[path.length - 1].x === start.x && path[path.length - 1].y === start.y) {
+      path.push(...next.slice(1));
+    } else {
+      path.push(...next);
+    }
+  }
+
+  return path;
+};
+
+const resampleClosedPath = (points: Point[], targetCount: number): Point[] => {
+  const target = Math.max(8, Math.floor(targetCount));
+  const closed = closeLoop(dedupeConsecutive(points));
+  if (closed.length < 4) return closed;
+  const loop = closed.slice(0, -1);
+  const n = loop.length;
+
+  const segLens = new Float64Array(n);
+  let total = 0;
+  for (let i = 0; i < n; i++) {
+    const a = loop[i];
+    const b = loop[(i + 1) % n];
+    const d = Math.hypot(b.x - a.x, b.y - a.y);
+    segLens[i] = d;
+    total += d;
+  }
+
+  if (!Number.isFinite(total) || total <= 0) {
+    return closeLoop(loop);
+  }
+
+  const stepLen = total / target;
+  const out: Point[] = [{ ...loop[0] }];
+  let segIdx = 0;
+  let segStart = loop[0];
+  let segEnd = loop[1 % n];
+  let segLen = segLens[0];
+  let distAcc = 0;
+  let nextDist = stepLen;
+
+  const maxIter = target * (n + 4);
+  let guard = 0;
+  while (out.length < target && guard++ < maxIter) {
+    if (segLen === 0) {
+      segIdx = (segIdx + 1) % n;
+      segStart = loop[segIdx];
+      segEnd = loop[(segIdx + 1) % n];
+      segLen = segLens[segIdx];
+      continue;
+    }
+
+    if (distAcc + segLen >= nextDist - 1e-9) {
+      const t = (nextDist - distAcc) / segLen;
+      out.push({
+        x: segStart.x + (segEnd.x - segStart.x) * t,
+        y: segStart.y + (segEnd.y - segStart.y) * t
+      });
+      nextDist += stepLen;
+    } else {
+      distAcc += segLen;
+      segIdx = (segIdx + 1) % n;
+      segStart = loop[segIdx];
+      segEnd = loop[(segIdx + 1) % n];
+      segLen = segLens[segIdx];
+    }
+  }
+
+  if (out.length > target) out.length = target;
+  return closeLoop(out);
+};
+
+type ResizeResult = {
+  gray: Uint8Array;
+  w: number;
+  h: number;
+  scale: number;
+  offsetX: number;
+  offsetY: number;
+  innerW: number;
+  innerH: number;
+};
+
+const rgbaToGray = (r: number, g: number, b: number) => 0.2126 * r + 0.7152 * g + 0.0722 * b;
+
+const estimateBorderGrayFromRGBA = (data: Uint8ClampedArray, w: number, h: number) => {
+  if (w === 0 || h === 0) return 255;
+  let sum = 0;
+  let count = 0;
+  const rowStride = w * 4;
+
+  const add = (idx: number) => {
+    const r = data[idx] ?? 0;
+    const g = data[idx + 1] ?? 0;
+    const b = data[idx + 2] ?? 0;
+    sum += rgbaToGray(r, g, b);
+    count++;
+  };
+
+  for (let x = 0; x < w; x++) {
+    add(x * 4);
+    add((h - 1) * rowStride + x * 4);
+  }
+  for (let y = 1; y < h - 1; y++) {
+    const row = y * rowStride;
+    add(row);
+    add(row + (w - 1) * 4);
+  }
+
+  return count > 0 ? sum / count : 255;
+};
+
+export class ImageResizer {
+  static resizeToSquareGray(
+    data: Uint8ClampedArray,
+    srcW: number,
+    srcH: number,
+    size: number,
+    fillGray: number
+  ): ResizeResult {
+    const safeSize = Math.max(1, Math.floor(size));
+    const out = new Uint8Array(safeSize * safeSize);
+    const fill = clampByte(Math.round(fillGray));
+    out.fill(fill);
+
+    if (srcW <= 0 || srcH <= 0) {
+      return {
+        gray: out,
+        w: safeSize,
+        h: safeSize,
+        scale: 1,
+        offsetX: 0,
+        offsetY: 0,
+        innerW: 0,
+        innerH: 0
+      };
+    }
+
+    const scale = Math.min(safeSize / srcW, safeSize / srcH);
+    const innerW = Math.max(1, Math.round(srcW * scale));
+    const innerH = Math.max(1, Math.round(srcH * scale));
+    const offsetX = Math.floor((safeSize - innerW) / 2);
+    const offsetY = Math.floor((safeSize - innerH) / 2);
+    const invScale = 1 / scale;
+    const rowStride = srcW * 4;
+
+    for (let y = 0; y < innerH; y++) {
+      const sy = (y + 0.5) * invScale - 0.5;
+      const y0 = clampInt(Math.floor(sy), 0, srcH - 1);
+      const y1 = clampInt(y0 + 1, 0, srcH - 1);
+      const wy = sy - y0;
+      const row0 = y0 * rowStride;
+      const row1 = y1 * rowStride;
+      const dstRow = (y + offsetY) * safeSize + offsetX;
+
+      for (let x = 0; x < innerW; x++) {
+        const sx = (x + 0.5) * invScale - 0.5;
+        const x0 = clampInt(Math.floor(sx), 0, srcW - 1);
+        const x1 = clampInt(x0 + 1, 0, srcW - 1);
+        const wx = sx - x0;
+
+        const idx00 = row0 + x0 * 4;
+        const idx10 = row0 + x1 * 4;
+        const idx01 = row1 + x0 * 4;
+        const idx11 = row1 + x1 * 4;
+
+        const g00 = rgbaToGray(data[idx00] ?? 0, data[idx00 + 1] ?? 0, data[idx00 + 2] ?? 0);
+        const g10 = rgbaToGray(data[idx10] ?? 0, data[idx10 + 1] ?? 0, data[idx10 + 2] ?? 0);
+        const g01 = rgbaToGray(data[idx01] ?? 0, data[idx01 + 1] ?? 0, data[idx01 + 2] ?? 0);
+        const g11 = rgbaToGray(data[idx11] ?? 0, data[idx11 + 1] ?? 0, data[idx11 + 2] ?? 0);
+
+        const g0 = g00 + (g10 - g00) * wx;
+        const g1 = g01 + (g11 - g01) * wx;
+        const g = g0 + (g1 - g0) * wy;
+
+        out[dstRow + x] = clampByte(Math.round(g));
+      }
+    }
+
+    return {
+      gray: out,
+      w: safeSize,
+      h: safeSize,
+      scale,
+      offsetX,
+      offsetY,
+      innerW,
+      innerH
+    };
+  }
+}
+
+export class PolarityDetector {
+  static decide(gray: Uint8Array, w: number, h: number) {
+    return decidePolarity(gray, w, h);
+  }
+}
+
+const applyPolarity = (gray: Uint8Array, invert: boolean) => {
+  if (!invert) return gray;
+  const out = new Uint8Array(gray.length);
+  for (let i = 0; i < gray.length; i++) out[i] = 255 - gray[i];
+  return out;
+};
+
+export class Denoiser {
+  static apply(gray: Uint8Array, w: number, h: number): Uint8Array {
+    const medianed = median3x3(gray, w, h);
+    return gaussianBlurGray(medianed, w, h, DEFAULT_DENOISE_SIGMA);
+  }
+}
+
+export class InkMaskExtractor {
+  static extract(gray: Uint8Array, w: number, h: number, borderMean: number): Uint8Array {
+    const otsu = otsuThreshold(gray);
+    let threshold = otsu;
+    if (borderMean > 128) {
+      threshold = Math.min(otsu, borderMean - 18);
+    }
+    threshold = clampInt(Math.round(threshold), 0, 255);
+    const mask = new Uint8Array(gray.length);
+    for (let i = 0; i < gray.length; i++) {
+      mask[i] = gray[i] <= threshold ? 255 : 0;
+    }
+    return INK_CLOSE_RADIUS > 0 ? closeMask(mask, w, h, INK_CLOSE_RADIUS) : mask;
+  }
+}
+
+export class EdgeExtractor {
+  static extract(gray: Uint8Array, w: number, h: number): Uint8Array {
+    return buildEdgeMaskFromGray(gray, w, h, {
+      method: 'canny',
+      sigma: 0.6,
+      highPercentile: 90,
+      lowRatio: 0.4,
+      minEdgeFrac: 0.001,
+      maxEdgeFrac: 0.12,
+      morphRadius: 0,
+      sampleRate: 1
+    });
+  }
+}
+
+export const thinZhangSuen = (mask: Uint8Array, w: number, h: number): Uint8Array => {
+  const n = w * h;
+  if (n === 0) return new Uint8Array(0);
+
+  const src = new Uint8Array(n);
+  for (let i = 0; i < n; i++) src[i] = mask[i] ? 1 : 0;
+  const toRemove = new Uint8Array(n);
+  let changed = true;
+  let iterations = 0;
+  const maxIter = 100;
+
+  const neighbors = (idx: number) => {
+    const p2 = src[idx - w];
+    const p3 = src[idx - w + 1];
+    const p4 = src[idx + 1];
+    const p5 = src[idx + w + 1];
+    const p6 = src[idx + w];
+    const p7 = src[idx + w - 1];
+    const p8 = src[idx - 1];
+    const p9 = src[idx - w - 1];
+    return { p2, p3, p4, p5, p6, p7, p8, p9 };
+  };
+
+  while (changed && iterations++ < maxIter) {
+    changed = false;
+    toRemove.fill(0);
+
+    for (let y = 1; y < h - 1; y++) {
+      const row = y * w;
+      for (let x = 1; x < w - 1; x++) {
+        const idx = row + x;
+        if (!src[idx]) continue;
+        const { p2, p3, p4, p5, p6, p7, p8, p9 } = neighbors(idx);
+        const bp = p2 + p3 + p4 + p5 + p6 + p7 + p8 + p9;
+        if (bp < 2 || bp > 6) continue;
+        const ap =
+          (p2 === 0 && p3 === 1 ? 1 : 0) +
+          (p3 === 0 && p4 === 1 ? 1 : 0) +
+          (p4 === 0 && p5 === 1 ? 1 : 0) +
+          (p5 === 0 && p6 === 1 ? 1 : 0) +
+          (p6 === 0 && p7 === 1 ? 1 : 0) +
+          (p7 === 0 && p8 === 1 ? 1 : 0) +
+          (p8 === 0 && p9 === 1 ? 1 : 0) +
+          (p9 === 0 && p2 === 1 ? 1 : 0);
+        if (ap !== 1) continue;
+        if (p2 * p4 * p6 !== 0) continue;
+        if (p4 * p6 * p8 !== 0) continue;
+        toRemove[idx] = 1;
+      }
+    }
+
+    for (let i = 0; i < n; i++) {
+      if (toRemove[i]) {
+        src[i] = 0;
+        changed = true;
+      }
+    }
+
+    toRemove.fill(0);
+    for (let y = 1; y < h - 1; y++) {
+      const row = y * w;
+      for (let x = 1; x < w - 1; x++) {
+        const idx = row + x;
+        if (!src[idx]) continue;
+        const { p2, p3, p4, p5, p6, p7, p8, p9 } = neighbors(idx);
+        const bp = p2 + p3 + p4 + p5 + p6 + p7 + p8 + p9;
+        if (bp < 2 || bp > 6) continue;
+        const ap =
+          (p2 === 0 && p3 === 1 ? 1 : 0) +
+          (p3 === 0 && p4 === 1 ? 1 : 0) +
+          (p4 === 0 && p5 === 1 ? 1 : 0) +
+          (p5 === 0 && p6 === 1 ? 1 : 0) +
+          (p6 === 0 && p7 === 1 ? 1 : 0) +
+          (p7 === 0 && p8 === 1 ? 1 : 0) +
+          (p8 === 0 && p9 === 1 ? 1 : 0) +
+          (p9 === 0 && p2 === 1 ? 1 : 0);
+        if (ap !== 1) continue;
+        if (p2 * p4 * p8 !== 0) continue;
+        if (p2 * p6 * p8 !== 0) continue;
+        toRemove[idx] = 1;
+      }
+    }
+
+    for (let i = 0; i < n; i++) {
+      if (toRemove[i]) {
+        src[i] = 0;
+        changed = true;
+      }
+    }
+  }
+
+  const out = new Uint8Array(n);
+  for (let i = 0; i < n; i++) out[i] = src[i] ? 255 : 0;
+  return out;
+};
+
+export class StrokeMerger {
+  static merge(edges: Uint8Array, inkMask: Uint8Array, w: number, h: number): Uint8Array {
+    const n = w * h;
+    const inkCount = countOn(inkMask);
+    const edgesCount = countOn(edges);
+    const useInkGate = inkCount > 0;
+    const inkDilated = useInkGate && INK_DILATE_RADIUS > 0 ? dilateMask(inkMask, w, h, INK_DILATE_RADIUS) : inkMask;
+    const gated = new Uint8Array(n);
+    if (useInkGate) {
+      for (let i = 0; i < n; i++) {
+        gated[i] = edges[i] && inkDilated[i] ? 255 : 0;
+      }
+    } else {
+      for (let i = 0; i < n; i++) gated[i] = edges[i] ? 255 : 0;
+    }
+
+    const combined = new Uint8Array(n);
+    if (useInkGate) {
+      for (let i = 0; i < n; i++) {
+        combined[i] = gated[i] || inkMask[i] ? 255 : 0;
+      }
+    } else {
+      for (let i = 0; i < n; i++) combined[i] = gated[i];
+    }
+
+    let thinned = thinZhangSuen(combined, w, h);
+    if (countOn(thinned) === 0) {
+      if (countOn(gated) > 0) thinned = gated;
+      else if (edgesCount > 0) thinned = edges;
+      else if (inkCount > 0) thinned = inkMask;
+    }
+    return thinned;
+  }
+}
+
+export class PolylineTracer {
+  static trace(mask: Uint8Array, w: number, h: number): Point[][] {
+    const polylinesIdx = edgeMaskToPolylines(mask, w, h);
+    const minSegment = Math.max(12, Math.round(Math.min(w, h) * MIN_COMPONENT_LEN_RATIO));
+    return polylinesIdx
+      .filter((poly) => poly.length >= minSegment)
+      .map((poly) => poly.map((idx) => idxToPoint(idx, w, 1, w, h)))
+      .map((poly) => dedupeConsecutive(poly))
+      .filter((poly) => poly.length >= 2);
+  }
+}
+
+export const joinPolylinesByEps = (polylines: Point[][], eps: number): Point[][] => {
+  if (polylines.length < 2 || eps <= 0) return polylines.map((poly) => [...poly]);
+  const epsSq = eps * eps;
+  const cellSize = eps;
+
+  const makeGrid = (input: Point[][]) => {
+    type Endpoint = { polyIndex: number; isStart: boolean; point: Point };
+    const grid = new Map<string, Endpoint[]>();
+    const add = (endpoint: Endpoint) => {
+      const gx = Math.floor(endpoint.point.x / cellSize);
+      const gy = Math.floor(endpoint.point.y / cellSize);
+      const key = `${gx},${gy}`;
+      const list = grid.get(key);
+      if (list) list.push(endpoint);
+      else grid.set(key, [endpoint]);
+    };
+
+    input.forEach((poly, index) => {
+      if (poly.length < 2) return;
+      add({ polyIndex: index, isStart: true, point: poly[0] });
+      add({ polyIndex: index, isStart: false, point: poly[poly.length - 1] });
+    });
+
+    return grid;
+  };
+
+  const collectNeighbors = (grid: Map<string, { polyIndex: number; isStart: boolean; point: Point }[]>, p: Point) => {
+    const gx = Math.floor(p.x / cellSize);
+    const gy = Math.floor(p.y / cellSize);
+    const candidates: { polyIndex: number; isStart: boolean; point: Point }[] = [];
+    for (let dy = -1; dy <= 1; dy++) {
+      for (let dx = -1; dx <= 1; dx++) {
+        const key = `${gx + dx},${gy + dy}`;
+        const list = grid.get(key);
+        if (list) candidates.push(...list);
+      }
+    }
+    return candidates;
+  };
+
+  const mergePair = (a: Point[], aIsStart: boolean, b: Point[], bIsStart: boolean) => {
+    const aOriented = aIsStart ? [...a].reverse() : [...a];
+    const bOriented = bIsStart ? [...b] : [...b].reverse();
+    const aEnd = aOriented[aOriented.length - 1];
+    const bStart = bOriented[0];
+    const dx = aEnd.x - bStart.x;
+    const dy = aEnd.y - bStart.y;
+    const distSq = dx * dx + dy * dy;
+    const mergeTolerance = 1e-6;
+    const merged = distSq <= mergeTolerance ? aOriented.concat(bOriented.slice(1)) : aOriented.concat(bOriented);
+    return dedupeConsecutive(merged);
+  };
+
+  const result = polylines.map((poly) => [...poly]);
+  let merged = true;
+
+  while (merged) {
+    merged = false;
+    const grid = makeGrid(result);
+
+    for (let i = 0; i < result.length; i++) {
+      const poly = result[i];
+      if (poly.length < 2) continue;
+      const endpoints = [
+        { point: poly[0], isStart: true },
+        { point: poly[poly.length - 1], isStart: false }
+      ];
+
+      let didMerge = false;
+      for (const endpoint of endpoints) {
+        const candidates = collectNeighbors(grid, endpoint.point);
+        let best: { polyIndex: number; isStart: boolean; point: Point } | null = null;
+        let bestDist = Infinity;
+
+        for (const candidate of candidates) {
+          if (candidate.polyIndex === i) continue;
+          const dx = endpoint.point.x - candidate.point.x;
+          const dy = endpoint.point.y - candidate.point.y;
+          const dSq = dx * dx + dy * dy;
+          if (dSq <= epsSq && dSq < bestDist) {
+            bestDist = dSq;
+            best = candidate;
+          }
+        }
+
+        if (best) {
+          const other = result[best.polyIndex];
+          const mergedPoly = mergePair(poly, endpoint.isStart, other, best.isStart);
+          const removeIndex = Math.max(i, best.polyIndex);
+          const keepIndex = Math.min(i, best.polyIndex);
+          result[keepIndex] = mergedPoly;
+          result.splice(removeIndex, 1);
+          merged = true;
+          didMerge = true;
+          break;
+        }
+      }
+      if (didMerge) break;
+    }
+  }
+
+  return result;
+};
+
+const isClosedLoop = (points: Point[], eps: number) => {
+  if (points.length < 3) return false;
+  const a = points[0];
+  const b = points[points.length - 1];
+  return Math.hypot(a.x - b.x, a.y - b.y) <= eps;
+};
+
+const resamplePathEven = (points: Point[], targetCount: number, closed: boolean): Point[] => {
+  const n = points.length;
+  if (n === 0) return [];
+  if (n === 1) return [{ ...points[0] }];
+
+  const target = clampInt(Math.round(targetCount), 8, 10_000);
+  const segCount = closed ? n : n - 1;
+  const segLens = new Float64Array(segCount);
+  let total = 0;
+  for (let i = 0; i < segCount; i++) {
+    const a = points[i];
+    const b = points[(i + 1) % n];
+    const d = Math.hypot(b.x - a.x, b.y - a.y);
+    segLens[i] = d;
+    total += d;
+  }
+
+  if (!Number.isFinite(total) || total <= 0) {
+    return Array.from({ length: target }, () => ({ ...points[0] }));
+  }
+
+  const step = total / (closed ? target : target - 1);
+  const sampleAt = (distanceAlong: number) => {
+    let segIdx = 0;
+    let acc = 0;
+    while (segIdx < segCount - 1 && acc + segLens[segIdx] < distanceAlong) {
+      acc += segLens[segIdx];
+      segIdx++;
+    }
+
+    const a = points[segIdx];
+    const b = points[(segIdx + 1) % n];
+    const segLen = segLens[segIdx] || 1;
+    const t = Math.max(0, Math.min(1, (distanceAlong - acc) / segLen));
+    return { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t };
+  };
+
+  if (closed) {
+    const out: Point[] = [];
+    for (let i = 0; i < target; i++) out.push(sampleAt(step * i));
+    return out;
+  }
+
+  const out: Point[] = [{ ...points[0] }];
+  for (let i = 1; i < target - 1; i++) out.push(sampleAt(step * i));
+  out.push({ ...points[n - 1] });
+  return out;
+};
+
+const targetPointsFromSpeed = (speed?: number) => {
+  if (!Number.isFinite(speed)) return RESAMPLE_MAX;
+  const minSpeed = 0.05;
+  const maxSpeed = 3;
+  const t = clamp01((speed - minSpeed) / (maxSpeed - minSpeed));
+  const quality = 1 - t;
+  return clampInt(Math.round(lerp(RESAMPLE_MIN, RESAMPLE_MAX, quality)), RESAMPLE_MIN, RESAMPLE_MAX);
+};
+
+export class PolylineOptimizer {
+  static optimize(polylines: Point[][], w: number, h: number, targetPoints: number): Point[] {
+    if (!polylines.length) return [];
+    const minDim = Math.min(w, h);
+    const minSegment = Math.max(12, Math.round(minDim * MIN_COMPONENT_LEN_RATIO));
+    const filtered = polylines.filter((poly) => poly.length >= minSegment);
+    if (!filtered.length) return [];
+
+    const joinEps = Math.max(1, minDim * JOIN_EPS_RATIO);
+    const simplifyEps = Math.max(0.75, minDim * SIMPLIFY_EPS_RATIO);
+    const merged = joinPolylinesByEps(filtered, joinEps);
+    const path = merged.length === 1 ? merged[0] : joinPolylines(merged, 0.6);
+    const cleaned = simplifyRDP(dedupeConsecutive(path), simplifyEps);
+    const closed = isClosedLoop(cleaned, joinEps * 1.5);
+    const target = clampInt(targetPoints, RESAMPLE_MIN, RESAMPLE_MAX);
+    return resamplePathEven(cleaned, target, closed);
+  }
+}
+
+export const extractPathFromGray = (
+  gray: Uint8Array,
+  w: number,
+  h: number,
+  options: ExtractPathOptions = {}
+): Point[] => {
+  if (!gray.length || w <= 0 || h <= 0) return [];
+  const polarity = options.polarity ?? 'auto';
+  const autoDecision = polarity === 'auto' ? PolarityDetector.decide(gray, w, h) : polarity;
+  const normalized = applyPolarity(gray, autoDecision === 'invert');
+  const borderMean = meanBorderGray(normalized, w, h);
+  const denoised = Denoiser.apply(normalized, w, h);
+  const inkMask = InkMaskExtractor.extract(normalized, w, h, borderMean);
+  const edges = EdgeExtractor.extract(denoised, w, h);
+  const merged = StrokeMerger.merge(edges, inkMask, w, h);
+  const polylines = PolylineTracer.trace(merged, w, h);
+  const targetPoints = options.targetPoints ?? targetPointsFromSpeed(options.speed);
+  return PolylineOptimizer.optimize(polylines, w, h, targetPoints);
+};
+
+export const extractPathFromImage = async (
+  file: File,
+  options: ExtractPathOptions = {}
+): Promise<Point[]> => {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      if (!ctx) {
+        URL.revokeObjectURL(url);
+        reject(new Error('Could not get canvas context'));
+        return;
+      }
+
+      const width = Math.max(1, Math.floor(img.width));
+      const height = Math.max(1, Math.floor(img.height));
+      canvas.width = width;
+      canvas.height = height;
+      ctx.imageSmoothingEnabled = true;
+      (ctx as unknown as { imageSmoothingQuality?: string }).imageSmoothingQuality = 'high';
+      ctx.drawImage(img, 0, 0, width, height);
+
+      const imageData = ctx.getImageData(0, 0, width, height);
+      const borderMean = estimateBorderGrayFromRGBA(imageData.data, width, height);
+      const resized = ImageResizer.resizeToSquareGray(imageData.data, width, height, WORK_SIZE, borderMean);
+      const points = extractPathFromGray(resized.gray, resized.w, resized.h, options);
+
+      URL.revokeObjectURL(url);
+      resolve(points);
+    };
+
+    img.onerror = (err) => {
+      URL.revokeObjectURL(url);
+      reject(err);
+    };
+
+    img.src = url;
+  });
+};
+
+export const extractEdgePath = (
+  data: Uint8ClampedArray,
+  width: number,
+  height: number,
+  opts: EdgeProcessingOptions = {}
+): Point[] => {
+  const merged = { ...defaultOptions, ...opts };
+  const detail = clamp01(merged.detail);
+  const sampleRate = typeof opts.sampleRate === 'number'
+    ? Math.max(1, Math.floor(merged.sampleRate))
+    : detail >= 0.88
+      ? 1
+      : detail >= 0.55
+        ? 2
+        : 3;
+  const maxPoints = Math.max(200, Math.floor(merged.maxPoints));
+  const smoothingWindow = Math.max(0, Math.floor(merged.smoothingWindow));
+  const blurRadius = Math.max(0, Math.floor(merged.blurRadius));
+  const morphRadius = Math.max(0, Math.floor(merged.morphRadius));
+  const threshold = Math.max(1, Math.floor(merged.threshold));
+
+  const { gray: rawGray, w, h, step } = downsampleGrayscale(data, width, height, sampleRate);
+  const gray = rawGray;
+
+  const method = merged.method ?? 'canny';
+  const sigmaBase = lerp(2.2, 0.75, detail);
+  const sigma = typeof opts.sigma === 'number'
+    ? Math.max(0, opts.sigma)
+    : blurRadius <= 0
+      ? 0
+      : sigmaBase * Math.max(0.5, blurRadius);
+  const highPercentile = typeof opts.highPercentile === 'number'
+    ? opts.highPercentile
+    : lerp(95, 85, detail);
+  const lowRatio = typeof opts.lowRatio === 'number'
+    ? opts.lowRatio
+    : lerp(0.5, 0.3, detail);
+
+  const edgeMask = buildEdgeMaskFromGray(gray, w, h, {
+    method,
+    sigma,
+    lowRatio,
+    highPercentile,
+    minEdgeFrac: opts.minEdgeFrac ?? merged.minEdgeFrac,
+    maxEdgeFrac: opts.maxEdgeFrac ?? merged.maxEdgeFrac,
+    morphRadius,
+    sampleRate: 1,
+    detail,
+    blurRadius,
+    threshold
+  } as EdgeProcessingOptions);
+
+  const polylinesIdx = edgeMaskToPolylines(edgeMask, w, h);
+  const minSegment = clampInt(Math.round(lerp(40, 10, detail)), 6, 80);
+  const epsilon = lerp(6, 1.2, detail) * step;
+
+  const polylines: Point[][] = polylinesIdx
+    .filter((poly) => poly.length >= minSegment)
+    .map((poly) => poly.map((idx) => idxToPoint(idx, w, step, width, height)))
+    .map((poly) => {
+      const cleaned = dedupeConsecutive(poly);
+      const closed = cleaned.length > 2 && cleaned[0].x === cleaned[cleaned.length - 1].x && cleaned[0].y === cleaned[cleaned.length - 1].y;
+      if (closed) {
+        const open = cleaned.slice(0, -1);
+        return closeLoop(simplifyRDP(open, epsilon));
+      }
+      return simplifyRDP(cleaned, epsilon);
+    })
+    .filter((poly) => poly.length >= 2);
+
+  if (polylines.length > 0) {
+    const joined = joinPolylines(polylines, detail);
+    const closed = closeLoop(dedupeConsecutive(joined));
+    const smoothed = smoothingWindow > 0 ? smoothClosed(closed, smoothingWindow) : closed;
+    const target = clampInt(Math.round(lerp(400, maxPoints, detail)), 120, maxPoints);
+    return resampleClosedPath(smoothed, target);
+  }
+
+  const legacyPoints: Point[] = [];
+  const getBrightness = (idx: number) => (data[idx] + data[idx + 1] + data[idx + 2]) / 3;
+
+  for (let y = 0; y < height; y += sampleRate) {
+    for (let x = 0; x < width; x += sampleRate) {
+      if (x <= 0 || y <= 0) continue;
+      const idx = (y * width + x) * 4;
+      const leftIdx = (y * width + (x - 1)) * 4;
+      const topIdx = ((y - 1) * width + x) * 4;
+      const b = getBrightness(idx);
+      const bLeft = getBrightness(leftIdx);
+      const bTop = getBrightness(topIdx);
+      const diff = Math.abs(b - bLeft) + Math.abs(b - bTop);
+      if (diff > threshold) {
+        legacyPoints.push({ x: x - width / 2, y: y - height / 2 });
+      }
+    }
+  }
+
+  if (legacyPoints.length === 0) return [];
+
+  const stepLegacy = legacyPoints.length > maxPoints ? Math.ceil(legacyPoints.length / maxPoints) : 1;
+  const limitedLegacy = stepLegacy === 1 ? legacyPoints : legacyPoints.filter((_, idx) => idx % stepLegacy === 0);
+  const orderedLegacy = buildPath(limitedLegacy);
+
+  const smoothedLegacy: Point[] = [];
+  for (let i = 0; i < orderedLegacy.length; i++) {
+    let sumX = 0;
+    let sumY = 0;
+    let count = 0;
+    for (let j = -smoothingWindow; j <= smoothingWindow; j++) {
+      const idx = (i + j + orderedLegacy.length) % orderedLegacy.length;
+      sumX += orderedLegacy[idx].x;
+      sumY += orderedLegacy[idx].y;
+      count++;
+    }
+    smoothedLegacy.push({ x: sumX / count, y: sumY / count });
+  }
+
+  return closeLoop(smoothedLegacy);
+};
+
+export const processImage = async (
+  file: File,
+  _maxDimension: number = WORK_SIZE,
+  opts: ExtractPathOptions = {}
+): Promise<Point[]> => {
+  return extractPathFromImage(file, opts);
+};

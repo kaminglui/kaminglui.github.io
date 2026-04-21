@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+    <title>Fourier Epicycles Lab - Ka Ming Lui</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fira+Code:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" />
+    <link rel="stylesheet" href="../../assets/css/style.css" data-vite-ignore />
+    <link rel="stylesheet" href="../../assets/css/fourier-epicycles.css" data-vite-ignore />
+    <link rel="stylesheet" href="../../assets/css/tailwind.css" data-vite-ignore />
+  </head>
+  <body class="theme-light">
+    <div id="site-header"></div>
+
+    <main class="lab-main">
+      <section class="lab-hero">
+        <div class="container">
+          <div class="lab-hero__inner">
+            <p class="lab-hero__eyebrow">Interactive lab</p>
+            <h1 class="lab-hero__title">Fourier Epicycles Visualizer</h1>
+            <p class="lab-hero__lead">
+              Draw freehand paths or load presets to see how the discrete Fourier transform rebuilds your strokes with
+              spinning vectors.
+            </p>
+            <p class="lab-panel__note">
+              Everything runs client-side - no API keys or uploads - so GitHub Pages can host it as a static experience.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section class="lab-section" aria-labelledby="fourier-title">
+        <div class="container">
+          <article class="card lab-card fourier-card">
+            <header class="lab-card__header">
+              <p class="lab-card__eyebrow">Signals into circles</p>
+              <div class="lab-card__title-row">
+                <h2 class="lab-card__title" id="fourier-title">Sketch, transform, and watch the epicycles trace back</h2>
+                <div class="lab-card__chips">
+                  <span class="lab-chip">DFT</span>
+                  <span class="lab-chip">Epicycles</span>
+                  <span class="lab-chip">Canvas</span>
+                </div>
+              </div>
+              <p class="lab-card__lead">
+                Use the toolbar to swap between presets, adjust speed, precision, outline polarity, and stroke styling,
+                or save and reload your own drawings. The math panel is always one toggle away if you want to see the
+                series details.
+              </p>
+            </header>
+
+            <nav class="lab-xrefs" aria-label="Related labs">
+              <div class="lab-xrefs__group">
+                <span class="lab-xrefs__label">Prereqs</span>
+                <a class="lab-xrefs__chip" href="../math-lab/#theory-linalg">Math · §4 linalg (eigenvalues, convolution)</a>
+              </div>
+              <div class="lab-xrefs__group">
+                <span class="lab-xrefs__label">Continues in</span>
+                <a class="lab-xrefs__chip" href="../diffusion-lab/#theory-rw">Diffusion · §3 random walk → SDE</a>
+                <a class="lab-xrefs__chip" href="../math-lab/#theory-linalg">Math · §4 convolution theorem</a>
+              </div>
+            </nav>
+
+            <aside class="lab-intro-steps" aria-label="Read this first">
+              <p class="lab-intro-steps__title">Read this first</p>
+              <ol>
+                <li>
+                  <strong>What it does</strong>
+                  Any closed path is a sum of rotating vectors. The DFT splits your stroke into frequencies; the visualizer draws those vectors as nested circles that retrace your drawing.
+                </li>
+                <li>
+                  <strong>Try this</strong>
+                  Pick a preset or sketch a shape, then drag <em>Precision</em> down to 3–5. The path coarsens but you can see exactly which frequencies are doing the work.
+                </li>
+                <li>
+                  <strong>Look for this</strong>
+                  Large low-frequency circles set the overall shape; small high-frequency ones add detail. Open the math panel to check coefficient magnitude |X<sub>k</sub>| and phase φ<sub>k</sub>.
+                </li>
+              </ol>
+            </aside>
+
+            <aside class="lab-intuition" aria-label="Why this works">
+              <h3 class="lab-intuition__title">Why can stacked circles draw anything?</h3>
+              <p>
+                One rotating vector traces a circle. Attach a second vector to the tip of the first — spinning faster
+                or slower — and the combined tip carves a richer curve: lobes, loops, even sharp cusps. Stack a third,
+                a fourth, and every extra term adds finer detail.
+              </p>
+              <p>
+                The Fourier claim is that with enough of these stacked rotations, at the right speeds and starting
+                phases, you can retrace <em>any</em> closed path exactly. The DFT is just the recipe that reads your
+                drawing and tells you each circle's radius (|X<sub>k</sub>|), starting angle (φ<sub>k</sub>), and
+                rotation speed (k cycles per trip around the path).
+              </p>
+            </aside>
+
+            <div class="fourier-shell">
+              <div id="fourier-root" class="fourier-root" aria-live="polite">
+                <div class="fourier-placeholder">
+                  <p class="placeholder-title">Loading playground...</p>
+                  <p class="placeholder-body">If it does not appear, refresh or enable JavaScript.</p>
+                </div>
+                <noscript>
+                  <div class="fourier-placeholder">
+                    <p class="placeholder-title">JavaScript required</p>
+                    <p class="placeholder-body">Enable JavaScript to load the Fourier playground.</p>
+                  </div>
+                </noscript>
+              </div>
+            </div>
+
+            <div class="fourier-notes">
+              <div>
+                <h3>How it works</h3>
+                <ul>
+                  <li>
+                    Draw or upload a shape - the path is sampled into points
+                    <span class="fourier-inline-math" data-katex="x_n"></span>
+                    and smoothed.
+                  </li>
+                  <li>
+                    The Discrete Fourier Transform (DFT) converts those points into complex coefficients
+                    <span class="fourier-inline-math" data-katex="X_k"></span>.
+                  </li>
+                  <li>
+                    Epicycles are drawn largest-to-smallest so you can see how each term changes the reconstruction
+                    <span class="fourier-inline-math" data-katex="x(t)"></span>.
+                  </li>
+                  <li>
+                    Toggle the math panel to inspect coefficient magnitude
+                    <span class="fourier-inline-math" data-katex="|X_k|"></span>
+                    and phase
+                    <span class="fourier-inline-math" data-katex="\phi_k"></span>.
+                  </li>
+                </ul>
+              </div>
+              <div>
+                <h3>What to try</h3>
+                <ul>
+                  <li>Switch to presets to see classic shapes rebuilt by the series.</li>
+                  <li>Drag "Precision" to limit how many epicycles you keep in the partial sum.</li>
+                  <li>Flip "Outline polarity" if an upload looks inverted or hollow.</li>
+                  <li>Save a drawing, reload it, then compare with a different speed factor.</li>
+                </ul>
+              </div>
+              <div>
+                <h3>Math checkpoints</h3>
+                <div class="note math-checkpoints">
+                  <span class="math-checkpoint__label">
+                    DFT coefficients <span class="fourier-inline-math" data-katex="X_k"></span>:
+                  </span>
+                  <span id="math-dft" class="math-checkpoint__equation"></span>
+                  <span class="math-checkpoint__label">
+                    Reconstruction <span class="fourier-inline-math" data-katex="x(t)"></span>:
+                  </span>
+                  <span id="math-recon" class="math-checkpoint__equation"></span>
+                </div>
+              </div>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section class="lab-section" aria-labelledby="fourier-theory-title">
+        <div class="container">
+          <article class="card lab-card">
+            <header class="lab-card__header">
+              <p class="lab-card__eyebrow">Beyond the visualizer</p>
+              <div class="lab-card__title-row">
+                <h2 class="lab-card__title" id="fourier-theory-title">Four flavours of Fourier — and the FFT that makes them fast</h2>
+                <div class="lab-card__chips">
+                  <span class="lab-chip">FT</span>
+                  <span class="lab-chip">FS</span>
+                  <span class="lab-chip">DTFT</span>
+                  <span class="lab-chip">DFT</span>
+                </div>
+              </div>
+              <p class="lab-card__lead">
+                The canvas above runs a <strong>DFT</strong> every frame. "Fourier transform" actually names a family
+                of four related transforms, one for each way your signal can be <em>continuous or discrete</em> in time
+                and <em>one-shot or repeating</em>.
+              </p>
+            </header>
+
+            <aside class="lab-intuition" aria-label="Plain-English intro">
+              <h3 class="lab-intuition__title">In plain English — what is a Fourier transform?</h3>
+              <p>
+                Imagine a fruit smoothie. You can taste banana, strawberry, and milk, but they're all blended together.
+                A Fourier transform is like a <strong>magic un-blender</strong>: you pour in the smoothie (a sound, a
+                wiggly line, a photo) and it hands you back the separate ingredients — each one a pure sine wave at a
+                specific speed.
+              </p>
+              <p>
+                The "ingredients" are called <strong>frequencies</strong>. Low frequencies wiggle slowly (a bass drum);
+                high frequencies wiggle quickly (a whistle). Every complicated signal in the world — a heartbeat, a
+                photo, your voice — is really just a pile of these pure-tone ingredients added together. The Fourier
+                transform tells you exactly <em>how much</em> of each ingredient is in the mix.
+              </p>
+              <p class="lab-intuition__note">
+                <strong>Quick glossary before we dive in:</strong>
+              </p>
+              <ul class="fourier-glossary">
+                <li><strong>Signal</strong> — anything that changes over time (or space, for an image). A sound wave, a stock price, a line you drew.</li>
+                <li><strong>Frequency</strong> — how many times something wiggles per second. Measured in hertz (Hz). Middle C on a piano is 261 Hz; a mosquito's wings are ~600 Hz.</li>
+                <li><strong>Amplitude</strong> — how big a wiggle is. Loud sounds have big amplitude; quiet sounds are small.</li>
+                <li><strong>Phase</strong> — where a wave starts. Two waves of the same frequency can be "in sync" or "offset" from each other.</li>
+                <li><strong>Spectrum</strong> — the list of all frequencies in a signal, with how much of each. It's the Fourier transform's output.</li>
+                <li><strong>DFT / FFT</strong> — the computer versions. DFT is the math; FFT is a clever fast way to compute it.</li>
+              </ul>
+            </aside>
+
+            <p class="fourier-matrix__axis-note">
+              <strong>The duality:</strong> whenever one domain is discrete, the other becomes periodic. Sample in
+              time → periodic spectrum. Periodic in time → discrete spectrum. Four quadrants fall out of that rule.
+            </p>
+
+            <div class="fourier-matrix">
+              <article class="fourier-matrix__cell">
+                <header>
+                  <p class="fourier-matrix__tag">Continuous · Aperiodic</p>
+                  <h3>Fourier Transform <span class="fourier-matrix__abbr">FT</span></h3>
+                </header>
+                <p class="fourier-matrix__kid">
+                  <strong>Kid version:</strong> you <em>clap once</em> in a quiet room. The sound is smooth (not chopped up) and doesn't repeat. The FT is the un-blender for this kind of sound — it tells you all the pitches that made up that single clap.
+                </p>
+                <p>The classic, "general" Fourier transform. Takes an arbitrary continuous signal and decomposes it into a <em>continuous</em> spectrum of frequencies.</p>
+                <div class="fourier-matrix__formula" data-katex="X(\omega) = \int_{-\infty}^{\infty} x(t)\, e^{-i\omega t}\, dt" data-katex-display></div>
+                <p class="fourier-matrix__example"><strong>Picture:</strong> a single clap in a quiet room — one-off, analogue, everything is smooth.</p>
+              </article>
+
+              <article class="fourier-matrix__cell">
+                <header>
+                  <p class="fourier-matrix__tag">Continuous · Periodic</p>
+                  <h3>Fourier Series <span class="fourier-matrix__abbr">FS</span></h3>
+                </header>
+                <p class="fourier-matrix__kid">
+                  <strong>Kid version:</strong> you play a note on a violin and <em>hold it</em>. The sound repeats the same wiggle over and over. The un-blender here finds a <em>ladder</em> of ingredients: the main pitch, then twice that pitch, three times, and so on. Those are called <strong>harmonics</strong>.
+                </p>
+                <p>A continuous signal that <em>repeats</em> every T seconds is built only from integer multiples of the fundamental frequency. The spectrum becomes a discrete ladder of harmonics.</p>
+                <div class="fourier-matrix__formula" data-katex="X_k = \frac{1}{T}\int_{0}^{T} x(t)\, e^{-i 2\pi k t / T}\, dt" data-katex-display></div>
+                <p class="fourier-matrix__example"><strong>Picture:</strong> a violin note held steady — periodic analogue waveform, harmonics at 1×, 2×, 3× … the fundamental.</p>
+              </article>
+
+              <article class="fourier-matrix__cell">
+                <header>
+                  <p class="fourier-matrix__tag">Discrete · Aperiodic</p>
+                  <h3>Discrete-Time FT <span class="fourier-matrix__abbr">DTFT</span></h3>
+                </header>
+                <p class="fourier-matrix__kid">
+                  <strong>Kid version:</strong> a microphone writes down the sound as <em>dots</em> (samples), one dot every tiny moment. Imagine it records forever. The DTFT is the un-blender for that endless dotted stream. Nobody actually computes this — it has infinite dots — but it's useful as a <em>mental model</em>.
+                </p>
+                <p>The signal is sampled at integer times but never repeats. The output is continuous in frequency — and it's also <em>periodic</em> with period 2π (sampling folds frequencies back on themselves).</p>
+                <div class="fourier-matrix__formula" data-katex="X(e^{i\omega}) = \sum_{n=-\infty}^{\infty} x[n]\, e^{-i\omega n}" data-katex-display></div>
+                <p class="fourier-matrix__example"><strong>Picture:</strong> an endless stream of microphone samples you analyse as a theoretical object. You wouldn't compute it directly — it's infinite.</p>
+              </article>
+
+              <article class="fourier-matrix__cell fourier-matrix__cell--highlight">
+                <header>
+                  <p class="fourier-matrix__tag">Discrete · Periodic</p>
+                  <h3>Discrete Fourier Transform <span class="fourier-matrix__abbr">DFT</span></h3>
+                </header>
+                <p class="fourier-matrix__kid">
+                  <strong>Kid version:</strong> grab a short clip of sound — say 1024 dots. Pretend those dots repeat forever. Now your un-blender has a finite job: 1024 dots in, 1024 frequency-bin amounts out. This is the <em>only</em> flavour a computer can actually calculate — and it's what the canvas above runs on every frame of your drawing.
+                </p>
+                <p>The one a computer actually computes. Take <em>N</em> samples, assume they repeat, and get back <em>N</em> frequency bins. Finite in both domains — perfect for a CPU.</p>
+                <div class="fourier-matrix__formula" data-katex="X_k = \sum_{n=0}^{N-1} x_n\, e^{-i 2\pi k n / N}" data-katex-display></div>
+                <p class="fourier-matrix__example"><strong>Picture:</strong> this visualizer! Every frame of the epicycle animation above comes straight from a DFT of your drawing.</p>
+              </article>
+            </div>
+
+            <div class="fourier-fft">
+              <h3>Why the FFT is a big deal</h3>
+              <p class="fourier-fft__kid">
+                <strong>Kid version:</strong> imagine sorting 1000 playing cards by number. The <em>slow way</em> is
+                to compare every card with every other card — that's a million comparisons. The <em>fast way</em> is
+                to split the deck in half, sort each half, then merge them. Keep splitting halves until each pile is
+                one card (already sorted!), then merge back up. That clever splitting is what the <strong>FFT</strong>
+                does for Fourier transforms. Same answer, a thousand times less work.
+              </p>
+              <p>
+                A straight DFT on <em>N</em> samples does <em>N</em>² work — one sum of <em>N</em> terms for each of
+                <em>N</em> output bins. The Fast Fourier Transform (Cooley &amp; Tukey, 1965) computes the same answer in
+                <em>N</em> · log<sub>2</sub> <em>N</em>. For <em>N</em> = 1024 that's <strong>10 240</strong> operations
+                instead of <strong>1 048 576</strong> — a 100× speedup. For a one-second audio clip at 48 kHz, minutes
+                become milliseconds.
+              </p>
+
+              <ol class="fourier-fft__steps">
+                <li>
+                  <strong>Split by parity.</strong>
+                  Separate the input into even-indexed samples <code>[x₀, x₂, x₄, …]</code> and odd-indexed samples
+                  <code>[x₁, x₃, x₅, …]</code>. Each half has <em>N</em>/2 elements.
+                </li>
+                <li>
+                  <strong>Recurse.</strong>
+                  Run a DFT on each half. If a half is small enough, do it directly; otherwise split it again. Halving
+                  log<sub>2</sub> <em>N</em> times gets you to size 1.
+                </li>
+                <li>
+                  <strong>Combine (butterfly).</strong>
+                  Each output bin <em>k</em> is <code>E<sub>k</sub> + W<sub>N</sub><sup>k</sup>·O<sub>k</sub></code>
+                  where <code>E, O</code> are the two sub-DFTs. The bin <em>k + N/2</em> uses the <em>same</em> two
+                  numbers with just a sign flip — nearly free.
+                </li>
+              </ol>
+
+              <div class="fourier-fft__formula" data-katex="\begin{aligned} X_k &amp;= E_k + W_N^{k}\, O_k \\ X_{k + N/2} &amp;= E_k - W_N^{k}\, O_k \end{aligned}" data-katex-display></div>
+
+              <p class="fourier-fft__intuition">
+                <strong>Intuition:</strong> doing one big DFT is like multiplying every sample by every frequency
+                separately. Splitting by parity lets half the multiplications be <em>shared</em> between bins <em>k</em>
+                and <em>k + N/2</em>, which recursively reduces redundant work at every level. The famous "butterfly"
+                diagram is just a picture of those shared multiplications stacked log<sub>2</sub> <em>N</em> layers deep.
+              </p>
+              <p class="fourier-fft__note">
+                <strong>Why blocks of 256 / 512 / 1024?</strong> Audio and image libraries pick powers of two because
+                the split-in-half recursion only bottoms out cleanly when <em>N</em> is one. Non-power-of-two FFTs
+                exist (Rader, Bluestein, mixed-radix) but they're slightly slower and trickier to implement.
+              </p>
+            </div>
+
+            <section class="fourier-extra" aria-label="Three more ways to think about the transform">
+              <h3 class="fourier-extra__title">Three more ways to think about the transform</h3>
+              <p class="fourier-extra__lead">
+                The same DFT sits in different mental models depending on who's using it. A linear-algebra view explains
+                <em>what</em> the transform is; the 2D extension explains how images plug in; and the DSP view explains
+                <em>why</em> people bother.
+              </p>
+
+              <article class="fourier-extra__topic">
+                <header>
+                  <span class="fourier-extra__num">1</span>
+                  <div>
+                    <p class="fourier-extra__tag">Matrix + polar coordinates</p>
+                    <h4>The DFT is one matrix multiplication</h4>
+                  </div>
+                </header>
+                <p class="fourier-extra__kid">
+                  <strong>Kid version:</strong> a <em>matrix</em> is just a grid of numbers. Imagine a multiplication
+                  table but filled with special spinning numbers. When you multiply your signal (a list of dots) by
+                  this grid, each row asks <em>"how much of MY wiggle is inside your signal?"</em> and the answer
+                  pops out. That's all a DFT is — one grid, one multiplication, all your frequencies.
+                </p>
+                <p>
+                  Every frequency bin <code>X<sub>k</sub></code> is a dot product of the signal vector with one row of
+                  a fixed <em>N</em>×<em>N</em> matrix — the <strong>DFT matrix</strong>. Its entries are all powers of
+                  a single complex number <code>ω = e<sup>−i 2π/N</sup></code>.
+                </p>
+                <div class="fourier-extra__formula" data-katex="\begin{bmatrix} X_0 \\ X_1 \\ X_2 \\ X_3 \end{bmatrix} = \begin{bmatrix} 1 &amp; 1 &amp; 1 &amp; 1 \\ 1 &amp; \omega &amp; \omega^2 &amp; \omega^3 \\ 1 &amp; \omega^2 &amp; \omega^4 &amp; \omega^6 \\ 1 &amp; \omega^3 &amp; \omega^6 &amp; \omega^9 \end{bmatrix} \begin{bmatrix} x_0 \\ x_1 \\ x_2 \\ x_3 \end{bmatrix}, \quad \omega = e^{-i 2\pi / 4}" data-katex-display></div>
+                <p>
+                  Each row of the matrix is a <em>sampled complex exponential</em> of a different frequency. Multiplying
+                  by the signal asks "how much of this exponential is in there?" The FFT is just a clever recursive way
+                  of doing this matrix multiply without writing the matrix out.
+                </p>
+                <p>
+                  Each <code>X<sub>k</sub></code> is a complex number, which lives more naturally in polar form:
+                </p>
+                <div class="fourier-extra__formula" data-katex="X_k = |X_k|\, e^{i \phi_k}" data-katex-display></div>
+                <p class="fourier-extra__kid">
+                  <strong>Kid version of "polar":</strong> you can give directions two ways.<br>
+                  <em>XY way (Cartesian):</em> "walk 3 blocks east and 4 blocks north".<br>
+                  <em>Polar way:</em> "walk 5 blocks facing northeast".<br>
+                  Same destination! Polar is <em>(how far, which direction)</em>. A frequency ingredient in polar form
+                  is (how loud, where it starts) — or, on the canvas above, (how big a circle, starting angle).
+                </p>
+                <p>
+                  The magnitude <code>|X<sub>k</sub>|</code> is <em>how much</em> of that frequency; the phase
+                  <code>φ<sub>k</sub></code> is <em>where</em> it starts. That's literally what the epicycle canvas
+                  above is drawing — each circle's radius is <code>|X<sub>k</sub>|</code>, its starting angle is
+                  <code>φ<sub>k</sub></code>, and its rotation speed is <em>k</em> cycles per trip around the path.
+                  The polar form <strong>is</strong> the picture.
+                </p>
+              </article>
+
+              <article class="fourier-extra__topic">
+                <header>
+                  <span class="fourier-extra__num">2</span>
+                  <div>
+                    <p class="fourier-extra__tag">Higher dimensions · 2D FFT</p>
+                    <h4>From 1D signals to 2D images</h4>
+                  </div>
+                </header>
+                <p class="fourier-extra__kid">
+                  <strong>Kid version:</strong> a photo is a <em>grid of pixels</em>, so it's a 2D signal (it wiggles
+                  both across and down). The 2D FFT finds wiggles in <em>both</em> directions at once — stripes, checker
+                  patterns, big blobs. The trick: FFT every row first, then FFT every column. That's how JPEG photos
+                  get compressed — the computer breaks the image into 8×8 tiles and FFTs each tile.
+                </p>
+                <p>
+                  An image is a 2D signal <code>x[m, n]</code>. The 2D DFT decomposes it into a grid of 2D "plane waves"
+                  — sinusoids that ripple in both directions at once.
+                </p>
+                <div class="fourier-extra__formula" data-katex="X[k, \ell] = \sum_{m=0}^{M-1} \sum_{n=0}^{N-1} x[m, n]\, e^{-i 2\pi \left( \frac{k m}{M} + \frac{\ell n}{N} \right)}" data-katex-display></div>
+                <p>
+                  The saving grace is <strong>separability</strong>: that 2D sum factors into a 1D FFT on every row,
+                  followed by a 1D FFT on every column. A naive 2D DFT of an <em>N</em>×<em>N</em> image would cost
+                  <em>N</em>⁴; the row-then-column FFT strategy brings it down to ~2·<em>N</em>²·log<sub>2</sub> <em>N</em>.
+                </p>
+                <p class="fourier-extra__examples">
+                  <strong>Common block sizes:</strong>
+                  <span class="fourier-extra__chip">8×8 — JPEG DCT blocks</span>
+                  <span class="fourier-extra__chip">16×16 — video motion estimation</span>
+                  <span class="fourier-extra__chip">32×32 &amp; 64×64 — FFT-based image convolution, texture synthesis</span>
+                </p>
+                <p class="fourier-extra__note">
+                  Smaller blocks localise the spectrum (they only mix nearby pixels); larger blocks catch coarser
+                  patterns but smear local detail. JPEG's 8×8 is a compromise between compressibility and visible
+                  block artifacts; 32×32 or 64×64 give much better frequency resolution for scientific imaging.
+                </p>
+              </article>
+
+              <article class="fourier-extra__topic fourier-proof">
+                <header>
+                  <span class="fourier-extra__num">★</span>
+                  <div>
+                    <p class="fourier-extra__tag">Matrix factorization proof</p>
+                    <h4>Why N² becomes N log N — the Cooley–Tukey derivation</h4>
+                  </div>
+                </header>
+                <p class="fourier-extra__kid">
+                  <strong>Kid version:</strong> the DFT grid has a hidden secret — the numbers inside aren't random,
+                  they're all powers of one "spinning" number. That's a lot of repetition! We can take the big grid and
+                  write it as a <em>product of smaller grids</em>, then multiply each smaller grid one after the other.
+                  Doing a few small multiplications in a row beats one giant one. The math below makes that
+                  "break-it-down" idea precise.
+                </p>
+                <p>
+                  The "split by parity, recurse" story above is really a <em>matrix factorization</em> in disguise.
+                  Making it explicit shows why the FFT has to exist: the DFT matrix has so much algebraic redundancy
+                  that it can be written as a product of sparse pieces, and applying those pieces in sequence is
+                  dramatically cheaper than applying the dense matrix directly.
+                </p>
+
+                <h5>Step 1 · every DFT entry is a root of unity</h5>
+                <p>
+                  Define <code>ω<sub>N</sub> = e<sup>i 2π/N</sup></code>. These are the <strong>N-th roots of unity</strong>
+                  — <em>N</em> equally spaced points on the unit circle. For <em>N</em> = 6 it's a regular hexagon; for
+                  <em>N</em> = 32 it's a 32-gon; and so on. Every entry of the DFT matrix is one of these raised to some power.
+                </p>
+                <div class="fourier-extra__formula" data-katex="\omega_N = e^{i 2\pi / N} = \cos\tfrac{2\pi}{N} + i \sin\tfrac{2\pi}{N}, \qquad (F_N)_{jk} = \omega_N^{\,jk}" data-katex-display></div>
+                <p>
+                  The symmetry that unlocks the speedup is that <code>ω<sub>N</sub><sup>k + N/2</sup> = −ω<sub>N</sub><sup>k</sup></code>
+                  — half the powers are just sign flips of the other half. That's a lot of redundancy to exploit.
+                </p>
+
+                <h5>Step 2 · F<sub>N</sub> splits into two F<sub>N/2</sub>'s</h5>
+                <p>
+                  After permuting inputs into even-indexed and odd-indexed halves (<code>P</code> below),
+                  F<sub>N</sub> factorises as:
+                </p>
+                <div class="fourier-extra__formula" data-katex="F_N = \begin{bmatrix} I &amp; D \\ I &amp; -D \end{bmatrix} \begin{bmatrix} F_{N/2} &amp; 0 \\ 0 &amp; F_{N/2} \end{bmatrix} P" data-katex-display></div>
+                <p>
+                  Here <code>I</code> is the (N/2)×(N/2) identity and <code>D = diag(1, ω<sub>N</sub>, ω<sub>N</sub>², …, ω<sub>N</sub><sup>N/2−1</sup>)</code>
+                  holds the <strong>twiddle factors</strong>. The left "butterfly" block <code>[I D; I −D]</code>
+                  costs <code>N</code> operations to apply (one diagonal multiply + one add/subtract per element).
+                  The middle block is two independent F<sub>N/2</sub>'s on the two halves. The permutation is free.
+                </p>
+
+                <h5>Step 3 · recurse all the way down</h5>
+                <p>
+                  The same trick applies to each F<sub>N/2</sub>, which splits into two F<sub>N/4</sub>'s, and so on.
+                  After <code>log<sub>2</sub> N</code> levels the recursion reaches <code>F<sub>1</sub> = [1]</code>
+                  and every layer between is just butterflies and permutations. The operation count satisfies
+                  the classic recurrence:
+                </p>
+                <div class="fourier-extra__formula" data-katex="T(N) = 2\, T(N/2) + N, \qquad \Rightarrow \qquad T(N) = \tfrac{1}{2}\, N \log_2 N" data-katex-display></div>
+                <p>
+                  Concretely the blackboard tallies it level by level: <code>T(64) = 2·T(32) + 64</code>,
+                  <code>T(32) = 2·T(16) + 32</code>, ... down to log<sub>2</sub> 64 = 6 layers of work. Total for N=64:
+                  ~6 · 32 = 192 complex multiplies instead of 64² = 4096.
+                </p>
+
+                <h5>Step 4 · the payoff</h5>
+                <p>For <em>N</em> = 1024 = 2<sup>10</sup>:</p>
+                <ul class="fourier-extra__list">
+                  <li>Direct DFT: <code>N² = 1,048,576</code> multiplications — over a million.</li>
+                  <li>FFT: <code>(N/2) · log<sub>2</sub> N = 512 · 10 = 5,120</code> — just <em>5× N</em>.</li>
+                  <li>Speedup: <strong>~200×</strong>.</li>
+                </ul>
+
+                <p class="fourier-extra__note">
+                  <strong>The philosophical takeaway:</strong> FFT is a form of information compression — not of the
+                  data, but of the <em>work</em> needed to analyse it. The DFT matrix's algebraic structure
+                  (everything is a root-of-unity power) lets us factor a dense N² object into log<sub>2</sub> N sparse
+                  layers. Same output; orders of magnitude less effort. That's why Gilbert Strang called the FFT
+                  "the most important algorithm of our lifetime" and why it shows up in every corner of numerical
+                  computing.
+                </p>
+              </article>
+
+              <article class="fourier-extra__topic">
+                <header>
+                  <span class="fourier-extra__num">3</span>
+                  <div>
+                    <p class="fourier-extra__tag">Digital signal processing</p>
+                    <h4>Where engineers actually use this</h4>
+                  </div>
+                </header>
+                <p class="fourier-extra__kid">
+                  <strong>Kid version:</strong> <em>DSP</em> stands for <strong>Digital Signal Processing</strong> —
+                  using computer math on things like music, pictures, and radio waves. FFT is DSP's favourite tool.
+                  Think <em>removing the bass from a song</em> (filtering), <em>seeing which pitches are in someone's
+                  voice</em> (spectrogram), or <em>squeezing a song into a tiny MP3 file</em> (compression). Same math
+                  under the hood.
+                </p>
+                <p>
+                  In DSP, the FFT is a tool, not a trophy. It earns its keep in three big ways:
+                </p>
+                <ul class="fourier-extra__list">
+                  <li>
+                    <strong>Filtering via the convolution theorem.</strong> Convolving in time is the same as
+                    multiplying in frequency. To apply a low-pass filter to an audio signal: FFT the signal, multiply
+                    each bin by the filter's response, inverse FFT back. Goes from <em>N</em>² additions to
+                    <em>N</em>·log <em>N</em> — the move behind every real-time reverb, noise reduction, and echo
+                    cancelling plugin.
+                  </li>
+                  <li>
+                    <strong>Spectral analysis.</strong> Watching <code>|X<sub>k</sub>|</code> change over time (a
+                    <em>spectrogram</em>) reveals a signal's fingerprint: pitch in speech, modes in a vibrating
+                    bridge, a tumour's texture under ultrasound, interference in a radio link.
+                  </li>
+                  <li>
+                    <strong>Lossy compression.</strong> MP3, JPEG, and MPEG all transform into a frequency-like
+                    domain, quantise small coefficients aggressively, and rely on the human eye/ear not missing what
+                    they threw away. Without the FFT's speed, those codecs wouldn't be feasible on consumer hardware.
+                  </li>
+                </ul>
+                <div class="fourier-extra__formula" data-katex="\mathcal{F}\{\, x * h \,\} = X \cdot H" data-katex-display></div>
+                <p>
+                  That one-line identity — convolution in time, multiplication in frequency — is the reason the FFT
+                  shows up in places that look nothing like spinning circles: polynomial multiplication, large-integer
+                  arithmetic, cross-correlation, GPS signal acquisition, partial differential equation solvers.
+                </p>
+              </article>
+            </section>
+          </article>
+        </div>
+      </section>
+    </main>
+
+    <div id="site-footer"></div>
+
+    <script type="module">
+      import { initMainLayout } from '../../assets/js/layout/mainLayout.js';
+      initMainLayout('fourier-epicycles');
+    </script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+    <script>
+      document.addEventListener('DOMContentLoaded', () => {
+        if (!window.katex) return;
+        const render = (el, tex, displayMode) => {
+          if (!el) return;
+          window.katex.render(tex, el, { throwOnError: false, displayMode });
+        };
+
+        const dftEl = document.getElementById('math-dft');
+        const reconEl = document.getElementById('math-recon');
+        render(dftEl, 'X_k = \\frac{1}{N}\\sum_{n=0}^{N-1} x_n e^{-i 2\\pi k n / N}', true);
+        render(reconEl, 'x(t) = \\sum_{k=0}^{N-1} |X_k| e^{i\\left(2\\pi kt/N + \\phi_k\\right)}', true);
+
+        document.querySelectorAll('[data-katex]').forEach((el) => {
+          const tex = el.getAttribute('data-katex');
+          if (!tex) return;
+          const displayMode = el.hasAttribute('data-katex-display');
+          render(el, tex, displayMode);
+        });
+      });
+    </script>
+    <script type="module" src="./index.tsx"></script>
+  </body>
+</html>

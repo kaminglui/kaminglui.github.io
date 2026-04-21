@@ -1,0 +1,109 @@
+/* Math Foundations Lab — interactive GD/SGD/SA on 2D landscapes plus PCA
+   on 2D scatter. Layout classes (.rl-theory, .rl-equation, .rl-compare,
+   .rl-clusters, .rl-taxonomy) are reused from rl-lab.css; this file only
+   adds selectors for the two canvases, preset chips, and the family
+   accents used by the §7 clustering map. */
+
+.math-canvas-wrapper {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-sm);
+  padding: 0.45rem;
+}
+#gd-canvas,
+#pca-canvas {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  display: block;
+  background: var(--color-bg);
+  border-radius: var(--radius-sm);
+}
+
+.math-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  align-items: center;
+}
+.math-presets__label {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--color-muted);
+}
+.math-preset {
+  padding: 0.35rem 0.7rem;
+  border-radius: 999px;
+  border: 1px solid var(--color-border);
+  background: var(--color-bg);
+  color: var(--color-muted);
+  font-size: 0.8rem;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.12s ease, color 0.12s ease, border-color 0.12s ease;
+}
+.math-preset:hover,
+.math-preset:focus-visible {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
+.math-preset.is-active {
+  background: var(--color-accent-muted);
+  color: var(--color-accent);
+  border-color: var(--color-accent);
+}
+
+.math-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  font-size: 0.78rem;
+  color: var(--color-muted);
+  margin-top: 0.35rem;
+}
+.math-legend__swatch {
+  display: inline-block;
+  width: 0.7rem;
+  height: 0.7rem;
+  border-radius: 2px;
+  margin-right: 0.3rem;
+  vertical-align: middle;
+}
+
+/* Inline illustrative SVG figures used throughout the theory panels so the
+   math ↔ picture ratio stays balanced. Each figure gets a caption below;
+   side-by-side figures wrap into a responsive grid. */
+.math-figure {
+  display: block;
+  margin: 0.75rem auto;
+  max-width: 380px;
+  font-size: 0.82rem;
+  color: var(--color-muted);
+}
+.math-figure__svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  background: var(--color-bg-alt);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+.math-figure__caption {
+  margin: 0.4rem 0 0;
+  text-align: center;
+  line-height: 1.4;
+}
+.math-figures {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 0.9rem;
+  margin: 0.85rem 0 0.6rem;
+}
+.math-figures .math-figure { margin: 0; max-width: none; }
+
+/* §7 clustering-map family colours. */
+.rl-cluster[data-family='opt']    { --family-accent: #3b82f6; }
+.rl-cluster[data-family='linalg'] { --family-accent: #a855f7; }
+.rl-cluster[data-family='stat']   { --family-accent: #f97316; }
+.rl-cluster[data-family='approx'] { --family-accent: #22c55e; }

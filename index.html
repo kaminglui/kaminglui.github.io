@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+    <meta
+      name="description"
+      content="Machine learning engineering journal and technical profile for Ka Ming Lui, Penn State M.S. student."
+    />
+    <title>Ka Ming Lui · Machine Learning Engineer</title>
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Ka Ming Lui" />
+    <meta property="og:title" content="Ka Ming Lui · Machine Learning Engineer" />
+    <meta
+      property="og:description"
+      content="Machine learning engineering journal and technical profile for Ka Ming Lui, Penn State M.S. student."
+    />
+    <meta property="og:url" content="https://kaminglui.github.io/" />
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content="Ka Ming Lui · Machine Learning Engineer" />
+    <meta
+      name="twitter:description"
+      content="Machine learning engineering journal and technical profile for Ka Ming Lui, Penn State M.S. student."
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fira+Code:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="assets/css/style.css" />
+  </head>
+  <body class="theme-light">
+    <main>
+      <section class="hero" id="hero">
+        <div class="container hero__layout">
+          <div class="hero__content">
+            <p class="hero__eyebrow" data-content="hero.eyebrow"></p>
+            <h1 class="hero__title" data-content="hero.title"></h1>
+            <p class="hero__lead" data-content="hero.lead"></p>
+          </div>
+        </div>
+      </section>
+
+      <section class="labs-section" id="labs" aria-labelledby="labs-title">
+        <div class="container">
+          <header class="labs-section__header">
+            <p class="card__eyebrow">Labs</p>
+            <h2 class="labs-section__title" id="labs-title">How the labs fit together</h2>
+            <p class="labs-section__lead">
+              Seven interactive labs covering the math and methods behind modern machine learning. They build
+              on each other — skim the tier you already know, spend time on the one you don't. Hover any chip
+              to see what a term means; click to jump straight to that section.
+            </p>
+          </header>
+
+          <div class="labs-map" role="list">
+            <div class="labs-map__tier">
+              <div class="labs-map__tier-label"><span>Tier 1</span> Foundations</div>
+              <div class="labs-map__grid">
+                <a class="labs-map__card" href="pages/math-lab/" role="listitem">
+                  <p class="labs-map__eyebrow">Math Foundations</p>
+                  <h3 class="labs-map__heading">Optimisation · Linear algebra · PCA</h3>
+                  <p class="labs-map__body">
+                    Calculus, linear algebra, and PCA — what every ML method reuses. Interactive GD/SGD/SA on
+                    a 2D landscape, and a live PCA of a 2D scatter.
+                  </p>
+                  <ul class="labs-map__chips">
+                    <li>argmin · Lagrangian</li>
+                    <li>GD / SGD / momentum</li>
+                    <li>eigenvalues · SVD</li>
+                    <li>universal approx</li>
+                  </ul>
+                </a>
+                <a class="labs-map__card" href="pages/fourier-epicycles/" role="listitem">
+                  <p class="labs-map__eyebrow">Fourier Epicycles</p>
+                  <h3 class="labs-map__heading">Signals, DFT, FFT</h3>
+                  <p class="labs-map__body">
+                    Decompose any signal into rotating circles. DFT, FFT (Cooley-Tukey), 2D Fourier, and the
+                    SDE bridge that shows up again in Diffusion.
+                  </p>
+                  <ul class="labs-map__chips">
+                    <li>DFT · FFT</li>
+                    <li>Cooley-Tukey matrix proof</li>
+                    <li>2D Fourier</li>
+                    <li>Convolution theorem</li>
+                  </ul>
+                </a>
+              </div>
+            </div>
+
+            <div class="labs-map__divider" aria-hidden="true"><span>builds on</span></div>
+
+            <div class="labs-map__tier">
+              <div class="labs-map__tier-label"><span>Tier 2</span> Core ML</div>
+              <div class="labs-map__grid">
+                <a class="labs-map__card" href="pages/classical-ml/" role="listitem">
+                  <p class="labs-map__eyebrow">ML Lab</p>
+                  <h3 class="labs-map__heading">Supervised + unsupervised, from first principles</h3>
+                  <p class="labs-map__body">
+                    Linear regression via closed-form OLS, logistic regression via GD on cross-entropy,
+                    SVM with margin lines + support vectors, K-means and Gaussian-mixture clustering via EM.
+                    The full math — MLE, MAP, Lagrangian duals, kernels, bias–variance, regularisation.
+                  </p>
+                  <ul class="labs-map__chips">
+                    <li>squared / hinge / cross-entropy loss</li>
+                    <li>MLE · MAP · EM</li>
+                    <li>K-means · GMM · responsibilities</li>
+                    <li>kernels · ridge / lasso</li>
+                  </ul>
+                </a>
+              </div>
+            </div>
+
+            <div class="labs-map__divider" aria-hidden="true"><span>builds on</span></div>
+
+            <div class="labs-map__tier">
+              <div class="labs-map__tier-label"><span>Tier 3</span> Modern deep learning</div>
+              <div class="labs-map__grid">
+                <a class="labs-map__card" href="pages/rl-lab/" role="listitem">
+                  <p class="labs-map__eyebrow">RL Lab</p>
+                  <h3 class="labs-map__heading">Bandits → MDP → actor-critic</h3>
+                  <p class="labs-map__body">
+                    Agents that learn from reward. Bandits, value iteration on a 1D chain, Monte Carlo darts,
+                    Bayesian coin update, and nine KaTeX theory panels ending in a method clustering map.
+                  </p>
+                  <ul class="labs-map__chips">
+                    <li>ε-greedy · UCB · Thompson</li>
+                    <li>value / policy iteration</li>
+                    <li>TD · SARSA · Q-learning</li>
+                    <li>actor-critic (PPO / SAC)</li>
+                  </ul>
+                </a>
+                <a class="labs-map__card" href="pages/transformer-lab/" role="listitem">
+                  <p class="labs-map__eyebrow">Transformer Lab</p>
+                  <h3 class="labs-map__heading">Live attention pipeline</h3>
+                  <p class="labs-map__body">
+                    Type a sentence and watch it turn into tokens, Q/K/V projections, an attention heatmap,
+                    and a blended context vector — every number computed live.
+                  </p>
+                  <ul class="labs-map__chips">
+                    <li>tokens · embeddings</li>
+                    <li>Q · K · V</li>
+                    <li>softmax attention</li>
+                    <li>context vectors</li>
+                  </ul>
+                </a>
+                <a class="labs-map__card" href="pages/diffusion-lab/" role="listitem">
+                  <p class="labs-map__eyebrow">Diffusion Lab</p>
+                  <h3 class="labs-map__heading">Noise → data</h3>
+                  <p class="labs-map__body">
+                    Watch a 2D particle cloud dissolve into Gaussian static and re-assemble using the analytic
+                    score of the target mixture. VAEs, DDPM, score matching, SDEs, flow matching.
+                  </p>
+                  <ul class="labs-map__chips">
+                    <li>KL · ELBO · VAE</li>
+                    <li>DDPM · score matching</li>
+                    <li>VP / VE SDE · PF-ODE</li>
+                    <li>flow matching · consistency</li>
+                  </ul>
+                </a>
+              </div>
+            </div>
+
+            <div class="labs-map__aside" aria-hidden="true">
+              <span class="labs-map__aside-label">Separate track</span>
+              <a class="labs-map__card labs-map__card--aside" href="pages/circuit-lab/">
+                <p class="labs-map__eyebrow">Circuit Lab</p>
+                <h3 class="labs-map__heading">Analog circuit simulator</h3>
+                <p class="labs-map__body">
+                  Hardware / EE side of the site — a full in-browser SPICE-style simulator for resistors, caps,
+                  inductors, op-amps, diodes, BJTs, MOSFETs. Independent of the ML track above.
+                </p>
+              </a>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </main>
+
+    <div id="site-footer"></div>
+
+    <script type="module">
+      import { initMainLayout } from './assets/js/layout/mainLayout.js';
+      initMainLayout('home', { useLocalAnchors: true });
+    </script>
+    <script type="module" src="assets/js/main.js"></script>
+  </body>
+</html>

@@ -1,0 +1,71 @@
+/* Diffusion Lab — 2D particle denoiser + theory tour. Most layout classes
+   (.rl-theory, .rl-equation, .rl-clusters, .rl-updates, .rl-compare, etc.)
+   are reused from rl-lab.css so the two labs stay visually aligned. This
+   file only adds selectors specific to the particle canvas, the schedule
+   mini-chart, preset chips, and the four clustering families used in §9. */
+
+.diff-canvas-wrapper {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-sm);
+  padding: 0.5rem;
+}
+#diff-canvas {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 1 / 1;
+  display: block;
+  background: radial-gradient(circle at 50% 50%, rgba(59, 130, 246, 0.05), transparent 70%), var(--color-bg);
+  border-radius: var(--radius-sm);
+}
+
+.diff-schedule {
+  width: 100%;
+  height: 70px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg);
+  display: block;
+}
+
+.diff-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  align-items: center;
+}
+.diff-presets__label {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--color-muted);
+}
+.diff-preset {
+  padding: 0.35rem 0.75rem;
+  border-radius: 999px;
+  border: 1px solid var(--color-border);
+  background: var(--color-bg);
+  color: var(--color-muted);
+  font-size: 0.82rem;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.12s ease, color 0.12s ease, border-color 0.12s ease;
+}
+.diff-preset:hover,
+.diff-preset:focus-visible {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
+.diff-preset.is-active {
+  background: var(--color-accent-muted);
+  color: var(--color-accent);
+  border-color: var(--color-accent);
+}
+
+/* Four clustering families for §9 (Diffusion method map). Reuses the
+   .rl-cluster structure; only the data-family colour slots change. */
+.rl-cluster[data-family='likelihood'] { --family-accent: #3b82f6; }
+.rl-cluster[data-family='score']      { --family-accent: #a855f7; }
+.rl-cluster[data-family='flow']       { --family-accent: #f97316; }
+.rl-cluster[data-family='consistency']{ --family-accent: #22c55e; }

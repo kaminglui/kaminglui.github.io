@@ -1,0 +1,105 @@
+/* Classical ML Lab — three chained 2D scatter demos (linear regression,
+   logistic regression, linear SVM) + a seven-panel theory tour. Reuses the
+   layout classes in rl-lab.css; this file only adds canvas wrappers, preset
+   chips, and the family accents for §7's clustering map. */
+
+.cml-canvas-wrap {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-sm);
+  padding: 0.45rem;
+}
+#linreg-canvas,
+#logreg-canvas,
+#svm-canvas {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  display: block;
+  background: var(--color-bg);
+  border-radius: var(--radius-sm);
+}
+
+.cml-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  align-items: center;
+}
+.cml-presets__label {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--color-muted);
+}
+.cml-preset {
+  padding: 0.35rem 0.7rem;
+  border-radius: 999px;
+  border: 1px solid var(--color-border);
+  background: var(--color-bg);
+  color: var(--color-muted);
+  font-size: 0.8rem;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.12s ease, color 0.12s ease, border-color 0.12s ease;
+}
+.cml-preset:hover,
+.cml-preset:focus-visible {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
+.cml-preset.is-active {
+  background: var(--color-accent-muted);
+  color: var(--color-accent);
+  border-color: var(--color-accent);
+}
+
+.cml-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  font-size: 0.78rem;
+  color: var(--color-muted);
+  margin-top: 0.35rem;
+}
+.cml-legend__swatch {
+  display: inline-block;
+  width: 0.7rem;
+  height: 0.7rem;
+  border-radius: 2px;
+  margin-right: 0.3rem;
+  vertical-align: middle;
+}
+
+.cml-class-toggle {
+  display: inline-flex;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  overflow: hidden;
+}
+.cml-class-toggle__btn {
+  padding: 0.4rem 0.75rem;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-weight: 700;
+  color: var(--color-muted);
+  transition: background 120ms ease, color 120ms ease;
+}
+.cml-class-toggle__btn + .cml-class-toggle__btn {
+  border-left: 1px solid var(--color-border);
+}
+.cml-class-toggle__btn.is-pos { color: #3b82f6; }
+.cml-class-toggle__btn.is-neg { color: #f97316; }
+.cml-class-toggle__btn.is-active.is-pos {
+  background: rgba(59, 130, 246, 0.14);
+}
+.cml-class-toggle__btn.is-active.is-neg {
+  background: rgba(249, 115, 22, 0.14);
+}
+
+/* §7 cluster colours for Classical ML families. */
+.rl-cluster[data-family='reg']       { --family-accent: #3b82f6; }
+.rl-cluster[data-family='clf']       { --family-accent: #a855f7; }
+.rl-cluster[data-family='kernel']    { --family-accent: #f97316; }
+.rl-cluster[data-family='regularise']{ --family-accent: #22c55e; }

@@ -1,0 +1,685 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+    <title>Circuit Forge</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fira+Code:wght@400;500&display=swap"
+        rel="stylesheet"
+    />
+    <link rel="stylesheet" href="../../assets/css/style.css" />
+    <link rel="stylesheet" href="../../assets/css/tailwind.css" />
+    <link rel="stylesheet" href="../../assets/css/circuit-lab.css" />
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet" />
+
+
+</head>
+<body class="theme-dark">
+
+    <div id="site-header"></div>
+
+    <main id="circuit-lab-root" class="circuit-lab-root flex-row">
+        <aside id="sidebar" class="sidebar">
+            <div class="sidebar-header">
+                <div class="flex items-center gap-3 w-full">
+                    <div class="w-8 h-8 rounded bg-blue-600 flex items-center justify-center text-white shrink-0">
+                        <i class="fas fa-microchip"></i>
+                    </div>
+                <div class="flex flex-col">
+                    <span class="text-sm font-bold leading-tight tracking-tight">Circuit Forge</span>
+                    <span class="text-[10px] text-gray-500 font-semibold tracking-wider">SIMULATOR</span>
+                </div>
+            </div>
+        </div>
+
+            <div id="tool-scroll" class="flex-1 overflow-y-auto p-4 space-y-6" style="padding-bottom: calc(var(--simbar-h) + 24px);">
+                <div id="component-search-wrap">
+                    <i class="fas fa-search search-icon"></i>
+                    <input id="component-search" type="search" placeholder="Search parts..." autocomplete="off" />
+                </div>
+                <div>
+                    <h3 class="text-[11px] font-bold text-gray-400 uppercase mb-3 tracking-widest flex items-center gap-2">
+                        <i class="fas fa-bolt text-xs opacity-50"></i> Power
+                    </h3>
+                    <div class="grid grid-cols-2 gap-2">
+                        <button class="tool-btn p-2 rounded flex flex-col items-center gap-1"
+                                onclick="selectTool('voltageSource', this)">
+                            <span class="text-[10px] font-semibold mt-1">DC</span>
+                        </button>
+                        <button class="tool-btn p-2 rounded flex flex-col items-center gap-1"
+                                onclick="selectTool('funcGen', this)">
+                            <span class="text-[10px] font-semibold mt-1">AC</span>
+                        </button>
+                        <button class="tool-btn p-2 rounded flex flex-col items-center gap-1"
+                                onclick="selectTool('currentSource', this)">
+                            <span class="text-[10px] font-semibold mt-1">I src</span>
+                        </button>
+                        <button class="tool-btn p-2 rounded flex flex-col items-center gap-1"
+                                onclick="selectTool('ground', this)">
+                            <span class="text-[10px] font-semibold mt-1">GND</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div>
+                    <h3 class="text-[11px] font-bold text-gray-400 uppercase mb-3 tracking-widest flex items-center gap-2">
+                        <i class="fas fa-cubes text-xs opacity-50"></i> Parts
+                    </h3>
+                    <div class="grid grid-cols-2 gap-2">
+                        <button class="tool-btn p-2" onclick="selectTool('resistor', this)">
+                            <span class="text-[11px] font-medium">Resistor</span>
+                        </button>
+                        <button class="tool-btn p-2" onclick="selectTool('capacitor', this)">
+                            <span class="text-[11px] font-medium">Capacitor</span>
+                        </button>
+                        <button class="tool-btn p-2" onclick="selectTool('inductor', this)">
+                            <span class="text-[11px] font-medium">Inductor</span>
+                        </button>
+                        <button class="tool-btn p-2" onclick="selectTool('bjt', this)">
+                            <span class="text-[11px] font-medium">BJT</span>
+                        </button>
+                        <button class="tool-btn p-2" onclick="selectTool('diode', this)">
+                            <span class="text-[11px] font-medium">Diode</span>
+                        </button>
+                        <button class="tool-btn p-2" onclick="selectTool('led', this)">
+                            <span class="text-[11px] font-medium">LED</span>
+                        </button>
+                        <button class="tool-btn p-2" onclick="selectTool('switch', this)">
+                            <span class="text-[11px] font-medium">Switch</span>
+                        </button>
+                        <button class="tool-btn p-2" onclick="selectTool('potentiometer', this)">
+                            <span class="text-[11px] font-medium">Potentiometer</span>
+                        </button>
+                        <button class="tool-btn p-2" onclick="selectTool('mosfet', this)">
+                            <span class="text-[11px] font-medium">MOSFET</span>
+                        </button>
+                        <button class="tool-btn p-2 col-span-2" onclick="selectTool('lf412', this)">
+                            <span class="text-[11px] font-medium">Op-Amp (LF412)</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div>
+                    <h3 class="text-[11px] font-bold text-gray-400 uppercase mb-3 tracking-widest flex items-center gap-2">
+                        <i class="fas fa-chart-line text-xs opacity-50"></i> Analysis
+                    </h3>
+                    <div class="grid grid-cols-1 gap-2">
+                        <button class="tool-btn p-3 flex items-center justify-center gap-3"
+                                onclick="selectTool('oscilloscope', this)">
+                            <i class="fas fa-wave-square text-yellow-400"></i>
+                            <span class="text-[11px] font-bold">Oscilloscope</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div>
+                    <h3 class="text-[11px] font-bold text-gray-400 uppercase mb-3 tracking-widest flex items-center gap-2">
+                        <i class="fas fa-puzzle-piece text-xs opacity-50"></i> Templates
+                    </h3>
+                    <div id="template-grid" class="grid grid-cols-2 gap-2"></div>
+                </div>
+
+                <div id="properties-panel" class="hidden bg-gray-800/50 p-3 rounded border border-gray-700">
+                    <div class="flex justify-between items-center mb-2 pb-2 border-b border-gray-700">
+                        <span class="text-xs font-bold text-blue-400 uppercase" id="prop-title">Props</span>
+                        <div class="flex gap-2 text-xs">
+                             <button onclick="rotateSelected()"><i class="fas fa-redo"></i></button>
+                             <button onclick="deleteSelected()" class="text-red-400"><i class="fas fa-trash"></i></button>
+                        </div>
+                    </div>
+                    <div id="dynamic-props" class="space-y-2"></div>
+                </div>
+            </div>
+        </aside>
+            <div class="canvas-shell">
+            <div class="canvas-controls">
+                <div class="canvas-controls__row">
+                    <button onclick="zoomOutButton()"
+                            class="canvas-ctrl-btn canvas-ctrl-btn--icon has-tooltip"
+                            data-tooltip="Zoom Out" aria-label="Zoom Out">
+                        <i class="fas fa-search-minus"></i>
+                    </button>
+                    <button onclick="zoomInButton()"
+                            class="canvas-ctrl-btn canvas-ctrl-btn--icon has-tooltip"
+                            data-tooltip="Zoom In" aria-label="Zoom In">
+                        <i class="fas fa-search-plus"></i>
+                    </button>
+                </div>
+                <button onclick="toggleView()" id="view-btn"
+                        class="canvas-ctrl-btn has-tooltip"
+                        data-tooltip="Toggle View" aria-label="Toggle View">
+                    <i class="fas fa-layer-group"></i>
+                    <span id="view-label">Schematic View</span>
+                </button>
+                <button onclick="toggleProbeMode()" id="probe-btn"
+                        class="canvas-ctrl-btn has-tooltip"
+                        data-tooltip="Probe voltages (V)" aria-label="Probe voltages">
+                    <i class="fas fa-crosshairs"></i>
+                    <span>Probe</span>
+                </button>
+                <button onclick="toggleHeatmap()" id="heatmap-btn"
+                        class="canvas-ctrl-btn has-tooltip active-tool"
+                        data-tooltip="Color wires by voltage" aria-label="Voltage heatmap">
+                    <i class="fas fa-palette"></i>
+                    <span>Heatmap</span>
+                </button>
+                <div id="heatmap-legend" aria-hidden="true">
+                    <span class="legend-label legend-neg">−<span id="legend-range">1</span> V</span>
+                    <span class="legend-bar"></span>
+                    <span class="legend-label legend-pos">+<span id="legend-range-pos">1</span> V</span>
+                </div>
+            </div>
+
+            <canvas id="circuitCanvas"></canvas>
+
+            <div id="minimap-panel" title="Click or drag to pan the view">
+                <span class="minimap-label">MAP</span>
+                <canvas id="minimap"></canvas>
+            </div>
+
+            <div id="probe-readout" class="hidden"></div>
+
+            <div id="scope-overlay" class="hidden">
+                <div class="scope-topbar flex justify-between items-center mb-4 px-4 pt-4 pr-12 flex-wrap gap-3 text-white relative">
+                    <h2 class="text-2xl font-bold text-yellow-400 font-mono scope-drag-handle flex flex-col leading-tight">
+                        <span class="flex items-center gap-2">
+                            <i class="fas fa-wave-square"></i>
+                            OSCILLOSCOPE
+                        </span>
+                        <span class="text-gray-400 text-sm ml-6">Dual Channel</span>
+                    </h2>
+                    <div class="flex gap-6 text-sm font-mono items-center flex-wrap">
+                        <div class="bg-gray-800 px-3 py-1 rounded border border-gray-700">
+                            <table class="scope-metrics-table text-gray-300 text-xs">
+                                <tbody>
+                                    <tr>
+                                        <th class="text-left">CH1</th>
+                                        <td class="text-yellow-200 font-bold" id="scope-ch1-val">0.00V</td>
+                                        <th class="text-left">CH2</th>
+                                        <td class="text-cyan-200 font-bold" id="scope-ch2-val">0.00V</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <button id="scope-mode-btn" onclick="toggleScopeDisplayMode()"
+                                class="text-white bg-gray-800 px-3 py-2 rounded border border-gray-700 hover:bg-gray-700 flex items-center gap-2">
+                            <i class="fas fa-clone"></i>
+                            <span>Window</span>
+                        </button>
+                    </div>
+                    <button onclick="closeScope()"
+                            class="text-white hover:text-red-500 bg-gray-800 p-2 rounded-full w-8 h-8
+                                   flex items-center justify-center absolute right-4 top-4">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+
+                <div id="scope-control-bar"
+                     class="mb-3 px-4 flex flex-wrap gap-3 text-[11px] font-mono items-center text-white">
+                    <label class="flex items-center gap-2 bg-gray-800 px-3 py-2 rounded border border-gray-700">
+                        <span class="text-gray-300">Xs/div</span>
+                        <select id="scope-time-div"
+                                class="bg-gray-900 border border-gray-700 rounded px-2 py-1 text-xs text-right">
+                            <option value="10u">10u</option>
+                            <option value="100u">100u</option>
+                            <option value="1m">1m</option>
+                            <option value="10m">10m</option>
+                            <option value="100m">100m</option>
+                        </select>
+                    </label>
+                    <label class="flex items-center gap-2 bg-gray-800 px-3 py-2 rounded border border-gray-700">
+                        <span class="text-yellow-300">CH1 V/div</span>
+                        <select id="scope-vdiv1"
+                                class="bg-gray-900 border border-gray-700 rounded px-2 py-1 text-xs text-right">
+                            <option value="50m">50m V/div</option>
+                            <option value="100m">100m V/div</option>
+                            <option value="200m">200m V/div</option>
+                            <option value="500m">500m V/div</option>
+                            <option value="1">1 V/div</option>
+                            <option value="2">2 V/div</option>
+                            <option value="5">5 V/div</option>
+                            <option value="10">10 V/div</option>
+                        </select>
+                    </label>
+                    <label class="flex items-center gap-2 bg-gray-800 px-3 py-2 rounded border border-gray-700">
+                        <span class="text-cyan-300">CH2 V/div</span>
+                        <select id="scope-vdiv2"
+                                class="bg-gray-900 border border-gray-700 rounded px-2 py-1 text-xs text-right">
+                            <option value="50m">50m V/div</option>
+                            <option value="100m">100m V/div</option>
+                            <option value="200m">200m V/div</option>
+                            <option value="500m">500m V/div</option>
+                            <option value="1">1 V/div</option>
+                            <option value="2">2 V/div</option>
+                            <option value="5">5 V/div</option>
+                            <option value="10">10 V/div</option>
+                        </select>
+                    </label>
+                    <button id="scope-autoscale-btn"
+                            onclick="autoscaleScopeVoltage()"
+                            class="bg-indigo-700 hover:bg-indigo-600 px-3 py-2 rounded border border-indigo-500 uppercase tracking-wider font-bold text-[11px] text-white">
+                        Autoscale V
+                    </button>
+                    <button onclick="toggleCursors()"
+                            class="ml-auto bg-gray-800 px-3 py-2 rounded border border-gray-700 hover:bg-gray-700 uppercase tracking-wider font-bold text-[11px]">
+                        Toggle Cursors
+                    </button>
+                </div>
+
+                <div id="scope-container"
+                     class="flex-1 relative bg-gray-900 border border-gray-700 rounded overflow-hidden
+                            cursor-crosshair shadow-inner mx-4">
+                    <canvas id="scopeCanvas" class="w-full h-full block"></canvas>
+                    <div id="cursor-1" class="cursor-line border-yellow-500/80 left-[30%]">
+                        <div class="cursor-handle bg-yellow-500 text-black font-bold text-[10px]"
+                             onmousedown="startDragCursor(1, event)" ontouchstart="startDragCursor(1, event)">A</div>
+                    </div>
+                    <div id="cursor-2" class="cursor-line border-cyan-500/80 left-[70%]">
+                        <div class="cursor-handle bg-cyan-500 text-black font-bold text-[10px]"
+                             onmousedown="startDragCursor(2, event)" ontouchstart="startDragCursor(2, event)">B</div>
+                    </div>
+                </div>
+
+                <div class="mt-4 grid gap-4 text-[11px] font-mono md:grid-cols-2 px-4 pb-4 text-white">
+                    <div class="bg-gray-800/70 border border-gray-700 rounded p-3">
+                        <div class="flex items-center gap-2 text-gray-200 mb-2">
+                            <i class="fas fa-arrows-alt-h text-yellow-300"></i>
+                            <span class="uppercase tracking-wider text-xs">Time Cursors</span>
+                        </div>
+                        <div class="grid grid-cols-2 gap-2 text-gray-300">
+                            <div class="flex justify-between"><span>t<sub>A</sub></span><span id="cursor-ta" class="text-white">0s</span></div>
+                            <div class="flex justify-between"><span>t<sub>B</sub></span><span id="cursor-tb" class="text-white">0s</span></div>
+                            <div class="flex justify-between"><span>Δt</span><span id="cursor-dt" class="text-white">0s</span></div>
+                            <div class="flex justify-between"><span>frequency</span><span id="cursor-freq" class="text-green-200">--</span></div>
+                        </div>
+                    </div>
+                    <div class="bg-gray-800/70 border border-gray-700 rounded p-3 overflow-x-auto">
+                        <div class="flex items-center gap-2 text-gray-200 mb-2">
+                            <i class="fas fa-bolt text-cyan-300"></i>
+                            <span class="uppercase tracking-wider text-xs">Voltage difference</span>
+                        </div>
+                        <table class="w-full text-left text-gray-200 border-collapse">
+                            <thead class="text-[10px] text-gray-400">
+                                <tr>
+                                    <th class="pb-1">Channel</th>
+                                    <th class="pb-1">V(A)</th>
+                                    <th class="pb-1">V(B)</th>
+                                    <th class="pb-1">ΔV</th>
+                                </tr>
+                            </thead>
+                            <tbody class="text-[11px]">
+                                <tr>
+                                    <td class="py-1">CH1</td>
+                                    <td class="py-1" id="ch1-va">0V</td>
+                                    <td class="py-1" id="ch1-vb">0V</td>
+                                    <td class="py-1" id="ch1-dv">0V</td>
+                                </tr>
+                                <tr>
+                                    <td class="py-1">CH2</td>
+                                    <td class="py-1" id="ch2-va">0V</td>
+                                    <td class="py-1" id="ch2-vb">0V</td>
+                                    <td class="py-1" id="ch2-dv">0V</td>
+                                </tr>
+                                <tr>
+                                    <td class="py-1">CH1 - CH2</td>
+                                    <td class="py-1" id="chd-va">0V</td>
+                                    <td class="py-1" id="chd-vb">0V</td>
+                                    <td class="py-1" id="chd-dv">0V</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        <div class="grid grid-cols-2 gap-2 mt-3 text-[10px] text-gray-300">
+                            <div class="bg-gray-900/60 rounded p-2 border border-gray-700">
+                                <div class="flex justify-between"><span>CH1 max</span><span id="ch1-max" class="text-yellow-200">0V</span></div>
+                                <div class="flex justify-between"><span>CH1 min</span><span id="ch1-min" class="text-yellow-200">0V</span></div>
+                                <div class="flex justify-between"><span>Δ</span><span id="ch1-span" class="text-yellow-200">0V</span></div>
+                            </div>
+                            <div class="bg-gray-900/60 rounded p-2 border border-gray-700">
+                                <div class="flex justify-between"><span>CH2 max</span><span id="ch2-max" class="text-cyan-200">0V</span></div>
+                                <div class="flex justify-between"><span>CH2 min</span><span id="ch2-min" class="text-cyan-200">0V</span></div>
+                                <div class="flex justify-between"><span>Δ</span><span id="ch2-span" class="text-cyan-200">0V</span></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </main>
+
+    <div id="mobile-quick-bar" class="text-sm font-mono text-gray-100">
+        <button onclick="quickSelectPrev()"
+                class="sim-btn mobile-icon-only"
+                aria-label="Previous component">
+            <i class="fas fa-chevron-left"></i>
+        </button>
+        <div class="quick-controls">
+            <div class="mini-group quick-group" data-kind="switch">
+                <button class="sim-btn" onclick="quickToggleSwitchPosition()" aria-label="Toggle switch">
+                    <i class="fas fa-toggle-on"></i><span class="btn-text">Switch</span>
+                </button>
+            </div>
+            <div class="mini-group quick-group" data-kind="potentiometer">
+                <span class="quick-contrast">Pot</span>
+                <span id="quick-pot-value" class="quick-contrast font-bold">0%</span>
+                <input id="quick-pot-slider" type="range" min="0" max="100" step="1" value="50"
+                       class="h-6"
+                       oninput="quickSetPotTurn(this.value)" aria-label="Pot slider">
+            </div>
+            <div class="mini-group quick-group" data-kind="resistor">
+                <span class="text-gray-300">R</span>
+                <input id="quick-resistor-value"
+                       type="text"
+                       inputmode="decimal"
+                       class="w-16 bg-gray-900 border border-gray-700 rounded px-2 py-1 text-xs text-right"
+                       oninput="quickSetResistorValue()"
+                       aria-label="Resistor value">
+                <select id="quick-resistor-suffix"
+                        class="bg-gray-900 border border-gray-700 rounded px-2 py-1 text-xs text-right"
+                        onchange="quickSetResistorValue()"
+                        aria-label="Resistor suffix">
+                    <option value="">Ω</option>
+                    <option value="m">mΩ</option>
+                    <option value="k">kΩ</option>
+                    <option value="M">MΩ</option>
+                    <option value="G">GΩ</option>
+                </select>
+            </div>
+            <div class="mini-group quick-group" data-kind="capacitor">
+                <span class="text-gray-300">C</span>
+                <input id="quick-capacitor-value"
+                       type="text"
+                       inputmode="decimal"
+                       class="w-16 bg-gray-900 border border-gray-700 rounded px-2 py-1 text-xs text-right"
+                       oninput="quickSetCapacitorValue()"
+                       aria-label="Capacitor value">
+                <select id="quick-capacitor-suffix"
+                        class="bg-gray-900 border border-gray-700 rounded px-2 py-1 text-xs text-right"
+                        onchange="quickSetCapacitorValue()"
+                        aria-label="Capacitor suffix">
+                    <option value="p">pF</option>
+                    <option value="n">nF</option>
+                    <option value="u">uF</option>
+                    <option value="m">mF</option>
+                </select>
+            </div>
+            <div class="mini-group quick-group scope-pair" data-kind="oscilloscope">
+                <button class="sim-btn scope-main" onclick="quickScopeToggleMain()" aria-label="Toggle scope">
+                    <i class="fas fa-wave-square"></i>
+                </button>
+                <button class="sim-btn scope-dropdown" onclick="quickScopeDropdownAction()" aria-label="Choose scope">
+                    <i class="fas fa-caret-down"></i>
+                </button>
+                <select id="quick-scope-select"
+                        class="quick-scope-select bg-gray-900 border border-gray-700 rounded px-2 py-1 text-xs text-right hidden"
+                        onchange="quickSelectScope(this.value)"
+                        aria-label="Select scope">
+                </select>
+            </div>
+            <div class="funcgen-group mini-group quick-group" data-kind="funcgen">
+                <span class="text-gray-300">Freq</span>
+                <input id="quick-fg-freq-value"
+                       type="text"
+                       inputmode="decimal"
+                       class="w-16 bg-gray-900 border border-gray-700 rounded px-2 py-1 text-xs text-right"
+                       oninput="quickSetFuncGenFreqValue()"
+                       aria-label="Function generator frequency">
+                <select id="quick-fg-freq-suffix"
+                        class="bg-gray-900 border border-gray-700 rounded px-2 py-1 text-xs text-right"
+                        onchange="quickSetFuncGenFreqValue()"
+                        aria-label="Frequency suffix">
+                    <option value="">Hz</option>
+                    <option value="k">kHz</option>
+                    <option value="M">MHz</option>
+                </select>
+                <span class="text-gray-300 ml-2">Vpp</span>
+                <input id="quick-fg-vpp-value"
+                       type="text"
+                       inputmode="decimal"
+                       class="w-14 bg-gray-900 border border-gray-700 rounded px-2 py-1 text-xs text-right"
+                       oninput="quickSetFuncGenVppValue()"
+                       aria-label="Function generator amplitude">
+                <select id="quick-fg-vpp-suffix"
+                        class="bg-gray-900 border border-gray-700 rounded px-2 py-1 text-xs text-right"
+                        onchange="quickSetFuncGenVppValue()"
+                        aria-label="Amplitude suffix">
+                    <option value="">V</option>
+                    <option value="m">mV</option>
+                    <option value="u">uV</option>
+                </select>
+            </div>
+        </div>
+        <button onclick="quickSelectNext()"
+                class="sim-btn mobile-icon-only"
+                aria-label="Next component">
+            <i class="fas fa-chevron-right"></i>
+        </button>
+    </div>
+
+    <div id="sim-bar">
+        <div class="sim-info text-xs font-mono" aria-live="polite">
+            <table class="sim-info-table sim-info-grid">
+                <thead>
+                    <tr>
+                        <th scope="col">Time</th>
+                        <th scope="col">Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><span class="sim-time" id="sim-time">0.00s</span></td>
+                        <td>
+                            <button type="button"
+                                    class="sim-status sim-status--paused"
+                                    id="sim-status"
+                                    aria-label="Simulation paused"
+                                    aria-live="polite">
+                                PAUSED
+                            </button>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="sim-actions" role="toolbar" aria-label="Simulation controls">
+            <button id="mobile-tools-toggle"
+                    type="button"
+                    class="sim-btn mobile-icon-only"
+                    aria-pressed="false"
+                    aria-controls="sidebar"
+                    onclick="toggleSidebar()">
+                <i class="fas fa-screwdriver-wrench" id="sidebar-toggle-icon"></i>
+                <span class="btn-text">Show Menu</span>
+            </button>
+
+            <div class="menu-wrapper">
+                <button class="sim-btn success mobile-icon-only"
+                        type="button"
+                        aria-haspopup="true"
+                        aria-expanded="false"
+                        aria-controls="save-menu"
+                        aria-label="Save options"
+                        onclick="toggleMenu('save-menu')">
+                    <i class="fas fa-save"></i> <span class="btn-text">Save</span>
+                    <i class="fas fa-chevron-up text-[10px] btn-chevron" aria-hidden="true"></i>
+                </button>
+                <div id="save-menu" class="menu-list">
+                    <button onclick="runSaveOption('circuit')"><i class="fas fa-download"></i> Save Circuit</button>
+                    <button onclick="runSaveOption('template')"><i class="fas fa-puzzle-piece"></i> Save Template</button>
+                    <button onclick="copyShareLink()"><i class="fas fa-link"></i> Copy Share Link</button>
+                </div>
+            </div>
+
+            <div class="menu-wrapper">
+                <button class="sim-btn primary mobile-icon-only"
+                        type="button"
+                        aria-haspopup="true"
+                        aria-expanded="false"
+                        aria-controls="load-menu"
+                        aria-label="Load options"
+                        onclick="toggleMenu('load-menu')">
+                    <i class="fas fa-folder-open"></i> <span class="btn-text">Load</span>
+                    <i class="fas fa-chevron-up text-[10px] btn-chevron" aria-hidden="true"></i>
+                </button>
+                <div id="load-menu" class="menu-list">
+                    <button onclick="runLoadOption('circuit')"><i class="fas fa-upload"></i> Load Circuit</button>
+                    <button onclick="runLoadOption('template')"><i class="fas fa-puzzle-piece"></i> Load Template</button>
+                </div>
+            </div>
+
+            <div class="sim-btn-group">
+                <button id="undo-btn" onclick="undo()"
+                        type="button"
+                        class="sim-btn mobile-icon-only"
+                        aria-label="Undo (Ctrl+Z)"
+                        data-tooltip="Undo (Ctrl+Z)"
+                        disabled>
+                    <i class="fas fa-rotate-left"></i>
+                    <span class="btn-text">Undo</span>
+                </button>
+                <button id="redo-btn" onclick="redo()"
+                        type="button"
+                        class="sim-btn mobile-icon-only"
+                        aria-label="Redo (Ctrl+Shift+Z)"
+                        data-tooltip="Redo (Ctrl+Shift+Z)"
+                        disabled>
+                    <i class="fas fa-rotate-right"></i>
+                    <span class="btn-text">Redo</span>
+                </button>
+            </div>
+
+            <button onclick="clearCanvas()"
+                    type="button"
+                    class="sim-btn danger mobile-icon-only"
+                    aria-label="Clear workspace">
+                <i class="fas fa-broom"></i>
+                <span class="btn-text">Clear</span>
+            </button>
+
+            <button id="play-pause-btn" onclick="toggleSim()" 
+                    type="button"
+                    class="sim-btn primary mobile-icon-only">
+                <i class="fas fa-play"></i>
+                <span class="btn-text">Play</span>
+                <span class="sr-only">Play</span>
+            </button>
+        </div>
+    </div>
+
+    <dialog id="sim-error-dialog" class="sim-error-dialog" aria-labelledby="sim-error-title">
+        <h3 id="sim-error-title">Simulation Error</h3>
+        <p class="sim-error-subtitle">Fix the issue, then press Play to retry.</p>
+        <pre id="sim-error-details"></pre>
+        <div class="dialog-actions">
+            <button type="button" class="sim-btn" data-close-error>Close</button>
+        </div>
+    </dialog>
+
+    <dialog id="help-overlay" class="bg-gray-900 text-gray-200 border border-gray-700 rounded-lg shadow-2xl" style="max-width: 560px; padding: 0;">
+        <div class="flex items-center justify-between px-5 py-3 border-b border-gray-700">
+            <h2 class="text-sm font-bold tracking-wider text-gray-300 uppercase">Keyboard &amp; mouse</h2>
+            <button type="button" class="text-gray-400 hover:text-white" id="help-close" aria-label="Close">×</button>
+        </div>
+        <div class="p-5 space-y-4 text-[12px] font-mono">
+            <section>
+                <h3 class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">Selection &amp; editing</h3>
+                <dl class="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1">
+                    <dt class="text-gray-400">Click</dt><dd>Select a component or wire</dd>
+                    <dt class="text-gray-400">Shift + click</dt><dd>Add to / remove from selection</dd>
+                    <dt class="text-gray-400">R</dt><dd>Rotate selected component</dd>
+                    <dt class="text-gray-400">F</dt><dd>Mirror selected component</dd>
+                    <dt class="text-gray-400">Delete / Backspace</dt><dd>Delete selected</dd>
+                    <dt class="text-gray-400">Ctrl + C / X / V</dt><dd>Copy / cut / paste</dd>
+                    <dt class="text-gray-400">Ctrl + Z</dt><dd>Undo</dd>
+                    <dt class="text-gray-400">Ctrl + Shift + Z / Ctrl + Y</dt><dd>Redo</dd>
+                    <dt class="text-gray-400">Esc</dt><dd>Cancel current action / deselect</dd>
+                </dl>
+            </section>
+            <section>
+                <h3 class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">Wiring</h3>
+                <dl class="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1">
+                    <dt class="text-gray-400">Click a pin</dt><dd>Start / finish a wire</dd>
+                    <dt class="text-gray-400">Click empty board</dt><dd>Place a waypoint while drawing</dd>
+                    <dt class="text-gray-400">Shift (held)</dt><dd>Flip the L elbow orientation</dd>
+                    <dt class="text-gray-400">Backspace</dt><dd>Remove last waypoint (while drawing)</dd>
+                    <dt class="text-gray-400">Drag a segment</dt><dd>Slide the segment perpendicular; pin-connected ends re-stub</dd>
+                    <dt class="text-gray-400">Shift + click wire</dt><dd>Insert a junction there</dd>
+                </dl>
+            </section>
+            <section>
+                <h3 class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">View</h3>
+                <dl class="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1">
+                    <dt class="text-gray-400">Middle-drag</dt><dd>Pan</dd>
+                    <dt class="text-gray-400">Ctrl + scroll</dt><dd>Zoom</dd>
+                    <dt class="text-gray-400">A</dt><dd>Autoscale scope V/div</dd>
+                    <dt class="text-gray-400">?</dt><dd>Show / hide this help</dd>
+                </dl>
+            </section>
+        </div>
+    </dialog>
+
+    <script type="module">
+        import { initMainLayout } from '../../assets/js/layout/mainLayout.js';
+        // Circuit Lab is dark-only: force dark theme and hide the toggle button.
+        initMainLayout('circuit-lab', { themeOptions: { forceTheme: 'dark' } });
+    </script>
+
+    <script type="module" src="../../assets/js/sim/engine.js"></script>
+    <script type="module" src="../../assets/js/circuitforge.templates.js"></script>
+
+    <script type="module" src="../../assets/js/circuitforge.js"></script>
+    <script>
+        function closeMenus() {
+            document.querySelectorAll('.menu-list').forEach(m => {
+                m.classList.remove('active');
+                const trigger = m.previousElementSibling;
+                if (trigger?.setAttribute) trigger.setAttribute('aria-expanded', 'false');
+            });
+        }
+        function toggleMenu(id) {
+            const menu = document.getElementById(id);
+            if (!menu) return;
+            const trigger = menu.previousElementSibling;
+            const isOpening = !menu.classList.contains('active');
+            closeMenus();
+            if (isOpening) {
+                menu.classList.add('active');
+                if (trigger?.setAttribute) trigger.setAttribute('aria-expanded', 'true');
+            }
+        }
+        function runSaveOption(type) {
+            closeMenus();
+            if (type === 'circuit') downloadCircuitJSON();
+            else downloadTemplateJSON();
+        }
+        function runLoadOption(type) {
+            closeMenus();
+            if (type === 'circuit') triggerImportDialog();
+            else triggerImportTemplateDialog();
+        }
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.menu-wrapper')) closeMenus();
+        });
+        window.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') closeMenus();
+        });
+        window.addEventListener('resize', closeMenus);
+    </script>
+    <script type="module">
+        import { initThemeControls } from '../../assets/js/layout/theme.js';
+
+        const refreshCircuitTheme = () => {
+            if (typeof updateBoardThemeColors === 'function') updateBoardThemeColors();
+            if (typeof draw === 'function') draw();
+            if (typeof renderToolIcons === 'function') renderToolIcons();
+        };
+
+        initThemeControls({ onChange: refreshCircuitTheme });
+    </script>
+</body>
+</html>
