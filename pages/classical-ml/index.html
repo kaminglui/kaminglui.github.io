@@ -5,9 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
     <meta
       name="description"
-      content="Hands-on tour of classical machine-learning methods: linear regression via closed form, logistic regression via gradient descent, linear SVM via hinge loss — with the full derivations from MLE and Lagrangian duals."
+      content="Hands-on tour of machine-learning methods: linear regression via closed form, logistic regression via gradient descent, linear SVM via hinge loss, K-means + GMM clustering — with the full derivations from MLE, EM, and Lagrangian duals."
     />
-    <title>Classical ML Lab — Ka Ming Lui</title>
+    <title>ML Lab — Ka Ming Lui</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -27,12 +27,14 @@
         <div class="container">
           <div class="lab-hero__inner">
             <p class="lab-hero__eyebrow">Interactive lab</p>
-            <h1 class="lab-hero__title">Classical ML Lab</h1>
+            <h1 class="lab-hero__title">ML Lab</h1>
             <p class="lab-hero__lead">
-              The three supervised-learning workhorses that came before deep nets: linear regression (fit a
-              line), logistic regression (fit a probability), and the support-vector machine (fit a max-margin
-              boundary). Each with a live 2D demo you can click into, plus the full math — closed-form OLS,
-              the MLE derivation of both losses, the Lagrangian dual behind SVMs, hinge loss, and kernels.
+              The workhorses of machine learning that preceded — and still sit underneath — the deep-net boom.
+              Supervised: linear regression (fit a line), logistic regression (fit a probability), support
+              vector machines (fit a max-margin boundary). Unsupervised: K-means and Gaussian-mixture
+              clustering via EM. Each with a live 2D demo, plus the full math — closed-form OLS, the MLE
+              derivations, the Lagrangian dual behind SVMs, hinge loss, kernels, and the EM recipe for latent
+              mixtures.
             </p>
           </div>
         </div>
@@ -42,36 +44,37 @@
         <div class="container">
           <article class="card lab-card">
             <header class="lab-card__header">
-              <p class="lab-card__eyebrow">Linear regression · Logistic regression · SVM · MLE</p>
+              <p class="lab-card__eyebrow">Linear regression · Logistic regression · SVM · Clustering · MLE</p>
               <div class="lab-card__title-row">
-                <h2 class="lab-card__title" id="cml-title">Three classical supervised methods, one math backbone</h2>
+                <h2 class="lab-card__title" id="cml-title">Supervised + unsupervised ML, one math backbone</h2>
                 <div class="lab-card__chips">
                   <span class="lab-chip">OLS</span>
                   <span class="lab-chip">Logistic</span>
                   <span class="lab-chip">SVM</span>
-                  <span class="lab-chip">MLE</span>
+                  <span class="lab-chip">K-means / GMM</span>
+                  <span class="lab-chip">MLE · EM</span>
                 </div>
               </div>
               <p class="lab-card__lead">
                 Add points by clicking a canvas. Linear regression shows the least-squares line with residuals.
                 Logistic regression fits a sigmoid decision boundary to two-class data. SVM fits the widest
-                possible margin between the classes and marks which points touch it. All three drop out of the
-                same recipe: pick a loss, minimise, read off parameters.
+                possible margin. K-means and GMM cluster unlabelled points into groups, hard vs soft. Everything
+                drops out of the same recipe: pick a loss (or a likelihood), minimise, read off parameters.
               </p>
             </header>
 
             <nav class="lab-xrefs" aria-label="Related labs">
               <div class="lab-xrefs__group">
                 <span class="lab-xrefs__label">Prereqs</span>
-                <a class="lab-xrefs__chip" href="../math-lab/#theory-opt">Math · §1 argmin/Lagrange</a>
-                <a class="lab-xrefs__chip" href="../math-lab/#theory-gd">Math · §2 GD</a>
-                <a class="lab-xrefs__chip" href="../math-lab/#theory-linalg">Math · §4 linalg</a>
+                <a class="lab-xrefs__chip" href="../math-lab/#theory-opt">Math Foundations · §1 Optimisation (argmin / Lagrangian)</a>
+                <a class="lab-xrefs__chip" href="../math-lab/#theory-gd">Math Foundations · §2 Gradient descent</a>
+                <a class="lab-xrefs__chip" href="../math-lab/#theory-linalg">Math Foundations · §4 Linear algebra</a>
               </div>
               <div class="lab-xrefs__group">
                 <span class="lab-xrefs__label">Continues in</span>
-                <a class="lab-xrefs__chip" href="../ml-playground/">Clustering · GMM (soft version)</a>
-                <a class="lab-xrefs__chip" href="../rl-lab/#theory-pg">RL · §7 policy gradient</a>
-                <a class="lab-xrefs__chip" href="../diffusion-lab/#theory-vae">Diffusion · §2 VAE (ELBO)</a>
+                <a class="lab-xrefs__chip" href="../rl-lab/#theory-pg">RL Lab · §7 Policy gradient &amp; actor-critic</a>
+                <a class="lab-xrefs__chip" href="../diffusion-lab/#theory-vae">Diffusion Lab · §2 VAE (ELBO generalises MLE)</a>
+                <a class="lab-xrefs__chip" href="../transformer-lab/">Transformer Lab · attention softmax</a>
               </div>
             </nav>
 
@@ -369,10 +372,118 @@
             </article>
 
             <section class="rl-theory" aria-labelledby="cml-theory-title">
-              <h3 id="cml-theory-title" class="visually-hidden">Classical ML theory</h3>
+              <h3 id="cml-theory-title" class="visually-hidden">ML theory</h3>
+
+              <article class="rl-theory__panel" id="demo-clustering">
+                <h3>5 · Unsupervised clustering — K-means and GMM</h3>
+                <p class="rl-theory__kid">
+                  <strong>Kid version.</strong> Scatter dots on paper. K-means asks "split these into k groups
+                  so the average distance from a dot to its group's centre is as small as possible." GMM asks
+                  the softer version — "how likely is each dot to belong to each group?" Same idea, hard vs soft.
+                </p>
+                <p>
+                  <strong>K-means</strong> minimises the sum-of-squared distances from each point to the nearest centroid:
+                </p>
+                <div class="rl-equation" data-katex="\min_{\{\mu_k\},\, \{z_i\}} \sum_{i=1}^{N} \bigl\lVert x_i - \mu_{z_i} \bigr\rVert^2,\quad z_i \in \{1, \ldots, k\}" data-katex-display></div>
+                <p>Lloyd's algorithm alternates two steps:</p>
+                <ul>
+                  <li><strong>Assign</strong> — each point goes to its nearest centroid: z<sub>i</sub> = argmin<sub>k</sub> ‖x<sub>i</sub> − μ<sub>k</sub>‖².</li>
+                  <li><strong>Update</strong> — each centroid moves to the mean of its assigned points: μ<sub>k</sub> = mean{x<sub>i</sub> : z<sub>i</sub> = k}.</li>
+                </ul>
+                <p>
+                  <strong>GMM (Gaussian Mixture Model)</strong> is the soft version. Each point has a
+                  responsibility vector r<sub>i,k</sub> = P(component k | x<sub>i</sub>) instead of a hard label.
+                  Training = <em>EM</em> (Expectation-Maximisation):
+                </p>
+                <div class="rl-equation" data-katex="\text{E-step:}\quad r_{i,k} = \frac{\pi_k\, \mathcal{N}(x_i;\, \mu_k,\, \Sigma_k)}{\sum_j \pi_j\, \mathcal{N}(x_i;\, \mu_j,\, \Sigma_j)}" data-katex-display></div>
+                <div class="rl-equation" data-katex="\text{M-step:}\quad \mu_k = \tfrac{1}{N_k} \sum_i r_{i,k}\, x_i,\quad \Sigma_k = \tfrac{1}{N_k} \sum_i r_{i,k}\,(x_i - \mu_k)(x_i - \mu_k)^\top,\quad \pi_k = \tfrac{N_k}{N}" data-katex-display></div>
+                <p>
+                  EM monotonically increases the log-likelihood log p(𝒟 | θ). In the limit σ<sub>k</sub> → 0 with
+                  responsibilities collapsing to one-hot, GMM reduces to K-means — K-means is "GMM with hard
+                  assignments and isotropic zero-variance Gaussians."
+                </p>
+                <p class="rl-theory__kid">
+                  <strong>Shape watch.</strong> This is §2 MLE in disguise. GMM maximises
+                  <span data-katex="\log p(\mathcal{D}\mid \theta) = \sum_i \log \sum_k \pi_k\, \mathcal{N}(x_i; \mu_k, \Sigma_k)"></span>
+                  — a latent-variable MLE. EM is the general recipe for MLE when the likelihood involves
+                  a sum over hidden labels.
+                </p>
+                <h4 style="margin-top:0.9rem;">Demo — K-means and GMM on a 2D scatter</h4>
+                <p>
+                  Click the canvas to add points (Create mode). Flip to Drag mode to move them (Shift+click
+                  removes). Toggle <em>Hard (K-means)</em> / <em>Soft (GMM)</em>; press <em>Initialize</em> to
+                  seed centroids then <em>Step</em> or <em>Run to convergence</em>.
+                </p>
+                <div class="ml-mode-bar">
+                  <div class="mode-toggle" role="group" aria-label="Interaction mode">
+                    <button class="mode-toggle__btn is-active" type="button" data-mode="create" aria-pressed="true">
+                      Create mode
+                    </button>
+                    <button class="mode-toggle__btn" type="button" data-mode="drag" aria-pressed="false">Drag mode</button>
+                  </div>
+                  <div class="mode-toggle" role="group" aria-label="Clustering algorithm">
+                    <button class="mode-toggle__btn is-active" type="button" data-algo="kmeans" aria-pressed="true">
+                      Hard (K-means)
+                    </button>
+                    <button class="mode-toggle__btn" type="button" data-algo="gmm" aria-pressed="false">
+                      Soft (GMM)
+                    </button>
+                  </div>
+                  <div class="ml-status-chips" aria-live="polite">
+                    <span class="status-chip">k = <span id="status-k">3</span></span>
+                    <span class="status-chip">Iteration <span id="status-iter">0</span></span>
+                    <span class="status-chip"><span id="status-metric-label">SSE</span> <span id="status-sse">—</span></span>
+                  </div>
+                  <div class="ml-presets" aria-label="Sample data">
+                    <span class="ml-presets__label">Sample data</span>
+                    <button type="button" class="ml-preset" data-preset="separated">well-separated · k = 3</button>
+                    <button type="button" class="ml-preset" data-preset="overlap">overlapping · k = 3</button>
+                    <button type="button" class="ml-preset" data-preset="moons">non-spherical · k = 2</button>
+                  </div>
+                </div>
+                <div class="ml-playground">
+                  <div class="ml-playground-main">
+                    <div class="canvas-wrapper">
+                      <canvas id="kmeans-canvas" width="720" height="480" aria-label="Clustering canvas"></canvas>
+                    </div>
+                    <div class="ml-controls">
+                      <label for="k-input">Number of clusters (k)</label>
+                      <input id="k-input" type="number" min="1" max="8" value="3" />
+                      <button id="btn-init-centroids" type="button">Initialize centroids</button>
+                      <button id="btn-step" type="button">Step (assign &amp; update)</button>
+                      <button id="btn-run" type="button">Run to convergence</button>
+                      <button id="btn-reset-clustering" type="button">Reset clustering</button>
+                      <button id="btn-clear-points" type="button">Clear all points</button>
+                      <p class="ml-hint">
+                        Create mode drops a point where you click. Drag mode moves existing points; hold
+                        <strong>Shift</strong> and click a point to remove it. In GMM mode each component
+                        renders its 1σ (solid) and 2σ (dashed) ellipses; point colour blends with responsibility.
+                      </p>
+                    </div>
+                  </div>
+                  <aside class="ml-sidebar">
+                    <button id="btn-toggle-calculations" type="button" aria-expanded="false">
+                      Show calculation process
+                    </button>
+                    <div id="calculation-panel" hidden>
+                      <h4>Why is this point in this cluster?</h4>
+                      <p>Click any point on the canvas to see its distance to every centroid.</p>
+                      <p>Selected point: <span id="selected-point-label">none</span></p>
+                      <p>Cluster assignment: <span id="selected-cluster-label">—</span></p>
+                      <table id="distance-table">
+                        <thead>
+                          <tr><th>Centroid</th><th>Coordinates</th><th>Distance</th><th>Nearest?</th></tr>
+                        </thead>
+                        <tbody></tbody>
+                      </table>
+                      <p>Total SSE: <strong id="calculation-sse">—</strong></p>
+                    </div>
+                  </aside>
+                </div>
+              </article>
 
               <article class="rl-theory__panel" id="theory-kernels">
-                <h3>5 · Kernels — SVMs beyond straight lines</h3>
+                <h3>6 · Kernels — SVMs beyond straight lines</h3>
                 <p class="rl-theory__kid">
                   <strong>Kid version.</strong> If the two classes aren't separable by a straight line, lift
                   them into a higher-dimensional space where they <em>are</em>. The "kernel trick" lets you do
@@ -410,7 +521,7 @@
               </article>
 
               <article class="rl-theory__panel" id="theory-gen">
-                <h3>6 · Generalisation — bias, variance, regularisation</h3>
+                <h3>7 · Generalisation — bias, variance, regularisation</h3>
                 <p class="rl-theory__kid">
                   <strong>Kid version.</strong> A model that memorises the training set perfectly (high
                   variance) will fail on new data. A model too simple to capture the pattern (high bias) also
@@ -460,7 +571,7 @@
               </article>
 
               <article class="rl-theory__panel" id="theory-map">
-                <h3>7 · A classical-ML clustering map</h3>
+                <h3>8 · ML method families — a clustering map</h3>
                 <p class="rl-theory__kid">
                   <strong>Kid version.</strong> Four families. Pick one axis ("do I want a number or a label?")
                   and one trick ("kernels? sparsity?") and you've covered most of the "boring but reliable"

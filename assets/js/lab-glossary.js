@@ -10,12 +10,13 @@
 // Section helpers carry an `href` so the tooltip engine can navigate
 // cross-lab when the section isn't on the current page. Same-page links
 // still scroll smoothly because the engine tries getElementById first.
-const RL_SEC = (id, label) => ({ id, label: `RL · ${label}`, href: '../rl-lab/' });
-const DF_SEC = (id, label) => ({ id, label: `Diffusion · ${label}`, href: '../diffusion-lab/' });
-const MATH_SEC = (id, label) => ({ id, label: `Math · ${label}`, href: '../math-lab/' });
-const CML_SEC = (id, label) => ({ id, label: `Classical · ${label}`, href: '../classical-ml/' });
-const ML_SEC = (label) => ({ id: '', label: `Clustering · ${label}`, href: '../ml-playground/' });
-const FOURIER_SEC = (label) => ({ id: '', label: `Fourier · ${label}`, href: '../fourier-epicycles/' });
+// Labels spell full section names; readers see e.g. "ML Lab · §2 MLE
+// derivation" instead of short cryptic abbreviations.
+const RL_SEC = (id, label) => ({ id, label: `RL Lab · ${label}`, href: '../rl-lab/' });
+const DF_SEC = (id, label) => ({ id, label: `Diffusion Lab · ${label}`, href: '../diffusion-lab/' });
+const MATH_SEC = (id, label) => ({ id, label: `Math Foundations · ${label}`, href: '../math-lab/' });
+const ML_SEC = (id, label) => ({ id, label: `ML Lab · ${label}`, href: '../classical-ml/' });
+const FOURIER_SEC = (label) => ({ id: '', label: `Fourier Epicycles · ${label}`, href: '../fourier-epicycles/' });
 
 export const GLOSSARY = {
   // ====================== RL — core variables ======================
@@ -23,19 +24,19 @@ export const GLOSSARY = {
     title: 'ε · probability of exploration',
     body: 'ε is the <em>probability of picking a random action (exploring)</em> each step. Its complement 1 − ε is the probability of picking the current-best-estimated action (exploiting). ε=0 is pure exploit — locks in on the first apparent winner. ε=1 is pure random. 0.05–0.1 is typical; decayed over time is common.',
     related: ['epsilon-greedy', 'exploration-exploitation', 'ucb1', 'thompson'],
-    sections: [RL_SEC('theory-bandits', '§1 Bandits')]
+    sections: [RL_SEC('theory-bandits', '§1 Multi-armed bandits')]
   },
   'gamma': {
     title: 'γ · discount factor',
     body: 'Weight on future rewards in the return G<sub>t</sub>. γ≈0 is myopic ("candy now"); γ→1 is patient. γ<1 keeps the infinite sum finite and makes the Bellman operator a contraction.',
     related: ['return', 'bellman', 'mdp', 'contraction'],
-    sections: [RL_SEC('theory-mdp', '§2 MDP')]
+    sections: [RL_SEC('theory-mdp', '§2 Markov Decision Process')]
   },
   'alpha-step': {
     title: 'α · step size (learning rate)',
     body: 'How much to nudge an estimate toward its target in each update: V ← V + α[target − V]. Small α = slow but stable; large α = fast but jittery. Often decayed over time.',
     related: ['td-error', 'monte-carlo', 'td0', 'q-learning'],
-    sections: [RL_SEC('theory-mc-td', '§5 MC vs TD'), RL_SEC('theory-shape', '§8 Same shape')]
+    sections: [RL_SEC('theory-mc-td', '§5 Monte Carlo vs temporal difference'), RL_SEC('theory-shape', '§8 Same shape')]
   },
   'alpha-bandit': {
     title: 'α<sub>k</sub>, β<sub>k</sub> · Beta posterior counts (bandit)',
@@ -58,13 +59,13 @@ export const GLOSSARY = {
     title: 'A(s, a) · advantage',
     body: 'A<sup>π</sup>(s, a) = Q<sup>π</sup>(s, a) − V<sup>π</sup>(s). "How much better than average is action a here?" Subtracting V(s) as a baseline reduces variance of policy-gradient estimates.',
     related: ['q-value', 'v-value', 'policy-gradient', 'actor-critic'],
-    sections: [RL_SEC('theory-values', '§3 Value functions'), RL_SEC('theory-pg', '§7 Policy gradient')]
+    sections: [RL_SEC('theory-values', '§3 Value functions'), RL_SEC('theory-pg', '§7 Policy gradient & actor-critic')]
   },
   'policy': {
     title: 'π(a | s) · policy',
     body: 'The agent\'s strategy: probability of action a in state s. Deterministic policies put all mass on one action. Stochastic policies are required for policy-gradient methods and for provable exploration.',
     related: ['policy-gradient', 'on-policy', 'off-policy', 'bellman'],
-    sections: [RL_SEC('theory-mdp', '§2 MDP')]
+    sections: [RL_SEC('theory-mdp', '§2 Markov Decision Process')]
   },
   'theta-policy': {
     title: 'θ · policy parameters',
@@ -80,15 +81,15 @@ export const GLOSSARY = {
     title: 'G<sub>t</sub> · return',
     body: 'Discounted sum of future rewards: G<sub>t</sub> = R<sub>t+1</sub> + γR<sub>t+2</sub> + γ²R<sub>t+3</sub> + … . The thing every RL method is ultimately trying to maximise (in expectation).',
     related: ['gamma', 'v-value', 'monte-carlo'],
-    sections: [RL_SEC('theory-mdp', '§2 MDP')]
+    sections: [RL_SEC('theory-mdp', '§2 Markov Decision Process')]
   },
   'td-error': {
     title: 'δ<sub>t</sub> · TD error',
     body: '"Surprise" at each step: δ<sub>t</sub> = r<sub>t+1</sub> + γV(s<sub>t+1</sub>) − V(s<sub>t</sub>). Drives TD, SARSA, Q-learning, and actor-critic updates. Instance of the broader "estimate ← estimate + α·[target − estimate]" stochastic-approximation shape.',
     related: ['td0', 'sarsa', 'q-learning', 'actor-critic', 'bellman'],
     sections: [
-      RL_SEC('theory-mc-td', '§5 MC vs TD'),
-      RL_SEC('theory-shape', '§8 Same-shape updates'),
+      RL_SEC('theory-mc-td', '§5 Monte Carlo vs temporal difference'),
+      RL_SEC('theory-shape', '§8 Same-shape update table'),
       MATH_SEC('theory-gd', '§2 stochastic approximation')
     ]
   },
@@ -96,7 +97,7 @@ export const GLOSSARY = {
     title: 'ρ · importance weight',
     body: 'Ratio π(a|s) / μ(a|s) correcting an expectation taken under behaviour policy μ back to target policy π. Products over trajectories can explode — weighted IS helps.',
     related: ['importance-sampling', 'on-policy', 'off-policy'],
-    sections: [RL_SEC('theory-on-off', '§6 On/off-policy')]
+    sections: [RL_SEC('theory-on-off', '§6 On-policy vs off-policy')]
   },
   'mu-arm': {
     title: 'μ<sub>a</sub> · true arm mean (bandit)',
@@ -119,13 +120,13 @@ export const GLOSSARY = {
     title: 'Multi-armed bandit',
     body: 'RL with no state: k arms, each a distribution. Pick an arm, get a reward, update. Isolates the exploration/exploitation trade-off from the rest of RL.',
     related: ['epsilon-greedy', 'ucb1', 'thompson', 'regret'],
-    sections: [RL_SEC('theory-bandits', '§1 Bandits')]
+    sections: [RL_SEC('theory-bandits', '§1 Multi-armed bandits')]
   },
   'mdp': {
     title: 'Markov Decision Process',
     body: 'Tuple (S, A, P, R, γ). Adds state and time to a bandit. The Markov property: next state depends only on current (s, a), not history. Every "full RL" method assumes an MDP.',
     related: ['gamma', 'policy', 'bellman', 'v-value'],
-    sections: [RL_SEC('theory-mdp', '§2 MDP')]
+    sections: [RL_SEC('theory-mdp', '§2 Markov Decision Process')]
   },
   'bellman': {
     title: 'Bellman equation',
@@ -146,13 +147,13 @@ export const GLOSSARY = {
     title: 'Value iteration',
     body: 'Sweep V(s) ← max<sub>a</sub> Σ P(s\'|s,a)[r + γV(s\')] until Δ<sub>max</sub> is small. Fuses policy evaluation and improvement. Requires a known model.',
     related: ['policy-iteration', 'bellman', 'contraction', 'dp'],
-    sections: [RL_SEC('theory-dp', '§4 DP'), RL_SEC('demo-chain', 'Chain demo')]
+    sections: [RL_SEC('theory-dp', '§4 Dynamic programming'), RL_SEC('demo-chain', 'Chain demo')]
   },
   'policy-iteration': {
     title: 'Policy iteration',
     body: 'Alternate policy evaluation (solve V<sup>π</sup>) and policy improvement (π ← greedy on V<sup>π</sup>). Fewer outer iterations than value iteration, each does more work.',
     related: ['value-iteration', 'bellman', 'dp'],
-    sections: [RL_SEC('theory-dp', '§4 DP')]
+    sections: [RL_SEC('theory-dp', '§4 Dynamic programming')]
   },
   'dp': {
     title: 'Dynamic programming (DP)',
@@ -164,7 +165,7 @@ export const GLOSSARY = {
     body: 'Update using the actual return G<sub>t</sub> from a completed episode: V(s) ← V(s) + α[G<sub>t</sub> − V(s)]. Unbiased, high variance, requires episode termination.',
     related: ['td0', 'td-lambda', 'alpha-step', 'return', 'mc-integration'],
     sections: [
-      RL_SEC('theory-mc-td', '§5 MC vs TD'),
+      RL_SEC('theory-mc-td', '§5 Monte Carlo vs temporal difference'),
       RL_SEC('demo-darts', '§5 darts demo')
     ]
   },
@@ -172,7 +173,7 @@ export const GLOSSARY = {
     title: 'TD(0)',
     body: 'Bootstrap after one step: V(s) ← V(s) + α[r + γV(s\') − V(s)]. Biased early, low variance, works online.',
     related: ['monte-carlo', 'td-lambda', 'td-error', 'sarsa', 'q-learning'],
-    sections: [RL_SEC('theory-mc-td', '§5 MC vs TD')]
+    sections: [RL_SEC('theory-mc-td', '§5 Monte Carlo vs temporal difference')]
   },
   'td-lambda': {
     title: 'n-step TD · TD(λ)',
@@ -183,13 +184,13 @@ export const GLOSSARY = {
     title: 'SARSA',
     body: 'On-policy Q-update: Q(s,a) ← Q(s,a) + α[r + γQ(s\', <em>a\'</em>) − Q(s,a)], where a\' is the action actually taken next. Learns the Q of whatever behaviour is running.',
     related: ['q-learning', 'on-policy', 'td-error', 'expected-sarsa'],
-    sections: [RL_SEC('theory-on-off', '§6 On/off-policy')]
+    sections: [RL_SEC('theory-on-off', '§6 On-policy vs off-policy')]
   },
   'q-learning': {
     title: 'Q-learning',
     body: 'Off-policy Q-update: Q(s,a) ← Q(s,a) + α[r + γ<em>max<sub>a\'</sub></em>Q(s\',a\') − Q(s,a)]. The max is what a greedy policy <em>would</em> do, regardless of what was actually done.',
     related: ['sarsa', 'off-policy', 'td-error', 'dqn'],
-    sections: [RL_SEC('theory-on-off', '§6 On/off-policy')]
+    sections: [RL_SEC('theory-on-off', '§6 On-policy vs off-policy')]
   },
   'expected-sarsa': {
     title: 'Expected SARSA',
@@ -200,19 +201,19 @@ export const GLOSSARY = {
     title: 'ε-greedy',
     body: 'Pick argmax<sub>a</sub> Q(a) with prob 1 − ε; random arm with prob ε. Cheap, effective, never stops wasting ε on known-bad arms.',
     related: ['epsilon', 'ucb1', 'thompson', 'exploration-exploitation'],
-    sections: [RL_SEC('theory-bandits', '§1 Bandits')]
+    sections: [RL_SEC('theory-bandits', '§1 Multi-armed bandits')]
   },
   'ucb1': {
     title: 'UCB1',
     body: 'Upper Confidence Bound: pick argmax<sub>a</sub> [Q(a) + c·σ<sub>a</sub>·√(ln t / N(a))]. Uncertain arms get a bonus. O(log t) regret.',
     related: ['epsilon-greedy', 'thompson', 'exploration-exploitation', 'regret'],
-    sections: [RL_SEC('theory-bandits', '§1 Bandits')]
+    sections: [RL_SEC('theory-bandits', '§1 Multi-armed bandits')]
   },
   'thompson': {
     title: 'Thompson sampling',
     body: 'Bayesian: keep a posterior over each arm\'s mean, sample once from each, pull the arm with the highest sample. Explores wide posteriors, exploits tight ones.',
     related: ['ucb1', 'epsilon-greedy', 'bandit', 'posterior'],
-    sections: [RL_SEC('theory-bandits', '§1 Bandits')]
+    sections: [RL_SEC('theory-bandits', '§1 Multi-armed bandits')]
   },
   'exploration-exploitation': {
     title: 'Exploration vs exploitation',
@@ -223,13 +224,13 @@ export const GLOSSARY = {
     title: 'On-policy learning',
     body: 'Learn from trajectories generated by the <em>current</em> policy. Safer during exploration. Examples: SARSA, REINFORCE, PPO.',
     related: ['off-policy', 'sarsa', 'importance-sampling'],
-    sections: [RL_SEC('theory-on-off', '§6 On/off-policy')]
+    sections: [RL_SEC('theory-on-off', '§6 On-policy vs off-policy')]
   },
   'off-policy': {
     title: 'Off-policy learning',
     body: 'Learn from trajectories from a <em>different</em> behaviour policy μ. Can reuse replay buffers and demonstrations. Examples: Q-learning, DDPG, SAC.',
     related: ['on-policy', 'q-learning', 'importance-sampling', 'replay-buffer'],
-    sections: [RL_SEC('theory-on-off', '§6 On/off-policy')]
+    sections: [RL_SEC('theory-on-off', '§6 On-policy vs off-policy')]
   },
   'importance-sampling': {
     title: 'Importance sampling',
@@ -240,19 +241,19 @@ export const GLOSSARY = {
     title: 'Policy gradient',
     body: '∇<sub>θ</sub> J(θ) = 𝔼[∇<sub>θ</sub> log π<sub>θ</sub>(a|s) · Ψ<sub>t</sub>]. Directly moves θ to make good actions more likely. Ψ<sub>t</sub> can be G<sub>t</sub>, Q, A, or δ<sub>t</sub>.',
     related: ['reinforce', 'actor-critic', 'advantage', 'theta-policy'],
-    sections: [RL_SEC('theory-pg', '§7 Policy gradient')]
+    sections: [RL_SEC('theory-pg', '§7 Policy gradient & actor-critic')]
   },
   'reinforce': {
     title: 'REINFORCE',
     body: 'Policy gradient with Ψ<sub>t</sub> = G<sub>t</sub>. Pure Monte Carlo, unbiased, very high variance.',
     related: ['policy-gradient', 'monte-carlo', 'actor-critic'],
-    sections: [RL_SEC('theory-pg', '§7 Policy gradient')]
+    sections: [RL_SEC('theory-pg', '§7 Policy gradient & actor-critic')]
   },
   'actor-critic': {
     title: 'Actor-critic',
     body: 'Hybrid: an <em>actor</em> π<sub>θ</sub> + a <em>critic</em> V<sub>φ</sub> (or Q<sub>φ</sub>). Critic supplies a lower-variance Ψ<sub>t</sub> (usually the TD error δ<sub>t</sub>).',
     related: ['policy-gradient', 'td-error', 'theta-policy', 'phi-critic', 'ppo', 'sac'],
-    sections: [RL_SEC('theory-pg', '§7 Policy gradient')]
+    sections: [RL_SEC('theory-pg', '§7 Policy gradient & actor-critic')]
   },
   'ppo': {
     title: 'PPO',
@@ -289,8 +290,8 @@ export const GLOSSARY = {
     body: 'Add β·H[π(·|s)] to the loss to reward policy entropy. Prevents premature collapse to a single action. Core to SAC; also used in A3C/PPO. Structurally the same as a "keep the policy spread" regulariser.',
     related: ['sac', 'exploration-exploitation', 'regularisation'],
     sections: [
-      RL_SEC('theory-pg', '§7 Policy gradient'),
-      CML_SEC('theory-gen', '§6 Regularisation (kinship)')
+      RL_SEC('theory-pg', '§7 Policy gradient & actor-critic'),
+      ML_SEC('theory-gen', '§7 Generalisation & regularisation')
     ]
   },
   'model-based': {
@@ -447,7 +448,7 @@ export const GLOSSARY = {
     related: ['elbo', 'reparam', 'kl', 'ddpm', 'latent-diffusion', 'mle'],
     sections: [
       DF_SEC('theory-vae', '§2 VAE'),
-      CML_SEC('theory-mle', '§2 MLE (ELBO generalises MLE)')
+      ML_SEC('theory-mle', '§2 MLE (ELBO generalises MLE)')
     ]
   },
   'brownian': {
@@ -466,7 +467,7 @@ export const GLOSSARY = {
     title: 'SDE · Stochastic differential equation',
     body: 'dx = f(x, t) dt + g(t) dW. Drift f + noise g·dW. Every diffusion method is a discretisation of an SDE (VP for DDPM, VE for SMLD).',
     related: ['vp-sde', 've-sde', 'reverse-sde', 'pf-ode', 'dW'],
-    sections: [DF_SEC('theory-sde', '§6 SDE')]
+    sections: [DF_SEC('theory-sde', '§6 SDE unification')]
   },
   'reverse-sde': {
     title: 'Reverse SDE',
@@ -562,20 +563,20 @@ export const GLOSSARY = {
     sections: [
       RL_SEC('theory-bandits', '§1 Bayesian coin'),
       DF_SEC('theory-vae', '§2 VAE (z-posterior)'),
-      CML_SEC('theory-gen', '§6 Bayesian regression (ridge = MAP)')
+      ML_SEC('theory-gen', '§7 Bayesian regression (ridge = MAP)')
     ]
   },
   'prior': {
     title: 'Prior p(θ)',
     body: 'Belief about a parameter <em>before</em> observing data. A proper probability distribution (integrates to 1). Flat / uniform is a common "know nothing" choice; Beta(1, 1) is the flat prior on a coin\'s bias.',
     related: ['posterior', 'likelihood', 'bayes-rule', 'beta-distribution'],
-    sections: [RL_SEC('theory-bandits', '§1 Bandits')]
+    sections: [RL_SEC('theory-bandits', '§1 Multi-armed bandits')]
   },
   'likelihood': {
     title: 'Likelihood p(𝒟|θ)',
     body: '<em>How probable the observed data is under a given θ</em> — viewed as a function of θ, not of 𝒟. Crucially <strong>not</strong> a probability distribution over θ: it does not integrate to 1 across θ. Maximising it = MLE.',
     related: ['prior', 'posterior', 'bayes-rule', 'mle'],
-    sections: [RL_SEC('theory-bandits', '§1 Bandits')]
+    sections: [RL_SEC('theory-bandits', '§1 Multi-armed bandits')]
   },
   'bayes-rule': {
     title: "Bayes' rule",
@@ -592,7 +593,7 @@ export const GLOSSARY = {
     body: 'Pick θ̂ = argmax<sub>θ</sub> p(𝒟|θ). Equivalent to minimising forward KL from data to model. What most classical supervised learning (logistic/linear regression with Gaussian noise, softmax cross-entropy) is doing under the hood.',
     related: ['likelihood', 'forward-kl', 'map-estimate', 'elbo'],
     sections: [
-      CML_SEC('theory-mle', '§2 MLE derivation of squared loss'),
+      ML_SEC('theory-mle', '§2 MLE derivation of squared loss'),
       DF_SEC('theory-vae', '§2 VAE ELBO'),
       RL_SEC('theory-bandits', '§1 Bayesian coin demo')
     ]
@@ -641,7 +642,7 @@ export const GLOSSARY = {
     related: ['loss', 'learning-rate', 'argmin', 'policy-gradient', 'score'],
     sections: [
       MATH_SEC('theory-gd', '§2 GD'),
-      CML_SEC('demo-logreg', '§3 logistic gradient'),
+      ML_SEC('demo-logreg', '§3 logistic gradient'),
       RL_SEC('theory-pg', '§7 policy gradient'),
       DF_SEC('theory-score', '§5 score = ∇ log p')
     ]
@@ -670,8 +671,8 @@ export const GLOSSARY = {
     related: ['loss', 'gradient', 'lagrangian', 'mle', 'map-estimate'],
     sections: [
       MATH_SEC('theory-opt', '§1 Optimisation'),
-      CML_SEC('theory-mle', '§2 MLE (argmax likelihood)'),
-      CML_SEC('demo-svm', '§4 SVM primal')
+      ML_SEC('theory-mle', '§2 MLE (argmax likelihood)'),
+      ML_SEC('demo-svm', '§4 SVM primal')
     ]
   },
   'lagrangian': {
@@ -680,7 +681,7 @@ export const GLOSSARY = {
     related: ['argmin', 'convex', 'kkt', 'svm'],
     sections: [
       MATH_SEC('theory-opt', '§1 Optimisation'),
-      CML_SEC('demo-svm', '§4 SVM dual'),
+      ML_SEC('demo-svm', '§4 SVM dual'),
       MATH_SEC('theory-pca', '§5 PCA derivation')
     ]
   },
@@ -709,7 +710,7 @@ export const GLOSSARY = {
     sections: [
       MATH_SEC('theory-linalg', '§4 Linear algebra'),
       MATH_SEC('theory-pca', '§5 PCA — eigendecomposition of Σ'),
-      CML_SEC('theory-gen', '§6 Ridge closed form (X⊤X + λI)')
+      ML_SEC('theory-gen', '§6 Ridge closed form (X⊤X + λI)')
     ]
   },
   'dot-product': {
@@ -748,7 +749,7 @@ export const GLOSSARY = {
     related: ['eigenvalue', 'svd', 'variance', 'linalg', 'gmm'],
     sections: [
       MATH_SEC('theory-pca', '§5 PCA'),
-      ML_SEC('K-means / GMM (contrast: clustering, not PCA)')
+      ML_SEC('demo-clustering', '§5 Clustering (K-means / GMM — contrast with PCA)')
     ]
   },
   'variance': {
@@ -788,25 +789,25 @@ export const GLOSSARY = {
     title: 'Regression',
     body: 'Predict a continuous y. Linear regression fits y ≈ w<sup>⊤</sup>x + b by minimising squared error.',
     related: ['ols', 'mle', 'regularisation', 'ridge'],
-    sections: [CML_SEC('demo-linreg', '§1 Linear regression')]
+    sections: [ML_SEC('demo-linreg', '§1 Linear regression (OLS)')]
   },
   'classification': {
     title: 'Classification',
     body: 'Predict a category y. Two-class: logistic regression or SVM. Multiclass: softmax, LDA, trees, k-NN.',
     related: ['logistic-regression', 'svm', 'decision-boundary'],
-    sections: [CML_SEC('demo-logreg', '§3 Logistic')]
+    sections: [ML_SEC('demo-logreg', '§3 Logistic regression')]
   },
   'ols': {
     title: 'OLS · Ordinary Least Squares',
     body: 'Pick θ minimising Σ (y<sub>i</sub> − θ<sup>⊤</sup>x<sub>i</sub>)². Closed form θ̂ = (X<sup>⊤</sup>X)<sup>−1</sup>X<sup>⊤</sup>y. Geometrically: orthogonal projection of y onto the column space of X. Falls out of MLE under Gaussian noise.',
     related: ['regression', 'mle', 'ridge'],
-    sections: [CML_SEC('demo-linreg', '§1 OLS')]
+    sections: [ML_SEC('demo-linreg', '§1 Linear regression (OLS)')]
   },
   'logistic-regression': {
     title: 'Logistic regression',
     body: 'Model P(y=1|x) = σ(w<sup>⊤</sup>x + b). Train by minimising the binary cross-entropy (= −log Bernoulli likelihood). No closed form; minimise by GD/Newton. Decision boundary is linear.',
     related: ['sigmoid', 'cross-entropy', 'mle', 'classification'],
-    sections: [CML_SEC('demo-logreg', '§3 Logistic')]
+    sections: [ML_SEC('demo-logreg', '§3 Logistic regression')]
   },
   'sigmoid': {
     title: 'σ · sigmoid / logistic function',
@@ -818,7 +819,7 @@ export const GLOSSARY = {
     body: 'For binary y ∈ {0, 1} and predicted p: L = −[y log p + (1 − y) log(1 − p)]. Equivalent to −log Bernoulli likelihood. Generalised by categorical cross-entropy for multi-class softmax outputs. Minimising cross-entropy over data = minimising forward KL to the model = MLE.',
     related: ['logistic-regression', 'mle', 'forward-kl', 'kl'],
     sections: [
-      CML_SEC('demo-logreg', '§3 Logistic regression'),
+      ML_SEC('demo-logreg', '§3 Logistic regression'),
       DF_SEC('theory-kl', '§1 KL — cross-entropy relation')
     ]
   },
@@ -827,7 +828,7 @@ export const GLOSSARY = {
     body: 'Max-margin classifier. Hard margin: min ½‖w‖² s.t. y<sub>i</sub>(w<sup>⊤</sup>x<sub>i</sub> + b) ≥ 1. Soft margin adds slack ξ<sub>i</sub> with penalty C. Equivalent unconstrained form uses hinge loss. Only support vectors matter at the optimum.',
     related: ['hinge', 'support-vector', 'kernel', 'margin', 'lagrangian'],
     sections: [
-      CML_SEC('demo-svm', '§4 SVM'),
+      ML_SEC('demo-svm', '§4 Support Vector Machine'),
       MATH_SEC('theory-opt', '§1 Lagrangian (SVM dual)')
     ]
   },
@@ -876,7 +877,7 @@ export const GLOSSARY = {
     body: 'Add a penalty on parameter norm to the training loss so the model can\'t over-fit: min L(θ) + λ Ω(θ). Classic choices: L2 (ridge), L1 (lasso), elastic net. Deep-learning extensions: dropout, weight decay, early stopping, data augmentation. MAP = MLE + regulariser from −log prior.',
     related: ['ridge', 'lasso', 'bias-variance', 'map-estimate', 'entropy-bonus'],
     sections: [
-      CML_SEC('theory-gen', '§6 Generalisation'),
+      ML_SEC('theory-gen', '§6 Generalisation'),
       RL_SEC('theory-pg', '§7 entropy bonus (policy regulariser)')
     ]
   },
