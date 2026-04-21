@@ -252,18 +252,25 @@ function renderList(container, items) {
 }
 
 function renderHero() {
-  heroElements.eyebrow.textContent = content.hero.eyebrow;
-  heroElements.title.textContent = formatTitleCase(content.hero.title);
-  heroElements.lead.textContent = content.hero.lead;
-  heroElements.primary.textContent = content.hero.primary.label;
-  heroElements.primary.href = content.hero.primary.url;
-  heroElements.secondary.textContent = content.hero.secondary.label;
-  heroElements.secondary.href = content.hero.secondary.url;
-  renderList(heroElements.current, content.hero.current);
-  renderList(heroElements.focus, content.hero.focus);
+  if (heroElements.eyebrow) heroElements.eyebrow.textContent = content.hero.eyebrow;
+  if (heroElements.title) heroElements.title.textContent = formatTitleCase(content.hero.title);
+  if (heroElements.lead) heroElements.lead.textContent = content.hero.lead;
+  // Action buttons and meta panels were removed from the home page — guard
+  // every access so missing DOM doesn't throw.
+  if (heroElements.primary && content.hero.primary) {
+    heroElements.primary.textContent = content.hero.primary.label;
+    heroElements.primary.href = content.hero.primary.url;
+  }
+  if (heroElements.secondary && content.hero.secondary) {
+    heroElements.secondary.textContent = content.hero.secondary.label;
+    heroElements.secondary.href = content.hero.secondary.url;
+  }
+  if (heroElements.current) renderList(heroElements.current, content.hero.current);
+  if (heroElements.focus) renderList(heroElements.focus, content.hero.focus);
 }
 
 function renderAbout() {
+  if (!aboutElements.title || !aboutElements.body) return;
   aboutElements.title.textContent = formatTitleCase(content.about.title);
   aboutElements.body.innerHTML = '';
   content.about.paragraphs.forEach((paragraph) => {
@@ -348,6 +355,7 @@ function renderProjects() {
 }
 
 function renderSidebar() {
+  if (!sidebarElements.container) return;
   sidebarElements.container.innerHTML = '';
   content.sidebar.blocks.forEach((block) => {
     const section = document.createElement('article');
@@ -374,10 +382,11 @@ function renderSidebar() {
     sidebarElements.container.appendChild(section);
   });
 
-  sidebarElements.empty.hidden = content.sidebar.blocks.length > 0;
+  if (sidebarElements.empty) sidebarElements.empty.hidden = content.sidebar.blocks.length > 0;
 }
 
 function renderContact() {
+  if (!contactElements.title || !contactElements.body || !contactElements.meta) return;
   contactElements.title.textContent = formatTitleCase(content.contact.title);
   contactElements.body.textContent = content.contact.body;
   if (contactElements.actions) {
@@ -972,26 +981,13 @@ function getFieldValue(form, name) {
   return '';
 }
 
-// Placeholder sections (learning / posts / projects) were removed from the
-// home page; their renderers are skipped when their DOM scaffold isn't
-// present, so the scaffold check now only requires elements that are
-// actually rendered.
+// Home page was trimmed to Hero + Labs map. Only the minimum hero fields
+// are required to run renderAll; every other section's renderer guards
+// its own DOM and skips when missing.
 const hasContentScaffold = Boolean(
   heroElements.eyebrow &&
   heroElements.title &&
-  heroElements.lead &&
-  heroElements.primary &&
-  heroElements.secondary &&
-  heroElements.current &&
-  heroElements.focus &&
-  aboutElements.title &&
-  aboutElements.body &&
-  sidebarElements.container &&
-  sidebarElements.empty &&
-  contactElements.title &&
-  contactElements.body &&
-  contactElements.actions &&
-  contactElements.meta
+  heroElements.lead
 );
 
 if (yearElement) {
