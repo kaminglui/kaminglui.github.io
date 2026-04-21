@@ -71,6 +71,37 @@
   vertical-align: middle;
 }
 
+/* Inline illustrative SVG figures used throughout the theory panels so the
+   math ↔ picture ratio stays balanced. Each figure gets a caption below;
+   side-by-side figures wrap into a responsive grid. */
+.math-figure {
+  display: block;
+  margin: 0.75rem auto;
+  max-width: 380px;
+  font-size: 0.82rem;
+  color: var(--color-muted);
+}
+.math-figure__svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  background: var(--color-bg-alt);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+.math-figure__caption {
+  margin: 0.4rem 0 0;
+  text-align: center;
+  line-height: 1.4;
+}
+.math-figures {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 0.9rem;
+  margin: 0.85rem 0 0.6rem;
+}
+.math-figures .math-figure { margin: 0; max-width: none; }
+
 /* §7 clustering-map family colours. */
 .rl-cluster[data-family='opt']    { --family-accent: #3b82f6; }
 .rl-cluster[data-family='linalg'] { --family-accent: #a855f7; }

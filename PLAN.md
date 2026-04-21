@@ -5,6 +5,16 @@ Items move out of here and into a commit when they ship.
 
 ## Math Foundations Lab — extensions
 
+### More visuals (ongoing)
+Every math concept should ship with at least one illustrative figure.
+Already has visuals: argmin vs min, sup/inf on the real line, Lagrange
+tangency, convex / two-wells / plateau landscapes, matrix as
+transformation, dot product projection, eigenvectors under a matrix.
+Still to add: convolution as a sliding kernel, SVD as rotate-scale-
+rotate, ReLU piecewise approximation of a curve (ties to §6), Gaussian
+PDF with shifting μ / σ, heatmap of a 2D joint distribution vs its
+marginals, CLT convergence animation.
+
 ### Probability & statistics deep-dive
 - **Common distributions tour** — Gaussian, Bernoulli/Binomial, Poisson, Exponential,
   Gamma/Beta, Uniform, Categorical, Dirichlet, Geometric, Negative Binomial, Student-t,

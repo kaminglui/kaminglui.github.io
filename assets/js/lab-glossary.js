@@ -668,12 +668,18 @@ export const GLOSSARY = {
   'argmin': {
     title: 'argmin / argmax',
     body: 'argmin<sub>x</sub> f(x) = the input x that achieves the minimum of f (a point, not a number). min<sub>x</sub> f(x) = the minimum value (a number). ML training returns argmin of the loss. Recurs everywhere: MLE = argmax likelihood; MAP = argmax posterior; SVM primal = argmin ½‖w‖² + hinge; K-means = argmin SSE.',
-    related: ['loss', 'gradient', 'lagrangian', 'mle', 'map-estimate'],
+    related: ['loss', 'gradient', 'lagrangian', 'mle', 'map-estimate', 'supremum'],
     sections: [
       MATH_SEC('theory-opt', '§1 Optimisation'),
       ML_SEC('theory-mle', '§2 MLE (argmax likelihood)'),
       ML_SEC('demo-svm', '§4 SVM primal')
     ]
+  },
+  'supremum': {
+    title: 'sup / inf · supremum & infimum',
+    body: '<strong>sup</strong> S = least upper bound of S; <strong>inf</strong> S = greatest lower bound. They always exist for a bounded set (over ℝ), even when max / min don\'t. Example: sup (0, 1) = 1 and inf (0, 1) = 0 — but the interval itself has no maximum or minimum. In ML you\'ll see "sup" in measure-theoretic bounds (uniform approximation: sup<sub>x</sub> |f − f̂| &lt; ε) and risk bounds.',
+    related: ['argmin', 'universal-approximation'],
+    sections: [MATH_SEC('theory-opt', '§1 Optimisation')]
   },
   'lagrangian': {
     title: 'Lagrangian / Lagrange multipliers',
