@@ -132,6 +132,28 @@ body.theme-dark {
 
 html {
   scroll-behavior: smooth;
+  /* Theme-aware scrollbar — Firefox reads scrollbar-color, WebKit/Blink
+     uses the ::-webkit-scrollbar rules below. Matches the accent palette
+     so the scrollbar doesn't look grafted on. */
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-border) transparent;
+}
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 5px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-muted);
+  background-clip: padding-box;
 }
 
 body {
@@ -2797,7 +2819,24 @@ body.theme-dark .pipeline-overview__note {
   background: transparent;
   border: 1px solid transparent;
   transition: background 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
+  /* Themed scrollbar: thin, border-coloured thumb on a transparent track,
+     accent on hover. Firefox: scrollbar-width / scrollbar-color. WebKit /
+     Blink: the ::-webkit-scrollbar* pseudos below. */
   scrollbar-width: thin;
+  scrollbar-color: var(--color-border) transparent;
+}
+.side-nav::-webkit-scrollbar {
+  width: 6px;
+}
+.side-nav::-webkit-scrollbar-track {
+  background: transparent;
+}
+.side-nav::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 3px;
+}
+.side-nav::-webkit-scrollbar-thumb:hover {
+  background: var(--color-accent);
 }
 .side-nav:hover,
 .side-nav:focus-within {
