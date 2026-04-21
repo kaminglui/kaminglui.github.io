@@ -14,6 +14,8 @@ function pickHeading(article) {
   return article.querySelector(':scope > h2, :scope > h3, :scope > h4, :scope > header h2, :scope > header h3');
 }
 
+const SECTION_SELECTOR = 'article[id], section[id][data-side-nav], section.labs-map__tier[id]';
+
 function buildNav(items) {
   const nav = document.createElement('nav');
   nav.className = 'side-nav';
@@ -57,7 +59,7 @@ function initSideNav() {
   if (typeof window !== 'undefined' && window.innerWidth < VIEWPORT_CUTOFF) return;
   if (document.querySelector('.side-nav')) return;
 
-  const articles = Array.from(document.querySelectorAll('article[id]'));
+  const articles = Array.from(document.querySelectorAll(SECTION_SELECTOR));
   const items = articles
     .map((article) => {
       const heading = pickHeading(article);

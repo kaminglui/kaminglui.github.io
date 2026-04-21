@@ -2977,7 +2977,12 @@ body.theme-dark .pipeline-overview__note {
   gap: 0.85rem;
 }
 .labs-map__card {
-  display: grid;
+  /* Flex column so the chip row can be pushed to the bottom with
+     margin-top: auto. With align-items: stretch on the grid, every card
+     in a row ends up the same height; pinning chips to the bottom keeps
+     the eyebrow + heading + body aligned at the top across cards. */
+  display: flex;
+  flex-direction: column;
   gap: 0.5rem;
   padding: 1.1rem 1.2rem 1.05rem;
   border: 1px solid var(--color-border);
@@ -3019,12 +3024,16 @@ body.theme-dark .pipeline-overview__note {
   line-height: 1.5;
 }
 .labs-map__chips {
-  margin: 0.3rem 0 0;
+  /* margin-top: auto pushes the chip row to the bottom of the flex
+     column above, so cards with 2- vs 3-row body text still align their
+     chip rows across a grid row. */
+  margin: auto 0 0;
   padding: 0;
   list-style: none;
   display: flex;
   flex-wrap: wrap;
   gap: 0.3rem;
+  padding-top: 0.6rem;
 }
 .labs-map__chips li {
   padding: 0.2rem 0.55rem;
@@ -3060,20 +3069,11 @@ body.theme-dark .pipeline-overview__note {
   color: var(--color-muted);
   font-family: var(--font-mono);
 }
-.labs-map__aside {
-  margin-top: 1.25rem;
-  display: grid;
-  gap: 0.55rem;
-}
-.labs-map__aside-label {
-  font-size: 0.72rem;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  color: var(--color-muted);
-}
-.labs-map__card--aside {
-  max-width: 720px;
-  background: var(--color-bg-alt);
+/* Reset h2 defaults so .labs-map__tier-label fits cleanly whether it's
+   an h2 (for side-nav section anchors) or a div. */
+h2.labs-map__tier-label {
+  margin: 0;
+  font-weight: inherit;
 }
 
 /* Mobile: single-column cards, tighter spacing, divider still shows. */
