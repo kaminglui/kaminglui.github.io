@@ -177,6 +177,22 @@ initialising at different μ₀). Remaining:
   up. Makes the JPEG intuition visible — most visual information lives in a handful of
   low-frequency coefficients.
 
+## History & lineage page — shipped + follow-ups
+
+Shipped at `pages/history/` as a timeline of ~40 methods in five eras, each with
+year, inventor, motivation, and "influenced" threads that link back to the
+method's home-lab section. Linked from the home labs-map ("cross-cutting"
+divider) and added to the nav dropdown.
+
+Follow-ups (not blocking):
+- **Harvest back into clustering maps.** The lineage data can feed a one-line
+  "year / inventor" footer for each member in the existing §N clustering maps
+  (RL §10, ML §8, Math §10, Diffusion §9, Transformer §9).
+- **Visual DAG.** Replace the prose-based lineage with a hand-laid-out SVG with
+  ~20 hero nodes and major influence arrows on a time axis.
+- **Corrections.** Any errors are one HTML card to fix; consider extracting into
+  `content/history.json` if the data gets reused in more than one place.
+
 ## Polish / infra
 
 - **True dark-mode support** on every lab (only Circuit Lab is dark-only today; the

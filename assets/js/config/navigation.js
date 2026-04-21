@@ -5,7 +5,8 @@ const NAV_LABS = [
   { id: 'rl-lab', label: 'Reinforcement Learning Lab', href: 'pages/rl-lab/' },
   { id: 'diffusion-lab', label: 'Diffusion Lab', href: 'pages/diffusion-lab/' },
   { id: 'math-lab', label: 'Math Foundations', href: 'pages/math-lab/' },
-  { id: 'classical-ml', label: 'Machine Learning Lab', href: 'pages/classical-ml/' }
+  { id: 'classical-ml', label: 'Machine Learning Lab', href: 'pages/classical-ml/' },
+  { id: 'history', label: 'History & lineage', href: 'pages/history/' }
 ];
 
 const LOGO_TEXT = 'Ka Ming Lui';

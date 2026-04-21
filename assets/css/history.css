@@ -1,0 +1,141 @@
+/* History & lineage page. Timeline-style layout of the methods the labs
+   teach, grouped by era, coloured by family. No JS — pure prose with
+   cross-lab anchor links doing the DAG threading. */
+
+.lineage-intro {
+  display: grid;
+  gap: 0.85rem;
+  padding: 1rem 1.25rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-bg-alt);
+  margin-bottom: 1.25rem;
+}
+.lineage-intro p { margin: 0; }
+.lineage-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  margin-top: 0.2rem;
+}
+.lineage-legend__swatch {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  color: var(--color-muted);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+}
+.lineage-legend__swatch::before {
+  content: '';
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  background: var(--family-accent, var(--color-accent));
+}
+.lineage-legend__swatch[data-family='prob']        { --family-accent: #3b82f6; }
+.lineage-legend__swatch[data-family='opt']         { --family-accent: #f97316; }
+.lineage-legend__swatch[data-family='signal']      { --family-accent: #0ea5e9; }
+.lineage-legend__swatch[data-family='nn']          { --family-accent: #a855f7; }
+.lineage-legend__swatch[data-family='rl']          { --family-accent: #22c55e; }
+.lineage-legend__swatch[data-family='gen']         { --family-accent: #ec4899; }
+.lineage-legend__swatch[data-family='transformer'] { --family-accent: #eab308; }
+
+.lineage-era {
+  margin: 1.4rem 0 0;
+}
+.lineage-era__header {
+  margin: 0 0 0.6rem;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.6rem;
+}
+.lineage-era__title {
+  margin: 0;
+  font-size: 1.2rem;
+}
+.lineage-era__range {
+  font-size: 0.8rem;
+  color: var(--color-muted);
+  font-family: var(--font-mono);
+}
+.lineage-era__lead {
+  margin: 0 0 0.75rem;
+  color: var(--color-muted);
+  max-width: 70ch;
+}
+
+.lineage-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 0.75rem;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.lineage-card {
+  position: relative;
+  padding: 0.85rem 1rem 0.9rem;
+  border: 1px solid var(--color-border);
+  border-left: 4px solid var(--family-accent, var(--color-accent));
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+.lineage-card[data-family='prob']        { --family-accent: #3b82f6; }
+.lineage-card[data-family='opt']         { --family-accent: #f97316; }
+.lineage-card[data-family='signal']      { --family-accent: #0ea5e9; }
+.lineage-card[data-family='nn']          { --family-accent: #a855f7; }
+.lineage-card[data-family='rl']          { --family-accent: #22c55e; }
+.lineage-card[data-family='gen']         { --family-accent: #ec4899; }
+.lineage-card[data-family='transformer'] { --family-accent: #eab308; }
+
+.lineage-card__year {
+  display: inline-block;
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  color: var(--family-accent, var(--color-accent));
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+.lineage-card__name {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+}
+.lineage-card__who {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--color-muted);
+}
+.lineage-card__motivation,
+.lineage-card__influence {
+  margin: 0;
+  font-size: 0.85rem;
+  line-height: 1.45;
+}
+.lineage-card__motivation strong,
+.lineage-card__influence strong {
+  color: var(--color-text);
+  font-weight: 600;
+}
+.lineage-card__link {
+  margin: 0.1rem 0 0;
+  font-size: 0.78rem;
+  color: var(--color-muted);
+}
+.lineage-card__link a {
+  color: var(--family-accent, var(--color-accent));
+  text-decoration: none;
+}
+.lineage-card__link a:hover,
+.lineage-card__link a:focus-visible {
+  text-decoration: underline;
+}

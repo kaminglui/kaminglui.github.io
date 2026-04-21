@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+    <meta
+      name="description"
+      content="A lineage map of the methods the labs on this site teach — year, inventor, motivation, and which ideas each one inspired."
+    />
+    <title>History &amp; lineage — Ka Ming Lui</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fira+Code:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="../../assets/css/style.css" />
+    <link rel="stylesheet" href="../../assets/css/history.css" />
+  </head>
+  <body class="theme-light">
+    <div id="site-header"></div>
+
+    <main class="lab-main">
+      <section class="lab-hero">
+        <div class="container">
+          <div class="lab-hero__inner">
+            <p class="lab-hero__eyebrow">Timeline &amp; lineage</p>
+            <h1 class="lab-hero__title">A history of the methods this site teaches</h1>
+            <p class="lab-hero__lead">
+              Every method was invented to solve a specific problem. Reading how ideas flowed from one to the
+              next — what Shannon's entropy led to, why Bayes' theorem now powers Thompson sampling, how
+              gradient descent found its way into transformers — makes it easier to remember which method to
+              reach for and anticipate where the field goes next.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section class="lab-section">
+        <div class="container">
+          <article class="card lab-card">
+            <header class="lab-card__header">
+              <p class="lab-card__eyebrow">≈ 40 methods · 5 eras · ~260 years</p>
+              <h2 class="lab-card__title">Motivation, lineage, cross-links</h2>
+              <p class="lab-card__lead">
+                Each card names the method, its year and its primary attribution, the problem it was invented
+                to solve, and a one-line note on what it then influenced. Click the chevron link to jump to
+                that method's home lab. Citing "the inventor" of an idea is often contested — I credit the
+                most widely cited primary source and flag multiple authors where it matters.
+              </p>
+            </header>
+
+            <aside class="lineage-intro" aria-label="How to read this page">
+              <p>
+                <strong>How to read this.</strong> Each coloured bar on the left of a card marks its family.
+                The <em>Influenced</em> line threads the DAG — follow the links to see what each idea
+                seeded in the decades that came after.
+              </p>
+              <div class="lineage-legend" aria-label="Family legend">
+                <span class="lineage-legend__swatch" data-family="prob">Probability &amp; statistics</span>
+                <span class="lineage-legend__swatch" data-family="opt">Optimisation</span>
+                <span class="lineage-legend__swatch" data-family="signal">Signals &amp; Fourier</span>
+                <span class="lineage-legend__swatch" data-family="nn">Neural networks</span>
+                <span class="lineage-legend__swatch" data-family="rl">Reinforcement learning</span>
+                <span class="lineage-legend__swatch" data-family="gen">Generative modelling</span>
+                <span class="lineage-legend__swatch" data-family="transformer">Transformers &amp; LLMs</span>
+              </div>
+            </aside>
+
+            <!-- ====== ERA 1 ====== -->
+            <section class="lineage-era" aria-labelledby="era-1-title">
+              <header class="lineage-era__header">
+                <h2 class="lineage-era__title" id="era-1-title">Era 1 — Foundations</h2>
+                <span class="lineage-era__range">before 1950</span>
+              </header>
+              <p class="lineage-era__lead">
+                Before anyone said "machine learning", mathematicians built the inference, optimisation, and
+                signal-processing tools modern ML would later plug in. Every method below pre-dates the
+                computer but is still running inside every deep-learning framework today.
+              </p>
+              <ol class="lineage-cards">
+                <li class="lineage-card" data-family="prob">
+                  <span class="lineage-card__year">1763</span>
+                  <h3 class="lineage-card__name">Bayes' theorem</h3>
+                  <p class="lineage-card__who">Rev. Thomas Bayes (posthumous); edited and published by Richard Price.</p>
+                  <p class="lineage-card__motivation"><strong>Motivation:</strong> reason <em>backwards</em> from effects to causes — what's the probability the coin is biased, given this observed sequence?</p>
+                  <p class="lineage-card__influence"><strong>Influenced:</strong> MLE (1912), Thompson sampling (1933), variational inference, every Bayesian model; the conjugate-prior machinery in <a href="../math-lab/#theory-info">Math §8</a> and the <a href="../rl-lab/#theory-bandits">RL §1 coin demo</a>.</p>
+                </li>
+                <li class="lineage-card" data-family="opt">
+                  <span class="lineage-card__year">1805</span>
+                  <h3 class="lineage-card__name">Least squares</h3>
+                  <p class="lineage-card__who">Adrien-Marie Legendre (1805); Carl Friedrich Gauss (1809) with probabilistic justification.</p>
+                  <p class="lineage-card__motivation"><strong>Motivation:</strong> fit a line to noisy astronomical observations — predict where Ceres would re-emerge from behind the Sun.</p>
+                  <p class="lineage-card__influence"><strong>Influenced:</strong> linear regression, PCA, MLE-for-Gaussian-noise (the squared-error loss in every deep network). See <a href="../classical-ml/#demo-linreg">Machine Learning §1</a>.</p>
+                </li>
+                <li class="lineage-card" data-family="signal">
+                  <span class="lineage-card__year">1807</span>
+                  <h3 class="lineage-card__name">Fourier series</h3>
+                  <p class="lineage-card__who">Joseph Fourier, memoir on heat propagation (published 1822 as <em>Théorie analytique de la chaleur</em>).</p>
+                  <p class="lineage-card__motivation"><strong>Motivation:</strong> solve the heat equation in a metal rod by writing temperature as a sum of sinusoids.</p>
+                  <p class="lineage-card__influence"><strong>Influenced:</strong> signal processing, the DFT/FFT, <a href="../math-lab/#theory-pos-enc">transformer positional encoding</a>, the entire <a href="../fourier-epicycles/">Fourier lab</a>.</p>
+                </li>
+                <li class="lineage-card" data-family="prob">
+                  <span class="lineage-card__year">1810</span>
+                  <h3 class="lineage-card__name">Central Limit Theorem</h3>
+                  <p class="lineage-card__who">Pierre-Simon Laplace (1810); special case by Abraham de Moivre (1733).</p>
+                  <p class="lineage-card__motivation"><strong>Motivation:</strong> explain why sums of many independent noisy measurements end up Gaussian even when each piece isn't.</p>
+                  <p class="lineage-card__influence"><strong>Influenced:</strong> Gaussian MLE, large-sample statistics, the "noise is Gaussian" assumption in every regression loss. Proof-in-pictures in <a href="../math-lab/#theory-prob">Math §7</a>.</p>
+                </li>
+                <li class="lineage-card" data-family="opt">
+                  <span class="lineage-card__year">1847</span>
+                  <h3 class="lineage-card__name">Gradient descent</h3>
+                  <p class="lineage-card__who">Augustin-Louis Cauchy, "Méthode générale pour la résolution des systèmes d'équations simultanées".</p>
+                  <p class="lineage-card__motivation"><strong>Motivation:</strong> solve systems of equations iteratively by following the steepest local decrease — originally for fitting orbit computations.</p>
+                  <p class="lineage-card__influence"><strong>Influenced:</strong> stochastic GD, backpropagation, Adam, every optimiser in deep learning. The canonical demo lives in <a href="../math-lab/#theory-gd">Math §2</a>.</p>
+                </li>
+                <li class="lineage-card" data-family="prob">
+                  <span class="lineage-card__year">1901</span>
+                  <h3 class="lineage-card__name">Principal component analysis</h3>
+                  <p class="lineage-card__who">Karl Pearson (1901); Harold Hotelling's statistical formalisation (1933).</p>
+                  <p class="lineage-card__motivation"><strong>Motivation:</strong> find the line (then plane, then subspace) that best fits a cloud of points — minimum-total-squared-perpendicular-distance.</p>
+                  <p class="lineage-card__influence"><strong>Influenced:</strong> factor analysis, autoencoders, word embeddings; the spectral intuition behind <a href="../math-lab/#theory-linalg">eigendecomposition</a> and <a href="../math-lab/#theory-pca">Math §5 PCA</a>.</p>
+                </li>
+                <li class="lineage-card" data-family="gen">
+                  <span class="lineage-card__year">1908</span>
+                  <h3 class="lineage-card__name">Langevin dynamics</h3>
+                  <p class="lineage-card__who">Paul Langevin, equation for Brownian motion under a systematic force plus random kicks.</p>
+                  <p class="lineage-card__motivation"><strong>Motivation:</strong> model a particle jiggling in a fluid — deterministic drift plus Gaussian noise.</p>
+                  <p class="lineage-card__influence"><strong>Influenced:</strong> SGD-as-Langevin, MCMC samplers, score-based diffusion sampling (<a href="../diffusion-lab/#theory-score">Diffusion §5</a>). The same random walk that powers <a href="../diffusion-lab/#theory-rw">forward diffusion</a>.</p>
+                </li>
+                <li class="lineage-card" data-family="prob">
+                  <span class="lineage-card__year">1912</span>
+                  <h3 class="lineage-card__name">Maximum likelihood estimation</h3>
+                  <p class="lineage-card__who">R. A. Fisher; formalised in a series of papers between 1912–1922.</p>
+                  <p class="lineage-card__motivation"><strong>Motivation:</strong> a principled way to pick a parameter: the value that makes the observed data most probable.</p>
+                  <p class="lineage-card__influence"><strong>Influenced:</strong> logistic regression, softmax cross-entropy, the whole supervised-learning recipe. See <a href="../classical-ml/#theory-mle">Machine Learning §2 MLE derivation</a>.</p>
+                </li>
+                <li class="lineage-card" data-family="rl">
+                  <span class="lineage-card__year">1933</span>
+                  <h3 class="lineage-card__name">Thompson sampling</h3>
+                  <p class="lineage-card__who">William R. Thompson, "On the likelihood that one unknown probability exceeds another…"</p>
+                  <p class="lineage-card__motivation"><strong>Motivation:</strong> design clinical trials — allocate patients between two treatments to balance learning which is better <em>against</em> curing the patient in front of you.</p>
+                  <p class="lineage-card__influence"><strong>Influenced:</strong> multi-armed bandits, Bayesian RL, modern A/B testing, RLHF data collection. Live demo in <a href="../rl-lab/#theory-bandits">RL §1</a>.</p>
+                </li>
+                <li class="lineage-card" data-family="prob">
+                  <span class="lineage-card__year">1948</span>
+                  <h3 class="lineage-card__name">Shannon entropy &amp; information theory</h3>
+                  <p class="lineage-card__who">Claude Shannon, "A Mathematical Theory of Communication".</p>
+                  <p class="lineage-card__motivation"><strong>Motivation:</strong> quantify how much information a message carries — the fewest bits on average needed to transmit it.</p>
+                  <p class="lineage-card__influence"><strong>Influenced:</strong> KL divergence (below), cross-entropy loss, mutual information, the whole "loss function is a log-likelihood" worldview. <a href="../math-lab/#theory-info">Math §8 Information theory</a>.</p>
+                </li>
+                <li class="lineage-card" data-family="prob">
+                  <span class="lineage-card__year">1951</span>
+                  <h3 class="lineage-card__name">Kullback–Leibler divergence</h3>
+                  <p class="lineage-card__who">Solomon Kullback &amp; Richard Leibler, "On Information and Sufficiency".</p>
+                  <p class="lineage-card__motivation"><strong>Motivation:</strong> measure how far one probability distribution is from another, in a way that respects Shannon's coding-cost intuition.</p>
+                  <p class="lineage-card__influence"><strong>Influenced:</strong> variational inference, the ELBO, GAN objectives, diffusion losses. The asymmetry is why VI and MLE produce different fits — see <a href="../math-lab/#theory-kl-demos">Math §9 mode-covering vs mode-seeking</a>.</p>
+                </li>
+              </ol>
+            </section>
+
+            <!-- ====== ERA 2 ====== -->
+            <section class="lineage-era" aria-labelledby="era-2-title">
+              <header class="lineage-era__header">
+                <h2 class="lineage-era__title" id="era-2-title">Era 2 — AI foundations</h2>
+                <span class="lineage-era__range">1950 – 1990</span>
+              </header>
+              <p class="lineage-era__lead">
+                Computers arrived. The first generation of learning machines tried to mimic neurons
+                (perceptron), plan under uncertainty (dynamic programming), and approximate intractable
+                integrals (EM). Most of the conceptual primitives for modern ML were in place by 1990 — we
+                just didn't have the data or the compute yet.
+              </p>
+              <ol class="lineage-cards">
+                <li class="lineage-card" data-family="rl">
+                  <span class="lineage-card__year">1957</span>
+                  <h3 class="lineage-card__name">Dynamic programming &amp; the Bellman equation</h3>
+                  <p class="lineage-card__who">Richard Bellman, <em>Dynamic Programming</em>.</p>
+                  <p class="lineage-card__motivation"><strong>Motivation:</strong> solve sequential decision problems (rocket guidance, inventory control) by recursing on a value function.</p>
+                  <p class="lineage-card__influence"><strong>Influenced:</strong> MDPs, TD learning, Q-learning, policy iteration, RL writ large. The recursion in <a href="../rl-lab/#theory-dp">RL §4 DP</a>.</p>
+                </li>
+                <li class="lineage-card" data-family="nn">
+                  <span class="lineage-card__year">1958</span>
+                  <h3 class="lineage-card__name">Perceptron</h3>
+                  <p class="lineage-card__who">Frank Rosenblatt, "The Perceptron: A Probabilistic Model for Information Storage…".</p>
+                  <p class="lineage-card__motivation"><strong>Motivation:</strong> a brain-inspired machine that learns a linear classifier from examples, with weights adjusted by a simple rule.</p>
+                  <p class="lineage-card__influence"><strong>Influenced:</strong> multi-layer networks, the AI-winter debate (Minsky &amp; Papert 1969 on XOR), backpropagation — everything that calls itself "deep learning".</p>
+                </li>
+                <li class="lineage-card" data-family="signal">
+                  <span class="lineage-card__year">1965</span>
+                  <h3 class="lineage-card__name">Fast Fourier transform</h3>
+                  <p class="lineage-card__who">James Cooley &amp; John Tukey; Gauss worked it out unpublished around 1805.</p>
+                  <p class="lineage-card__motivation"><strong>Motivation:</strong> detect Soviet nuclear tests from seismic signals; compute the DFT in O(N log N) instead of O(N²).</p>
+                  <p class="lineage-card__influence"><strong>Influenced:</strong> every signal-processing and audio pipeline; spectrograms for Whisper and other audio transformers; the <a href="../fourier-epicycles/">Fourier lab's</a> entire architecture.</p>
+                </li>
+                <li class="lineage-card" data-family="prob">
+                  <span class="lineage-card__year">1977</span>
+                  <h3 class="lineage-card__name">EM algorithm</h3>
+                  <p class="lineage-card__who">Dempster, Laird &amp; Rubin, "Maximum Likelihood from Incomplete Data via the EM Algorithm".</p>
+                  <p class="lineage-card__motivation"><strong>Motivation:</strong> do MLE when some variables are unobserved — alternate between guessing the missing values and updating parameters.</p>
+                  <p class="lineage-card__influence"><strong>Influenced:</strong> Gaussian mixture fitting, hidden Markov models, variational inference, the VAE E-step intuition. See <a href="../classical-ml/#demo-clustering">Machine Learning §5 clustering</a>.</p>
+                </li>
+                <li class="lineage-card" data-family="nn">
+                  <span class="lineage-card__year">1986</span>
+                  <h3 class="lineage-card__name">Backpropagation</h3>
+                  <p class="lineage-card__who">Rumelhart, Hinton &amp; Williams (<em>Nature</em>); earlier in Werbos' 1974 thesis.</p>
+                  <p class="lineage-card__motivation"><strong>Motivation:</strong> efficiently compute gradients through many-layer networks by reusing the chain rule; unlocked training hidden-layer models.</p>
+                  <p class="lineage-card__influence"><strong>Influenced:</strong> CNNs, RNNs, LSTMs, transformers, every deep-learning library's autograd. Universal approximation (1989) explains <em>why</em> it matters — see <a href="../math-lab/#theory-nn">Math §6</a>.</p>
+                </li>
+                <li class="lineage-card" data-family="rl">
+                  <span class="lineage-card__year">1988</span>
+                  <h3 class="lineage-card__name">Temporal-difference learning</h3>
+                  <p class="lineage-card__who">Richard Sutton, "Learning to predict by the methods of temporal differences".</p>
+                  <p class="lineage-card__motivation"><strong>Motivation:</strong> learn value estimates by bootstrapping — updating from the <em>next</em> state's estimate rather than waiting for the final return.</p>
+                  <p class="lineage-card__influence"><strong>Influenced:</strong> Q-learning, SARSA, deep RL (DQN), actor-critic TD targets. The "same-shape update" story in <a href="../rl-lab/#theory-mc-td">RL §5</a>.</p>
+                </li>
+                <li class="lineage-card" data-family="rl">
+                  <span class="lineage-card__year">1989</span>
+                  <h3 class="lineage-card__name">Q-learning</h3>
+                  <p class="lineage-card__who">Chris Watkins (thesis); formal convergence proof with Peter Dayan (1992).</p>
+                  <p class="lineage-card__motivation"><strong>Motivation:</strong> learn the optimal action-value function directly from experience, without needing a model of the environment.</p>
+                  <p class="lineage-card__influence"><strong>Influenced:</strong> DQN (2013), double DQN, Rainbow, AlphaGo's value head. The model-free anchor in <a href="../rl-lab/#theory-mc-td">RL §5</a>.</p>
+                </li>
+                <li class="lineage-card" data-family="nn">
+                  <span class="lineage-card__year">1989</span>
+                  <h3 class="lineage-card__name">Universal approximation theorem</h3>
+                  <p class="lineage-card__who">George Cybenko; Hornik, Stinchcombe &amp; White (1989–1991).</p>
+                  <p class="lineage-card__motivation"><strong>Motivation:</strong> prove that a two-layer neural network with a non-polynomial activation can approximate any continuous function on a compact set.</p>
+                  <p class="lineage-card__influence"><strong>Influenced:</strong> the theoretical licence to use NNs as policies, value functions, score networks — anywhere a flexible function class is needed. See <a href="../math-lab/#theory-nn">Math §6</a>.</p>
+                </li>
+              </ol>
+            </section>
+
+            <!-- ====== ERA 3 ====== -->
+            <section class="lineage-era" aria-labelledby="era-3-title">
+              <header class="lineage-era__header">
+                <h2 class="lineage-era__title" id="era-3-title">Era 3 — Modern ML</h2>
+                <span class="lineage-era__range">1990 – 2010</span>
+              </header>
+              <p class="lineage-era__lead">
+                Kernel methods, convex optimisation, and probabilistic graphical models dominated. Neural
+                nets survived on the margins — LSTM, gradient tricks, score matching — waiting for compute
+                and data to catch up.
+              </p>
+              <ol class="lineage-cards">
+                <li class="lineage-card" data-family="rl">
+                  <span class="lineage-card__year">1992</span>
+                  <h3 class="lineage-card__name">REINFORCE</h3>
+                  <p class="lineage-card__who">Ronald Williams, "Simple statistical gradient-following algorithms for connectionist reinforcement learning".</p>
+                  <p class="lineage-card__motivation"><strong>Motivation:</strong> optimise a parameterised policy by ascending the gradient of expected reward — directly, without a value function.</p>
+                  <p class="lineage-card__influence"><strong>Influenced:</strong> actor-critic, TRPO, PPO, SAC, RLHF fine-tuning. The policy-gradient identity in <a href="../rl-lab/#theory-pg">RL §7</a>.</p>
+                </li>
+                <li class="lineage-card" data-family="opt">
+                  <span class="lineage-card__year">1995</span>
+                  <h3 class="lineage-card__name">Support vector machine</h3>
+                  <p class="lineage-card__who">Vladimir Vapnik &amp; co. — margin formulation in Boser, Guyon &amp; Vapnik (1992); popularised by Vapnik (1995).</p>
+                  <p class="lineage-card__motivation"><strong>Motivation:</strong> build the widest-margin separator — maximise the distance from the decision boundary to the nearest training point.</p>
+                  <p class="lineage-card__influence"><strong>Influenced:</strong> kernel methods (as a broader family), structured prediction, the "regularisation = margin" intuition that recurs in deep learning. <a href="../classical-ml/#demo-svm">Machine Learning §4 SVM demo</a>.</p>
+                </li>
+                <li class="lineage-card" data-family="nn">
+                  <span class="lineage-card__year">1997</span>
+                  <h3 class="lineage-card__name">LSTM</h3>
+                  <p class="lineage-card__who">Sepp Hochreiter &amp; Jürgen Schmidhuber, "Long Short-Term Memory".</p>
+                  <p class="lineage-card__motivation"><strong>Motivation:</strong> fix the vanishing-gradient problem in RNNs by adding gated cells that preserve information across long time spans.</p>
+                  <p class="lineage-card__influence"><strong>Influenced:</strong> seq2seq models, neural machine translation, speech recognition — the state of the art until transformers superseded them around 2018.</p>
+                </li>
+                <li class="lineage-card" data-family="rl">
+                  <span class="lineage-card__year">2002</span>
+                  <h3 class="lineage-card__name">UCB1</h3>
+                  <p class="lineage-card__who">Auer, Cesa-Bianchi &amp; Fischer, "Finite-time analysis of the multi-armed bandit problem".</p>
+                  <p class="lineage-card__motivation"><strong>Motivation:</strong> "optimism in the face of uncertainty" — pick the arm with the highest <em>upper confidence bound</em>, balancing exploration and exploitation with a provable log-regret bound.</p>
+                  <p class="lineage-card__influence"><strong>Influenced:</strong> MCTS (UCT), Bayesian optimisation, contextual bandits. See the strategy selector in the <a href="../rl-lab/">RL Lab</a> bandit demo.</p>
+                </li>
+                <li class="lineage-card" data-family="gen">
+                  <span class="lineage-card__year">2005</span>
+                  <h3 class="lineage-card__name">Score matching</h3>
+                  <p class="lineage-card__who">Aapo Hyvärinen, "Estimation of Non-Normalized Statistical Models by Score Matching".</p>
+                  <p class="lineage-card__motivation"><strong>Motivation:</strong> fit a density model without computing the intractable normalisation constant — match the score ∇ log p instead.</p>
+                  <p class="lineage-card__influence"><strong>Influenced:</strong> denoising score matching, score-based generative models, the score network in DDPM. The math behind <a href="../diffusion-lab/#theory-score">Diffusion §5</a>.</p>
+                </li>
+                <li class="lineage-card" data-family="rl">
+                  <span class="lineage-card__year">2006</span>
+                  <h3 class="lineage-card__name">Monte Carlo Tree Search (UCT)</h3>
+                  <p class="lineage-card__who">Rémi Coulom; Kocsis &amp; Szepesvári formalised UCT the same year.</p>
+                  <p class="lineage-card__motivation"><strong>Motivation:</strong> plan in large game trees where you have a simulator but no value function — UCB1 applied recursively down the search tree.</p>
+                  <p class="lineage-card__influence"><strong>Influenced:</strong> AlphaGo, AlphaZero, MuZero; LLM-guided theorem provers. Full coverage in <a href="../rl-lab/#theory-mcts">RL §8</a>.</p>
+                </li>
+              </ol>
+            </section>
+
+            <!-- ====== ERA 4 ====== -->
+            <section class="lineage-era" aria-labelledby="era-4-title">
+              <header class="lineage-era__header">
+                <h2 class="lineage-era__title" id="era-4-title">Era 4 — Deep-learning wave</h2>
+                <span class="lineage-era__range">2010 – 2017</span>
+              </header>
+              <p class="lineage-era__lead">
+                GPUs became cheap and ImageNet became big. Old neural-network ideas stopped being theoretical
+                curiosities. Representation learning, generative modelling, and attention emerged in that
+                order — each one unblocking the next.
+              </p>
+              <ol class="lineage-cards">
+                <li class="lineage-card" data-family="nn">
+                  <span class="lineage-card__year">2012</span>
+                  <h3 class="lineage-card__name">AlexNet</h3>
+                  <p class="lineage-card__who">Alex Krizhevsky, Ilya Sutskever &amp; Geoffrey Hinton, "ImageNet Classification with Deep CNNs".</p>
+                  <p class="lineage-card__motivation"><strong>Motivation:</strong> train a big convolutional network on ImageNet with GPUs and ReLU activations; proved depth + scale + data beats hand-engineered features.</p>
+                  <p class="lineage-card__influence"><strong>Influenced:</strong> the whole deep-learning explosion — VGG, Inception, ResNet, all the way to ViT. The "scale is the bitter lesson" era started here.</p>
+                </li>
+                <li class="lineage-card" data-family="nn">
+                  <span class="lineage-card__year">2013</span>
+                  <h3 class="lineage-card__name">word2vec</h3>
+                  <p class="lineage-card__who">Tomáš Mikolov et al., "Efficient Estimation of Word Representations…".</p>
+                  <p class="lineage-card__motivation"><strong>Motivation:</strong> produce dense vector representations of words from co-occurrence statistics — fast enough to train on a billion-word corpus.</p>
+                  <p class="lineage-card__influence"><strong>Influenced:</strong> pre-trained embeddings (GloVe, fastText), the "words as points in R^d" intuition behind every modern NLP model. See <a href="../transformer-lab/#theory-embeddings">Transformer §2 embeddings</a>.</p>
+                </li>
+                <li class="lineage-card" data-family="gen">
+                  <span class="lineage-card__year">2013</span>
+                  <h3 class="lineage-card__name">Variational autoencoder</h3>
+                  <p class="lineage-card__who">Diederik P. Kingma &amp; Max Welling (Dec 2013); Rezende, Mohamed &amp; Wierstra independently (2014).</p>
+                  <p class="lineage-card__motivation"><strong>Motivation:</strong> train a latent-variable generative model end-to-end with backpropagation — the reparameterisation trick made it differentiable.</p>
+                  <p class="lineage-card__influence"><strong>Influenced:</strong> DDPM (latent noise hierarchy), normalising flows, β-VAE, every modern generative model with a latent space. See <a href="../diffusion-lab/#theory-vae">Diffusion §2 VAE</a>.</p>
+                </li>
+                <li class="lineage-card" data-family="gen">
+                  <span class="lineage-card__year">2014</span>
+                  <h3 class="lineage-card__name">Generative adversarial network</h3>
+                  <p class="lineage-card__who">Ian Goodfellow et al., NeurIPS 2014.</p>
+                  <p class="lineage-card__motivation"><strong>Motivation:</strong> train a generator by pitting it against a discriminator — an adversarial game that bypasses likelihood altogether.</p>
+                  <p class="lineage-card__influence"><strong>Influenced:</strong> StyleGAN, image-to-image translation, the JS-divergence-as-loss view; largely supplanted by diffusion for high-fidelity generation by 2022.</p>
+                </li>
+                <li class="lineage-card" data-family="opt">
+                  <span class="lineage-card__year">2014</span>
+                  <h3 class="lineage-card__name">Adam optimizer</h3>
+                  <p class="lineage-card__who">Diederik P. Kingma &amp; Jimmy Ba, "Adam: A Method for Stochastic Optimization".</p>
+                  <p class="lineage-card__motivation"><strong>Motivation:</strong> combine momentum (RMSProp) with per-parameter adaptive learning rates; default hyper-parameters that actually work.</p>
+                  <p class="lineage-card__influence"><strong>Influenced:</strong> the default optimiser for transformers, diffusion training, almost every modern paper. AdamW (decoupled weight decay, 2019) is the LLM standard.</p>
+                </li>
+                <li class="lineage-card" data-family="transformer">
+                  <span class="lineage-card__year">2014</span>
+                  <h3 class="lineage-card__name">Attention for seq2seq</h3>
+                  <p class="lineage-card__who">Dzmitry Bahdanau, Kyunghyun Cho &amp; Yoshua Bengio, "Neural Machine Translation by Jointly Learning to Align and Translate".</p>
+                  <p class="lineage-card__motivation"><strong>Motivation:</strong> stop forcing a seq2seq model to compress the whole source sentence into one hidden state; let the decoder softly attend to relevant source positions.</p>
+                  <p class="lineage-card__influence"><strong>Influenced:</strong> the Transformer (2017) took attention and dropped the RNN entirely. Direct ancestor of every LLM. See <a href="../transformer-lab/#theory-qkv">Transformer §3 Q/K/V</a>.</p>
+                </li>
+                <li class="lineage-card" data-family="nn">
+                  <span class="lineage-card__year">2015</span>
+                  <h3 class="lineage-card__name">ResNet (residual connections)</h3>
+                  <p class="lineage-card__who">Kaiming He et al., "Deep Residual Learning for Image Recognition".</p>
+                  <p class="lineage-card__motivation"><strong>Motivation:</strong> train networks 100+ layers deep — skip connections let gradients flow past layers that are still learning.</p>
+                  <p class="lineage-card__influence"><strong>Influenced:</strong> the "x + sublayer(x)" residual pattern in every transformer block (<a href="../transformer-lab/#theory-block">Transformer §7</a>), DenseNet, U-Net.</p>
+                </li>
+                <li class="lineage-card" data-family="rl">
+                  <span class="lineage-card__year">2016</span>
+                  <h3 class="lineage-card__name">AlphaGo</h3>
+                  <p class="lineage-card__who">David Silver et al. (DeepMind), <em>Nature</em> 2016.</p>
+                  <p class="lineage-card__motivation"><strong>Motivation:</strong> beat a professional Go player — the long-assumed "20 years away" benchmark — by combining MCTS with deep policy and value networks.</p>
+                  <p class="lineage-card__influence"><strong>Influenced:</strong> AlphaGo Zero (2017), AlphaZero, MuZero, AlphaFold; the template for "combine search with learned priors" now used in LLM code/theorem-proving. See <a href="../rl-lab/#theory-mcts">RL §8 MCTS</a>.</p>
+                </li>
+              </ol>
+            </section>
+
+            <!-- ====== ERA 5 ====== -->
+            <section class="lineage-era" aria-labelledby="era-5-title">
+              <header class="lineage-era__header">
+                <h2 class="lineage-era__title" id="era-5-title">Era 5 — Transformer era</h2>
+                <span class="lineage-era__range">2017 onward</span>
+              </header>
+              <p class="lineage-era__lead">
+                One architecture — a stack of attention + MLP blocks — took over language, then vision, then
+                audio, then protein folding. The interesting action moved to scaling, data curation, and
+                alignment. Diffusion models emerged in parallel and ate image/video generation.
+              </p>
+              <ol class="lineage-cards">
+                <li class="lineage-card" data-family="transformer">
+                  <span class="lineage-card__year">2017</span>
+                  <h3 class="lineage-card__name">Transformer</h3>
+                  <p class="lineage-card__who">Vaswani et al. (Google Brain), "Attention Is All You Need".</p>
+                  <p class="lineage-card__motivation"><strong>Motivation:</strong> get rid of the recurrent bottleneck in seq2seq — attend to the whole input in parallel with multi-head attention + feed-forward blocks.</p>
+                  <p class="lineage-card__influence"><strong>Influenced:</strong> BERT, GPT, T5, ViT, Whisper, AlphaFold — essentially every model people talk about today. The architecture in <a href="../transformer-lab/">Transformer Lab</a>.</p>
+                </li>
+                <li class="lineage-card" data-family="rl">
+                  <span class="lineage-card__year">2017</span>
+                  <h3 class="lineage-card__name">Proximal Policy Optimization (PPO)</h3>
+                  <p class="lineage-card__who">John Schulman et al. (OpenAI).</p>
+                  <p class="lineage-card__motivation"><strong>Motivation:</strong> a simpler, more stable policy-gradient method than TRPO — clip the ratio of new-to-old policies to prevent destructive updates.</p>
+                  <p class="lineage-card__influence"><strong>Influenced:</strong> robotics RL, RLHF fine-tuning of LLMs (InstructGPT / ChatGPT), Atari-benchmark standard. The default policy-grad update in <a href="../rl-lab/#theory-pg">RL §7</a>.</p>
+                </li>
+                <li class="lineage-card" data-family="transformer">
+                  <span class="lineage-card__year">2018</span>
+                  <h3 class="lineage-card__name">BERT</h3>
+                  <p class="lineage-card__who">Jacob Devlin, Ming-Wei Chang, Kenton Lee &amp; Kristina Toutanova (Google).</p>
+                  <p class="lineage-card__motivation"><strong>Motivation:</strong> pre-train a bidirectional encoder on masked-language-modelling, then fine-tune on downstream tasks — beat task-specific models by a margin.</p>
+                  <p class="lineage-card__influence"><strong>Influenced:</strong> RoBERTa, DistilBERT, DeBERTa, sentence-embedding models; the encoder-only family in <a href="../transformer-lab/#theory-map">Transformer §9</a>.</p>
+                </li>
+                <li class="lineage-card" data-family="transformer">
+                  <span class="lineage-card__year">2018</span>
+                  <h3 class="lineage-card__name">GPT (original)</h3>
+                  <p class="lineage-card__who">Alec Radford, Karthik Narasimhan, Tim Salimans &amp; Ilya Sutskever (OpenAI).</p>
+                  <p class="lineage-card__motivation"><strong>Motivation:</strong> same pre-train-then-fine-tune recipe as BERT, but <em>decoder-only</em> with a next-token-prediction objective.</p>
+                  <p class="lineage-card__influence"><strong>Influenced:</strong> GPT-2, GPT-3, Llama, Mistral, Claude, Gemini — every modern LLM is in this family. See <a href="../transformer-lab/#theory-archs">Transformer §8 no-peeking rule</a>.</p>
+                </li>
+                <li class="lineage-card" data-family="gen">
+                  <span class="lineage-card__year">2020</span>
+                  <h3 class="lineage-card__name">DDPM</h3>
+                  <p class="lineage-card__who">Jonathan Ho, Ajay Jain &amp; Pieter Abbeel, "Denoising Diffusion Probabilistic Models".</p>
+                  <p class="lineage-card__motivation"><strong>Motivation:</strong> refine Sohl-Dickstein et al. (2015) diffusion models by training the network to predict the noise directly — simple loss, beat GANs on image quality.</p>
+                  <p class="lineage-card__influence"><strong>Influenced:</strong> DDIM, classifier-free guidance, Stable Diffusion, DALL-E 2, video generators. The central recipe in <a href="../diffusion-lab/#theory-ddpm">Diffusion §4</a>.</p>
+                </li>
+                <li class="lineage-card" data-family="transformer">
+                  <span class="lineage-card__year">2020</span>
+                  <h3 class="lineage-card__name">GPT-3 &amp; scaling laws</h3>
+                  <p class="lineage-card__who">Tom Brown et al. (OpenAI); Kaplan et al. for the accompanying scaling-law paper.</p>
+                  <p class="lineage-card__motivation"><strong>Motivation:</strong> test whether scaling up model + data + compute keeps improving the loss — and whether emergent abilities (few-shot in-context learning) appear at scale.</p>
+                  <p class="lineage-card__influence"><strong>Influenced:</strong> the entire "foundation model" framing; Chinchilla compute-optimal scaling (2022), Llama 2/3, the modern LLM arms race.</p>
+                </li>
+                <li class="lineage-card" data-family="gen">
+                  <span class="lineage-card__year">2021</span>
+                  <h3 class="lineage-card__name">Score SDE &amp; continuous-time diffusion</h3>
+                  <p class="lineage-card__who">Yang Song et al., "Score-Based Generative Modeling through Stochastic Differential Equations".</p>
+                  <p class="lineage-card__motivation"><strong>Motivation:</strong> unify DDPM and score matching by treating the forward/reverse diffusion as an SDE; the probability-flow ODE gave deterministic sampling.</p>
+                  <p class="lineage-card__influence"><strong>Influenced:</strong> modern diffusion sampler variants, latent diffusion (Rombach et al. 2021), flow matching. See <a href="../diffusion-lab/#theory-sde">Diffusion §6 SDE view</a>.</p>
+                </li>
+                <li class="lineage-card" data-family="transformer">
+                  <span class="lineage-card__year">2021</span>
+                  <h3 class="lineage-card__name">Rotary Position Embedding (RoPE)</h3>
+                  <p class="lineage-card__who">Jianlin Su et al., "RoFormer: Enhanced Transformer with Rotary Position Embedding".</p>
+                  <p class="lineage-card__motivation"><strong>Motivation:</strong> encode relative position inside Q and K <em>multiplicatively</em> (rotating in feature space) rather than adding sinusoidal PE to embeddings — extrapolates better to long contexts.</p>
+                  <p class="lineage-card__influence"><strong>Influenced:</strong> Llama, Mistral, Gemini, almost every LLM trained after 2022. Named in <a href="../transformer-lab/#theory-pos-enc">Transformer §6</a>.</p>
+                </li>
+                <li class="lineage-card" data-family="transformer">
+                  <span class="lineage-card__year">2022</span>
+                  <h3 class="lineage-card__name">InstructGPT / ChatGPT</h3>
+                  <p class="lineage-card__who">Long Ouyang et al. (OpenAI); ChatGPT launched November 2022.</p>
+                  <p class="lineage-card__motivation"><strong>Motivation:</strong> align a base LLM to follow instructions by combining supervised fine-tuning with reinforcement learning from human feedback (RLHF) using PPO as the optimiser.</p>
+                  <p class="lineage-card__influence"><strong>Influenced:</strong> Claude (2023), Gemini, open-source instruct fine-tunes, RLAIF, DPO, the entire chat-assistant product category.</p>
+                </li>
+                <li class="lineage-card" data-family="gen">
+                  <span class="lineage-card__year">2023</span>
+                  <h3 class="lineage-card__name">Flow matching</h3>
+                  <p class="lineage-card__who">Yaron Lipman, Ricky T. Q. Chen, Heli Ben-Hamu, Maximilian Nickel &amp; Matt Le.</p>
+                  <p class="lineage-card__motivation"><strong>Motivation:</strong> train continuous normalising flows by regressing onto an analytic target velocity field — simpler, faster-sampling alternative to diffusion.</p>
+                  <p class="lineage-card__influence"><strong>Influenced:</strong> rectified flow (Liu et al., 2022), Stable Diffusion 3, audio / molecular generative models. The current frontier of continuous-time generative modelling.</p>
+                </li>
+              </ol>
+            </section>
+
+            <aside class="lineage-intro" aria-label="Closing note" style="margin-top: 1.5rem;">
+              <p>
+                <strong>Caveats.</strong> "Who invented X" is almost always contested. Where credit splits,
+                I've picked the most widely cited primary paper and named co-inventors explicitly. Dates are
+                <em>publication years</em> — many ideas were in the air for years or decades before the
+                canonical citation. If you spot an error, the fix is one HTML card.
+              </p>
+            </aside>
+          </article>
+        </div>
+      </section>
+    </main>
+
+    <div id="site-footer"></div>
+
+    <script type="module">
+      import { initMainLayout } from '../../assets/js/layout/mainLayout.js';
+      initMainLayout('history');
+    </script>
+  </body>
+</html>
