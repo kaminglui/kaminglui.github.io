@@ -366,9 +366,9 @@
                 <li class="lineage-card" data-family="transformer">
                   <span class="lineage-card__year">2014</span>
                   <h3 class="lineage-card__name">Attention for seq2seq</h3>
-                  <p class="lineage-card__who">Dzmitry Bahdanau, Kyunghyun Cho &amp; Yoshua Bengio, "Neural Machine Translation by Jointly Learning to Align and Translate".</p>
-                  <p class="lineage-card__motivation"><strong>Motivation:</strong> stop forcing a seq2seq model to compress the whole source sentence into one hidden state; let the decoder softly attend to relevant source positions.</p>
-                  <p class="lineage-card__influence"><strong>Influenced:</strong> the Transformer (2017) took attention and dropped the RNN entirely. Direct ancestor of every LLM. See <a href="../transformer-lab/#theory-qkv">Transformer §3 Q/K/V</a>.</p>
+                  <p class="lineage-card__who">Dzmitry Bahdanau, Kyunghyun Cho &amp; Yoshua Bengio, "Neural Machine Translation by Jointly Learning to Align and Translate" (arXiv Sept 2014, ICLR 2015).</p>
+                  <p class="lineage-card__motivation"><strong>Motivation:</strong> stop forcing a seq2seq RNN to compress the whole source sentence into one hidden state; let the decoder softly attend to relevant source positions. Attention was originally proposed as a <em>supplement</em> to RNN encoder-decoders — a helper component, not a standalone architecture.</p>
+                  <p class="lineage-card__influence"><strong>Influenced:</strong> three years later, Vaswani et al. (2017) asked what happens if attention is <em>all</em> you use — dropping the RNN entirely. Direct ancestor of every LLM. See <a href="../transformer-lab/#theory-qkv">Transformer §3 Q/K/V</a>.</p>
                 </li>
                 <li class="lineage-card" data-family="nn">
                   <span class="lineage-card__year">2015</span>
@@ -402,9 +402,10 @@
                 <li class="lineage-card" data-family="transformer">
                   <span class="lineage-card__year">2017</span>
                   <h3 class="lineage-card__name">Transformer</h3>
-                  <p class="lineage-card__who">Vaswani et al. (Google Brain), "Attention Is All You Need".</p>
-                  <p class="lineage-card__motivation"><strong>Motivation:</strong> get rid of the recurrent bottleneck in seq2seq — attend to the whole input in parallel with multi-head attention + feed-forward blocks.</p>
-                  <p class="lineage-card__influence"><strong>Influenced:</strong> BERT, GPT, T5, ViT, Whisper, AlphaFold — essentially every model people talk about today. The architecture in <a href="../transformer-lab/">Transformer Lab</a>.</p>
+                  <p class="lineage-card__who">Ashish Vaswani et al. (Google Brain &amp; Google Research), "Attention Is All You Need", NeurIPS 2017.</p>
+                  <p class="lineage-card__motivation"><strong>Motivation:</strong> get rid of the recurrent bottleneck in seq2seq — attend to the whole input in parallel with multi-head attention + feed-forward blocks. Originally proposed for <em>machine translation specifically</em>: the paper's experiments are English→German and English→French WMT benchmarks.</p>
+                  <p class="lineage-card__influence"><strong>Influenced:</strong> BERT, GPT, T5, ViT, Whisper, AlphaFold, DiT (diffusion transformers) — essentially every model people talk about today. The architecture in <a href="../transformer-lab/">Transformer Lab</a>.</p>
+                  <p class="lineage-card__influence"><strong>The spread.</strong> The Transformer was designed to beat RNNs at translation; what surprised everyone over the next five years was that the <em>same block</em> is a general-purpose sequence-modelling primitive. BERT and GPT (2018) showed it replaces LSTMs for language generally; ViT (2020) showed it matches CNNs on images given enough data; AlphaFold 2 (2021) applied it to protein residues; DiT (2022) substituted it for the U-Net in some diffusion models. The "one architecture for every modality" realisation didn't come from Vaswani et al. — it emerged empirically as people kept trying the block in new places and it kept working.</p>
                 </li>
                 <li class="lineage-card" data-family="rl">
                   <span class="lineage-card__year">2017</span>
@@ -418,7 +419,7 @@
                   <h3 class="lineage-card__name">BERT</h3>
                   <p class="lineage-card__who">Jacob Devlin, Ming-Wei Chang, Kenton Lee &amp; Kristina Toutanova (Google).</p>
                   <p class="lineage-card__motivation"><strong>Motivation:</strong> pre-train a bidirectional encoder on masked-language-modelling, then fine-tune on downstream tasks — beat task-specific models by a margin.</p>
-                  <p class="lineage-card__influence"><strong>Influenced:</strong> <em>the canonical encoder-only transformer</em>. RoBERTa (2019), DistilBERT, DeBERTa, ModernBERT are descendants; sentence-embedding and dense-retrieval models (Sentence-BERT, ColBERT) inherit the bidirectional-attention + mask-prediction recipe. See <a href="../transformer-lab/#theory-map">Transformer §9</a>.</p>
+                  <p class="lineage-card__influence"><strong>Influenced:</strong> <em>the canonical encoder-only transformer</em>. RoBERTa (2019), DistilBERT, DeBERTa, ModernBERT are descendants; sentence-embedding and dense-retrieval models (Sentence-BERT, ColBERT) inherit the bidirectional-attention + mask-prediction recipe. Seeded the 2018–2020 "BERTology" era — a large body of papers tuning BERT variants and optimising GLUE / SuperGLUE leaderboards, surveyed in Rogers, Kovaleva &amp; Rumshisky's 2020 <em>A Primer in BERTology</em> (TACL) — before GPT-3's scaling-law result shifted mindshare to decoder-only. See <a href="../transformer-lab/#theory-map">Transformer §9</a>.</p>
                 </li>
                 <li class="lineage-card" data-family="transformer">
                   <span class="lineage-card__year">2018</span>
@@ -444,9 +445,10 @@
                 <li class="lineage-card" data-family="transformer">
                   <span class="lineage-card__year">2020</span>
                   <h3 class="lineage-card__name">GPT-3 &amp; scaling laws</h3>
-                  <p class="lineage-card__who">Tom Brown et al. (OpenAI); Kaplan et al. for the accompanying scaling-law paper.</p>
-                  <p class="lineage-card__motivation"><strong>Motivation:</strong> test whether scaling up model + data + compute keeps improving the loss — and whether emergent abilities (few-shot in-context learning) appear at scale.</p>
-                  <p class="lineage-card__influence"><strong>Influenced:</strong> <em>the canonical foundation model</em> — triggered the whole "foundation-model" framing; Chinchilla compute-optimal scaling (2022), Llama 2/3, DeepSeek, the modern LLM arms race. Few-shot in-context learning as emergent ability was the key empirical surprise.</p>
+                  <p class="lineage-card__who">Jared Kaplan et al. (OpenAI), "Scaling Laws for Neural Language Models" (Jan 2020); Tom Brown et al., "Language Models are Few-Shot Learners" (May 2020).</p>
+                  <p class="lineage-card__motivation"><strong>Motivation:</strong> Kaplan's paper showed that language-model loss falls as a smooth <em>power law</em> in compute, data, and parameters — far more predictable than anyone expected, with trends spanning more than seven orders of magnitude. GPT-3 spent a multi-million-dollar compute budget (third-party estimates around $4.6M for training only) at 175B parameters to test the extrapolation and see whether qualitatively new abilities appeared at the end of the curve. Few-shot in-context learning did.</p>
+                  <p class="lineage-card__influence"><strong>Influenced:</strong> <em>the canonical foundation model</em>. Triggered the "foundation model" framing; lineage runs through PaLM (2022), Chinchilla (2022, which revised Kaplan's data/parameter ratio upward — more tokens per parameter for compute-optimal training), Llama 2/3, Mistral, DeepSeek — the modern LLM arms race.</p>
+                  <p class="lineage-card__influence"><strong>Cultural shift:</strong> before 2020, the standard unit of NLP research was a BERT variant or a GLUE fine-tuning trick. After GPT-3 the frontier moved from "tune the encoder" to "scale the decoder" almost overnight — BERTology papers continued to appear but no longer set the research frontier. Today "bigger is better" is the dominant working hypothesis, though Chinchilla's correction and mixture-of-experts (Mixtral, DeepSeek-V3) show size isn't the only axis that matters. The honest framing: scale delivers reliably but not exclusively.</p>
                 </li>
                 <li class="lineage-card" data-family="transformer">
                   <span class="lineage-card__year">2020</span>
