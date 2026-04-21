@@ -18,7 +18,7 @@
 
 
 </head>
-<body class="theme-light">
+<body class="theme-dark">
 
     <div id="site-header"></div>
 
@@ -625,7 +625,8 @@
 
     <script type="module">
         import { initMainLayout } from '../../assets/js/layout/mainLayout.js';
-        initMainLayout('circuit-lab');
+        // Circuit Lab is dark-only: force dark theme and hide the toggle button.
+        initMainLayout('circuit-lab', { themeOptions: { forceTheme: 'dark' } });
     </script>
 
     <script type="module" src="../../assets/js/sim/engine.js"></script>
