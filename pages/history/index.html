@@ -190,7 +190,7 @@
                   <span class="lineage-card__year">1965</span>
                   <h3 class="lineage-card__name">Fast Fourier transform</h3>
                   <p class="lineage-card__who">James Cooley &amp; John Tukey; Gauss worked it out unpublished around 1805.</p>
-                  <p class="lineage-card__motivation"><strong>Motivation:</strong> detect Soviet nuclear tests from seismic signals; compute the DFT in O(N log N) instead of O(N²).</p>
+                  <p class="lineage-card__motivation"><strong>Motivation:</strong> detect Soviet underground nuclear tests from seismic signals — the classical Fourier transform was far too slow to keep up. IBM's Dick Garwin connected statistician John Tukey (Princeton / Bell Labs) with James Cooley (IBM) at a Kennedy-era Science Advisory Committee meeting; they got the DFT down from O(N²) to O(N log N).</p>
                   <p class="lineage-card__influence"><strong>Influenced:</strong> every signal-processing and audio pipeline; spectrograms for Whisper and other audio transformers; the <a href="../fourier-epicycles/">Fourier lab's</a> entire architecture.</p>
                 </li>
                 <li class="lineage-card" data-family="prob">
@@ -324,7 +324,7 @@
                 <li class="lineage-card" data-family="nn">
                   <span class="lineage-card__year">2012</span>
                   <h3 class="lineage-card__name">AlexNet</h3>
-                  <p class="lineage-card__who">Alex Krizhevsky, Ilya Sutskever &amp; Geoffrey Hinton (University of Toronto), "ImageNet Classification with Deep Convolutional Neural Networks", NeurIPS 2012. Immediate GPU-CNN predecessor: Ciresan et al., IJCNN 2011.</p>
+                  <p class="lineage-card__who">Alex Krizhevsky, Ilya Sutskever &amp; Geoffrey Hinton (University of Toronto), "ImageNet Classification with Deep Convolutional Neural Networks", NeurIPS 2012. Immediate GPU-CNN predecessor: Cireşan, Meier, Masci, Gambardella &amp; Schmidhuber, "High-Performance Neural Networks for Visual Object Classification" (arXiv 1102.0183, Feb 2011).</p>
                   <p class="lineage-card__motivation"><strong>Motivation:</strong> stitch the three preconditions together — the <strong>ImageNet</strong> dataset (2009), <strong>NVIDIA GPUs</strong> with CUDA (two GTX 580s for 5–6 days of training), and the <strong>ReLU</strong> activation (2010) — into one 8-layer convolutional network, with dropout for regularisation and simple data augmentation (random crops, flips). Proof that depth + scale + data beats hand-engineered features.</p>
                   <p class="lineage-card__influence"><strong>Influenced:</strong> ImageNet top-5 error fell from 26.2% to 15.3% overnight; the whole deep-learning explosion followed — VGG (2014), Inception (2014), <strong>ResNet (2015, the canonical deep-CNN representative)</strong>, U-Net (2015), up to ViT for images and the transformer era for everything else. The "scale is the bitter lesson" era started here.</p>
                 </li>
@@ -373,7 +373,7 @@
                 <li class="lineage-card" data-family="nn">
                   <span class="lineage-card__year">2015</span>
                   <h3 class="lineage-card__name">ResNet (residual connections)</h3>
-                  <p class="lineage-card__who">Kaiming He, Xiangyu Zhang, Shaoqing Ren &amp; Jian Sun (Microsoft Research Asia), "Deep Residual Learning for Image Recognition", CVPR 2016 best-paper award.</p>
+                  <p class="lineage-card__who">Kaiming He, Xiangyu Zhang, Shaoqing Ren &amp; Jian Sun (Microsoft Research Asia), "Deep Residual Learning for Image Recognition" (arXiv 1512.03385, Dec 2015).</p>
                   <p class="lineage-card__motivation"><strong>Motivation:</strong> train networks 100+ layers deep without the <em>degradation</em> problem — a puzzle where deeper nets <em>trained</em> worse, not just overfit more. The fix is a skip path: <span data-katex="y = x + F(x)"></span> — gradients can now flow past any sub-block that's still learning.</p>
                   <p class="lineage-card__influence"><strong>Influenced:</strong> the canonical deep-CNN representative — ResNet-50 is <em>still</em> the most-used image backbone nine years on. Its "x + sublayer(x)" residual pattern recurs in every transformer block (<a href="../transformer-lab/#theory-block">Transformer §7</a>), DenseNet, and U-Net (used as the denoising backbone in diffusion models).</p>
                 </li>
@@ -431,7 +431,7 @@
                 <li class="lineage-card" data-family="transformer">
                   <span class="lineage-card__year">2019</span>
                   <h3 class="lineage-card__name">T5 — Text-to-Text Transfer Transformer</h3>
-                  <p class="lineage-card__who">Colin Raffel et al. (Google), "Exploring the Limits of Transfer Learning with a Unified Text-to-Text Transformer", JMLR 2020 (arXiv Oct 2019).</p>
+                  <p class="lineage-card__who">Colin Raffel, Noam Shazeer, Adam Roberts, Katherine Lee, Sharan Narang, Michael Matena, Yanqi Zhou, Wei Li &amp; Peter J. Liu (Google), "Exploring the Limits of Transfer Learning with a Unified Text-to-Text Transformer" (arXiv 1910.10683, Oct 2019).</p>
                   <p class="lineage-card__motivation"><strong>Motivation:</strong> cast every NLP task — translation, summarisation, classification, QA — as a text-to-text problem on the original encoder-decoder transformer. Single model, single loss, one architecture to rule them all.</p>
                   <p class="lineage-card__influence"><strong>Influenced:</strong> <em>the canonical encoder-decoder transformer</em>. BART (Lewis et al., 2019) is the sibling; Whisper inherits the architecture for audio → text; instruction-tuning and seq2seq RLHF build on the text-to-text framing. See <a href="../transformer-lab/#theory-map">Transformer §9 families</a>.</p>
                 </li>
