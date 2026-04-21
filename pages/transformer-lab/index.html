@@ -253,6 +253,436 @@
             </div>
 
             <div class="tlab-picked-note" data-tlab-picked aria-live="polite"></div>
+
+            <section class="rl-theory" aria-labelledby="tlab-theory-title">
+              <h3 id="tlab-theory-title" class="visually-hidden">Transformer theory tour</h3>
+
+              <article class="rl-theory__panel" id="theory-tokens">
+                <h3>1 · Tokens — chopping text into model-edible pieces</h3>
+                <p class="rl-theory__kid">
+                  <strong>Kid version.</strong> A printer can't eat a whole novel — it needs paper sliced
+                  into sheets. A transformer can't eat a whole sentence — it needs text sliced into
+                  <strong>tokens</strong>. A token is usually a word, sometimes a piece of a word, and
+                  always an integer once the model looks at it. The word "unbelievability" is rare, so a
+                  real tokenizer splits it into familiar chunks like <code>[un, believ, abil, ity]</code> —
+                  four tokens — so the model can still understand it from its parts.
+                </p>
+                <p>
+                  The demo above uses a simple word-level split with <code>[CLS]</code> / <code>[SEP]</code>
+                  sentinels. Production models use <em>subword</em> tokenizers (BPE, WordPiece, SentencePiece)
+                  that learn a vocabulary from training data — common words stay whole, rare words decompose
+                  into pieces already in the vocabulary. Vocab size is usually 30k–100k.
+                </p>
+                <p class="ml-hint">
+                  <strong>Practice problem.</strong> A BPE tokenizer knows the pieces
+                  <code>{pizza, trans, form, ing, ly, un, believ, able}</code>. How many tokens is
+                  "transforming pizza"? How about "unbelievably"? <em>Answers: 4 tokens
+                  (<code>trans · form · ing · pizza</code>) and 4 tokens
+                  (<code>un · believ · able · ly</code>).</em> This is why "GPT charges per token" —
+                  long words cost more.
+                </p>
+              </article>
+
+              <article class="rl-theory__panel" id="theory-embeddings">
+                <h3>2 · Embeddings — meaning as a list of numbers</h3>
+                <p class="rl-theory__kid">
+                  <strong>Kid version.</strong> Imagine every kid has a secret profile card with, say, six
+                  numbers on it: how loud they are, how much they love pizza, how good at soccer, how shy,
+                  how tall, how old. Kids with similar cards become friends; kids with very different cards
+                  don't hang out. Words work the same — the model turns each token into a list of numbers
+                  (its <strong>embedding</strong>), and two words with similar numbers are treated as
+                  similar words.
+                </p>
+                <p>
+                  An embedding is a learned lookup from token id → vector in <span data-katex="\mathbb{R}^{d_\text{model}}"></span>.
+                  For small models d<sub>model</sub> is ~128; GPT-3 uses 12288. Two embeddings' cosine
+                  similarity (their dot product, normalised) is how "close in meaning" they are to the model.
+                </p>
+
+                <figure class="math-figure math-figure--wide">
+                  <svg class="math-figure__svg" viewBox="0 0 480 200" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Toy 2D embedding space with cat, kitten, dog, pizza, and algorithm positioned by semantic similarity">
+                    <!-- axes -->
+                    <line x1="30" y1="180" x2="460" y2="180" stroke="rgba(148,163,184,0.5)" stroke-width="1"/>
+                    <line x1="30" y1="20"  x2="30"  y2="180" stroke="rgba(148,163,184,0.5)" stroke-width="1"/>
+                    <!-- points -->
+                    <circle cx="340" cy="60"  r="5" fill="#f97316"/>
+                    <text x="350" y="56" font-size="11" fill="#f97316">cat</text>
+                    <circle cx="360" cy="70"  r="5" fill="#f97316"/>
+                    <text x="370" y="66" font-size="11" fill="#f97316">kitten</text>
+                    <circle cx="310" cy="90"  r="5" fill="#f97316"/>
+                    <text x="320" y="86" font-size="11" fill="#f97316">dog</text>
+                    <circle cx="275" cy="125" r="5" fill="#22c55e"/>
+                    <text x="285" y="121" font-size="11" fill="#22c55e">bone</text>
+                    <circle cx="170" cy="110" r="5" fill="#a855f7"/>
+                    <text x="180" y="106" font-size="11" fill="#a855f7">pizza</text>
+                    <circle cx="80"  cy="155" r="5" fill="#3b82f6"/>
+                    <text x="90" y="151" font-size="11" fill="#3b82f6">algorithm</text>
+                    <text x="248" y="195" font-size="10" fill="#64748b" text-anchor="middle">"animal-ness"</text>
+                    <text x="18"  y="100" font-size="10" fill="#64748b" text-anchor="middle" transform="rotate(-90 18 100)">"livingness"</text>
+                  </svg>
+                  <figcaption class="math-figure__caption">A toy 2-D embedding space. The cat family clusters tightly in the top-right; "bone" sits near "dog"; "pizza" is food-adjacent; "algorithm" is a loner. Real models use hundreds of dimensions, but this is what the model "sees" — geometry.</figcaption>
+                </figure>
+
+                <p class="ml-hint">
+                  <strong>Practice problem.</strong> With cat = (0.9, 0.8), kitten = (0.85, 0.82),
+                  algorithm = (−0.7, 0.3) — which is closer to cat, kitten or algorithm? Compute cosine
+                  similarity. <em>Answer: kitten by a mile.</em> The famous
+                  <span data-katex="\text{king} - \text{man} + \text{woman} \approx \text{queen}"></span>
+                  identity (Mikolov et al., 2013) works because embeddings <em>learn</em> that "royal"
+                  and "gender" live on different directions in the vector space.
+                </p>
+              </article>
+
+              <article class="rl-theory__panel" id="theory-qkv">
+                <h3>3 · Query, Key, Value — three lenses on the same token</h3>
+                <p class="rl-theory__kid">
+                  <strong>Kid version.</strong> Think of a library. Your <strong>Query</strong> is what
+                  you're looking for: "books about dragons." Each book's <strong>Key</strong> is its spine
+                  — what it advertises to the outside world. Its <strong>Value</strong> is what's actually
+                  inside. You scan spines (Keys) against your search (Query), pick the ones that match,
+                  and read their contents (Values). A transformer does this for every token in parallel.
+                </p>
+                <p>
+                  Starting from an embedding <span data-katex="e \in \mathbb{R}^{d_\text{model}}"></span>,
+                  three <em>learned</em> projections produce three views:
+                </p>
+                <div class="rl-equation" data-katex="Q = e\, W_Q, \qquad K = e\, W_K, \qquad V = e\, W_V" data-katex-display></div>
+                <p>
+                  Why three? Because "what I'm asking" and "what I advertise" and "what I can deliver" are
+                  three different roles. W<sub>Q</sub>, W<sub>K</sub>, W<sub>V</sub> are learned during
+                  training — the model discovers the best lenses for the task. Dimensions: typically
+                  Q and K have the same width d<sub>k</sub>; V can be a different width d<sub>v</sub>.
+                </p>
+                <p class="ml-hint">
+                  <strong>Pronoun-resolution walk-through.</strong> In "The cat sat on the mat because
+                  <em>it</em> was tired", the token <em>it</em>'s Query ideally encodes "singular subject I
+                  need to refer back to". The Keys of earlier tokens advertise what they <em>are</em> —
+                  <em>cat</em>'s Key says "animal, singular, subject"; <em>mat</em>'s says "object,
+                  singular, inanimate". Query matches <em>cat</em>'s Key best, so the model pulls in
+                  <em>cat</em>'s Value. That's how transformers resolve pronouns without hard-coded rules.
+                </p>
+              </article>
+
+              <article class="rl-theory__panel" id="theory-attention">
+                <h3>4 · Scaled dot-product attention — score, blend, repeat</h3>
+                <p class="rl-theory__kid">
+                  <strong>Kid version.</strong> Every kid's Query walks around the room, compares itself
+                  to every other kid's Key, and gets a raw score per classmate. Then all of one kid's
+                  scores go into a <strong>softmax blender</strong> — it turns the raw scores into
+                  percentages that add up to 100%. Those percentages tell the kid how much of each
+                  classmate's backpack (Value) to pour into their own. The new mixed-backpack is the
+                  kid's <em>context-aware</em> self.
+                </p>
+                <p>
+                  For the whole sequence at once:
+                </p>
+                <div class="rl-equation" data-katex="\text{Attention}(Q, K, V) = \text{softmax}\!\left(\frac{Q K^\top}{\sqrt{d_k}}\right) V" data-katex-display></div>
+                <p>
+                  <strong>Why divide by √d<sub>k</sub>?</strong> If d<sub>k</sub> is large (say 512), random
+                  dot products have variance d<sub>k</sub> — the scores get huge, softmax saturates to
+                  nearly one-hot, gradients vanish. √d<sub>k</sub> normalises the variance back to 1 so
+                  softmax stays differentiable. Not a decoration — this one line makes the model trainable.
+                </p>
+                <p class="ml-hint">
+                  <strong>Worked example, d<sub>k</sub> = 2, three tokens.</strong>
+                  Query Q<sub>1</sub> = (1, 0). Keys K<sub>1</sub> = (1, 0), K<sub>2</sub> = (0, 1),
+                  K<sub>3</sub> = (0.7, 0.7). Raw scores: 1·1=1, 1·0=0, 1·0.7=0.7. Divide by √2:
+                  (0.71, 0, 0.50). Exponentiate: (2.03, 1.00, 1.65). Normalise (softmax): (0.43, 0.21,
+                  0.35). Token 1 "listens" 43% to itself, 21% to token 2, 35% to token 3 — and its
+                  output is 0.43·V<sub>1</sub> + 0.21·V<sub>2</sub> + 0.35·V<sub>3</sub>. The live demo
+                  at the top of this page is running this same arithmetic on whatever sentence you type.
+                </p>
+              </article>
+
+              <article class="rl-theory__panel" id="theory-multihead">
+                <h3>5 · Multi-head attention — eight kids each watching something different</h3>
+                <p class="rl-theory__kid">
+                  <strong>Kid version.</strong> One pair of eyes can't track everything at once. So we have
+                  <em>eight</em> kids in the room, and each watches a <em>different</em> thing — one tracks
+                  who's friends with whom, one tracks what people are wearing, one tracks who's talking
+                  first. They each write down their attention scores, then we staple their reports
+                  together into one thick report. That's multi-head attention: h parallel attentions,
+                  each with its own Q/K/V projection, each learning to focus on a different pattern.
+                </p>
+                <p>
+                  Formally, split d<sub>model</sub> into h heads of width d<sub>k</sub> = d<sub>model</sub>/h.
+                  Each head has its own W<sub>Q</sub><sup>(i)</sup>, W<sub>K</sub><sup>(i)</sup>,
+                  W<sub>V</sub><sup>(i)</sup>:
+                </p>
+                <div class="rl-equation" data-katex="\text{MultiHead}(Q, K, V) = \text{Concat}(\text{head}_1, \ldots, \text{head}_h)\, W_O" data-katex-display></div>
+                <p>
+                  where each <span data-katex="\text{head}_i = \text{Attention}(QW_Q^{(i)}, KW_K^{(i)}, VW_V^{(i)})"></span>.
+                  The final W<sub>O</sub> mixes the concatenated heads back into d<sub>model</sub>.
+                </p>
+                <p class="ml-hint">
+                  <strong>What the heads actually learn.</strong> Clark et al. (2019) analysed BERT's
+                  heads and found specialists: one head almost always attends to the <em>next</em> token,
+                  one to the <em>previous</em>, one to the <code>[CLS]</code> sentinel, one to syntactic
+                  dependents (subjects → their verbs), one to coreferents (pronouns → their antecedents).
+                  Nobody told the model to do this; each head picked up a role during training because
+                  the loss rewarded it. h = 8 or 12 is typical; GPT-4 reportedly uses 96 heads per layer.
+                </p>
+              </article>
+
+              <article class="rl-theory__panel" id="theory-pos-enc">
+                <h3>6 · Positional encoding — teaching order to a bag of words</h3>
+                <p class="rl-theory__kid">
+                  <strong>Kid version.</strong> Attention has no sense of order on its own — without help,
+                  it'd read "dog bites man" exactly the same way as "man bites dog". Disaster. So we stamp
+                  every token with a <em>position signature</em> — a unique "time tag" made of sine and
+                  cosine waves spinning at different speeds. Like a clock with a fast seconds hand, a
+                  medium minutes hand, and a slow hour hand: no two moments have the same combined
+                  reading. The model learns to decode the signature and figure out "I'm the third word."
+                </p>
+                <p>
+                  Classical sinusoidal positional encoding (Vaswani et al., 2017):
+                </p>
+                <div class="rl-equation" data-katex="PE_{(\text{pos}, 2i)} = \sin\!\left(\tfrac{\text{pos}}{10000^{2i/d}}\right), \qquad PE_{(\text{pos}, 2i+1)} = \cos\!\left(\tfrac{\text{pos}}{10000^{2i/d}}\right)" data-katex-display></div>
+                <p>
+                  The 10000<sup>2i/d</sup> denominator gives each dimension a different "clock speed":
+                  low-i dimensions spin fast (resolve short distances); high-i dimensions spin slowly
+                  (resolve long ones). The resulting vector is <em>added</em> to each token's embedding.
+                  Modern LLMs use <strong>RoPE</strong> (rotary position encoding) — the same idea applied
+                  <em>multiplicatively</em> inside Q and K instead of added to the embedding; it
+                  extrapolates better to long contexts.
+                </p>
+
+                <figure class="math-figure math-figure--wide">
+                  <svg class="math-figure__svg" viewBox="0 0 480 160" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Three sinusoidal positional-encoding dimensions at different frequencies">
+                    <line x1="20" y1="80" x2="460" y2="80" stroke="rgba(148,163,184,0.4)" stroke-width="1" stroke-dasharray="2 2"/>
+                    <!-- Fast (dim 0, sin pos) -->
+                    <path d="M 20 80 Q 40 20 60 80 Q 80 140 100 80 Q 120 20 140 80 Q 160 140 180 80 Q 200 20 220 80 Q 240 140 260 80 Q 280 20 300 80 Q 320 140 340 80 Q 360 20 380 80 Q 400 140 420 80 Q 440 20 460 80" fill="none" stroke="#3b82f6" stroke-width="1.8"/>
+                    <!-- Medium (dim 2) -->
+                    <path d="M 20 80 C 60 0, 100 160, 140 80 C 180 0, 220 160, 260 80 C 300 0, 340 160, 380 80 C 420 0, 460 160, 460 80" fill="none" stroke="#f97316" stroke-width="1.8"/>
+                    <!-- Slow (dim 4) -->
+                    <path d="M 20 80 C 140 -20, 320 180, 460 80" fill="none" stroke="#a855f7" stroke-width="1.8"/>
+                    <text x="30" y="145" font-size="10" fill="#3b82f6">dim 0 — fast clock</text>
+                    <text x="165" y="145" font-size="10" fill="#f97316">dim 2 — medium clock</text>
+                    <text x="335" y="145" font-size="10" fill="#a855f7">dim 4 — slow clock</text>
+                    <text x="240" y="15" font-size="10" fill="#64748b" text-anchor="middle">position →</text>
+                  </svg>
+                  <figcaption class="math-figure__caption">Three dimensions of a positional encoding at different frequencies. The combined reading across all dimensions gives every position a unique signature the model can learn to decode.</figcaption>
+                </figure>
+              </article>
+
+              <article class="rl-theory__panel" id="theory-block">
+                <h3>7 · The Transformer block — attention, FFN, residuals, LayerNorm</h3>
+                <p class="rl-theory__kid">
+                  <strong>Kid version.</strong> One classroom discussion isn't enough to fully understand
+                  anything. Between group talks, every kid also gets <em>one-on-one tutoring</em> with
+                  their own private teacher (the feed-forward network). Everyone always keeps a copy of
+                  their <em>old self</em> (the residual connection, in case the new ideas turn out to be
+                  wrong). And the teacher makes sure nobody shouts or whispers too much — everyone's
+                  contribution stays at a reasonable volume (layer normalisation). Then the whole thing
+                  repeats, layer after layer. Depth = many classrooms in a row.
+                </p>
+                <p>A single Transformer block is two sub-steps, each wrapped in residual + LayerNorm:</p>
+                <div class="rl-equation" data-katex="h = \text{LayerNorm}\bigl(x + \text{MultiHead}(x, x, x)\bigr)" data-katex-display></div>
+                <div class="rl-equation" data-katex="y = \text{LayerNorm}\bigl(h + \text{FFN}(h)\bigr)" data-katex-display></div>
+                <p>
+                  The <strong>feed-forward network</strong> is a position-wise two-layer MLP:
+                  <span data-katex="\text{FFN}(x) = W_2\, \sigma(W_1 x + b_1) + b_2"></span>, with σ typically
+                  GELU. It's applied <em>independently</em> to every position — attention mixed information
+                  across tokens, and now each token digests privately. Hidden width is usually 4·d<sub>model</sub>.
+                  The <strong>residual connection</strong> (x +) is what makes very deep stacks trainable:
+                  gradients flow through the skip path even when the learned path is near-zero. Repeat the
+                  whole block N times for depth.
+                </p>
+                <p class="ml-hint">
+                  <strong>Typical depths.</strong> BERT-base has N = 12, BERT-large N = 24.
+                  GPT-2 has N = 12 (small) to 48 (XL). GPT-3 has N = 96. Llama-70B has N = 80.
+                  More layers = more refinement passes; each layer roughly re-asks "given what we know
+                  so far, what should every token mean?"
+                </p>
+              </article>
+
+              <article class="rl-theory__panel" id="theory-archs">
+                <h3>8 · Encoder, decoder, and the no-peeking rule</h3>
+                <p class="rl-theory__kid">
+                  <strong>Kid version.</strong> Three flavours of transformer, depending on how they use
+                  the block above. A <strong>BERT-style librarian</strong> reads the whole sentence at once
+                  — every token sees every other token — and understands. A <strong>GPT-style speaker</strong>
+                  generates a word at a time and must not peek at the future (otherwise it'd just copy the
+                  answer). A <strong>T5-style translator</strong> reads one language fully, then writes
+                  another word by word. The no-peeking rule for GPT is called <em>causal masking</em>: we
+                  set all "look-at-future" attention scores to −∞ so softmax makes them exactly 0.
+                </p>
+                <p>
+                  In a decoder-only model generating position i, attention scores for j &gt; i are masked
+                  out before softmax, giving an upper-triangular zero pattern in the attention matrix:
+                </p>
+
+                <figure class="math-figure">
+                  <svg class="math-figure__svg" viewBox="0 0 240 220" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Triangular causal mask — lower-left cells bright, upper-right cells dark">
+                    <!-- headers -->
+                    <text x="120" y="14" font-size="10" fill="#64748b" text-anchor="middle">key j →</text>
+                    <text x="14" y="120" font-size="10" fill="#64748b" text-anchor="middle" transform="rotate(-90 14 120)">query i →</text>
+                    <!-- 6x6 grid -->
+                    <g>
+                      <!-- row 0 -->
+                      <rect x="30" y="30"  width="30" height="30" fill="#3b82f6"/>
+                      <rect x="60" y="30"  width="30" height="30" fill="rgba(15,23,42,0.85)"/>
+                      <rect x="90" y="30"  width="30" height="30" fill="rgba(15,23,42,0.85)"/>
+                      <rect x="120" y="30" width="30" height="30" fill="rgba(15,23,42,0.85)"/>
+                      <rect x="150" y="30" width="30" height="30" fill="rgba(15,23,42,0.85)"/>
+                      <rect x="180" y="30" width="30" height="30" fill="rgba(15,23,42,0.85)"/>
+                      <!-- row 1 -->
+                      <rect x="30" y="60"  width="30" height="30" fill="#60a5fa"/>
+                      <rect x="60" y="60"  width="30" height="30" fill="#60a5fa"/>
+                      <rect x="90" y="60"  width="30" height="30" fill="rgba(15,23,42,0.85)"/>
+                      <rect x="120" y="60" width="30" height="30" fill="rgba(15,23,42,0.85)"/>
+                      <rect x="150" y="60" width="30" height="30" fill="rgba(15,23,42,0.85)"/>
+                      <rect x="180" y="60" width="30" height="30" fill="rgba(15,23,42,0.85)"/>
+                      <!-- row 2 -->
+                      <rect x="30" y="90"  width="30" height="30" fill="#93c5fd"/>
+                      <rect x="60" y="90"  width="30" height="30" fill="#93c5fd"/>
+                      <rect x="90" y="90"  width="30" height="30" fill="#93c5fd"/>
+                      <rect x="120" y="90" width="30" height="30" fill="rgba(15,23,42,0.85)"/>
+                      <rect x="150" y="90" width="30" height="30" fill="rgba(15,23,42,0.85)"/>
+                      <rect x="180" y="90" width="30" height="30" fill="rgba(15,23,42,0.85)"/>
+                      <!-- row 3 -->
+                      <rect x="30" y="120" width="30" height="30" fill="#bfdbfe"/>
+                      <rect x="60" y="120" width="30" height="30" fill="#bfdbfe"/>
+                      <rect x="90" y="120" width="30" height="30" fill="#bfdbfe"/>
+                      <rect x="120" y="120" width="30" height="30" fill="#bfdbfe"/>
+                      <rect x="150" y="120" width="30" height="30" fill="rgba(15,23,42,0.85)"/>
+                      <rect x="180" y="120" width="30" height="30" fill="rgba(15,23,42,0.85)"/>
+                      <!-- row 4 -->
+                      <rect x="30" y="150" width="30" height="30" fill="#dbeafe"/>
+                      <rect x="60" y="150" width="30" height="30" fill="#dbeafe"/>
+                      <rect x="90" y="150" width="30" height="30" fill="#dbeafe"/>
+                      <rect x="120" y="150" width="30" height="30" fill="#dbeafe"/>
+                      <rect x="150" y="150" width="30" height="30" fill="#dbeafe"/>
+                      <rect x="180" y="150" width="30" height="30" fill="rgba(15,23,42,0.85)"/>
+                      <!-- row 5 -->
+                      <rect x="30" y="180" width="30" height="30" fill="#eff6ff"/>
+                      <rect x="60" y="180" width="30" height="30" fill="#eff6ff"/>
+                      <rect x="90" y="180" width="30" height="30" fill="#eff6ff"/>
+                      <rect x="120" y="180" width="30" height="30" fill="#eff6ff"/>
+                      <rect x="150" y="180" width="30" height="30" fill="#eff6ff"/>
+                      <rect x="180" y="180" width="30" height="30" fill="#eff6ff"/>
+                    </g>
+                    <!-- grid lines -->
+                    <g stroke="rgba(148,163,184,0.25)" stroke-width="0.5">
+                      <line x1="30" y1="30" x2="210" y2="30"/>
+                      <line x1="30" y1="60" x2="210" y2="60"/>
+                      <line x1="30" y1="90" x2="210" y2="90"/>
+                      <line x1="30" y1="120" x2="210" y2="120"/>
+                      <line x1="30" y1="150" x2="210" y2="150"/>
+                      <line x1="30" y1="180" x2="210" y2="180"/>
+                      <line x1="30" y1="210" x2="210" y2="210"/>
+                      <line x1="30" y1="30" x2="30" y2="210"/>
+                      <line x1="60" y1="30" x2="60" y2="210"/>
+                      <line x1="90" y1="30" x2="90" y2="210"/>
+                      <line x1="120" y1="30" x2="120" y2="210"/>
+                      <line x1="150" y1="30" x2="150" y2="210"/>
+                      <line x1="180" y1="30" x2="180" y2="210"/>
+                      <line x1="210" y1="30" x2="210" y2="210"/>
+                    </g>
+                  </svg>
+                  <figcaption class="math-figure__caption">Causal attention mask. Row 0 can only see key 0 (brightest); row 1 sees keys 0–1; row 5 sees everything. Dark upper-triangle cells are set to −∞ before softmax so future tokens contribute zero weight.</figcaption>
+                </figure>
+
+                <p class="ml-hint">
+                  <strong>Why the no-peek rule matters.</strong> During training we feed the whole sentence
+                  at once and compute all output positions in parallel. Without the mask, predicting
+                  "pizza" at position 3 of "I love pizza" could just look at position 3 and output itself
+                  — training would learn nothing. With the mask, position 3's attention sees only
+                  positions 0–2, so the model has to actually predict. At <em>inference</em>, a GPT runs
+                  one token at a time, so the mask is moot — but training needs it.
+                </p>
+              </article>
+
+              <article class="rl-theory__panel" id="theory-map">
+                <h3>9 · Transformer families — a clustering map</h3>
+                <p class="rl-theory__kid">
+                  <strong>Kid version.</strong> Three big families of transformer, split by who they talk
+                  to and what they predict. Encoder-only models <em>read</em> but don't speak (librarians).
+                  Decoder-only models <em>speak</em> one word at a time (autoregressive storytellers).
+                  Encoder-decoder models <em>read then speak</em> — one language in, another out
+                  (translators, summarisers). The same block from §7 powers all three; the difference is
+                  which attention masks you allow and which loss you train against.
+                </p>
+                <div class="rl-clusters">
+                  <div class="rl-cluster" data-family="opt">
+                    <span class="rl-cluster__eyebrow">Family A</span>
+                    <h4 class="rl-cluster__title">Encoder-only</h4>
+                    <p>Bidirectional attention, masked-language-modelling objective. Read-and-understand.</p>
+                    <div class="rl-cluster__members">
+                      <span class="rl-cluster__member">BERT</span>
+                      <span class="rl-cluster__member">RoBERTa</span>
+                      <span class="rl-cluster__member">DistilBERT</span>
+                      <span class="rl-cluster__member">DeBERTa</span>
+                      <span class="rl-cluster__member">ModernBERT</span>
+                    </div>
+                    <ul class="rl-cluster__axes">
+                      <li><strong>training</strong>predict random masked tokens given all the others</li>
+                      <li><strong>strengths</strong>classification, NER, sentence embeddings, retrieval</li>
+                      <li><strong>weakness</strong>can't generate text one token at a time</li>
+                    </ul>
+                  </div>
+                  <div class="rl-cluster" data-family="linalg">
+                    <span class="rl-cluster__eyebrow">Family B</span>
+                    <h4 class="rl-cluster__title">Decoder-only</h4>
+                    <p>Causal attention, next-token prediction. Autoregressive generators.</p>
+                    <div class="rl-cluster__members">
+                      <span class="rl-cluster__member">GPT-2 / 3 / 4</span>
+                      <span class="rl-cluster__member">Llama</span>
+                      <span class="rl-cluster__member">Mistral</span>
+                      <span class="rl-cluster__member">Gemini</span>
+                      <span class="rl-cluster__member">Claude</span>
+                    </div>
+                    <ul class="rl-cluster__axes">
+                      <li><strong>training</strong>predict token i + 1 given tokens 1..i, every position in parallel</li>
+                      <li><strong>strengths</strong>open-ended generation, chat, code, reasoning</li>
+                      <li><strong>trick</strong>causal mask makes parallel training equivalent to sequential inference</li>
+                    </ul>
+                  </div>
+                  <div class="rl-cluster" data-family="stat">
+                    <span class="rl-cluster__eyebrow">Family C</span>
+                    <h4 class="rl-cluster__title">Encoder-decoder</h4>
+                    <p>Bidirectional encoder reads input; causal decoder writes output with cross-attention into encoder.</p>
+                    <div class="rl-cluster__members">
+                      <span class="rl-cluster__member">Vanilla Transformer</span>
+                      <span class="rl-cluster__member">T5</span>
+                      <span class="rl-cluster__member">BART</span>
+                      <span class="rl-cluster__member">Whisper (audio)</span>
+                    </div>
+                    <ul class="rl-cluster__axes">
+                      <li><strong>training</strong>denoising / span-masking / seq2seq reconstruction</li>
+                      <li><strong>strengths</strong>translation, summarisation, audio/text transcription</li>
+                      <li><strong>architecture</strong>decoder has two attention types per layer: self + cross</li>
+                    </ul>
+                  </div>
+                  <div class="rl-cluster" data-family="approx">
+                    <span class="rl-cluster__eyebrow">Family D</span>
+                    <h4 class="rl-cluster__title">Multimodal / non-text</h4>
+                    <p>The block from §7 applied beyond language. Same architecture, different patches.</p>
+                    <div class="rl-cluster__members">
+                      <span class="rl-cluster__member">ViT (images → patches)</span>
+                      <span class="rl-cluster__member">CLIP (text ↔ image)</span>
+                      <span class="rl-cluster__member">DALL-E / Stable Diffusion</span>
+                      <span class="rl-cluster__member">AlphaFold 2</span>
+                      <span class="rl-cluster__member">video transformers</span>
+                    </div>
+                    <ul class="rl-cluster__axes">
+                      <li><strong>tokens</strong>16×16 image patches, amino-acid residues, audio frames</li>
+                      <li><strong>insight</strong>"anything that can be tokenised can be Transformer'd"</li>
+                      <li><strong>see also</strong><a href="../diffusion-lab/#theory-modern">Diffusion · §7 latent</a> for transformer-backboned image generators</li>
+                    </ul>
+                  </div>
+                </div>
+
+                <p class="ml-hint">
+                  Three cross-cutting axes you'll see in every paper: (1) <strong>directionality</strong>
+                  — bidirectional vs causal attention; (2) <strong>training objective</strong> — masked-
+                  token vs next-token vs denoising / seq2seq; (3) <strong>positional scheme</strong> —
+                  learned, sinusoidal, relative (T5), or RoPE (most new LLMs). Every other difference —
+                  tokenizer, hidden size, head count, layer count, activation choice — tunes performance
+                  but doesn't change the family.
+                </p>
+              </article>
+            </section>
           </article>
         </div>
       </section>
@@ -262,7 +692,7 @@
 
     <script type="module">
       import { initMainLayout } from '../../assets/js/layout/mainLayout.js';
-      initMainLayout('transformer-lab');
+      initMainLayout('transformer-lab', { withKaTeX: true });
     </script>
     <script type="module" src="../../assets/js/transformer-lab.js"></script>
   </body>

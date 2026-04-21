@@ -221,7 +221,17 @@
       "slug": "transformer-lab",
       "page": "pages/transformer-lab/index.html",
       "managed": false,
-      "sections": []
+      "sections": [
+        { "id": "theory-tokens",     "title": "Tokens — chopping text into model-edible pieces" },
+        { "id": "theory-embeddings", "title": "Embeddings — meaning as a list of numbers" },
+        { "id": "theory-qkv",        "title": "Query, Key, Value — three lenses on the same token" },
+        { "id": "theory-attention",  "title": "Scaled dot-product attention — score, blend, repeat" },
+        { "id": "theory-multihead",  "title": "Multi-head attention — eight kids each watching something different" },
+        { "id": "theory-pos-enc",    "title": "Positional encoding — teaching order to a bag of words" },
+        { "id": "theory-block",      "title": "The Transformer block — attention, FFN, residuals, LayerNorm" },
+        { "id": "theory-archs",      "title": "Encoder, decoder, and the no-peeking rule" },
+        { "id": "theory-map",        "title": "Transformer families — a clustering map" }
+      ]
     },
     "fourier-epicycles": {
       "title": "Fourier Epicycles",

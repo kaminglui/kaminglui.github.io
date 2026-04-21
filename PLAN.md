@@ -190,7 +190,18 @@ initialising at different μ₀). Remaining:
 - **Per-lab "last updated" meta** — date derived from git commit touching the page,
   surfaced in the footer. Signals freshness without manual bookkeeping.
 
-## Transformer Lab full 9-panel upgrade
+## Transformer Lab full 9-panel upgrade — shipped
 
-- Transformer Lab still has the "live attention" interactive but not the kid-callout +
-  KaTeX theory + clustering-map treatment that Reinforcement Learning / Diffusion / Machine Learning got. Port the format.
+Nine theory panels appended after the live-attention demo, each with a kid-version
+opener, a worked concrete example (practice problem where it fits), a KaTeX-formalised
+equation, and a figure where one earns its place. Panels: §1 Tokens (BPE, practice
+problems), §2 Embeddings (2-D cluster figure, cosine similarity intuition, word
+arithmetic), §3 Q/K/V (library analogy, pronoun-resolution walkthrough), §4 Scaled
+dot-product attention (worked 3-token d=2 example with exact softmax arithmetic),
+§5 Multi-head (what specific heads actually learn in BERT, Clark et al. 2019), §6
+Positional encoding (three-clock analogy + sinusoidal-waves figure), §7 Block
+architecture (attention + FFN + residual + LayerNorm + depth stats for GPT/Llama),
+§8 Encoder/decoder/causal masking (6×6 triangular-mask figure, parallel-training
+justification), §9 Clustering map (four families: encoder-only, decoder-only,
+encoder-decoder, multimodal, with model lists). Page now loads KaTeX via the
+centralised loader (withKaTeX: true).
