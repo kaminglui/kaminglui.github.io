@@ -110,9 +110,11 @@ initialising at different μ₀). Remaining:
   transformers (attention as graph).
 
 ### PCA demo upgrades
-- **Reconstruction from k components.** Live 2D scatter already shows PC1/PC2; add a
-  worked example of reconstructing an individual point from k components and a scree
-  plot showing variance captured. Small, high-payoff extension of the existing panel.
+- **Scree plot + reconstruction framing** — shipped. Added an inline SVG scree bar
+  chart to the PCA sidebar that tracks λ₁ / λ₂ live, renamed the projection button
+  to "Reconstruct with k = 1" to make the dimensionality-reduction story explicit,
+  and updated the hint paragraph to call out that the purple bar is the fraction of
+  variance lost when you drop PC2.
 
 ## Computer vision mini-lab
 

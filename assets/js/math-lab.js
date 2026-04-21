@@ -951,6 +951,32 @@ function pcaRender() {
   ctx.fill();
 }
 
+function pcaRenderScree(l1, l2) {
+  if (!pcaDom.screeBar1) return;
+  const MAX_H = 58;        // bar room between baseline (72) and label row (14)
+  const BASELINE_Y = 72;
+  const maxL = Math.max(l1, l2, 1e-9);
+  const h1 = (l1 / maxL) * MAX_H;
+  const h2 = (l2 / maxL) * MAX_H;
+  pcaDom.screeBar1.setAttribute('y', (BASELINE_Y - h1).toFixed(1));
+  pcaDom.screeBar1.setAttribute('height', h1.toFixed(1));
+  pcaDom.screeBar2.setAttribute('y', (BASELINE_Y - h2).toFixed(1));
+  pcaDom.screeBar2.setAttribute('height', h2.toFixed(1));
+  const sum = Math.max(l1 + l2, 1e-9);
+  pcaDom.screePct1.textContent = `${((l1 / sum) * 100).toFixed(0)}%`;
+  pcaDom.screePct1.setAttribute('y', (BASELINE_Y - h1 - 3).toFixed(1));
+  pcaDom.screePct2.textContent = `${((l2 / sum) * 100).toFixed(0)}%`;
+  pcaDom.screePct2.setAttribute('y', (BASELINE_Y - h2 - 3).toFixed(1));
+}
+
+function pcaClearScree() {
+  if (!pcaDom.screeBar1) return;
+  pcaDom.screeBar1.setAttribute('height', '0');
+  pcaDom.screeBar2.setAttribute('height', '0');
+  pcaDom.screePct1.textContent = '—';
+  pcaDom.screePct2.textContent = '—';
+}
+
 function pcaRenderStats() {
   if (!pcaDom.n) return;
   const pcs = pcaCompute();
@@ -961,6 +987,7 @@ function pcaRenderStats() {
     pcaDom.v1.textContent = '—';
     pcaDom.v2.textContent = '—';
     pcaDom.mean.textContent = '—';
+    pcaClearScree();
     return;
   }
   const sum = Math.max(pcs.l1 + pcs.l2, 1e-9);
@@ -969,6 +996,7 @@ function pcaRenderStats() {
   pcaDom.v1.textContent = `${((pcs.l1 / sum) * 100).toFixed(1)}%`;
   pcaDom.v2.textContent = `${((pcs.l2 / sum) * 100).toFixed(1)}%`;
   pcaDom.mean.textContent = `(${pcs.mean[0].toFixed(2)}, ${pcs.mean[1].toFixed(2)})`;
+  pcaRenderScree(pcs.l1, pcs.l2);
 }
 
 function pcaRedraw() {
@@ -990,6 +1018,10 @@ function initPCA() {
   pcaDom.v1 = document.getElementById('pca-v1');
   pcaDom.v2 = document.getElementById('pca-v2');
   pcaDom.mean = document.getElementById('pca-mean');
+  pcaDom.screeBar1 = document.getElementById('pca-scree-bar1');
+  pcaDom.screeBar2 = document.getElementById('pca-scree-bar2');
+  pcaDom.screePct1 = document.getElementById('pca-scree-pct1');
+  pcaDom.screePct2 = document.getElementById('pca-scree-pct2');
 
   pcaDom.presetButtons.forEach((btn) => {
     btn.addEventListener('click', () => {

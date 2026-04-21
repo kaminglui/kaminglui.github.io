@@ -679,7 +679,7 @@
                   </div>
                   <div class="rl-controls__actions">
                     <button type="button" id="pca-resample">Resample</button>
-                    <button type="button" id="pca-project">Toggle PC1 projection</button>
+                    <button type="button" id="pca-project">Reconstruct with k = 1</button>
                     <button type="button" id="pca-clear">Clear</button>
                   </div>
                 </div>
@@ -705,11 +705,25 @@
                       <div class="rl-stat"><span class="rl-stat__label">Var<sub>2</sub> %</span><span class="rl-stat__value" id="pca-v2">—</span></div>
                       <div class="rl-stat"><span class="rl-stat__label">mean</span><span class="rl-stat__value" id="pca-mean">—</span></div>
                     </div>
+                    <figure class="pca-scree" aria-label="Scree plot of eigenvalue magnitudes">
+                      <figcaption class="pca-scree__caption">Scree plot — how much variance each PC captures</figcaption>
+                      <svg viewBox="0 0 200 90" xmlns="http://www.w3.org/2000/svg">
+                        <line x1="20" y1="72" x2="180" y2="72" stroke="rgba(148,163,184,0.5)" stroke-width="1"/>
+                        <rect id="pca-scree-bar1" x="55" y="72" width="42" height="0" fill="#f97316"/>
+                        <rect id="pca-scree-bar2" x="113" y="72" width="42" height="0" fill="#a855f7"/>
+                        <text x="76"  y="86" font-size="10" fill="#64748b" text-anchor="middle">PC1</text>
+                        <text x="134" y="86" font-size="10" fill="#64748b" text-anchor="middle">PC2</text>
+                        <text id="pca-scree-pct1" x="76"  y="68" font-size="9" fill="#f97316" text-anchor="middle">—</text>
+                        <text id="pca-scree-pct2" x="134" y="68" font-size="9" fill="#a855f7" text-anchor="middle">—</text>
+                      </svg>
+                    </figure>
                     <p class="ml-hint">
-                      Orange arrow = PC1, the direction of maximum variance. Purple = PC2, orthogonal. Arrow
-                      lengths are proportional to √λ<sub>i</sub> (1σ along each PC). Toggle the projection to
-                      see every point collapse onto PC1 — that's what 2D→1D dimensionality reduction looks
-                      like.
+                      The orange bar is the variance captured by PC1; purple is PC2. In 2-D the two bars sum
+                      to the total variance; the <em>ratio</em> tells you how anisotropic the cloud is. Click
+                      <em>Reconstruct with k = 1</em> and every point snaps onto its PC1 projection — that's
+                      dimensionality reduction from 2-D to 1-D, and the fraction of variance you lose is
+                      exactly the purple bar. In high dimensions the first few bars usually capture almost
+                      everything; the rest is tail.
                     </p>
                   </aside>
                 </div>

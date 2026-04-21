@@ -161,6 +161,27 @@
   max-width: min(640px, 100%);
 }
 
+/* PCA scree plot — tiny inline SVG bar chart inside the PCA sidebar. */
+.pca-scree {
+  margin: 0.6rem 0 0.2rem;
+  padding: 0;
+}
+.pca-scree__caption {
+  font-size: 0.7rem;
+  color: var(--color-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 0.2rem;
+}
+.pca-scree svg {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+.pca-scree rect {
+  transition: y 180ms ease, height 180ms ease;
+}
+
 /* §10 clustering-map family colours. */
 .rl-cluster[data-family='opt']    { --family-accent: #3b82f6; }
 .rl-cluster[data-family='linalg'] { --family-accent: #a855f7; }
