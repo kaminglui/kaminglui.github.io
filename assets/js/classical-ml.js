@@ -1,4 +1,4 @@
-/* Classical ML Lab — three independent demos:
+/* Classical Machine Learning Lab — three independent demos:
    (1) Linear regression via closed-form OLS.
    (2) Logistic regression via gradient descent on cross-entropy.
    (3) Linear SVM via subgradient descent on hinge + ½‖w‖² with slack C.

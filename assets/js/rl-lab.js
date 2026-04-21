@@ -1,4 +1,4 @@
-/* RL Lab — multi-armed bandit simulator. Three strategies (ε-greedy, UCB1,
+/* Reinforcement Learning Lab — multi-armed bandit simulator. Three strategies (ε-greedy, UCB1,
    Thompson) share one update loop; the page renders the arms, a running
    chart of rolling reward / cumulative regret / optimal-arm rate, and a
    live stats sidebar. Pure vanilla JS, no dependencies. */
@@ -932,7 +932,7 @@ if (document.readyState === 'loading') {
 }
 
 /* =====================================================================
-   Monte-Carlo darts demo (RL §5). Throws uniform samples in [-1, 1]² and
+   Monte-Carlo darts demo (Reinforcement Learning §5). Throws uniform samples in [-1, 1]² and
    counts how many fall inside the unit circle. The hit ratio × 4 estimates
    π. Same pattern as every MC return estimate: draw samples, take the
    mean, O(1/√n) error regardless of dimension.
@@ -1100,7 +1100,7 @@ if (document.readyState === 'loading') {
 }
 
 /* =====================================================================
-   Bayesian coin demo (RL §1). Beta(α, β) prior × Bernoulli likelihood =
+   Bayesian coin demo (Reinforcement Learning §1). Beta(α, β) prior × Bernoulli likelihood =
    Beta(α+h, β+t) posterior. The canvas plots three curves over p ∈ [0, 1]:
      - prior (blue fill, faded)
      - likelihood p^h (1-p)^t, rescaled to the plot's max so its *shape* is

@@ -55,7 +55,7 @@ heavy-tail caveat). Remaining:
 - **Convergence/divergence tests** — Borel-Cantelli, dominated/monotone convergence,
   when an infinite series of random variables converges.
 - **Estimation theory** — bias, variance, MSE, Fisher information, Cramér-Rao bound.
-  ML Lab says "MLE is the best estimator" but never quantifies *best*.
+  Machine Learning Lab says "MLE is the best estimator" but never quantifies *best*.
 - **Sampling / MCMC** — Metropolis-Hastings, Gibbs, HMC, Langevin dynamics. Langevin in
   particular *is* the score-based-diffusion sampler — the diffusion lab uses it without
   naming the MCMC pedigree.
@@ -87,7 +87,7 @@ initialising at different μ₀). Remaining:
   Transformer Lab (softmax denominator) and Diffusion Lab (noise-schedule precision).
 
 ### Causality vs correlation
-- One short page on do-calculus, confounders, why ML is prediction not causation. Short
+- One short page on do-calculus, confounders, why Machine Learning is prediction not causation. Short
   but frequently asked.
 
 ### Transforms
@@ -109,7 +109,7 @@ initialising at different μ₀). Remaining:
 - Adjacency matrix / list.
 - Shortest path (Dijkstra, Bellman-Ford), spanning trees, topological sort.
 - Centrality measures (degree, betweenness, eigenvector).
-- Connection to RL (MDP transition graph), neural nets (computation graph),
+- Connection to Reinforcement Learning (MDP transition graph), neural nets (computation graph),
   transformers (attention as graph).
 
 ### PCA demo upgrades
@@ -133,7 +133,7 @@ initialising at different μ₀). Remaining:
   at a conceptual level.
 - **World-model lead-in** — how a generative model predicts the next frame, and uses
   the discrepancy between prediction and observation as a supervision signal (= KL /
-  prediction error); ties to diffusion, transformers, and RL reward shaping.
+  prediction error); ties to diffusion, transformers, and Reinforcement Learning reward shaping.
 
 ## Math Lab — GD/SGD demo further work
 
@@ -145,9 +145,9 @@ initialising at different μ₀). Remaining:
 - **Batch-size vs noise trade-off** — if we simulate mini-batches, show how batch size
   inversely scales SGD noise.
 
-## RL Lab — extensions
+## Reinforcement Learning Lab — extensions
 
-- **Monte Carlo Tree Search (MCTS).** Shipped as RL Lab §8 "Monte Carlo Tree
+- **Monte Carlo Tree Search (MCTS).** Shipped as Reinforcement Learning Lab §8 "Monte Carlo Tree
   Search — planning with a model", between §7 Policy gradients and §9 Same-shape.
   Prose covers the four-stage loop (select/expand/rollout/backup), UCT with the
   c·√(ln N / n) exploration term, and AlphaZero's PUCT variant. Two SVG figures:
@@ -179,7 +179,7 @@ initialising at different μ₀). Remaining:
 - **Concepts index page** at `/concepts/` — reverse-glossary listing every concept and
   which labs cover it, rendered from `lab-glossary.js` for single source of truth.
 - **Search across all labs** — small client-side search over glossary + section titles.
-- **More section IDs** in Transformer / ML Lab / Fourier so cross-lab tooltip jumps
+- **More section IDs** in Transformer / Machine Learning Lab / Fourier so cross-lab tooltip jumps
   land precisely (currently they fall back to page root for those three).
 - **Reduced-motion honouring** — most SVGs are static so this is low stakes, but the
   Circuit Lab animations and any future CLT animation should respect
@@ -193,4 +193,4 @@ initialising at different μ₀). Remaining:
 ## Transformer Lab full 9-panel upgrade
 
 - Transformer Lab still has the "live attention" interactive but not the kid-callout +
-  KaTeX theory + clustering-map treatment that RL / Diffusion / ML got. Port the format.
+  KaTeX theory + clustering-map treatment that Reinforcement Learning / Diffusion / Machine Learning got. Port the format.

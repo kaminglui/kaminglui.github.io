@@ -27,7 +27,7 @@
             <p class="lab-hero__eyebrow">Interactive lab</p>
             <h1 class="lab-hero__title">Reinforcement Learning Lab</h1>
             <p class="lab-hero__lead">
-              Start with the simplest RL problem — the multi-armed bandit — and watch exploration beat exploitation
+              Start with the simplest Reinforcement Learning problem — the multi-armed bandit — and watch exploration beat exploitation
               (or lose to it). Then walk through MDPs, the Bellman equation, value and policy iteration,
               Monte Carlo, TD, on/off-policy learning, importance sampling, and actor-critic.
             </p>
@@ -77,7 +77,7 @@
               <ol>
                 <li>
                   <strong>What it does</strong>
-                  The <em>multi-armed bandit</em> is RL with no state — just a row of slot machines, each with a
+                  The <em>multi-armed bandit</em> is Reinforcement Learning with no state — just a row of slot machines, each with a
                   secret mean payout μ and noise σ. Each pull pays μ plus a random wiggle ~ 𝒩(0, σ²). The only
                   choice is <em>which arm to pull next</em>: balancing learning (exploration) with cashing in
                   (exploitation).
@@ -123,7 +123,7 @@
                 <li><strong>Reward</strong> — a number the environment hands back after an action. Positive = good, negative = bad.</li>
                 <li><strong data-g="policy">Policy (π)</strong> — the agent's strategy: a rule mapping situations to actions.</li>
                 <li><strong data-g="return">Return</strong> — total reward the agent collects, usually future rewards discounted by <span data-g="gamma">γ</span>.</li>
-                <li><strong data-g="exploration-exploitation">Exploration vs exploitation</strong> — try new things to learn (explore), or cash in on what you already know (exploit). The core RL dilemma.</li>
+                <li><strong data-g="exploration-exploitation">Exploration vs exploitation</strong> — try new things to learn (explore), or cash in on what you already know (exploit). The core Reinforcement Learning dilemma.</li>
               </ul>
             </aside>
 
@@ -343,13 +343,13 @@
                 </p>
 
                 <p>
-                  Why bandits matter for full RL: every RL algorithm still has to solve <em>which action next?</em>.
+                  Why bandits matter for full Reinforcement Learning: every Reinforcement Learning algorithm still has to solve <em>which action next?</em>.
                   Bandit ideas (ε-greedy, softmax, optimism, posterior sampling) get reused inside
                   Q-learning, SARSA, actor-critic to pick actions at each state.
                 </p>
                 <p class="ml-hint">
-                  <strong>Is the bandit the "root" of RL?</strong> Partially. It's the simplest setting that isolates
-                  the exploration/exploitation trade-off. But full RL adds <em>state</em> and <em>long-horizon
+                  <strong>Is the bandit the "root" of Reinforcement Learning?</strong> Partially. It's the simplest setting that isolates
+                  the exploration/exploitation trade-off. But full Reinforcement Learning adds <em>state</em> and <em>long-horizon
                   credit assignment</em> — problems bandits ignore. So: the root of the <em>exploration</em> half,
                   not the whole tree.
                 </p>
@@ -407,7 +407,7 @@
                 <div class="rl-equation" data-katex="V^{*}(s) = \max_a \sum_{s',\,r} P(s',r\mid s,a)\,\bigl[\,r + \gamma\, V^{*}(s')\,\bigr]" data-katex-display></div>
                 <div class="rl-equation" data-katex="Q^{*}(s, a) = \sum_{s',\,r} P(s',r\mid s,a)\,\bigl[\,r + \gamma\, \max_{a'} Q^{*}(s', a')\,\bigr]" data-katex-display></div>
                 <p>
-                  Solve these and you're done: the greedy policy w.r.t. Q<sup>*</sup> is optimal. The rest of RL is
+                  Solve these and you're done: the greedy policy w.r.t. Q<sup>*</sup> is optimal. The rest of Reinforcement Learning is
                   <em>how do we solve (or approximate) these equations</em> when we don't know P and R, or when 𝒮 is
                   too big to enumerate.
                 </p>
@@ -590,7 +590,7 @@
                   Standard error of the estimate shrinks as
                   <span data-katex="O(1/\sqrt{n})"></span> — doubling the darts halves the noise, no matter
                   the dimension of the integral. That property is why every MC return estimate G<sub>t</sub>
-                  in RL is just "average lots of trajectories" — no bias, but you pay √n for convergence.
+                  in Reinforcement Learning is just "average lots of trajectories" — no bias, but you pay √n for convergence.
                 </p>
                 <div class="rl-darts">
                   <div class="rl-darts__canvas-wrap">
@@ -864,7 +864,7 @@
                 </p>
 
                 <p class="ml-hint">
-                  Where MCTS sits in the RL landscape: DP (§4) is planning when you have the table. MCTS is
+                  Where MCTS sits in the Reinforcement Learning landscape: DP (§4) is planning when you have the table. MCTS is
                   planning when you only have a simulator. Model-free methods (§5–7) are <em>learning</em>
                   when you don't even have that, just experience. Modern systems routinely combine all three
                   — learn a model from experience, plan with MCTS in the model, distil the plan into a policy
@@ -880,7 +880,7 @@
                   changes.
                 </p>
                 <p>
-                  Every incremental update in RL is a special case of <em>stochastic approximation</em> with the
+                  Every incremental update in Reinforcement Learning is a special case of <em>stochastic approximation</em> with the
                   same skeleton:
                 </p>
                 <div class="rl-equation" data-katex="\text{estimate} \leftarrow \text{estimate} + \alpha\, \bigl[\,\text{target} - \text{estimate}\,\bigr]" data-katex-display></div>

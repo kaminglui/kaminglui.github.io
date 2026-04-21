@@ -31,7 +31,7 @@ const FOOTER_PRESETS = {
       { label: 'Get in touch', href: 'index.html#contact', variant: 'ghost' }
     ],
     meta: [
-      'Enjoyed the walkthrough? Share it with fellow ML explorers.',
+      'Enjoyed the walkthrough? Share it with fellow Machine Learning explorers.',
       DEFAULT_META
     ]
   }

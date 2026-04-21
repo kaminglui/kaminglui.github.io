@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
     <meta
       name="description"
-      content="Interactive tour of the math behind modern ML: gradient descent and SGD on user-picked landscapes, PCA on 2D scatter, an interactive KL visualiser and a live mode-covering vs mode-seeking fit, plus a kid-friendly walk through optimisation, linear algebra, probability distributions (with LLN/CLT), information theory (entropy, KL, cross-entropy), and the universal approximation theorem."
+      content="Interactive tour of the math behind modern Machine Learning: gradient descent and SGD on user-picked landscapes, PCA on 2D scatter, an interactive KL visualiser and a live mode-covering vs mode-seeking fit, plus a kid-friendly walk through optimisation, linear algebra, probability distributions (with LLN/CLT), information theory (entropy, KL, cross-entropy), and the universal approximation theorem."
     />
     <title>Math Foundations Lab — Ka Ming Lui</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -85,7 +85,7 @@
               <ol>
                 <li>
                   <strong>What it does</strong>
-                  Every ML algorithm is a loop of "score this guess, tweak the parameters to score better."
+                  Every Machine Learning algorithm is a loop of "score this guess, tweak the parameters to score better."
                   <em>Score better</em> means decreasing some loss L(θ), which is just a function of the
                   parameters. The tools for doing that reliably come from <em>calculus</em> (gradients),
                   <em>linear algebra</em> (how to manipulate the tensors those gradients live in), and
@@ -115,7 +115,7 @@
                 answering it: feel the slope under your feet and take a small step downhill. Repeat.
               </p>
               <p>
-                Every modern ML model is a function f<sub>θ</sub> with millions of knobs θ. We pick a
+                Every modern Machine Learning model is a function f<sub>θ</sub> with millions of knobs θ. We pick a
                 <em>loss</em> L(θ) measuring "how wrong is f<sub>θ</sub>?" on data. Training = using gradient
                 descent on L to find θ that makes the loss small. Deep learning's big trick is that
                 <em>backprop</em> computes ∇<sub>θ</sub> L cheaply even when f<sub>θ</sub> has billions of
@@ -252,7 +252,7 @@
                 </ul>
                 <p>
                   Critical fact: argmin is <em>not</em> min. If f(x) = (x − 3)², then min = 0 but
-                  argmin = 3. ML people say "minimise L" but almost always want the <em>parameters</em> that
+                  argmin = 3. Machine Learning people say "minimise L" but almost always want the <em>parameters</em> that
                   achieve the minimum, i.e. argmin.
                 </p>
                 <figure class="math-figure">
@@ -347,7 +347,7 @@
                 </figure>
                 <p>
                   Lagrange multipliers show up in SVM duals, convex optimisation, KKT conditions, and even
-                  in RL via the maximum-entropy policy derivation.
+                  in Reinforcement Learning via the maximum-entropy policy derivation.
                 </p>
               </article>
 
@@ -530,7 +530,7 @@
                   </svg>
                   <figcaption class="math-figure__caption">A matrix stretches, rotates, and shears space. Where the two basis vectors land (A e₁, A e₂) are the columns of A — that completely determines the transformation.</figcaption>
                 </figure>
-                <p><strong>Dot product</strong> — the most-used operation in ML:</p>
+                <p><strong>Dot product</strong> — the most-used operation in Machine Learning:</p>
                 <div class="rl-equation" data-katex="\mathbf{a} \cdot \mathbf{b} = \sum_i a_i\, b_i = \lVert \mathbf{a} \rVert\, \lVert \mathbf{b} \rVert\, \cos\theta" data-katex-display></div>
                 <ul>
                   <li>Measures alignment. Positive: same-ish direction. Zero: orthogonal. Negative: opposite.</li>
@@ -568,7 +568,7 @@
                 <div class="rl-equation" data-katex="\mathbf{a} \times \mathbf{b} = \bigl(a_2 b_3 - a_3 b_2,\ a_3 b_1 - a_1 b_3,\ a_1 b_2 - a_2 b_1\bigr)" data-katex-display></div>
                 <ul>
                   <li>Magnitude = area of the parallelogram spanned by a, b.</li>
-                  <li>Used in physics (torque, angular momentum) and 3D graphics (surface normals). Rare in ML.</li>
+                  <li>Used in physics (torque, angular momentum) and 3D graphics (surface normals). Rare in Machine Learning.</li>
                 </ul>
                 <p><strong>Convolution</strong> — a sliding dot product:</p>
                 <div class="rl-equation" data-katex="(f * g)(t) = \int f(\tau)\, g(t - \tau)\, d\tau" data-katex-display></div>
@@ -766,7 +766,7 @@
                   <em>actually do</em>.
                 </p>
                 <p>
-                  This is why a neural network can <strong>be the policy</strong> π<sub>θ</sub>(a|s) in RL,
+                  This is why a neural network can <strong>be the policy</strong> π<sub>θ</sub>(a|s) in Reinforcement Learning,
                   the <strong>score network</strong> s<sub>θ</sub>(x, t) in diffusion, the
                   <strong>encoder/decoder</strong> of a VAE, the <strong>value function</strong> V<sub>φ</sub>,
                   or the <strong>classifier</strong> in a supervised model — it's the one function class
@@ -779,7 +779,7 @@
                 <p class="rl-theory__kid">
                   <strong>Kid version.</strong> A <em>distribution</em> is a rule that says how likely each
                   outcome is. A coin flip has two outcomes. A die roll has six. The height of a random adult
-                  has a whole continuum. Most of ML boils down to picking a distribution that could have
+                  has a whole continuum. Most of Machine Learning boils down to picking a distribution that could have
                   generated your data, then turning the knobs until it matches.
                 </p>
                 <p>
@@ -792,7 +792,7 @@
 
                 <h4>The usual cast</h4>
                 <p>
-                  Six distributions show up everywhere. Learn the shapes and you can read half of ML papers on
+                  Six distributions show up everywhere. Learn the shapes and you can read half of Machine Learning papers on
                   sight.
                 </p>
 
@@ -1058,7 +1058,7 @@
                 <p class="ml-hint">
                   <strong>Heavy-tailed caveat.</strong> CLT needs <em>finite variance</em>. The Cauchy
                   distribution violates this — its sample mean stays just as noisy as a single sample, forever.
-                  This matters in RL (reward outliers), SGD (gradient noise in some architectures), and finance
+                  This matters in Reinforcement Learning (reward outliers), SGD (gradient noise in some architectures), and finance
                   (why the 2008 "6σ event" wasn't actually 6σ — the real tails were fatter than the Gaussian
                   model assumed).
                 </p>
@@ -1253,7 +1253,7 @@
                 </div>
 
                 <p>
-                  Every ML loss has a distribution story under it. Squared error ↔ Gaussian MLE. Cross-entropy
+                  Every Machine Learning loss has a distribution story under it. Squared error ↔ Gaussian MLE. Cross-entropy
                   ↔ categorical MLE. Binary cross-entropy ↔ Bernoulli MLE. Pick a distribution for your noise,
                   write down its log-likelihood, and you've derived the loss — see
                   <a href="../classical-ml/#theory-mle">Machine Learning · §2</a> for the full walk.
@@ -1418,7 +1418,7 @@
                   Squared error → Gaussian negative log-likelihood → cross-entropy with a Gaussian q.
                   Softmax cross-entropy in classifiers → <a href="../classical-ml/#theory-mle">Machine Learning · §2</a>.
                   ELBO in VAE and diffusion = reconstruction − KL → <a href="../diffusion-lab/#theory-vae">Diffusion · §2</a>.
-                  Entropy-regularised policies in RL trade reward for H(π) to keep exploration alive →
+                  Entropy-regularised policies in Reinforcement Learning trade reward for H(π) to keep exploration alive →
                   <a href="../rl-lab/">Reinforcement Learning Lab</a>. KL always the same quantity; different signs and places.
                 </p>
               </article>
@@ -1541,7 +1541,7 @@
                     <ul class="rl-cluster__axes">
                       <li><strong>input</strong>differentiable loss (or discrete for SA)</li>
                       <li><strong>output</strong>θ<sup>*</sup></li>
-                      <li><strong>used in</strong>training every ML model</li>
+                      <li><strong>used in</strong>training every Machine Learning model</li>
                     </ul>
                   </div>
                   <div class="rl-cluster" data-family="linalg">

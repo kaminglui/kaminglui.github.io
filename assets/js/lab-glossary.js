@@ -5,21 +5,21 @@
      sections   — {id, label} for scroll-to-section links inside a lab page
    Keys are lowercase, hyphenated, and flat across both labs so a chip in
    one lab can link to a concept introduced in the other (e.g. 'kl' is
-   used by both RL's on/off-policy discussion and Diffusion's ELBO). */
+   used by both Reinforcement Learning's on/off-policy discussion and Diffusion's ELBO). */
 
 // Section helpers carry an `href` so the tooltip engine can navigate
 // cross-lab when the section isn't on the current page. Same-page links
 // still scroll smoothly because the engine tries getElementById first.
-// Labels spell full section names; readers see e.g. "ML Lab · §2 MLE
+// Labels spell full section names; readers see e.g. "Machine Learning Lab · §2 MLE
 // derivation" instead of short cryptic abbreviations.
-const RL_SEC = (id, label) => ({ id, label: `RL Lab · ${label}`, href: '../rl-lab/' });
+const RL_SEC = (id, label) => ({ id, label: `Reinforcement Learning Lab · ${label}`, href: '../rl-lab/' });
 const DF_SEC = (id, label) => ({ id, label: `Diffusion Lab · ${label}`, href: '../diffusion-lab/' });
 const MATH_SEC = (id, label) => ({ id, label: `Math Foundations · ${label}`, href: '../math-lab/' });
-const ML_SEC = (id, label) => ({ id, label: `ML Lab · ${label}`, href: '../classical-ml/' });
+const ML_SEC = (id, label) => ({ id, label: `Machine Learning Lab · ${label}`, href: '../classical-ml/' });
 const FOURIER_SEC = (label) => ({ id: '', label: `Fourier Epicycles · ${label}`, href: '../fourier-epicycles/' });
 
 export const GLOSSARY = {
-  // ====================== RL — core variables ======================
+  // ====================== Reinforcement Learning — core variables ======================
   'epsilon': {
     title: 'ε · probability of exploration',
     body: 'ε is the <em>probability of picking a random action (exploring)</em> each step. Its complement 1 − ε is the probability of picking the current-best-estimated action (exploiting). ε=0 is pure exploit — locks in on the first apparent winner. ε=1 is pure random. 0.05–0.1 is typical; decayed over time is common.',
@@ -79,7 +79,7 @@ export const GLOSSARY = {
   },
   'return': {
     title: 'G<sub>t</sub> · return',
-    body: 'Discounted sum of future rewards: G<sub>t</sub> = R<sub>t+1</sub> + γR<sub>t+2</sub> + γ²R<sub>t+3</sub> + … . The thing every RL method is ultimately trying to maximise (in expectation).',
+    body: 'Discounted sum of future rewards: G<sub>t</sub> = R<sub>t+1</sub> + γR<sub>t+2</sub> + γ²R<sub>t+3</sub> + … . The thing every Reinforcement Learning method is ultimately trying to maximise (in expectation).',
     related: ['gamma', 'v-value', 'monte-carlo'],
     sections: [RL_SEC('theory-mdp', '§2 Markov Decision Process')]
   },
@@ -115,22 +115,22 @@ export const GLOSSARY = {
     related: ['epsilon-greedy', 'ucb1', 'thompson', 'bandit']
   },
 
-  // ====================== RL — methods ======================
+  // ====================== Reinforcement Learning — methods ======================
   'bandit': {
     title: 'Multi-armed bandit',
-    body: 'RL with no state: k arms, each a distribution. Pick an arm, get a reward, update. Isolates the exploration/exploitation trade-off from the rest of RL.',
+    body: 'Reinforcement Learning with no state: k arms, each a distribution. Pick an arm, get a reward, update. Isolates the exploration/exploitation trade-off from the rest of Reinforcement Learning.',
     related: ['epsilon-greedy', 'ucb1', 'thompson', 'regret'],
     sections: [RL_SEC('theory-bandits', '§1 Multi-armed bandits')]
   },
   'mdp': {
     title: 'Markov Decision Process',
-    body: 'Tuple (S, A, P, R, γ). Adds state and time to a bandit. The Markov property: next state depends only on current (s, a), not history. Every "full RL" method assumes an MDP.',
+    body: 'Tuple (S, A, P, R, γ). Adds state and time to a bandit. The Markov property: next state depends only on current (s, a), not history. Every "full Reinforcement Learning" method assumes an MDP.',
     related: ['gamma', 'policy', 'bellman', 'v-value'],
     sections: [RL_SEC('theory-mdp', '§2 Markov Decision Process')]
   },
   'bellman': {
     title: 'Bellman equation',
-    body: 'Recursive identity: V<sup>π</sup>(s) = 𝔼[r + γV<sup>π</sup>(s\')]. The optimal version replaces the expectation with a max. Every RL update is a noisy, approximate Bellman backup. A fixed-point equation; solved by iteration (§4 DP) or stochastic approximation (MC / TD).',
+    body: 'Recursive identity: V<sup>π</sup>(s) = 𝔼[r + γV<sup>π</sup>(s\')]. The optimal version replaces the expectation with a max. Every Reinforcement Learning update is a noisy, approximate Bellman backup. A fixed-point equation; solved by iteration (§4 DP) or stochastic approximation (MC / TD).',
     related: ['v-value', 'q-value', 'contraction', 'value-iteration'],
     sections: [
       RL_SEC('theory-values', '§3 Value functions'),
@@ -217,7 +217,7 @@ export const GLOSSARY = {
   },
   'exploration-exploitation': {
     title: 'Exploration vs exploitation',
-    body: 'The core RL dilemma: try new actions to <em>learn</em>, or repeat known-good actions to <em>earn</em>. Every algorithm picks some balance.',
+    body: 'The core Reinforcement Learning dilemma: try new actions to <em>learn</em>, or repeat known-good actions to <em>earn</em>. Every algorithm picks some balance.',
     related: ['epsilon-greedy', 'ucb1', 'thompson', 'policy']
   },
   'on-policy': {
@@ -257,7 +257,7 @@ export const GLOSSARY = {
   },
   'ppo': {
     title: 'PPO',
-    body: 'Actor-critic + on-policy + GAE advantage target + clipped-ratio surrogate loss. The default workhorse of deep RL. Stable, but sample-inefficient.',
+    body: 'Actor-critic + on-policy + GAE advantage target + clipped-ratio surrogate loss. The default workhorse of deep Reinforcement Learning. Stable, but sample-inefficient.',
     related: ['actor-critic', 'on-policy', 'trpo', 'advantage']
   },
   'sac': {
@@ -295,13 +295,13 @@ export const GLOSSARY = {
     ]
   },
   'model-based': {
-    title: 'Model-based RL',
+    title: 'Model-based Reinforcement Learning',
     body: 'Learn (or be given) P and R, then plan. Can wrap any of the other families. Examples: Dyna-Q, MuZero, AlphaZero, Dreamer, PETS.',
     related: ['model-free', 'dp', 'value-iteration']
   },
   'model-free': {
-    title: 'Model-free RL',
-    body: 'Learn values or policies directly from samples — no explicit model of P, R. Most deep-RL methods (DQN, PPO, SAC) are model-free.',
+    title: 'Model-free Reinforcement Learning',
+    body: 'Learn values or policies directly from samples — no explicit model of P, R. Most deep-Reinforcement Learning methods (DQN, PPO, SAC) are model-free.',
     related: ['model-based', 'monte-carlo', 'td0']
   },
 
@@ -330,7 +330,7 @@ export const GLOSSARY = {
   },
   'epsilon-noise': {
     title: 'ε · noise sample',
-    body: 'Standard Gaussian 𝒩(0, I). The "snow" added in diffusion; the target DDPM\'s network predicts. Not to be confused with RL\'s exploration ε.',
+    body: 'Standard Gaussian 𝒩(0, I). The "snow" added in diffusion; the target DDPM\'s network predicts. Not to be confused with Reinforcement Learning\'s exploration ε.',
     related: ['ddpm', 'score', 'reparam']
   },
   'x0-data': {
@@ -610,7 +610,7 @@ export const GLOSSARY = {
   },
   'em-algorithm': {
     title: 'EM · Expectation-Maximisation',
-    body: 'Iterates two steps: <strong>E-step</strong> computes responsibilities r<sub>i,k</sub> = P(component k | point i) under current params; <strong>M-step</strong> re-estimates μ<sub>k</sub>, σ<sub>k</sub>², π<sub>k</sub> by weighted ML using the responsibilities. Monotonically increases the log-likelihood.',
+    body: 'Iterates two steps: <strong>E-step</strong> computes responsibilities r<sub>i,k</sub> = P(component k | point i) under current params; <strong>M-step</strong> re-estimates μ<sub>k</sub>, σ<sub>k</sub>², π<sub>k</sub> by weighted Machine Learning using the responsibilities. Monotonically increases the log-likelihood.',
     related: ['gmm', 'responsibility', 'mle']
   },
   'gmm': {
@@ -625,7 +625,7 @@ export const GLOSSARY = {
   },
   'mc-integration': {
     title: 'Monte-Carlo integration',
-    body: 'Estimate an expectation 𝔼[f(X)] by averaging N random samples: (1/N) Σ f(x<sub>i</sub>). Error shrinks as O(1/√N) independent of dimension. Every MC return estimate G<sub>t</sub> in RL is the same pattern.',
+    body: 'Estimate an expectation 𝔼[f(X)] by averaging N random samples: (1/N) Σ f(x<sub>i</sub>). Error shrinks as O(1/√N) independent of dimension. Every MC return estimate G<sub>t</sub> in Reinforcement Learning is the same pattern.',
     related: ['monte-carlo', 'return']
   },
 
@@ -667,7 +667,7 @@ export const GLOSSARY = {
   },
   'argmin': {
     title: 'argmin / argmax',
-    body: 'argmin<sub>x</sub> f(x) = the input x that achieves the minimum of f (a point, not a number). min<sub>x</sub> f(x) = the minimum value (a number). ML training returns argmin of the loss. Recurs everywhere: MLE = argmax likelihood; MAP = argmax posterior; SVM primal = argmin ½‖w‖² + hinge; K-means = argmin SSE.',
+    body: 'argmin<sub>x</sub> f(x) = the input x that achieves the minimum of f (a point, not a number). min<sub>x</sub> f(x) = the minimum value (a number). Machine Learning training returns argmin of the loss. Recurs everywhere: MLE = argmax likelihood; MAP = argmax posterior; SVM primal = argmin ½‖w‖² + hinge; K-means = argmin SSE.',
     related: ['loss', 'gradient', 'lagrangian', 'mle', 'map-estimate', 'supremum'],
     sections: [
       MATH_SEC('theory-opt', '§1 Optimisation'),
@@ -677,7 +677,7 @@ export const GLOSSARY = {
   },
   'supremum': {
     title: 'sup / inf · supremum & infimum',
-    body: '<strong>sup</strong> S = least upper bound of S; <strong>inf</strong> S = greatest lower bound. They always exist for a bounded set (over ℝ), even when max / min don\'t. Example: sup (0, 1) = 1 and inf (0, 1) = 0 — but the interval itself has no maximum or minimum. In ML you\'ll see "sup" in measure-theoretic bounds (uniform approximation: sup<sub>x</sub> |f − f̂| &lt; ε) and risk bounds.',
+    body: '<strong>sup</strong> S = least upper bound of S; <strong>inf</strong> S = greatest lower bound. They always exist for a bounded set (over ℝ), even when max / min don\'t. Example: sup (0, 1) = 1 and inf (0, 1) = 0 — but the interval itself has no maximum or minimum. In Machine Learning you\'ll see "sup" in measure-theoretic bounds (uniform approximation: sup<sub>x</sub> |f − f̂| &lt; ε) and risk bounds.',
     related: ['argmin', 'universal-approximation'],
     sections: [MATH_SEC('theory-opt', '§1 Optimisation')]
   },
@@ -736,7 +736,7 @@ export const GLOSSARY = {
   },
   'linalg': {
     title: 'Linear algebra',
-    body: 'Matrices as linear transformations, vector/matrix products, decompositions. The substrate every ML layer runs on. Key facts: columns are images of basis vectors; composition = multiplication; eigendecomposition reveals "natural axes."',
+    body: 'Matrices as linear transformations, vector/matrix products, decompositions. The substrate every Machine Learning layer runs on. Key facts: columns are images of basis vectors; composition = multiplication; eigendecomposition reveals "natural axes."',
     related: ['eigenvalue', 'svd', 'dot-product', 'convolution'],
     sections: [
       MATH_SEC('theory-linalg', '§4 Linear algebra'),
@@ -771,7 +771,7 @@ export const GLOSSARY = {
   },
   'neural-net': {
     title: 'Neural network',
-    body: 'A parameterised function built by stacking layers h = σ(Wx + b). Linear transform (Wx), translation (+b), non-linearity (σ). Enough depth/width gives universal approximation. Used as policy, value, encoder, decoder, score network across every modern ML method.',
+    body: 'A parameterised function built by stacking layers h = σ(Wx + b). Linear transform (Wx), translation (+b), non-linearity (σ). Enough depth/width gives universal approximation. Used as policy, value, encoder, decoder, score network across every modern Machine Learning method.',
     related: ['universal-approximation', 'activation', 'gradient']
   },
   'activation': {
@@ -785,7 +785,7 @@ export const GLOSSARY = {
     related: ['lagrangian', 'argmin', 'convex']
   },
 
-  // ====================== Classical ML ======================
+  // ====================== Classical Machine Learning ======================
   'supervised': {
     title: 'Supervised learning',
     body: 'Learn f<sub>θ</sub>(x) ≈ y from a labelled dataset {(x<sub>i</sub>, y<sub>i</sub>)}. Regression when y is a number; classification when y is a category.',

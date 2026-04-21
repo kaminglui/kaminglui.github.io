@@ -1,5 +1,5 @@
 /* Beta distribution utilities. Pure functions, no DOM. Used by the Bayesian
-   coin-flip demo in Math Lab §7 and available for future RL Lab Thompson-
+   coin-flip demo in Math Lab §7 and available for future Reinforcement Learning Lab Thompson-
    sampling / Bayesian-coin demos.
 
    Numerics: the Beta PDF is x^(α−1) (1−x)^(β−1) / B(α, β). For large α, β the

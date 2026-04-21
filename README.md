@@ -23,8 +23,8 @@ Grouped into three tiers by what they build on:
   reconstruct it; DFT, FFT (Cooley-Tukey matrix factorisation), 2D Fourier,
   and the SDE / Brownian-motion bridge.
 
-### Tier 2 — Core ML
-- **ML Lab** (`pages/classical-ml/`) — supervised + unsupervised in one
+### Tier 2 — Core Machine Learning
+- **Machine Learning Lab** (`pages/classical-ml/`) — supervised + unsupervised in one
   place: linear regression (closed-form OLS with residuals + R²), logistic
   regression (GD on cross-entropy with probability heatmap), SVM (hinge +
   subgradient with margin lines and support vectors), K-means and Gaussian
@@ -33,7 +33,7 @@ Grouped into three tiers by what they build on:
   regularisation, bias-variance.
 
 ### Tier 3 — Modern deep learning
-- **RL Lab** (`pages/rl-lab/`) — Gaussian multi-armed bandit (ε-greedy /
+- **Reinforcement Learning Lab** (`pages/rl-lab/`) — Gaussian multi-armed bandit (ε-greedy /
   UCB1 / Thompson), value + policy iteration on a 1D chain, Monte Carlo
   darts demo, Bayesian coin with live Beta prior / posterior, nine KaTeX
   theory panels (bandits → MDP → Bellman → DP → MC/TD → on/off-policy +
@@ -63,8 +63,8 @@ Grouped into three tiers by what they build on:
   (`assets/js/lab-glossary.js` + `assets/js/lab-tooltips.js`). Any element
   with `data-g="key"` triggers a hover / focus popup with the definition,
   a row of related-concept chips, and section jump-buttons into any lab
-  (e.g. hovering `MLE` anywhere gives direct links into ML Lab §2, Diffusion
-  §2, and RL §1).
+  (e.g. hovering `MLE` anywhere gives direct links into Machine Learning Lab §2, Diffusion
+  §2, and Reinforcement Learning §1).
 - **Prereq / Continues-in chips** on every lab so readers know what
   reading to do before and what to read after.
 - **Home page** is a hero + three-tier Labs map that summarises the
