@@ -887,6 +887,19 @@
                     </svg>
                     <figcaption class="math-figure__caption"><strong>Uniform(a, b)</strong> — every value in [a,b] equally likely. The "no prior" prior.</figcaption>
                   </figure>
+
+                  <figure class="math-figure">
+                    <svg class="math-figure__svg" viewBox="0 0 240 150" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Beta(2, 5) PDF — right-skewed density over (0, 1)">
+                      <line x1="20" y1="125" x2="230" y2="125" stroke="rgba(148,163,184,0.6)" stroke-width="1"/>
+                      <line x1="20" y1="20"  x2="20"  y2="125" stroke="rgba(148,163,184,0.6)" stroke-width="1"/>
+                      <path d="M 20 125 C 30 95, 45 35, 62 20 C 85 15, 110 60, 145 95 C 180 115, 210 124, 230 125 Z" fill="rgba(236,72,153,0.18)" stroke="#ec4899" stroke-width="2"/>
+                      <text x="20"  y="140" font-size="10" fill="#64748b" text-anchor="middle">0</text>
+                      <text x="125" y="140" font-size="10" fill="#64748b" text-anchor="middle">θ</text>
+                      <text x="230" y="140" font-size="10" fill="#64748b" text-anchor="middle">1</text>
+                      <text x="62"  y="14"  font-size="10" fill="#ec4899" text-anchor="middle">mode at 1/5</text>
+                    </svg>
+                    <figcaption class="math-figure__caption"><strong>Beta(α, β)</strong> on (0, 1) — a flexible density for an unknown proportion. Conjugate prior to Bernoulli.</figcaption>
+                  </figure>
                 </div>
 
                 <h4>They're mostly the same distribution</h4>
@@ -1035,6 +1048,121 @@
                   (why the 2008 "6σ event" wasn't actually 6σ — the real tails were fatter than the Gaussian
                   model assumed).
                 </p>
+
+                <h4>Gamma — sums of exponentials, CLT in one picture</h4>
+                <p class="rl-theory__kid">
+                  <strong>Kid version.</strong> One Poisson event arrives after a random
+                  <em>exponential</em> wait. Want to know how long until the <em>k-th</em> event? Add
+                  together k independent exponential waits. That sum has a name: <strong>Gamma(k, θ)</strong>.
+                  As k grows the sum's distribution gets more and more bell-shaped — a direct, visible
+                  consequence of the Central Limit Theorem.
+                </p>
+                <p>
+                  Formally, if X<sub>1</sub>, …, X<sub>k</sub> are i.i.d. Exp(θ), then their sum is
+                  Gamma(k, θ):
+                </p>
+                <div class="rl-equation" data-katex="\mathrm{Gamma}(x;\, k, \theta) = \frac{x^{k-1}\, e^{-x/\theta}}{\Gamma(k)\, \theta^{k}}, \quad x > 0" data-katex-display></div>
+                <p>
+                  Two corners you already know live in this family: Gamma(1, θ) = Exp(θ), and Gamma(k, θ)
+                  converges to 𝒩(kθ, kθ²) for large k. Concrete example — an ad banner gets clicks at rate
+                  λ = 0.5 per second (so θ = 1/λ = 2 seconds between clicks). The wait until the <em>third</em>
+                  click is Gamma(3, 2), with expected value kθ = 6 seconds.
+                </p>
+
+                <figure class="math-figure math-figure--wide">
+                  <svg class="math-figure__svg" viewBox="0 0 480 200" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Three overlaid Gamma PDFs for k=1, 3, 10 at fixed rate, showing convergence to a Gaussian shape">
+                    <line x1="20" y1="180" x2="460" y2="180" stroke="rgba(148,163,184,0.6)" stroke-width="1"/>
+                    <line x1="20" y1="20"  x2="20"  y2="180" stroke="rgba(148,163,184,0.6)" stroke-width="1"/>
+                    <polyline fill="none" stroke="#3b82f6" stroke-width="2" points="20.0,20.0 25.5,55.4 31.0,83.0 36.5,104.4 42.0,121.1 47.5,134.2 53.0,144.3 58.5,152.2 64.0,158.3 69.5,163.1 75.0,166.9 80.5,169.8 86.0,172.0 91.5,173.8 97.0,175.2 102.5,176.2 108.0,177.1 113.5,177.7 119.0,178.2 124.5,178.6 130.0,178.9 135.5,179.2 141.0,179.3 146.5,179.5 152.0,179.6 157.5,179.7 163.0,179.8 168.5,179.8 174.0,179.9 179.5,179.9 185.0,179.9 190.5,179.9 196.0,179.9 460.0,180.0"/>
+                    <polyline fill="none" stroke="#f97316" stroke-width="2" points="20.0,180.0 25.5,176.1 31.0,167.9 36.5,158.7 42.0,150.6 47.5,144.2 53.0,139.8 58.5,137.4 64.0,136.7 69.5,137.3 75.0,139.0 80.5,141.3 86.0,144.2 91.5,147.2 97.0,150.4 102.5,153.5 108.0,156.6 113.5,159.4 119.0,162.0 124.5,164.4 130.0,166.5 135.5,168.4 141.0,170.1 146.5,171.6 152.0,172.9 157.5,174.0 163.0,174.9 168.5,175.7 174.0,176.4 179.5,177.0 185.0,177.5 190.5,177.9 196.0,178.3 201.5,178.6 207.0,178.8 212.5,179.0 218.0,179.2 223.5,179.3 229.0,179.5 234.5,179.6 240.0,179.6 460.0,180.0"/>
+                    <polyline fill="none" stroke="#a855f7" stroke-width="2" points="20.0,180.0 64.0,180.0 91.5,179.3 113.5,177.2 130.0,174.2 146.5,170.4 163.0,166.3 174.0,163.8 185.0,161.7 196.0,160.1 207.0,159.2 212.5,159.0 218.0,158.9 223.5,159.0 229.0,159.2 240.0,160.0 251.0,161.2 262.0,162.6 273.0,164.3 284.0,166.0 295.0,167.8 306.0,169.4 317.0,171.0 328.0,172.4 339.0,173.7 350.0,174.8 361.0,175.8 372.0,176.6 383.0,177.3 394.0,177.8 405.0,178.3 416.0,178.7 427.0,179.0 438.0,179.2 449.0,179.4 460.0,179.5"/>
+                    <!-- axis labels -->
+                    <text x="20"  y="194" font-size="10" fill="#64748b" text-anchor="middle">0</text>
+                    <text x="130" y="194" font-size="10" fill="#64748b" text-anchor="middle">5</text>
+                    <text x="240" y="194" font-size="10" fill="#64748b" text-anchor="middle">10</text>
+                    <text x="350" y="194" font-size="10" fill="#64748b" text-anchor="middle">15</text>
+                    <text x="460" y="194" font-size="10" fill="#64748b" text-anchor="middle">x (wait time)</text>
+                    <!-- legend -->
+                    <g font-size="11">
+                      <rect x="304" y="34" width="12" height="3" fill="#3b82f6"/>
+                      <text x="322" y="38" fill="#3b82f6">Gamma(1, 1) = Exp(1)</text>
+                      <rect x="304" y="54" width="12" height="3" fill="#f97316"/>
+                      <text x="322" y="58" fill="#f97316">Gamma(3, 1)</text>
+                      <rect x="304" y="74" width="12" height="3" fill="#a855f7"/>
+                      <text x="322" y="78" fill="#a855f7">Gamma(10, 1) ≈ 𝒩(10, 10)</text>
+                    </g>
+                  </svg>
+                  <figcaption class="math-figure__caption">Three Gammas at the same rate θ = 1, k = 1, 3, 10. Gamma(1) is the sharp exponential decay. Gamma(3) bumps and right-skews. By k = 10 the right skew has melted into a bell centred at k — the CLT, arriving one convolution at a time.</figcaption>
+                </figure>
+
+                <h4>Conjugate priors — the Bayesian coin flip</h4>
+                <p class="rl-theory__kid">
+                  <strong>Kid version.</strong> A <em>prior</em> is what you believed before looking at the
+                  data; a <em>posterior</em> is the updated belief. If your prior and your observation model
+                  are <em>conjugate</em>, the posterior lives in the same family as the prior and updating
+                  reduces to arithmetic on the parameters — no integrals required.
+                </p>
+                <p>
+                  For a coin with unknown bias θ ∈ (0, 1), the <strong>Beta(α, β)</strong> distribution is
+                  the conjugate prior to the Bernoulli likelihood. Observe k heads in n flips and the
+                  posterior is another Beta:
+                </p>
+                <div class="rl-equation" data-katex="p(\theta \mid k, n - k) \;=\; \mathrm{Beta}(\alpha + k,\; \beta + n - k)" data-katex-display></div>
+                <p>
+                  (α, β) act as <em>pseudocounts</em>: α ≈ "prior heads", β ≈ "prior tails". A Beta(1, 1)
+                  prior is uniform — maximally uninformative — so after k heads in n flips the posterior
+                  mean <span data-katex="(k + 1)/(n + 2)"></span> is Laplace's rule of succession. Pick a
+                  prior, add observations, and watch the posterior sharpen:
+                </p>
+
+                <div class="beta-demo">
+                  <div class="rl-controls">
+                    <div class="rl-controls__row">
+                      <div class="rl-controls__group" style="min-width: 180px;">
+                        <label for="beta-alpha0">prior α<sub>0</sub> <span class="rl-controls__value" id="beta-alpha0-value">1.0</span></label>
+                        <input id="beta-alpha0" type="range" min="0.5" max="20" step="0.1" value="1" />
+                      </div>
+                      <div class="rl-controls__group" style="min-width: 180px;">
+                        <label for="beta-beta0">prior β<sub>0</sub> <span class="rl-controls__value" id="beta-beta0-value">1.0</span></label>
+                        <input id="beta-beta0" type="range" min="0.5" max="20" step="0.1" value="1" />
+                      </div>
+                    </div>
+                  </div>
+                  <div class="rl-stage">
+                    <div>
+                      <div class="math-canvas-wrapper">
+                        <canvas id="beta-canvas" width="640" height="240" aria-label="Beta prior and posterior density over (0, 1)"></canvas>
+                      </div>
+                      <p class="math-legend" aria-hidden="true">
+                        <span><span class="math-legend__swatch" style="background:#94a3b8"></span>prior Beta(α<sub>0</sub>, β<sub>0</sub>)</span>
+                        <span><span class="math-legend__swatch" style="background:#3b82f6"></span>posterior Beta(α, β)</span>
+                      </p>
+                    </div>
+                    <aside class="rl-sidebar" aria-label="Posterior stats" aria-live="polite">
+                      <h3>Observations</h3>
+                      <div class="rl-controls__actions">
+                        <button type="button" id="beta-heads" class="is-primary">+1 heads</button>
+                        <button type="button" id="beta-tails">+1 tails</button>
+                        <button type="button" id="beta-reset">Reset</button>
+                      </div>
+                      <div class="rl-stat-grid">
+                        <div class="rl-stat"><span class="rl-stat__label">heads</span><span class="rl-stat__value" id="beta-k">0</span></div>
+                        <div class="rl-stat"><span class="rl-stat__label">tails</span><span class="rl-stat__value" id="beta-nmk">0</span></div>
+                        <div class="rl-stat"><span class="rl-stat__label">α</span><span class="rl-stat__value" id="beta-alpha">1.00</span></div>
+                        <div class="rl-stat"><span class="rl-stat__label">β</span><span class="rl-stat__value" id="beta-beta">1.00</span></div>
+                        <div class="rl-stat"><span class="rl-stat__label">E[θ]</span><span class="rl-stat__value rl-stat__value--accent" id="beta-mean">0.500</span></div>
+                        <div class="rl-stat"><span class="rl-stat__label">SD[θ]</span><span class="rl-stat__value" id="beta-sd">0.289</span></div>
+                      </div>
+                      <p class="ml-hint">
+                        Start with Beta(1, 1) and log 8 heads + 2 tails: the posterior sharpens to
+                        Beta(9, 3) with mean 0.75. Now try a strong Beta(10, 10) prior — the same 8/2 data
+                        barely moves the posterior because the prior is worth 20 pseudo-flips. This is how
+                        Bayesian models encode "how much do we trust the data vs. the prior."
+                      </p>
+                    </aside>
+                  </div>
+                </div>
+
                 <p>
                   Every ML loss has a distribution story under it. Squared error ↔ Gaussian MLE. Cross-entropy
                   ↔ categorical MLE. Binary cross-entropy ↔ Bernoulli MLE. Pick a distribution for your noise,

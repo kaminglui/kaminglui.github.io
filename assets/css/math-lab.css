@@ -20,7 +20,8 @@
   background: var(--color-bg);
   border-radius: var(--radius-sm);
 }
-#kl-canvas {
+#kl-canvas,
+#beta-canvas {
   width: 100%;
   aspect-ratio: 16 / 7;
   display: block;

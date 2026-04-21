@@ -23,6 +23,12 @@ import {
   reverseKLLoss,
   reverseKLGradStep
 } from './math-lab/kl-fit.js';
+import {
+  betaPDF,
+  betaMean,
+  betaVariance,
+  betaPosterior
+} from './math-lab/beta.js';
 
 /* ========================= shared helpers ========================= */
 
@@ -1424,6 +1430,147 @@ function initKLFitDemo() {
   render();
 }
 
+/* ==================== §7 Bayesian coin-flip demo ==================== */
+
+const BETA_SAMPLES = 300;
+
+function betaXToPx(x, cssW) {
+  return 30 + x * (cssW - 60);
+}
+function betaYToPx(y, cssH, maxY) {
+  return cssH - 26 - (y / maxY) * (cssH - 52);
+}
+
+function betaDrawAxis(ctx, cssW, cssH) {
+  ctx.strokeStyle = 'rgba(148, 163, 184, 0.6)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(20, cssH - 26);
+  ctx.lineTo(cssW - 20, cssH - 26);
+  ctx.stroke();
+  ctx.fillStyle = '#64748b';
+  ctx.font = '10px Inter, sans-serif';
+  ctx.textAlign = 'center';
+  for (const x of [0, 0.25, 0.5, 0.75, 1]) {
+    ctx.fillText(x.toFixed(2), betaXToPx(x, cssW), cssH - 10);
+  }
+}
+
+function betaDrawCurve(ctx, alpha, beta, cssW, cssH, maxY, fill, stroke) {
+  const baselineY = cssH - 26;
+  ctx.beginPath();
+  ctx.moveTo(betaXToPx(0, cssW), baselineY);
+  for (let i = 0; i <= BETA_SAMPLES; i++) {
+    const x = i / BETA_SAMPLES;
+    // Clip unbounded edges for α<1 or β<1 so the curve stays on the canvas.
+    const y = Math.min(betaPDF(x, alpha, beta), maxY);
+    ctx.lineTo(betaXToPx(x, cssW), betaYToPx(y, cssH, maxY));
+  }
+  ctx.lineTo(betaXToPx(1, cssW), baselineY);
+  ctx.closePath();
+  ctx.fillStyle = fill;
+  ctx.fill();
+  ctx.beginPath();
+  for (let i = 0; i <= BETA_SAMPLES; i++) {
+    const x = i / BETA_SAMPLES;
+    const y = Math.min(betaPDF(x, alpha, beta), maxY);
+    const px = betaXToPx(x, cssW);
+    const py = betaYToPx(y, cssH, maxY);
+    if (i === 0) ctx.moveTo(px, py);
+    else ctx.lineTo(px, py);
+  }
+  ctx.strokeStyle = stroke;
+  ctx.lineWidth = 2;
+  ctx.stroke();
+}
+
+function pickBetaMaxY(prior, posterior) {
+  // For α, β > 1 the mode gives the peak; for the U-shaped / uniform regimes
+  // sample a few interior points and take the max. 1.0 floor covers uniform.
+  const peakOf = (alpha, beta) => {
+    if (alpha > 1 && beta > 1) {
+      const mode = (alpha - 1) / (alpha + beta - 2);
+      return betaPDF(mode, alpha, beta);
+    }
+    return Math.max(
+      1.0,
+      betaPDF(0.05, alpha, beta),
+      betaPDF(0.5, alpha, beta),
+      betaPDF(0.95, alpha, beta)
+    );
+  };
+  return 1.15 * Math.max(
+    peakOf(prior.alpha, prior.beta),
+    peakOf(posterior.alpha, posterior.beta)
+  );
+}
+
+function initBetaDemo() {
+  const canvas = document.getElementById('beta-canvas');
+  if (!canvas) return;
+
+  const dom = {
+    alpha0: document.getElementById('beta-alpha0'),
+    beta0: document.getElementById('beta-beta0'),
+    alpha0Val: document.getElementById('beta-alpha0-value'),
+    beta0Val: document.getElementById('beta-beta0-value'),
+    headsBtn: document.getElementById('beta-heads'),
+    tailsBtn: document.getElementById('beta-tails'),
+    resetBtn: document.getElementById('beta-reset'),
+    kOut: document.getElementById('beta-k'),
+    nmkOut: document.getElementById('beta-nmk'),
+    alphaOut: document.getElementById('beta-alpha'),
+    betaOut: document.getElementById('beta-beta'),
+    meanOut: document.getElementById('beta-mean'),
+    sdOut: document.getElementById('beta-sd')
+  };
+
+  const state = { heads: 0, tails: 0 };
+  let pending = false;
+
+  function draw() {
+    pending = false;
+    const alpha0 = parseFloat(dom.alpha0.value);
+    const beta0 = parseFloat(dom.beta0.value);
+    dom.alpha0Val.textContent = alpha0.toFixed(1);
+    dom.beta0Val.textContent = beta0.toFixed(1);
+
+    const prior = { alpha: alpha0, beta: beta0 };
+    const posterior = betaPosterior(alpha0, beta0, state.heads, state.tails);
+    const maxY = pickBetaMaxY(prior, posterior);
+
+    const { ctx, cssW, cssH } = ensureCanvasSize(canvas);
+    ctx.clearRect(0, 0, cssW, cssH);
+    betaDrawAxis(ctx, cssW, cssH);
+    betaDrawCurve(ctx, prior.alpha, prior.beta, cssW, cssH, maxY, 'rgba(148,163,184,0.22)', '#94a3b8');
+    betaDrawCurve(ctx, posterior.alpha, posterior.beta, cssW, cssH, maxY, 'rgba(59,130,246,0.28)', '#3b82f6');
+
+    dom.kOut.textContent = String(state.heads);
+    dom.nmkOut.textContent = String(state.tails);
+    dom.alphaOut.textContent = posterior.alpha.toFixed(2);
+    dom.betaOut.textContent = posterior.beta.toFixed(2);
+    dom.meanOut.textContent = betaMean(posterior.alpha, posterior.beta).toFixed(3);
+    dom.sdOut.textContent = Math.sqrt(betaVariance(posterior.alpha, posterior.beta)).toFixed(3);
+  }
+
+  function schedule() {
+    if (pending) return;
+    pending = true;
+    requestAnimationFrame(draw);
+  }
+
+  [dom.alpha0, dom.beta0].forEach((el) => el.addEventListener('input', schedule));
+  dom.headsBtn.addEventListener('click', () => { state.heads += 1; schedule(); });
+  dom.tailsBtn.addEventListener('click', () => { state.tails += 1; schedule(); });
+  dom.resetBtn.addEventListener('click', () => {
+    state.heads = 0;
+    state.tails = 0;
+    schedule();
+  });
+  window.addEventListener('resize', schedule);
+  draw();
+}
+
 /* ============================ bootstrap ============================ */
 
 function boot() {
@@ -1431,6 +1578,7 @@ function boot() {
   initPCA();
   initInfoKLDemo();
   initKLFitDemo();
+  initBetaDemo();
 }
 
 if (document.readyState === 'loading') {

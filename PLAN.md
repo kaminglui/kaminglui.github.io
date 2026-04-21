@@ -23,20 +23,20 @@ Phase 1 shipped as §7 (common distributions, family tree, LLN + CLT,
 heavy-tail caveat). Remaining:
 - **Interactive PDF/PMF visualiser** — pick a family, slide its parameters, overlay the
   density against samples (upgrade the current static figures).
-- **Beta distribution** — priority, because the site already references it implicitly
-  (§7's family tree footnote says `Beta(1,1) = Uniform[0,1]`, and RL Lab's Bayesian
-  coin-flip + Thompson-sampling chips need the Beta posterior to make sense but never
-  show it). Graphs: PDF grid across canonical (α, β) regimes — (1,1) uniform, (<1,<1)
-  bathtub, (>1,>1) bell, asymmetric. Simple example: start from a Beta(1,1) prior,
-  observe k heads in n flips, watch the posterior Beta(1+k, 1+n−k) sharpen live as
-  the user adds flips. Cross-link to RL Lab's Thompson-sampling section once it
-  lands.
-- **Gamma distribution** — secondary. Closes the Exponential loop (Gamma(1, λ) =
-  Exp(λ)) and is the wait-time-for-k-Poisson-events distribution. Graph: PDF across
-  three shape values k=1, 3, 10 with fixed rate; overlay showing how it approaches
-  a Gaussian as k grows (a second CLT moment). Simple example: "how long until the
-  third click on an ad banner at rate λ=0.5/sec" — expected value kλ⁻¹, density
-  shape matches intuition.
+- **Beta distribution** — shipped in §7 Probability. Seventh entry in the "usual
+  cast" grid (Beta(2, 5) right-skewed shape) plus a new "Conjugate priors — the
+  Bayesian coin flip" subsection with the derivation, Laplace's rule of succession,
+  and a live interactive where the user slides prior (α₀, β₀) and logs heads/tails;
+  prior + posterior PDFs redraw, posterior parameters and mean / SD update live.
+  Pure math in `assets/js/math-lab/beta.js` (Lanczos log-Γ → numerically stable PDF
+  for large pseudocounts) with 16 unit tests covering PDF shape properties,
+  moment formulas, and the conjugate posterior arithmetic.
+- **Gamma distribution** — shipped in §7 after the heavy-tail caveat as "Gamma —
+  sums of exponentials, CLT in one picture". Three-polyline overlay figure for
+  k = 1, 3, 10 at fixed rate, showing the right-skew melting into a bell as k
+  grows (concrete witness for the CLT claim above). Prose names Gamma(1, θ) =
+  Exp(θ) and Gamma(k, θ) → 𝒩(kθ, kθ²). Simple example: "wait until the third
+  ad click at λ = 0.5/sec is Gamma(3, 2), expected value 6 s".
 - **Dirichlet distribution** — secondary. Multivariate Beta; prior over categorical
   distributions; shows up in topic models and in RL as priors over discrete action
   probabilities. Graph: 2-simplex heatmap of Dir(α, α, α) density for α ∈ {0.5, 1,
