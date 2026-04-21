@@ -1,4 +1,5 @@
 import { renderSiteHeader } from './site-header.js';
+import { readBreakpointPx } from './layout/breakpoints.js';
 
 let globalDropdownHandlersBound = false;
 let navReady = false;
@@ -167,7 +168,7 @@ function setupNav() {
     });
 
     window.addEventListener('resize', () => {
-      if (window.innerWidth >= 720) {
+      if (window.innerWidth >= readBreakpointPx('--bp-nav-collapse')) {
         navToggle.setAttribute('aria-expanded', 'false');
         navLinks?.setAttribute('data-visible', 'false');
         body.classList.remove('nav-open');

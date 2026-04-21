@@ -10,7 +10,6 @@
       href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fira+Code:wght@400;500&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" />
     <link rel="stylesheet" href="../../assets/css/style.css" data-vite-ignore />
     <link rel="stylesheet" href="../../assets/css/fourier-epicycles.css" data-vite-ignore />
     <link rel="stylesheet" href="../../assets/css/tailwind.css" data-vite-ignore />
@@ -155,11 +154,11 @@
                   <span class="math-checkpoint__label">
                     DFT coefficients <span class="fourier-inline-math" data-katex="X_k"></span>:
                   </span>
-                  <span id="math-dft" class="math-checkpoint__equation"></span>
+                  <span id="math-dft" class="math-checkpoint__equation" data-katex="X_k = \frac{1}{N}\sum_{n=0}^{N-1} x_n e^{-i 2\pi k n / N}" data-katex-display></span>
                   <span class="math-checkpoint__label">
                     Reconstruction <span class="fourier-inline-math" data-katex="x(t)"></span>:
                   </span>
-                  <span id="math-recon" class="math-checkpoint__equation"></span>
+                  <span id="math-recon" class="math-checkpoint__equation" data-katex="x(t) = \sum_{k=0}^{N-1} |X_k| e^{i\left(2\pi kt/N + \phi_k\right)}" data-katex-display></span>
                 </div>
               </div>
             </div>
@@ -548,29 +547,7 @@
 
     <script type="module">
       import { initMainLayout } from '../../assets/js/layout/mainLayout.js';
-      initMainLayout('fourier-epicycles');
-    </script>
-    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
-    <script>
-      document.addEventListener('DOMContentLoaded', () => {
-        if (!window.katex) return;
-        const render = (el, tex, displayMode) => {
-          if (!el) return;
-          window.katex.render(tex, el, { throwOnError: false, displayMode });
-        };
-
-        const dftEl = document.getElementById('math-dft');
-        const reconEl = document.getElementById('math-recon');
-        render(dftEl, 'X_k = \\frac{1}{N}\\sum_{n=0}^{N-1} x_n e^{-i 2\\pi k n / N}', true);
-        render(reconEl, 'x(t) = \\sum_{k=0}^{N-1} |X_k| e^{i\\left(2\\pi kt/N + \\phi_k\\right)}', true);
-
-        document.querySelectorAll('[data-katex]').forEach((el) => {
-          const tex = el.getAttribute('data-katex');
-          if (!tex) return;
-          const displayMode = el.hasAttribute('data-katex-display');
-          render(el, tex, displayMode);
-        });
-      });
+      initMainLayout('fourier-epicycles', { withKaTeX: true });
     </script>
     <script type="module" src="./index.tsx"></script>
   </body>

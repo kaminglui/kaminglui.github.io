@@ -16,12 +16,6 @@
     />
     <link rel="stylesheet" href="../../assets/css/style.css" />
     <link rel="stylesheet" href="../../assets/css/rl-lab.css" />
-    <link
-      rel="stylesheet"
-      href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css"
-      integrity="sha384-n8MVd4RsNIU0tAv4ct0nTaAbDJwPJzDEaqSD1odI+WdtXRGWt2kTvGFasHpSy3SV"
-      crossorigin="anonymous"
-    />
   </head>
   <body class="theme-light">
     <div id="site-header"></div>
@@ -885,25 +879,9 @@
 
     <script type="module">
       import { initMainLayout } from '../../assets/js/layout/mainLayout.js';
-      initMainLayout('rl-lab');
+      initMainLayout('rl-lab', { withKaTeX: true });
     </script>
     <script type="module" src="../../assets/js/rl-lab.js"></script>
     <script type="module" src="../../assets/js/lab-tooltips.js"></script>
-    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
-    <script>
-      document.addEventListener('DOMContentLoaded', () => {
-        const render = () => {
-          if (!window.katex) return;
-          document.querySelectorAll('[data-katex]').forEach((el) => {
-            const tex = el.getAttribute('data-katex');
-            if (!tex) return;
-            const displayMode = el.hasAttribute('data-katex-display');
-            window.katex.render(tex, el, { throwOnError: false, displayMode });
-          });
-        };
-        if (window.katex) render();
-        else window.addEventListener('load', render, { once: true });
-      });
-    </script>
   </body>
 </html>

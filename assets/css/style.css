@@ -106,6 +106,13 @@ input[type='number'],
   --nav-pill-text: var(--color-muted);
   --nav-pill-hover-bg: var(--color-accent-muted);
   --nav-pill-hover-color: var(--color-accent);
+  /* Chrome breakpoints — documented values that JS reads via
+     assets/js/layout/breakpoints.js. CSS @media rules still use literal
+     numbers (CSS can't interpolate custom properties into media queries),
+     but changing a value here flags every matching media query via a
+     grep of the number. Keep these two in sync with the CSS uses below. */
+  --bp-nav-collapse: 800px; /* <=: hamburger drawer, .nav-toggle visible */
+  --bp-side-nav: 900px;     /* <=: side-nav timeline rail hidden */
   color-scheme: light;
 }
 

@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8" />
+    <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
     <title>Circuit Forge</title>
 
@@ -670,16 +670,9 @@
         });
         window.addEventListener('resize', closeMenus);
     </script>
-    <script type="module">
-        import { initThemeControls } from '../../assets/js/layout/theme.js';
-
-        const refreshCircuitTheme = () => {
-            if (typeof updateBoardThemeColors === 'function') updateBoardThemeColors();
-            if (typeof draw === 'function') draw();
-            if (typeof renderToolIcons === 'function') renderToolIcons();
-        };
-
-        initThemeControls({ onChange: refreshCircuitTheme });
-    </script>
+    <!-- Theme is locked to dark via initMainLayout's themeOptions.forceTheme
+         above; no second theme init is needed. The earlier refreshCircuitTheme
+         callback was a silent no-op (the names it guarded live in
+         circuitforge.js's module scope, unreachable from this script). -->
 </body>
 </html>

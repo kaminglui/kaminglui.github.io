@@ -7,7 +7,8 @@
 
    Wires itself in from siteShell.js so every lab gets it automatically. */
 
-const VIEWPORT_CUTOFF = 900;
+import { readBreakpointPx } from './layout/breakpoints.js';
+
 const OBSERVER_MARGIN = '-30% 0px -55% 0px';
 
 function pickHeading(article) {
@@ -56,7 +57,9 @@ function buildNav(items) {
 
 function initSideNav() {
   // Only run on wider viewports — the rail overlaps content on narrow ones.
-  if (typeof window !== 'undefined' && window.innerWidth < VIEWPORT_CUTOFF) return;
+  // Cutoff lives in :root as --bp-side-nav so the CSS @media rule that hides
+  // the rail matches this JS guard.
+  if (typeof window !== 'undefined' && window.innerWidth < readBreakpointPx('--bp-side-nav')) return;
   if (document.querySelector('.side-nav')) return;
 
   const articles = Array.from(document.querySelectorAll(SECTION_SELECTOR));
