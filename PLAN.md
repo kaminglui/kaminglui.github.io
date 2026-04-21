@@ -147,20 +147,16 @@ initialising at different μ₀). Remaining:
 
 ## RL Lab — extensions
 
-- **Monte Carlo Tree Search (MCTS).** Not covered today. The current RL Lab tours
-  the learning-from-experience line (bandits → MDP → DP → MC/TD → policy gradient).
-  MCTS sits on the adjacent "planning with a known or learned model" axis — the
-  AlphaGo / AlphaZero recipe — so it's a real new section, not a drive-by. Cover:
-  the four-stage loop (select via UCT / expand / rollout / backup), the exploration
-  term c·√(ln N / n), simulation-budget trade-offs, and how MCTS combines with a
-  value + policy network in AlphaZero. Graphs: an animated tree that grows across
-  four iteration snapshots, showing N/W/Q per node and the UCT score driving
-  selection; a comparison plot of value convergence vs simulation count for three
-  c values. Simple example: **MCTS on the same 1D chain demo** that RL Lab already
-  uses for value iteration — lets the reader see MCTS arrive at the same policy
-  without being given the transition model, and quantifies the sample cost of that
-  freedom. Place as a new article between §7 policy gradients and §8 "Same shape,
-  different targets".
+- **Monte Carlo Tree Search (MCTS).** Shipped as RL Lab §8 "Monte Carlo Tree
+  Search — planning with a model", between §7 Policy gradients and §9 Same-shape.
+  Prose covers the four-stage loop (select/expand/rollout/backup), UCT with the
+  c·√(ln N / n) exploration term, and AlphaZero's PUCT variant. Two SVG figures:
+  a labelled four-stage loop diagram with coloured stage boxes and a return
+  arrow, and an annotated mid-search tree (root + 2 actions + 4 grandchildren)
+  with N/Q per node showing how visits concentrate on the higher-Q subtree.
+  Remaining: interactive MCTS-on-1D-chain demo so readers can compare MCTS's
+  convergence to value iteration on the chain they already saw, plus a
+  value-vs-simulation-count sweep across c values. Those are their own follow-up.
 - **Bayesian coin-flip interactive** — the chip is there but there's no demo.
   Pairs with the Beta-distribution demo queued under Probability.
 - **Thompson sampling interactive** — pull virtual bandit arms, watch each arm's

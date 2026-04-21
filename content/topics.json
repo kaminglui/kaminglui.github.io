@@ -157,6 +157,10 @@
           "title": "Policy gradients and actor-critic"
         },
         {
+          "id": "theory-mcts",
+          "title": "Monte Carlo Tree Search — planning with a model"
+        },
+        {
           "id": "theory-shape",
           "title": "Same shape, different targets"
         },
