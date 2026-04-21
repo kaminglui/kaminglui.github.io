@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
     <meta
       name="description"
-      content="Interactive tour of the math behind modern ML: gradient descent and SGD on user-picked landscapes, PCA on 2D scatter, plus a kid-friendly walk through optimisation, linear algebra, and the universal approximation theorem."
+      content="Interactive tour of the math behind modern ML: gradient descent and SGD on user-picked landscapes, PCA on 2D scatter, plus a kid-friendly walk through optimisation, linear algebra, probability distributions (with LLN/CLT), information theory (entropy, KL, cross-entropy), and the universal approximation theorem."
     />
     <title>Math Foundations Lab — Ka Ming Lui</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -32,8 +32,9 @@
               Watch gradient descent roll down a landscape you pick, then escape a nasty non-convex valley with
               stochastic noise or simulated annealing. Find a dataset's principal components by eye. Along the way,
               a kid-friendly tour of optimisation (argmin, argmax, Lagrange multipliers), linear algebra (matrices
-              as transformations, dot & cross products, convolution), PCA math from the ground up, and why a
-              neural network can approximate almost any function.
+              as transformations, dot & cross products, convolution), PCA math from the ground up, common
+              probability distributions with LLN/CLT, information theory (entropy, KL, cross-entropy), and
+              why a neural network can approximate almost any function.
             </p>
           </div>
         </div>
@@ -43,13 +44,15 @@
         <div class="container">
           <article class="card lab-card">
             <header class="lab-card__header">
-              <p class="lab-card__eyebrow">Optimisation · Linear algebra · PCA · Approximation</p>
+              <p class="lab-card__eyebrow">Optimisation · Linear algebra · PCA · Probability · Information theory · Approximation</p>
               <div class="lab-card__title-row">
                 <h2 class="lab-card__title" id="math-title">The math every ML method reuses</h2>
                 <div class="lab-card__chips">
                   <span class="lab-chip">GD / SGD</span>
                   <span class="lab-chip">Linear algebra</span>
                   <span class="lab-chip">PCA</span>
+                  <span class="lab-chip">Probability · LLN · CLT</span>
+                  <span class="lab-chip">Entropy · KL · cross-entropy</span>
                   <span class="lab-chip">Universal approx</span>
                 </div>
               </div>
@@ -756,8 +759,417 @@
                 </p>
               </article>
 
+              <article class="rl-theory__panel" id="theory-prob">
+                <h3>7 · Probability &amp; distributions</h3>
+                <p class="rl-theory__kid">
+                  <strong>Kid version.</strong> A <em>distribution</em> is a rule that says how likely each
+                  outcome is. A coin flip has two outcomes. A die roll has six. The height of a random adult
+                  has a whole continuum. Most of ML boils down to picking a distribution that could have
+                  generated your data, then turning the knobs until it matches.
+                </p>
+                <p>
+                  A <strong>random variable</strong> X takes values in some set — the integers, the reals,
+                  ℝ<sup>d</sup>. Its <em>distribution</em> tells you the probability of each value (discrete
+                  case, <em>PMF</em>) or the density of values (continuous case, <em>PDF</em>). Every PDF
+                  integrates to 1; every PMF sums to 1.
+                </p>
+                <div class="rl-equation" data-katex="\mathbb{P}(a \le X \le b) = \int_a^b p(x)\,dx \qquad \text{or} \qquad \sum_{k = a}^b p(k)" data-katex-display></div>
+
+                <h4>The usual cast</h4>
+                <p>
+                  Six distributions show up everywhere. Learn the shapes and you can read half of ML papers on
+                  sight.
+                </p>
+
+                <div class="math-figures">
+                  <figure class="math-figure">
+                    <svg class="math-figure__svg" viewBox="0 0 240 150" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Bernoulli PMF: two spikes at 0 and 1">
+                      <line x1="20" y1="125" x2="230" y2="125" stroke="rgba(148,163,184,0.6)" stroke-width="1"/>
+                      <line x1="20" y1="20"  x2="20"  y2="125" stroke="rgba(148,163,184,0.6)" stroke-width="1"/>
+                      <!-- P(X=0) = 0.6, P(X=1) = 0.4 -->
+                      <rect x="70"  y="50"  width="20" height="75" fill="#3b82f6" opacity="0.85"/>
+                      <rect x="160" y="75"  width="20" height="50" fill="#3b82f6" opacity="0.85"/>
+                      <text x="80"  y="140" font-size="10" fill="#64748b" text-anchor="middle">0</text>
+                      <text x="170" y="140" font-size="10" fill="#64748b" text-anchor="middle">1</text>
+                      <text x="80"  y="46"  font-size="10" fill="#3b82f6" text-anchor="middle">0.6</text>
+                      <text x="170" y="71"  font-size="10" fill="#3b82f6" text-anchor="middle">0.4</text>
+                    </svg>
+                    <figcaption class="math-figure__caption"><strong>Bernoulli(p)</strong> — one flip. P(X=1)=p, P(X=0)=1−p.</figcaption>
+                  </figure>
+
+                  <figure class="math-figure">
+                    <svg class="math-figure__svg" viewBox="0 0 240 150" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Binomial PMF bell with peak at 5">
+                      <line x1="20" y1="125" x2="230" y2="125" stroke="rgba(148,163,184,0.6)" stroke-width="1"/>
+                      <line x1="20" y1="20"  x2="20"  y2="125" stroke="rgba(148,163,184,0.6)" stroke-width="1"/>
+                      <!-- Binomial(10, 0.5). Bar widths 14, x step 18, start x=30 -->
+                      <g fill="#3b82f6" opacity="0.85">
+                        <rect x="30"  y="124" width="14" height="1"/>
+                        <rect x="48"  y="120" width="14" height="5"/>
+                        <rect x="66"  y="104" width="14" height="21"/>
+                        <rect x="84"  y="70"  width="14" height="55"/>
+                        <rect x="102" y="29"  width="14" height="96"/>
+                        <rect x="120" y="9"   width="14" height="116"/>
+                        <rect x="138" y="29"  width="14" height="96"/>
+                        <rect x="156" y="70"  width="14" height="55"/>
+                        <rect x="174" y="104" width="14" height="21"/>
+                        <rect x="192" y="120" width="14" height="5"/>
+                        <rect x="210" y="124" width="14" height="1"/>
+                      </g>
+                      <text x="37"  y="140" font-size="9" fill="#64748b" text-anchor="middle">0</text>
+                      <text x="127" y="140" font-size="9" fill="#64748b" text-anchor="middle">5</text>
+                      <text x="217" y="140" font-size="9" fill="#64748b" text-anchor="middle">10</text>
+                    </svg>
+                    <figcaption class="math-figure__caption"><strong>Binomial(n, p)</strong> — count heads in n flips. Bernoulli is n=1.</figcaption>
+                  </figure>
+
+                  <figure class="math-figure">
+                    <svg class="math-figure__svg" viewBox="0 0 240 150" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Poisson PMF with lambda=3">
+                      <line x1="20" y1="125" x2="230" y2="125" stroke="rgba(148,163,184,0.6)" stroke-width="1"/>
+                      <line x1="20" y1="20"  x2="20"  y2="125" stroke="rgba(148,163,184,0.6)" stroke-width="1"/>
+                      <!-- Poisson(3): p ≈ 0.050, 0.149, 0.224, 0.224, 0.168, 0.101, 0.050, 0.022, 0.008 -->
+                      <g fill="#8b5cf6" opacity="0.85">
+                        <rect x="30"  y="104" width="18" height="21"/>
+                        <rect x="52"  y="63"  width="18" height="62"/>
+                        <rect x="74"  y="32"  width="18" height="93"/>
+                        <rect x="96"  y="32"  width="18" height="93"/>
+                        <rect x="118" y="55"  width="18" height="70"/>
+                        <rect x="140" y="83"  width="18" height="42"/>
+                        <rect x="162" y="104" width="18" height="21"/>
+                        <rect x="184" y="116" width="18" height="9"/>
+                        <rect x="206" y="122" width="18" height="3"/>
+                      </g>
+                      <text x="39"  y="140" font-size="9" fill="#64748b" text-anchor="middle">0</text>
+                      <text x="105" y="140" font-size="9" fill="#64748b" text-anchor="middle">3</text>
+                      <text x="215" y="140" font-size="9" fill="#64748b" text-anchor="middle">8</text>
+                      <text x="100" y="25"  font-size="10" fill="#8b5cf6" text-anchor="middle">λ = 3</text>
+                    </svg>
+                    <figcaption class="math-figure__caption"><strong>Poisson(λ)</strong> — rare events per unit time. Arrivals, clicks, photons.</figcaption>
+                  </figure>
+
+                  <figure class="math-figure">
+                    <svg class="math-figure__svg" viewBox="0 0 240 150" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Gaussian PDF bell curve">
+                      <line x1="20" y1="125" x2="230" y2="125" stroke="rgba(148,163,184,0.6)" stroke-width="1"/>
+                      <line x1="20" y1="20"  x2="20"  y2="125" stroke="rgba(148,163,184,0.6)" stroke-width="1"/>
+                      <path d="M 20 124 C 70 124, 100 20, 125 20 C 150 20, 180 124, 230 124" fill="rgba(34,197,94,0.18)" stroke="#22c55e" stroke-width="2"/>
+                      <line x1="125" y1="125" x2="125" y2="20" stroke="#22c55e" stroke-width="1" stroke-dasharray="3 3"/>
+                      <text x="125" y="140" font-size="10" fill="#64748b" text-anchor="middle">μ</text>
+                      <text x="95"  y="90"  font-size="10" fill="#22c55e" text-anchor="end">σ</text>
+                      <line x1="100" y1="85" x2="125" y2="85" stroke="#22c55e" stroke-width="1" marker-end="url(#gauss-arr)"/>
+                      <defs>
+                        <marker id="gauss-arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+                          <path d="M 0 0 L 10 5 L 0 10 z" fill="#22c55e"/>
+                        </marker>
+                      </defs>
+                    </svg>
+                    <figcaption class="math-figure__caption"><strong>Gaussian(μ, σ²)</strong> — the "standard noise model." Two knobs: centre and width.</figcaption>
+                  </figure>
+
+                  <figure class="math-figure">
+                    <svg class="math-figure__svg" viewBox="0 0 240 150" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Exponential PDF decay curve">
+                      <line x1="20" y1="125" x2="230" y2="125" stroke="rgba(148,163,184,0.6)" stroke-width="1"/>
+                      <line x1="20" y1="20"  x2="20"  y2="125" stroke="rgba(148,163,184,0.6)" stroke-width="1"/>
+                      <path d="M 20 20 Q 50 90, 90 110 Q 140 124, 230 125" fill="rgba(249,115,22,0.18)" stroke="#f97316" stroke-width="2"/>
+                      <text x="30"  y="30"  font-size="10" fill="#f97316">λe<tspan font-size="7" dy="-3">−λx</tspan></text>
+                      <text x="125" y="140" font-size="10" fill="#64748b" text-anchor="middle">x</text>
+                    </svg>
+                    <figcaption class="math-figure__caption"><strong>Exponential(λ)</strong> — time between Poisson events. Memoryless.</figcaption>
+                  </figure>
+
+                  <figure class="math-figure">
+                    <svg class="math-figure__svg" viewBox="0 0 240 150" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Uniform PDF rectangle">
+                      <line x1="20" y1="125" x2="230" y2="125" stroke="rgba(148,163,184,0.6)" stroke-width="1"/>
+                      <line x1="20" y1="20"  x2="20"  y2="125" stroke="rgba(148,163,184,0.6)" stroke-width="1"/>
+                      <rect x="70" y="70" width="110" height="55" fill="rgba(14,165,233,0.2)" stroke="#0ea5e9" stroke-width="2"/>
+                      <text x="70"  y="140" font-size="10" fill="#64748b" text-anchor="middle">a</text>
+                      <text x="180" y="140" font-size="10" fill="#64748b" text-anchor="middle">b</text>
+                      <text x="125" y="63"  font-size="10" fill="#0ea5e9" text-anchor="middle">1/(b−a)</text>
+                    </svg>
+                    <figcaption class="math-figure__caption"><strong>Uniform(a, b)</strong> — every value in [a,b] equally likely. The "no prior" prior.</figcaption>
+                  </figure>
+                </div>
+
+                <h4>They're mostly the same distribution</h4>
+                <p>
+                  Most of these aren't separate objects — they're different corners of one family tree. Knowing
+                  the relationships lets you translate between them without memorising anything new.
+                </p>
+                <figure class="math-figure">
+                  <svg class="math-figure__svg" viewBox="0 0 480 220" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Family tree showing how common distributions relate">
+                    <!-- Bernoulli -->
+                    <g>
+                      <rect x="20"  y="20"  width="100" height="32" rx="6" fill="rgba(59,130,246,0.15)" stroke="#3b82f6" stroke-width="1.2"/>
+                      <text x="70"  y="40" font-size="11" fill="#3b82f6" text-anchor="middle">Bernoulli(p)</text>
+                    </g>
+                    <!-- arrow to Binomial -->
+                    <line x1="120" y1="36"  x2="175" y2="36" stroke="rgba(148,163,184,0.7)" stroke-width="1" marker-end="url(#fam-arr)"/>
+                    <text x="147" y="30" font-size="9" fill="#64748b" text-anchor="middle">n flips</text>
+                    <!-- Binomial -->
+                    <g>
+                      <rect x="175" y="20"  width="110" height="32" rx="6" fill="rgba(59,130,246,0.15)" stroke="#3b82f6" stroke-width="1.2"/>
+                      <text x="230" y="40" font-size="11" fill="#3b82f6" text-anchor="middle">Binomial(n, p)</text>
+                    </g>
+                    <!-- arrow Binomial → Poisson -->
+                    <line x1="285" y1="36" x2="360" y2="36" stroke="rgba(148,163,184,0.7)" stroke-width="1" marker-end="url(#fam-arr)"/>
+                    <text x="322" y="30" font-size="9" fill="#64748b" text-anchor="middle">n→∞, np=λ</text>
+                    <!-- Poisson -->
+                    <g>
+                      <rect x="360" y="20"  width="100" height="32" rx="6" fill="rgba(139,92,246,0.15)" stroke="#8b5cf6" stroke-width="1.2"/>
+                      <text x="410" y="40" font-size="11" fill="#8b5cf6" text-anchor="middle">Poisson(λ)</text>
+                    </g>
+                    <!-- arrow Binomial → Gaussian via CLT -->
+                    <line x1="230" y1="52" x2="230" y2="110" stroke="rgba(148,163,184,0.7)" stroke-width="1" marker-end="url(#fam-arr)"/>
+                    <text x="238" y="82" font-size="9" fill="#64748b">CLT (n large)</text>
+                    <!-- Gaussian -->
+                    <g>
+                      <rect x="180" y="115" width="110" height="32" rx="6" fill="rgba(34,197,94,0.15)" stroke="#22c55e" stroke-width="1.2"/>
+                      <text x="235" y="135" font-size="11" fill="#22c55e" text-anchor="middle">Gaussian(μ, σ²)</text>
+                    </g>
+                    <!-- Poisson → Exponential -->
+                    <line x1="410" y1="52" x2="410" y2="110" stroke="rgba(148,163,184,0.7)" stroke-width="1" marker-end="url(#fam-arr)"/>
+                    <text x="418" y="82" font-size="9" fill="#64748b">inter-arrival</text>
+                    <!-- Exponential -->
+                    <g>
+                      <rect x="360" y="115" width="100" height="32" rx="6" fill="rgba(249,115,22,0.15)" stroke="#f97316" stroke-width="1.2"/>
+                      <text x="410" y="135" font-size="11" fill="#f97316" text-anchor="middle">Exponential(λ)</text>
+                    </g>
+                    <!-- Exponential → Gamma -->
+                    <line x1="410" y1="147" x2="410" y2="180" stroke="rgba(148,163,184,0.7)" stroke-width="1" marker-end="url(#fam-arr)"/>
+                    <text x="418" y="170" font-size="9" fill="#64748b">sum of k</text>
+                    <g>
+                      <rect x="360" y="183" width="100" height="28" rx="6" fill="rgba(249,115,22,0.08)" stroke="#f97316" stroke-width="1" stroke-dasharray="3 2"/>
+                      <text x="410" y="201" font-size="10" fill="#f97316" text-anchor="middle">Gamma(k, λ)</text>
+                    </g>
+                    <!-- Uniform standalone -->
+                    <g>
+                      <rect x="20"  y="115" width="100" height="32" rx="6" fill="rgba(14,165,233,0.15)" stroke="#0ea5e9" stroke-width="1.2"/>
+                      <text x="70"  y="135" font-size="11" fill="#0ea5e9" text-anchor="middle">Uniform(a, b)</text>
+                    </g>
+                    <text x="70"  y="170" font-size="9" fill="#64748b" text-anchor="middle">= Beta(1, 1)</text>
+                    <text x="70"  y="184" font-size="9" fill="#64748b" text-anchor="middle">on [0, 1]</text>
+                    <defs>
+                      <marker id="fam-arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+                        <path d="M 0 0 L 10 5 L 0 10 z" fill="rgba(148,163,184,0.9)"/>
+                      </marker>
+                    </defs>
+                  </svg>
+                  <figcaption class="math-figure__caption">Six distributions, three limit relationships. The Gaussian is a universal attractor via the CLT — the reason it shows up in nearly every loss function.</figcaption>
+                </figure>
+
+                <h4>Two theorems that do most of the work</h4>
+                <p>
+                  <strong>Law of Large Numbers (LLN).</strong> If X<sub>1</sub>, X<sub>2</sub>, … are i.i.d.
+                  with mean μ, the sample mean converges to μ:
+                </p>
+                <div class="rl-equation" data-katex="\bar X_n = \tfrac{1}{n}\sum_{i=1}^n X_i \;\longrightarrow\; \mu \quad \text{as } n \to \infty" data-katex-display></div>
+                <p>
+                  This is why Monte Carlo works. It's why averaging many noisy gradient samples in SGD gives
+                  you something that looks like the true gradient.
+                </p>
+                <p>
+                  <strong>Central Limit Theorem (CLT).</strong> Rescale that sample mean by √n and the
+                  fluctuations around μ have a <em>Gaussian</em> shape, whatever the source distribution was
+                  (as long as its variance is finite):
+                </p>
+                <div class="rl-equation" data-katex="\sqrt{n}\,(\bar X_n - \mu) \;\xrightarrow{d}\; \mathcal{N}(0, \sigma^2)" data-katex-display></div>
+                <figure class="math-figure">
+                  <svg class="math-figure__svg" viewBox="0 0 480 160" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Three histograms: source distribution, sample mean for n=5, sample mean for n=30">
+                    <!-- panel 1: n = 1 (source, skewed) -->
+                    <g transform="translate(0,0)">
+                      <line x1="15" y1="125" x2="145" y2="125" stroke="rgba(148,163,184,0.6)" stroke-width="1"/>
+                      <g fill="#8b5cf6" opacity="0.85">
+                        <rect x="20" y="35"  width="10" height="90"/>
+                        <rect x="32" y="55"  width="10" height="70"/>
+                        <rect x="44" y="75"  width="10" height="50"/>
+                        <rect x="56" y="90"  width="10" height="35"/>
+                        <rect x="68" y="100" width="10" height="25"/>
+                        <rect x="80" y="108" width="10" height="17"/>
+                        <rect x="92" y="114" width="10" height="11"/>
+                        <rect x="104" y="118" width="10" height="7"/>
+                        <rect x="116" y="121" width="10" height="4"/>
+                        <rect x="128" y="123" width="10" height="2"/>
+                      </g>
+                      <text x="80" y="145" font-size="10" fill="#64748b" text-anchor="middle">n = 1 (source)</text>
+                    </g>
+                    <!-- panel 2: n = 5 (partial bell) -->
+                    <g transform="translate(160,0)">
+                      <line x1="15" y1="125" x2="145" y2="125" stroke="rgba(148,163,184,0.6)" stroke-width="1"/>
+                      <g fill="#3b82f6" opacity="0.85">
+                        <rect x="20" y="112" width="10" height="13"/>
+                        <rect x="32" y="95"  width="10" height="30"/>
+                        <rect x="44" y="70"  width="10" height="55"/>
+                        <rect x="56" y="45"  width="10" height="80"/>
+                        <rect x="68" y="25"  width="10" height="100"/>
+                        <rect x="80" y="40"  width="10" height="85"/>
+                        <rect x="92" y="62"  width="10" height="63"/>
+                        <rect x="104" y="85" width="10" height="40"/>
+                        <rect x="116" y="105" width="10" height="20"/>
+                        <rect x="128" y="118" width="10" height="7"/>
+                      </g>
+                      <text x="80" y="145" font-size="10" fill="#64748b" text-anchor="middle">sample mean, n = 5</text>
+                    </g>
+                    <!-- panel 3: n = 30 (tight bell) -->
+                    <g transform="translate(320,0)">
+                      <line x1="15" y1="125" x2="145" y2="125" stroke="rgba(148,163,184,0.6)" stroke-width="1"/>
+                      <g fill="#22c55e" opacity="0.85">
+                        <rect x="20" y="123" width="10" height="2"/>
+                        <rect x="32" y="118" width="10" height="7"/>
+                        <rect x="44" y="98"  width="10" height="27"/>
+                        <rect x="56" y="55"  width="10" height="70"/>
+                        <rect x="68" y="20"  width="10" height="105"/>
+                        <rect x="80" y="30"  width="10" height="95"/>
+                        <rect x="92" y="70"  width="10" height="55"/>
+                        <rect x="104" y="105" width="10" height="20"/>
+                        <rect x="116" y="120" width="10" height="5"/>
+                        <rect x="128" y="124" width="10" height="1"/>
+                      </g>
+                      <text x="80" y="145" font-size="10" fill="#64748b" text-anchor="middle">sample mean, n = 30</text>
+                    </g>
+                  </svg>
+                  <figcaption class="math-figure__caption">The source can be skewed, discrete, heavy-tailed — doesn't matter. The sample mean tightens around μ (LLN) and its distribution approaches a Gaussian (CLT).</figcaption>
+                </figure>
+                <p class="ml-hint">
+                  <strong>Heavy-tailed caveat.</strong> CLT needs <em>finite variance</em>. The Cauchy
+                  distribution violates this — its sample mean stays just as noisy as a single sample, forever.
+                  This matters in RL (reward outliers), SGD (gradient noise in some architectures), and finance
+                  (why the 2008 "6σ event" wasn't actually 6σ — the real tails were fatter than the Gaussian
+                  model assumed).
+                </p>
+                <p>
+                  Every ML loss has a distribution story under it. Squared error ↔ Gaussian MLE. Cross-entropy
+                  ↔ categorical MLE. Binary cross-entropy ↔ Bernoulli MLE. Pick a distribution for your noise,
+                  write down its log-likelihood, and you've derived the loss — see
+                  <a href="../classical-ml/#theory-mle">ML Lab · §2</a> for the full walk.
+                </p>
+              </article>
+
+              <article class="rl-theory__panel" id="theory-info">
+                <h3>8 · Information theory — entropy, KL, cross-entropy</h3>
+                <p class="rl-theory__kid">
+                  <strong>Kid version.</strong> <em>Entropy</em> is how surprised you are, on average, by
+                  what the next symbol will be. A fair coin is maximally surprising. A two-headed coin is
+                  zero surprise. <em>KL divergence</em> is how much extra surprise you suffer when you use
+                  the wrong guess about the coin. <em>Cross-entropy loss</em> is entropy + KL, and it's the
+                  reason classification models use the loss they use.
+                </p>
+
+                <h4>Entropy — average surprise</h4>
+                <p>
+                  Suppose you pick a symbol from a discrete distribution p. The <em>surprise</em> of seeing
+                  outcome x is <span data-katex="-\log p(x)"></span> — small if p(x) is large, huge if p(x)
+                  is tiny. <em>Entropy</em> H(p) is the average surprise over the distribution:
+                </p>
+                <div class="rl-equation" data-katex="H(p) = -\sum_x p(x)\,\log p(x)" data-katex-display></div>
+                <p>
+                  Units: nats if log is natural, bits if log₂. Two properties you want to build intuition
+                  for: H ≥ 0 always; H is maximised by the uniform distribution (if you have no information,
+                  every outcome is equally surprising).
+                </p>
+                <figure class="math-figure">
+                  <svg class="math-figure__svg" viewBox="0 0 260 170" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Binary entropy H(p) = -p log p - (1-p) log (1-p) as a function of p">
+                    <line x1="30" y1="140" x2="240" y2="140" stroke="rgba(148,163,184,0.6)" stroke-width="1"/>
+                    <line x1="30" y1="20"  x2="30"  y2="140" stroke="rgba(148,163,184,0.6)" stroke-width="1"/>
+                    <!-- H(p) dome: 0 at p=0, 1 at p=0.5, 0 at p=1. x maps [0,1]→[30,230]. y maps H∈[0,1]→[140,30]. -->
+                    <path d="M 30 140 Q 55 50 80 35 Q 105 24 130 22 Q 155 24 180 35 Q 205 50 230 140" fill="rgba(59,130,246,0.15)" stroke="#3b82f6" stroke-width="2"/>
+                    <!-- markers -->
+                    <circle cx="30"  cy="140" r="3" fill="#64748b"/>
+                    <circle cx="130" cy="22"  r="3" fill="#f97316"/>
+                    <circle cx="230" cy="140" r="3" fill="#64748b"/>
+                    <line x1="130" y1="140" x2="130" y2="22" stroke="#f97316" stroke-width="1" stroke-dasharray="3 3"/>
+                    <!-- labels -->
+                    <text x="30"  y="155" font-size="10" fill="#64748b" text-anchor="middle">0</text>
+                    <text x="130" y="155" font-size="10" fill="#64748b" text-anchor="middle">0.5</text>
+                    <text x="230" y="155" font-size="10" fill="#64748b" text-anchor="middle">1</text>
+                    <text x="130" y="165" font-size="10" fill="#64748b" text-anchor="middle">p</text>
+                    <text x="25"  y="24"  font-size="10" fill="#64748b" text-anchor="end">1 bit</text>
+                    <text x="25"  y="143" font-size="10" fill="#64748b" text-anchor="end">0</text>
+                    <text x="135" y="18"  font-size="10" fill="#f97316">max at p = 0.5</text>
+                  </svg>
+                  <figcaption class="math-figure__caption">Binary entropy H(p) = −p log p − (1−p) log(1−p). Peaks at p = 0.5 (max surprise); zero at the deterministic ends.</figcaption>
+                </figure>
+
+                <h4>KL divergence — cost of the wrong guess</h4>
+                <p>
+                  If the real distribution is p and you coded for q instead, you overpay by
+                  <em>KL divergence</em>:
+                </p>
+                <div class="rl-equation" data-katex="D_{\mathrm{KL}}(p \,\|\, q) = \sum_x p(x)\,\log \frac{p(x)}{q(x)}" data-katex-display></div>
+                <p>
+                  Properties: KL ≥ 0, with equality iff p = q (Gibbs' inequality); KL is <em>not</em>
+                  symmetric — D<sub>KL</sub>(p‖q) ≠ D<sub>KL</sub>(q‖p). The asymmetry matters: KL(p‖q)
+                  penalises q for assigning low mass where p has high mass ("mode-covering"), while
+                  KL(q‖p) penalises q for spreading mass where p has none ("mode-seeking"). Variational
+                  inference and GAN objectives pick different asymmetries for exactly this reason.
+                </p>
+                <figure class="math-figure">
+                  <svg class="math-figure__svg" viewBox="0 0 260 170" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Two Gaussian densities p and q with KL region shaded">
+                    <line x1="20" y1="140" x2="240" y2="140" stroke="rgba(148,163,184,0.6)" stroke-width="1"/>
+                    <line x1="20" y1="20"  x2="20"  y2="140" stroke="rgba(148,163,184,0.6)" stroke-width="1"/>
+                    <!-- p: Gaussian centred at x≈100, stronger amplitude -->
+                    <path d="M 20 139 C 55 139, 80 35, 100 30 C 120 35, 145 139, 240 139" fill="rgba(59,130,246,0.18)" stroke="#3b82f6" stroke-width="2"/>
+                    <!-- q: Gaussian centred at x≈160, slightly wider and lower -->
+                    <path d="M 20 140 C 75 140, 135 60, 160 55 C 185 60, 245 140, 240 140" fill="rgba(249,115,22,0.12)" stroke="#f97316" stroke-width="2"/>
+                    <text x="100" y="25"  font-size="11" fill="#3b82f6" text-anchor="middle">p</text>
+                    <text x="160" y="50"  font-size="11" fill="#f97316" text-anchor="middle">q</text>
+                    <text x="130" y="160" font-size="9" fill="#64748b" text-anchor="middle">KL(p‖q) is big where p is high but q is low</text>
+                  </svg>
+                  <figcaption class="math-figure__caption">KL is not a distance — it's asymmetric. Swapping p and q gives a different number and a different "shape" of fit.</figcaption>
+                </figure>
+
+                <h4>Cross-entropy — entropy + KL</h4>
+                <p>
+                  <em>Cross-entropy</em> H(p, q) is the average surprise when you code for q but reality is p:
+                </p>
+                <div class="rl-equation" data-katex="H(p, q) = -\sum_x p(x)\,\log q(x) = H(p) + D_{\mathrm{KL}}(p \,\|\, q)" data-katex-display></div>
+                <p>
+                  Reading the decomposition: H(p) is the irreducible part — you'd need that many bits even
+                  with the perfect model. KL(p‖q) is everything else, which is what you minimise when you
+                  train a classifier. Since H(p) doesn't depend on q, minimising cross-entropy and
+                  minimising KL are the same problem.
+                </p>
+                <figure class="math-figure">
+                  <svg class="math-figure__svg" viewBox="0 0 320 90" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Cross-entropy decomposed into entropy plus KL divergence, shown as a stacked bar">
+                    <!-- total bar: cross-entropy H(p, q) -->
+                    <rect x="20" y="30" width="220" height="30" fill="none" stroke="rgba(148,163,184,0.7)" stroke-width="1"/>
+                    <!-- entropy piece -->
+                    <rect x="20" y="30" width="130" height="30" fill="rgba(59,130,246,0.35)" stroke="#3b82f6" stroke-width="1"/>
+                    <!-- KL piece -->
+                    <rect x="150" y="30" width="90" height="30" fill="rgba(249,115,22,0.35)" stroke="#f97316" stroke-width="1"/>
+                    <!-- labels inside -->
+                    <text x="85"  y="49" font-size="11" fill="#3b82f6" text-anchor="middle">H(p)</text>
+                    <text x="195" y="49" font-size="11" fill="#f97316" text-anchor="middle">KL(p‖q)</text>
+                    <!-- total bracket -->
+                    <text x="130" y="20" font-size="11" fill="#64748b" text-anchor="middle">H(p, q)  —  cross-entropy</text>
+                    <text x="85"  y="78" font-size="9"  fill="#64748b" text-anchor="middle">irreducible</text>
+                    <text x="195" y="78" font-size="9"  fill="#64748b" text-anchor="middle">what training reduces</text>
+                  </svg>
+                  <figcaption class="math-figure__caption">Training a classifier with cross-entropy loss is minimising KL(p‖q<sub>θ</sub>) — the H(p) term is a constant the optimiser ignores.</figcaption>
+                </figure>
+
+                <h4>Mutual information — how much X tells you about Y</h4>
+                <p>
+                  <em>Mutual information</em> measures the reduction in uncertainty about Y once you know X:
+                </p>
+                <div class="rl-equation" data-katex="I(X; Y) = H(X) + H(Y) - H(X, Y) = D_{\mathrm{KL}}\bigl(p(x, y) \,\|\, p(x)\,p(y)\bigr)" data-katex-display></div>
+                <p>
+                  I(X; Y) = 0 iff X and Y are independent. The KL form says it directly: mutual information
+                  is how far the joint p(x, y) is from being the product of marginals. It's the
+                  information-theoretic lens on correlation, the supervision signal in contrastive
+                  learning (InfoNCE), and the quantity the "information bottleneck" view of deep learning
+                  tries to manage.
+                </p>
+
+                <p class="ml-hint">
+                  <strong>Where this shows up.</strong>
+                  Squared error → Gaussian negative log-likelihood → cross-entropy with a Gaussian q.
+                  Softmax cross-entropy in classifiers → <a href="../classical-ml/#theory-mle">ML Lab · §2</a>.
+                  ELBO in VAE and diffusion = reconstruction − KL → <a href="../diffusion-lab/#theory-vae">Diffusion · §2</a>.
+                  Entropy-regularised policies in RL trade reward for H(π) to keep exploration alive →
+                  <a href="../rl-lab/">RL Lab</a>. KL always the same quantity; different signs and places.
+                </p>
+              </article>
+
               <article class="rl-theory__panel" id="theory-map">
-                <h3>7 · Families of math tools — a clustering map</h3>
+                <h3>9 · Families of math tools — a clustering map</h3>
                 <p class="rl-theory__kid">
                   <strong>Kid version.</strong> Every concept in this lab lives in one of four families.
                   Optimisation asks "where's the bottom of the valley?" Linear algebra asks "what does this

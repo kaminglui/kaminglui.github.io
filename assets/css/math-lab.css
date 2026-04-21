@@ -102,7 +102,7 @@
 }
 .math-figures .math-figure { margin: 0; max-width: none; }
 
-/* §7 clustering-map family colours. */
+/* §9 clustering-map family colours. */
 .rl-cluster[data-family='opt']    { --family-accent: #3b82f6; }
 .rl-cluster[data-family='linalg'] { --family-accent: #a855f7; }
 .rl-cluster[data-family='stat']   { --family-accent: #f97316; }

@@ -9,33 +9,58 @@ Items move out of here and into a commit when they ship.
 Every math concept should ship with at least one illustrative figure.
 Already has visuals: argmin vs min, sup/inf on the real line, Lagrange
 tangency, convex / two-wells / plateau landscapes, matrix as
-transformation, dot product projection, eigenvectors under a matrix.
+transformation, dot product projection, eigenvectors under a matrix,
+six-distribution PMF/PDF grid, distribution family tree, three-panel
+CLT tightening.
 Still to add: convolution as a sliding kernel, SVD as rotate-scale-
 rotate, ReLU piecewise approximation of a curve (ties to §6), Gaussian
-PDF with shifting μ / σ, heatmap of a 2D joint distribution vs its
-marginals, CLT convergence animation.
+PDF with live μ/σ sliders, heatmap of a 2D joint distribution vs its
+marginals, error-vs-iteration curve at three convexity regimes (pairs
+with the convexity-rates subsection).
 
 ### Probability & statistics deep-dive
-- **Common distributions tour** — Gaussian, Bernoulli/Binomial, Poisson, Exponential,
-  Gamma/Beta, Uniform, Categorical, Dirichlet, Geometric, Negative Binomial, Student-t,
-  Cauchy, Laplace, Log-normal, Chi-squared, F. Show how many are special cases of each
-  other (Bernoulli = Binomial(n=1); Exponential = Gamma(k=1); Beta(1,1) = Uniform[0,1];
-  Normal = Gamma-as-limit; Poisson = Binomial limit with np fixed).
+Phase 1 shipped as §7 (common distributions, family tree, LLN + CLT,
+heavy-tail caveat). Remaining:
 - **Interactive PDF/PMF visualiser** — pick a family, slide its parameters, overlay the
-  density against samples.
-- **Heavy tails vs thin tails** — what "tail" means, which distributions are
-  sub-Gaussian / sub-exponential / power-law. Why it matters for RL rewards, SGD noise,
-  and financial loss models.
+  density against samples (upgrade the current static figures).
+- **More families** — Gamma/Beta, Dirichlet, Student-t, Cauchy (as a CLT counter-example),
+  Log-normal, Chi-squared. Show the "Beta is the conjugate prior to Bernoulli" pipeline
+  and tie back to Bayesian coin flip in RL Lab.
 - **Modes of convergence** — in distribution / in probability / almost surely / in L²;
-  which implies which.
-- **Law of Large Numbers** (weak + strong) and **Central Limit Theorem** with animations:
-  sample means tightening around μ at rate 1/√n, averages looking Gaussian regardless of
-  the source distribution (for finite variance).
+  which implies which, with a worked non-example for each direction.
 - **Convergence/divergence tests** — Borel-Cantelli, dominated/monotone convergence,
   when an infinite series of random variables converges.
+- **Estimation theory** — bias, variance, MSE, Fisher information, Cramér-Rao bound.
+  ML Lab says "MLE is the best estimator" but never quantifies *best*.
+- **Sampling / MCMC** — Metropolis-Hastings, Gibbs, HMC, Langevin dynamics. Langevin in
+  particular *is* the score-based-diffusion sampler — the diffusion lab uses it without
+  naming the MCMC pedigree.
 - **Stochastic processes** — Markov chains (discrete time), Poisson process, Brownian
   motion, basic ergodicity, stationary distributions. Ties to the existing Bellman
   iteration (contraction) and diffusion Lab's Brownian motion.
+
+### Information theory
+Shipped as §8 (binary-entropy curve, asymmetric KL with two Gaussians, stacked-bar
+cross-entropy = H(p) + KL, mutual information). Remaining:
+- **Interactive KL visualiser** — drag two Gaussians, see KL(p‖q) and KL(q‖p) update live
+  and diverge when the distributions barely overlap.
+- **Mode-covering vs mode-seeking demo** — fit a single Gaussian to a bimodal target under
+  each KL direction; show the characteristic "cover both" vs "pick one" failure modes.
+
+### Convexity & convergence rates
+- **Why GD actually works.** The GD/SGD demo runs but never states *why* GD on a convex
+  function reaches the minimum, or how fast. Cover O(1/k) for convex, O(1/k²) for Nesterov,
+  linear for strongly-convex, pairs with the error-vs-iteration figure queued under
+  "More visuals".
+
+### Numerical stability
+- **Floating-point, log-sum-exp, why softmax subtracts the max, why we store log-probs.**
+  One short article would unblock every "why does my loss go NaN" question and feeds the
+  Transformer Lab (softmax denominator) and Diffusion Lab (noise-schedule precision).
+
+### Causality vs correlation
+- One short page on do-calculus, confounders, why ML is prediction not causation. Short
+  but frequently asked.
 
 ### Transforms
 - **Laplace transform** — relationship to Fourier (Fourier = Laplace on the imaginary
@@ -58,6 +83,11 @@ marginals, CLT convergence animation.
 - Centrality measures (degree, betweenness, eigenvector).
 - Connection to RL (MDP transition graph), neural nets (computation graph),
   transformers (attention as graph).
+
+### PCA demo upgrades
+- **Reconstruction from k components.** Live 2D scatter already shows PC1/PC2; add a
+  worked example of reconstructing an individual point from k components and a scree
+  plot showing variance captured. Small, high-payoff extension of the existing panel.
 
 ## Computer vision mini-lab
 
@@ -85,6 +115,12 @@ marginals, CLT convergence animation.
 - **Batch-size vs noise trade-off** — if we simulate mini-batches, show how batch size
   inversely scales SGD noise.
 
+## Fourier Lab — 2D extension
+
+- **2D DFT figure** — Fourier Lab's chips mention 2D Fourier but the lab only ships 1D.
+  A single 2D DFT figure plus image reconstruction from top-k frequencies would close
+  the gap between chip and content.
+
 ## Polish / infra
 
 - **True dark-mode support** on every lab (only Circuit Lab is dark-only today; the
@@ -94,6 +130,14 @@ marginals, CLT convergence animation.
 - **Search across all labs** — small client-side search over glossary + section titles.
 - **More section IDs** in Transformer / ML Lab / Fourier so cross-lab tooltip jumps
   land precisely (currently they fall back to page root for those three).
+- **Reduced-motion honouring** — most SVGs are static so this is low stakes, but the
+  Circuit Lab animations and any future CLT animation should respect
+  `prefers-reduced-motion`.
+- **Print / export mode** — a reader who wants to save a lab as PDF currently gets the
+  navigation rail on the page. A `@media print` block to hide side-nav + header would fix
+  it for ~zero effort.
+- **Per-lab "last updated" meta** — date derived from git commit touching the page,
+  surfaced in the footer. Signals freshness without manual bookkeeping.
 
 ## Transformer Lab full 9-panel upgrade
 
