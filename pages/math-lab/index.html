@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
     <meta
       name="description"
-      content="Interactive tour of the math behind modern ML: gradient descent and SGD on user-picked landscapes, PCA on 2D scatter, plus a kid-friendly walk through optimisation, linear algebra, probability distributions (with LLN/CLT), information theory (entropy, KL, cross-entropy), and the universal approximation theorem."
+      content="Interactive tour of the math behind modern ML: gradient descent and SGD on user-picked landscapes, PCA on 2D scatter, an interactive KL visualiser and a live mode-covering vs mode-seeking fit, plus a kid-friendly walk through optimisation, linear algebra, probability distributions (with LLN/CLT), information theory (entropy, KL, cross-entropy), and the universal approximation theorem."
     />
     <title>Math Foundations Lab — Ka Ming Lui</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -64,6 +64,7 @@
               </p>
             </header>
 
+            <!-- topics:xrefs:begin math-lab -->
             <nav class="lab-xrefs" aria-label="Related labs">
               <div class="lab-xrefs__group">
                 <span class="lab-xrefs__label">Prereqs</span>
@@ -78,6 +79,7 @@
                 <a class="lab-xrefs__chip" href="../transformer-lab/">Transformer Lab</a>
               </div>
             </nav>
+            <!-- topics:xrefs:end -->
 
             <aside class="lab-intro-steps" aria-label="Read this first">
               <p class="lab-intro-steps__title">Read this first</p>
@@ -1100,20 +1102,57 @@
                   KL(q‖p) penalises q for spreading mass where p has none ("mode-seeking"). Variational
                   inference and GAN objectives pick different asymmetries for exactly this reason.
                 </p>
-                <figure class="math-figure">
-                  <svg class="math-figure__svg" viewBox="0 0 260 170" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Two Gaussian densities p and q with KL region shaded">
-                    <line x1="20" y1="140" x2="240" y2="140" stroke="rgba(148,163,184,0.6)" stroke-width="1"/>
-                    <line x1="20" y1="20"  x2="20"  y2="140" stroke="rgba(148,163,184,0.6)" stroke-width="1"/>
-                    <!-- p: Gaussian centred at x≈100, stronger amplitude -->
-                    <path d="M 20 139 C 55 139, 80 35, 100 30 C 120 35, 145 139, 240 139" fill="rgba(59,130,246,0.18)" stroke="#3b82f6" stroke-width="2"/>
-                    <!-- q: Gaussian centred at x≈160, slightly wider and lower -->
-                    <path d="M 20 140 C 75 140, 135 60, 160 55 C 185 60, 245 140, 240 140" fill="rgba(249,115,22,0.12)" stroke="#f97316" stroke-width="2"/>
-                    <text x="100" y="25"  font-size="11" fill="#3b82f6" text-anchor="middle">p</text>
-                    <text x="160" y="50"  font-size="11" fill="#f97316" text-anchor="middle">q</text>
-                    <text x="130" y="160" font-size="9" fill="#64748b" text-anchor="middle">KL(p‖q) is big where p is high but q is low</text>
-                  </svg>
-                  <figcaption class="math-figure__caption">KL is not a distance — it's asymmetric. Swapping p and q gives a different number and a different "shape" of fit.</figcaption>
-                </figure>
+                <div class="kl-demo" aria-label="Interactive KL divergence between two Gaussians">
+                  <div class="rl-controls">
+                    <div class="rl-controls__row">
+                      <div class="rl-controls__group" style="min-width: 180px;">
+                        <label for="kl-mu1">μ<sub>p</sub> <span class="rl-controls__value" id="kl-mu1-value">-1.00</span></label>
+                        <input id="kl-mu1" type="range" min="-4" max="4" step="0.05" value="-1" />
+                      </div>
+                      <div class="rl-controls__group" style="min-width: 180px;">
+                        <label for="kl-sig1">σ<sub>p</sub> <span class="rl-controls__value" id="kl-sig1-value">1.00</span></label>
+                        <input id="kl-sig1" type="range" min="0.2" max="2.5" step="0.02" value="1" />
+                      </div>
+                      <div class="rl-controls__group" style="min-width: 180px;">
+                        <label for="kl-mu2">μ<sub>q</sub> <span class="rl-controls__value" id="kl-mu2-value">1.00</span></label>
+                        <input id="kl-mu2" type="range" min="-4" max="4" step="0.05" value="1" />
+                      </div>
+                      <div class="rl-controls__group" style="min-width: 180px;">
+                        <label for="kl-sig2">σ<sub>q</sub> <span class="rl-controls__value" id="kl-sig2-value">1.20</span></label>
+                        <input id="kl-sig2" type="range" min="0.2" max="2.5" step="0.02" value="1.2" />
+                      </div>
+                    </div>
+                  </div>
+                  <div class="rl-stage">
+                    <div>
+                      <div class="math-canvas-wrapper">
+                        <canvas id="kl-canvas" width="640" height="260" aria-label="Two Gaussian densities with overlap"></canvas>
+                      </div>
+                      <p class="math-legend" aria-hidden="true">
+                        <span><span class="math-legend__swatch" style="background:#3b82f6"></span>p</span>
+                        <span><span class="math-legend__swatch" style="background:#f97316"></span>q</span>
+                        <span><span class="math-legend__swatch" style="background:#94a3b8"></span>∫ min(p, q)</span>
+                      </p>
+                    </div>
+                    <aside class="rl-sidebar" aria-label="KL stats" aria-live="polite">
+                      <h3>Live values (nats)</h3>
+                      <div class="rl-stat-grid">
+                        <div class="rl-stat"><span class="rl-stat__label">KL(p‖q)</span><span class="rl-stat__value rl-stat__value--accent" id="kl-forward">—</span></div>
+                        <div class="rl-stat"><span class="rl-stat__label">KL(q‖p)</span><span class="rl-stat__value rl-stat__value--accent" id="kl-reverse">—</span></div>
+                        <div class="rl-stat"><span class="rl-stat__label">H(p)</span><span class="rl-stat__value" id="kl-hp">—</span></div>
+                        <div class="rl-stat"><span class="rl-stat__label">H(q)</span><span class="rl-stat__value" id="kl-hq">—</span></div>
+                        <div class="rl-stat"><span class="rl-stat__label">H(p, q)</span><span class="rl-stat__value" id="kl-hpq">—</span></div>
+                        <div class="rl-stat"><span class="rl-stat__label">overlap</span><span class="rl-stat__value" id="kl-overlap">—</span></div>
+                      </div>
+                      <p class="ml-hint">
+                        Shrink σ<sub>q</sub> while σ<sub>p</sub> stays wide: KL(p‖q) explodes because q has
+                        near-zero density where p still has mass. Swap which is narrower to watch the two
+                        KLs disagree — that asymmetry is why VI (minimises KL(q‖p), mode-seeking) and MLE
+                        (minimises KL(p<sub>data</sub>‖q<sub>θ</sub>), mode-covering) produce different fits.
+                      </p>
+                    </aside>
+                  </div>
+                </div>
 
                 <h4>Cross-entropy — entropy + KL</h4>
                 <p>
@@ -1168,8 +1207,102 @@
                 </p>
               </article>
 
+              <article class="rl-theory__panel" id="theory-kl-demos">
+                <h3>9 · Fitting under KL — two failure modes</h3>
+                <p class="rl-theory__kid">
+                  <strong>Kid version.</strong> Suppose the real world is bimodal — two bumps. You want to
+                  describe it with a single Gaussian. You can either <em>cover both bumps</em> with a wide
+                  blanket (moment-match / forward KL), or <em>pick one bump</em> and sit on it (reverse KL).
+                  Neither is "wrong" — they're minimising different losses. The whole point is that the
+                  answer depends on which direction of KL you wrote down.
+                </p>
+                <p>
+                  Set a bimodal target p below. Two panels show what happens when you fit a single Gaussian
+                  q to it under the two KL directions.
+                </p>
+
+                <div class="kl-fit">
+                  <div class="rl-controls">
+                    <div class="rl-controls__row">
+                      <div class="rl-controls__group" style="min-width: 160px;">
+                        <label for="klfit-ma">μ<sub>a</sub> <span class="rl-controls__value" id="klfit-ma-value">-3.00</span></label>
+                        <input id="klfit-ma" type="range" min="-5" max="0" step="0.1" value="-3" />
+                      </div>
+                      <div class="rl-controls__group" style="min-width: 160px;">
+                        <label for="klfit-mb">μ<sub>b</sub> <span class="rl-controls__value" id="klfit-mb-value">3.00</span></label>
+                        <input id="klfit-mb" type="range" min="0" max="5" step="0.1" value="3" />
+                      </div>
+                      <div class="rl-controls__group" style="min-width: 160px;">
+                        <label for="klfit-target-sigma">σ<sub>target</sub> <span class="rl-controls__value" id="klfit-target-sigma-value">1.00</span></label>
+                        <input id="klfit-target-sigma" type="range" min="0.3" max="1.6" step="0.05" value="1" />
+                      </div>
+                      <div class="rl-controls__group" style="min-width: 160px;">
+                        <label for="klfit-pi">π (weight on mode a) <span class="rl-controls__value" id="klfit-pi-value">0.50</span></label>
+                        <input id="klfit-pi" type="range" min="0.1" max="0.9" step="0.02" value="0.5" />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="kl-fit__panels">
+                    <section class="kl-fit__panel" aria-labelledby="klfit-forward-title">
+                      <h4 id="klfit-forward-title">Forward KL — min KL(p‖q)</h4>
+                      <p class="kl-fit__panel-note">Closed form: q* = N(E<sub>p</sub>[X], Var<sub>p</sub>[X]). Moment matching. q stretches wide to cover both modes.</p>
+                      <div class="math-canvas-wrapper">
+                        <canvas id="klfit-forward-canvas" width="420" height="240" aria-label="Forward-KL fit: target mixture with moment-match Gaussian"></canvas>
+                      </div>
+                      <div class="rl-stat-grid kl-fit__stats">
+                        <div class="rl-stat"><span class="rl-stat__label">μ*</span><span class="rl-stat__value" id="klfit-fwd-mu">—</span></div>
+                        <div class="rl-stat"><span class="rl-stat__label">σ*</span><span class="rl-stat__value rl-stat__value--accent" id="klfit-fwd-sigma">—</span></div>
+                        <div class="rl-stat"><span class="rl-stat__label">KL(p‖q*)</span><span class="rl-stat__value" id="klfit-fwd-loss">—</span></div>
+                      </div>
+                    </section>
+
+                    <section class="kl-fit__panel" aria-labelledby="klfit-reverse-title">
+                      <h4 id="klfit-reverse-title">Reverse KL — min KL(q‖p) by gradient descent</h4>
+                      <p class="kl-fit__panel-note">No closed form. Finite-difference gradient on (μ, σ). Watch it collapse onto whichever mode is in its basin — or into the wide centre local min.</p>
+                      <div class="math-canvas-wrapper">
+                        <canvas id="klfit-reverse-canvas" width="420" height="240" aria-label="Reverse-KL fit: target mixture with gradient-descent Gaussian"></canvas>
+                      </div>
+                      <div class="rl-stat-grid kl-fit__stats">
+                        <div class="rl-stat"><span class="rl-stat__label">step</span><span class="rl-stat__value" id="klfit-rev-step">0</span></div>
+                        <div class="rl-stat"><span class="rl-stat__label">μ</span><span class="rl-stat__value" id="klfit-rev-mu">—</span></div>
+                        <div class="rl-stat"><span class="rl-stat__label">σ</span><span class="rl-stat__value rl-stat__value--accent" id="klfit-rev-sigma">—</span></div>
+                        <div class="rl-stat"><span class="rl-stat__label">KL(q‖p)</span><span class="rl-stat__value" id="klfit-rev-loss">—</span></div>
+                      </div>
+                      <div class="kl-fit__init-row">
+                        <div class="rl-controls__group" style="min-width: 160px;">
+                          <label for="klfit-mu0">init μ<sub>0</sub> <span class="rl-controls__value" id="klfit-mu0-value">1.50</span></label>
+                          <input id="klfit-mu0" type="range" min="-4" max="4" step="0.1" value="1.5" />
+                        </div>
+                        <div class="rl-controls__group" style="min-width: 160px;">
+                          <label for="klfit-sigma0">init σ<sub>0</sub> <span class="rl-controls__value" id="klfit-sigma0-value">1.00</span></label>
+                          <input id="klfit-sigma0" type="range" min="0.3" max="3" step="0.05" value="1" />
+                        </div>
+                      </div>
+                      <div class="rl-controls__actions">
+                        <button type="button" id="klfit-step">Step</button>
+                        <button type="button" id="klfit-run" class="is-primary">Run to convergence</button>
+                        <button type="button" id="klfit-pause" hidden>Pause</button>
+                        <button type="button" id="klfit-reset">Reset</button>
+                      </div>
+                    </section>
+                  </div>
+
+                  <p class="ml-hint">
+                    Slide init μ<sub>0</sub> to <strong>1.5</strong> and Run: q collapses onto the +3 mode
+                    (σ ≈ 1, loss ≈ log 2). Drag init μ<sub>0</sub> to <strong>0.5</strong> and reset: GD
+                    gets stuck in the wide-centre local min (σ ≈ 3, loss higher). Set it to exactly
+                    <strong>0</strong> and μ never moves — by symmetry the gradient in μ vanishes. Reverse
+                    KL has multiple local minima, and "mode-seeking" is only what you get when you start
+                    inside a mode's basin of attraction. Forward KL, by contrast, has a unique closed-form
+                    solution that spreads across everything — the mode-covering fingerprint used by MLE and
+                    by the reconstruction term of a VAE.
+                  </p>
+                </div>
+              </article>
+
               <article class="rl-theory__panel" id="theory-map">
-                <h3>9 · Families of math tools — a clustering map</h3>
+                <h3>10 · Families of math tools — a clustering map</h3>
                 <p class="rl-theory__kid">
                   <strong>Kid version.</strong> Every concept in this lab lives in one of four families.
                   Optimisation asks "where's the bottom of the valley?" Linear algebra asks "what does this

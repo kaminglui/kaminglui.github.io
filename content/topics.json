@@ -1,0 +1,239 @@
+{
+  "_comment": "Authoritative list of per-lab sections and cross-references. Consumed by scripts/topics_sync.py. Reorder a lab's 'sections' to renumber its headings; edit 'xrefs' to regenerate its Prereqs/Continues-in chips. Only labs with 'managed: true' have their HTML rewritten by the script — others are included so cross-references can resolve to the right section number. See scripts/README.md.",
+  "labs": {
+    "math-lab": {
+      "title": "Math Foundations Lab",
+      "shortName": "Math",
+      "slug": "math-lab",
+      "page": "pages/math-lab/index.html",
+      "managed": true,
+      "sections": [
+        {
+          "id": "theory-opt",
+          "title": "Reading min, max, argmin, argmax — and Lagrange"
+        },
+        {
+          "id": "theory-gd",
+          "title": "Gradient descent and SGD"
+        },
+        {
+          "id": "theory-nonconvex",
+          "title": "Non-convex optimisation and escape tricks"
+        },
+        {
+          "id": "theory-linalg",
+          "title": "Linear algebra — transformations, dot / cross, convolution"
+        },
+        {
+          "id": "theory-pca",
+          "title": "PCA — find the direction of maximum variance"
+        },
+        {
+          "id": "theory-nn",
+          "title": "Neural networks as universal approximators"
+        },
+        {
+          "id": "theory-prob",
+          "title": "Probability & distributions"
+        },
+        {
+          "id": "theory-info",
+          "title": "Information theory — entropy, KL, cross-entropy"
+        },
+        {
+          "id": "theory-kl-demos",
+          "title": "Fitting under KL — two failure modes"
+        },
+        {
+          "id": "theory-map",
+          "title": "Families of math tools — a clustering map"
+        }
+      ],
+      "xrefs": {
+        "prereqs": [],
+        "continuesIn": [
+          {
+            "ref": "classical-ml/demo-linreg",
+            "label": "ML Lab · §{n} Linear regression (OLS)"
+          },
+          {
+            "ref": "classical-ml/theory-mle",
+            "label": "ML Lab · §{n} Maximum Likelihood Estimation"
+          },
+          {
+            "ref": "rl-lab/theory-dp",
+            "label": "RL · §{n} DP"
+          },
+          {
+            "ref": "diffusion-lab/theory-vae",
+            "label": "Diffusion · §{n} VAE"
+          },
+          {
+            "ref": "transformer-lab",
+            "label": "Transformer Lab"
+          }
+        ]
+      }
+    },
+    "classical-ml": {
+      "title": "ML Lab",
+      "shortName": "ML Lab",
+      "slug": "classical-ml",
+      "page": "pages/classical-ml/index.html",
+      "managed": false,
+      "sections": [
+        {
+          "id": "demo-linreg",
+          "title": "Linear regression — least squares, closed form"
+        },
+        {
+          "id": "theory-mle",
+          "title": "Why squared loss? The MLE derivation"
+        },
+        {
+          "id": "demo-logreg",
+          "title": "Logistic regression — fit a probability"
+        },
+        {
+          "id": "demo-svm",
+          "title": "Support Vector Machine — widest margin"
+        },
+        {
+          "id": "demo-clustering",
+          "title": "Unsupervised clustering — K-means and GMM"
+        },
+        {
+          "id": "theory-kernels",
+          "title": "Kernels — SVMs beyond straight lines"
+        },
+        {
+          "id": "theory-gen",
+          "title": "Generalisation — bias, variance, regularisation"
+        },
+        {
+          "id": "theory-map",
+          "title": "ML method families — a clustering map"
+        }
+      ]
+    },
+    "rl-lab": {
+      "title": "RL Lab",
+      "shortName": "RL",
+      "slug": "rl-lab",
+      "page": "pages/rl-lab/index.html",
+      "managed": false,
+      "sections": [
+        {
+          "id": "theory-bandits",
+          "title": "Bandits: RL without state"
+        },
+        {
+          "id": "theory-mdp",
+          "title": "MDP: adding state and time"
+        },
+        {
+          "id": "theory-values",
+          "title": "Value functions: how good is this?"
+        },
+        {
+          "id": "theory-dp",
+          "title": "Dynamic programming: when you know the model"
+        },
+        {
+          "id": "demo-chain",
+          "title": "Demo · 1D chain: value iteration in action",
+          "skipNumbering": true
+        },
+        {
+          "id": "theory-mc-td",
+          "title": "Model-free: Monte Carlo vs temporal difference"
+        },
+        {
+          "id": "theory-on-off",
+          "title": "On-policy vs off-policy, and importance sampling"
+        },
+        {
+          "id": "theory-pg",
+          "title": "Policy gradients and actor-critic"
+        },
+        {
+          "id": "theory-shape",
+          "title": "Same shape, different targets"
+        },
+        {
+          "id": "theory-map",
+          "title": "Method families — a clustering map"
+        }
+      ]
+    },
+    "diffusion-lab": {
+      "title": "Diffusion Lab",
+      "shortName": "Diffusion",
+      "slug": "diffusion-lab",
+      "page": "pages/diffusion-lab/index.html",
+      "managed": false,
+      "sections": [
+        {
+          "id": "theory-kl",
+          "title": "KL divergence: the tape measure between distributions"
+        },
+        {
+          "id": "theory-vae",
+          "title": "VAE: the ancestor of diffusion"
+        },
+        {
+          "id": "theory-rw",
+          "title": "Random walk → Brownian motion → forward diffusion"
+        },
+        {
+          "id": "theory-ddpm",
+          "title": "DDPM: the Ho/Jain/Abbeel recipe"
+        },
+        {
+          "id": "theory-score",
+          "title": "Score matching and Langevin sampling"
+        },
+        {
+          "id": "theory-sde",
+          "title": "The SDE view: VP, VE, and the probability-flow ODE"
+        },
+        {
+          "id": "theory-modern",
+          "title": "Modern tricks — guidance, DDIM, latent, flow matching, consistency"
+        },
+        {
+          "id": "theory-shape",
+          "title": "Same shape, different targets"
+        },
+        {
+          "id": "theory-map",
+          "title": "Method families — a clustering map"
+        }
+      ]
+    },
+    "transformer-lab": {
+      "title": "Transformer Lab",
+      "shortName": "Transformer",
+      "slug": "transformer-lab",
+      "page": "pages/transformer-lab/index.html",
+      "managed": false,
+      "sections": []
+    },
+    "fourier-epicycles": {
+      "title": "Fourier Epicycles",
+      "shortName": "Fourier",
+      "slug": "fourier-epicycles",
+      "page": "pages/fourier-epicycles-src/index.html",
+      "managed": false,
+      "sections": []
+    },
+    "circuit-lab": {
+      "title": "Circuit Lab",
+      "shortName": "Circuit",
+      "slug": "circuit-lab",
+      "page": "pages/circuit-lab/index.html",
+      "managed": false,
+      "sections": []
+    }
+  }
+}

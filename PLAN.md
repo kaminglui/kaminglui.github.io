@@ -40,12 +40,16 @@ heavy-tail caveat). Remaining:
   iteration (contraction) and diffusion Lab's Brownian motion.
 
 ### Information theory
-Shipped as §8 (binary-entropy curve, asymmetric KL with two Gaussians, stacked-bar
-cross-entropy = H(p) + KL, mutual information). Remaining:
-- **Interactive KL visualiser** — drag two Gaussians, see KL(p‖q) and KL(q‖p) update live
-  and diverge when the distributions barely overlap.
-- **Mode-covering vs mode-seeking demo** — fit a single Gaussian to a bimodal target under
-  each KL direction; show the characteristic "cover both" vs "pick one" failure modes.
+Shipped as §8 (binary-entropy curve, interactive two-Gaussian KL visualiser with live
+KL / H / overlap readouts, stacked-bar cross-entropy = H(p) + KL, mutual information)
+and §9 (mode-covering vs mode-seeking: forward-KL moment-match fit side-by-side with
+reverse-KL gradient descent on a bimodal target; three local minima visible by
+initialising at different μ₀). Remaining:
+- **Richer targets** — let the user add a third mode or pick a skewed target to show
+  reverse-KL's mode-seeking failure more dramatically.
+- **Symmetric-vs-asymmetric KL side-by-side number race** — a single diagram plotting
+  KL(p‖q) and KL(q‖p) as q slides through parameter space, to make the asymmetry
+  quantitative rather than just "they differ".
 
 ### Convexity & convergence rates
 - **Why GD actually works.** The GD/SGD demo runs but never states *why* GD on a convex

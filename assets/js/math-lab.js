@@ -1,10 +1,28 @@
-/* Math Foundations Lab — two interactive panels:
+/* Math Foundations Lab — three interactive panels:
    (1) GD/SGD/Momentum/Simulated-Annealing on a 2D loss landscape, with five
        preset functions (convex, saddle, two-wells, Rosenbrock, Himmelblau).
    (2) PCA on a 2D scatter, with closed-form 2×2 eigendecomposition of the
        sample covariance. User can add points, resample a preset, or project
        onto PC1 to see the dimensionality-reduction effect.
+   (3) KL visualiser (§8) — two sliding Gaussians, live KL(p‖q), KL(q‖p),
+       entropies, cross-entropy, and overlap coefficient. Closed-form math
+       lives in ./math-lab/info-theory.js.
 */
+
+import {
+  gaussianPDF,
+  gaussianEntropy,
+  gaussianKL,
+  gaussianCrossEntropy,
+  gaussianOverlap,
+  momentMatchFit,
+  mixturePDF
+} from './math-lab/info-theory.js';
+import {
+  forwardKLLoss,
+  reverseKLLoss,
+  reverseKLGradStep
+} from './math-lab/kl-fit.js';
 
 /* ========================= shared helpers ========================= */
 
@@ -1009,11 +1027,401 @@ function initPCA() {
   pcaRedraw();
 }
 
+/* ======================= §8 KL visualiser ========================= */
+
+const KL_DOMAIN_MIN = -6;
+const KL_DOMAIN_MAX = 6;
+const KL_SAMPLES = 400;
+const SQRT_2PI = Math.sqrt(2 * Math.PI);
+
+function klFmt(v, digits = 3) {
+  if (!Number.isFinite(v)) return '∞';
+  return v.toFixed(digits);
+}
+
+function klXToPx(x, cssW) {
+  const t = (x - KL_DOMAIN_MIN) / (KL_DOMAIN_MAX - KL_DOMAIN_MIN);
+  return 30 + t * (cssW - 60);
+}
+
+function klYToPx(y, cssH, maxY) {
+  return cssH - 24 - (y / maxY) * (cssH - 48);
+}
+
+function klTraceTopPath(ctx, mu, sigma, cssW, cssH, maxY) {
+  for (let i = 0; i <= KL_SAMPLES; i++) {
+    const x = KL_DOMAIN_MIN + (i / KL_SAMPLES) * (KL_DOMAIN_MAX - KL_DOMAIN_MIN);
+    const px = klXToPx(x, cssW);
+    const py = klYToPx(gaussianPDF(x, mu, sigma), cssH, maxY);
+    if (i === 0) ctx.moveTo(px, py);
+    else ctx.lineTo(px, py);
+  }
+}
+
+function klDrawFilledDensity(ctx, mu, sigma, cssW, cssH, maxY, fill, stroke) {
+  const baselineY = klYToPx(0, cssH, maxY);
+  ctx.beginPath();
+  ctx.moveTo(klXToPx(KL_DOMAIN_MIN, cssW), baselineY);
+  klTraceTopPath(ctx, mu, sigma, cssW, cssH, maxY);
+  ctx.lineTo(klXToPx(KL_DOMAIN_MAX, cssW), baselineY);
+  ctx.closePath();
+  ctx.fillStyle = fill;
+  ctx.fill();
+  ctx.beginPath();
+  klTraceTopPath(ctx, mu, sigma, cssW, cssH, maxY);
+  ctx.strokeStyle = stroke;
+  ctx.lineWidth = 2;
+  ctx.stroke();
+}
+
+function klDrawOverlap(ctx, mu1, s1, mu2, s2, cssW, cssH, maxY) {
+  const baselineY = klYToPx(0, cssH, maxY);
+  ctx.beginPath();
+  ctx.moveTo(klXToPx(KL_DOMAIN_MIN, cssW), baselineY);
+  for (let i = 0; i <= KL_SAMPLES; i++) {
+    const x = KL_DOMAIN_MIN + (i / KL_SAMPLES) * (KL_DOMAIN_MAX - KL_DOMAIN_MIN);
+    const y = Math.min(gaussianPDF(x, mu1, s1), gaussianPDF(x, mu2, s2));
+    ctx.lineTo(klXToPx(x, cssW), klYToPx(y, cssH, maxY));
+  }
+  ctx.lineTo(klXToPx(KL_DOMAIN_MAX, cssW), baselineY);
+  ctx.closePath();
+  ctx.fillStyle = 'rgba(148, 163, 184, 0.42)';
+  ctx.fill();
+}
+
+function klDrawAxis(ctx, cssW, cssH) {
+  const baselineY = klYToPx(0, cssH, 1);
+  ctx.strokeStyle = 'rgba(148, 163, 184, 0.6)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(16, baselineY);
+  ctx.lineTo(cssW - 16, baselineY);
+  ctx.stroke();
+  ctx.fillStyle = '#64748b';
+  ctx.font = '10px Inter, sans-serif';
+  ctx.textAlign = 'center';
+  for (let x = KL_DOMAIN_MIN; x <= KL_DOMAIN_MAX; x++) {
+    ctx.fillText(String(x), klXToPx(x, cssW), cssH - 8);
+  }
+}
+
+function initInfoKLDemo() {
+  const canvas = document.getElementById('kl-canvas');
+  if (!canvas) return;
+
+  const dom = {
+    mu1: document.getElementById('kl-mu1'),
+    sig1: document.getElementById('kl-sig1'),
+    mu2: document.getElementById('kl-mu2'),
+    sig2: document.getElementById('kl-sig2'),
+    mu1Val: document.getElementById('kl-mu1-value'),
+    sig1Val: document.getElementById('kl-sig1-value'),
+    mu2Val: document.getElementById('kl-mu2-value'),
+    sig2Val: document.getElementById('kl-sig2-value'),
+    outForward: document.getElementById('kl-forward'),
+    outReverse: document.getElementById('kl-reverse'),
+    outHp: document.getElementById('kl-hp'),
+    outHq: document.getElementById('kl-hq'),
+    outHpq: document.getElementById('kl-hpq'),
+    outOverlap: document.getElementById('kl-overlap')
+  };
+
+  let pending = false;
+
+  function draw() {
+    pending = false;
+    const mu1 = parseFloat(dom.mu1.value);
+    const sig1 = parseFloat(dom.sig1.value);
+    const mu2 = parseFloat(dom.mu2.value);
+    const sig2 = parseFloat(dom.sig2.value);
+
+    dom.mu1Val.textContent = mu1.toFixed(2);
+    dom.sig1Val.textContent = sig1.toFixed(2);
+    dom.mu2Val.textContent = mu2.toFixed(2);
+    dom.sig2Val.textContent = sig2.toFixed(2);
+
+    const maxY = 1.15 / (Math.min(sig1, sig2) * SQRT_2PI);
+    const { ctx, cssW, cssH } = ensureCanvasSize(canvas);
+    ctx.clearRect(0, 0, cssW, cssH);
+
+    klDrawAxis(ctx, cssW, cssH);
+    klDrawOverlap(ctx, mu1, sig1, mu2, sig2, cssW, cssH, maxY);
+    klDrawFilledDensity(ctx, mu1, sig1, cssW, cssH, maxY, 'rgba(59,130,246,0.22)', '#3b82f6');
+    klDrawFilledDensity(ctx, mu2, sig2, cssW, cssH, maxY, 'rgba(249,115,22,0.18)', '#f97316');
+
+    dom.outForward.textContent = klFmt(gaussianKL(mu1, sig1, mu2, sig2));
+    dom.outReverse.textContent = klFmt(gaussianKL(mu2, sig2, mu1, sig1));
+    dom.outHp.textContent = klFmt(gaussianEntropy(sig1));
+    dom.outHq.textContent = klFmt(gaussianEntropy(sig2));
+    dom.outHpq.textContent = klFmt(gaussianCrossEntropy(mu1, sig1, mu2, sig2));
+    dom.outOverlap.textContent = klFmt(gaussianOverlap(mu1, sig1, mu2, sig2));
+  }
+
+  function schedule() {
+    if (pending) return;
+    pending = true;
+    requestAnimationFrame(draw);
+  }
+
+  [dom.mu1, dom.sig1, dom.mu2, dom.sig2].forEach((el) => el.addEventListener('input', schedule));
+  window.addEventListener('resize', schedule);
+  draw();
+}
+
+/* ===================== §9 KL-fit comparison ======================= */
+
+const KLFIT_DOMAIN_MIN = -8;
+const KLFIT_DOMAIN_MAX = 8;
+const KLFIT_SAMPLES = 300;
+const KLFIT_LR = 0.1;
+const KLFIT_STEPS_PER_FRAME = 3;
+const KLFIT_MAX_STEPS = 4000;
+const KLFIT_CONVERGE_TOL = 5e-4;
+
+function klfitXToPx(x, cssW) {
+  const t = (x - KLFIT_DOMAIN_MIN) / (KLFIT_DOMAIN_MAX - KLFIT_DOMAIN_MIN);
+  return 20 + t * (cssW - 40);
+}
+function klfitYToPx(y, cssH, maxY) {
+  return cssH - 22 - (y / maxY) * (cssH - 40);
+}
+
+function klfitDrawAxis(ctx, cssW, cssH) {
+  const baselineY = cssH - 22;
+  ctx.strokeStyle = 'rgba(148, 163, 184, 0.6)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(12, baselineY);
+  ctx.lineTo(cssW - 12, baselineY);
+  ctx.stroke();
+  ctx.fillStyle = '#64748b';
+  ctx.font = '9px Inter, sans-serif';
+  ctx.textAlign = 'center';
+  for (let x = KLFIT_DOMAIN_MIN; x <= KLFIT_DOMAIN_MAX; x += 2) {
+    ctx.fillText(String(x), klfitXToPx(x, cssW), cssH - 7);
+  }
+}
+
+function klfitDrawMixture(ctx, weights, components, cssW, cssH, maxY, fill, stroke) {
+  ctx.beginPath();
+  const baselineY = cssH - 22;
+  ctx.moveTo(klfitXToPx(KLFIT_DOMAIN_MIN, cssW), baselineY);
+  for (let i = 0; i <= KLFIT_SAMPLES; i++) {
+    const x = KLFIT_DOMAIN_MIN + (i / KLFIT_SAMPLES) * (KLFIT_DOMAIN_MAX - KLFIT_DOMAIN_MIN);
+    const y = mixturePDF(x, weights, components);
+    ctx.lineTo(klfitXToPx(x, cssW), klfitYToPx(y, cssH, maxY));
+  }
+  ctx.lineTo(klfitXToPx(KLFIT_DOMAIN_MAX, cssW), baselineY);
+  ctx.closePath();
+  ctx.fillStyle = fill;
+  ctx.fill();
+  ctx.beginPath();
+  for (let i = 0; i <= KLFIT_SAMPLES; i++) {
+    const x = KLFIT_DOMAIN_MIN + (i / KLFIT_SAMPLES) * (KLFIT_DOMAIN_MAX - KLFIT_DOMAIN_MIN);
+    const y = mixturePDF(x, weights, components);
+    const px = klfitXToPx(x, cssW);
+    const py = klfitYToPx(y, cssH, maxY);
+    if (i === 0) ctx.moveTo(px, py);
+    else ctx.lineTo(px, py);
+  }
+  ctx.strokeStyle = stroke;
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+}
+
+function klfitDrawGaussian(ctx, mu, sigma, cssW, cssH, maxY, stroke) {
+  ctx.beginPath();
+  for (let i = 0; i <= KLFIT_SAMPLES; i++) {
+    const x = KLFIT_DOMAIN_MIN + (i / KLFIT_SAMPLES) * (KLFIT_DOMAIN_MAX - KLFIT_DOMAIN_MIN);
+    const y = gaussianPDF(x, mu, sigma);
+    const px = klfitXToPx(x, cssW);
+    const py = klfitYToPx(y, cssH, maxY);
+    if (i === 0) ctx.moveTo(px, py);
+    else ctx.lineTo(px, py);
+  }
+  ctx.strokeStyle = stroke;
+  ctx.lineWidth = 2;
+  ctx.stroke();
+}
+
+function klfitPickMaxY(target, fit) {
+  const SQRT_2PI = Math.sqrt(2 * Math.PI);
+  const modePeak = Math.max(
+    target.weights[0] / (target.components[0].sigma * SQRT_2PI),
+    target.weights[1] / (target.components[1].sigma * SQRT_2PI)
+  );
+  const fitPeak = 1 / (fit.sigma * SQRT_2PI);
+  return 1.15 * Math.max(modePeak, fitPeak);
+}
+
+function klfitRender(canvas, target, fit) {
+  const { ctx, cssW, cssH } = ensureCanvasSize(canvas);
+  ctx.clearRect(0, 0, cssW, cssH);
+  const maxY = klfitPickMaxY(target, fit);
+  klfitDrawAxis(ctx, cssW, cssH);
+  klfitDrawMixture(ctx, target.weights, target.components, cssW, cssH, maxY, 'rgba(59,130,246,0.22)', '#3b82f6');
+  klfitDrawGaussian(ctx, fit.mu, fit.sigma, cssW, cssH, maxY, '#f97316');
+}
+
+function initKLFitDemo() {
+  const forwardCanvas = document.getElementById('klfit-forward-canvas');
+  const reverseCanvas = document.getElementById('klfit-reverse-canvas');
+  if (!forwardCanvas || !reverseCanvas) return;
+
+  const dom = {
+    ma: document.getElementById('klfit-ma'),
+    mb: document.getElementById('klfit-mb'),
+    sigTarget: document.getElementById('klfit-target-sigma'),
+    pi: document.getElementById('klfit-pi'),
+    mu0: document.getElementById('klfit-mu0'),
+    sigma0: document.getElementById('klfit-sigma0'),
+    maVal: document.getElementById('klfit-ma-value'),
+    mbVal: document.getElementById('klfit-mb-value'),
+    sigTargetVal: document.getElementById('klfit-target-sigma-value'),
+    piVal: document.getElementById('klfit-pi-value'),
+    mu0Val: document.getElementById('klfit-mu0-value'),
+    sigma0Val: document.getElementById('klfit-sigma0-value'),
+    fwdMu: document.getElementById('klfit-fwd-mu'),
+    fwdSigma: document.getElementById('klfit-fwd-sigma'),
+    fwdLoss: document.getElementById('klfit-fwd-loss'),
+    revStep: document.getElementById('klfit-rev-step'),
+    revMu: document.getElementById('klfit-rev-mu'),
+    revSigma: document.getElementById('klfit-rev-sigma'),
+    revLoss: document.getElementById('klfit-rev-loss'),
+    stepBtn: document.getElementById('klfit-step'),
+    runBtn: document.getElementById('klfit-run'),
+    pauseBtn: document.getElementById('klfit-pause'),
+    resetBtn: document.getElementById('klfit-reset')
+  };
+
+  const state = {
+    rev: { mu: 1.5, sigma: 1, step: 0, running: false, raf: null }
+  };
+
+  function targetSpec() {
+    const pi = parseFloat(dom.pi.value);
+    const sigma = parseFloat(dom.sigTarget.value);
+    return {
+      weights: [pi, 1 - pi],
+      components: [
+        { mu: parseFloat(dom.ma.value), sigma },
+        { mu: parseFloat(dom.mb.value), sigma }
+      ]
+    };
+  }
+
+  function resetReverse() {
+    state.rev.mu = parseFloat(dom.mu0.value);
+    state.rev.sigma = parseFloat(dom.sigma0.value);
+    state.rev.step = 0;
+    stopRun();
+  }
+
+  function stopRun() {
+    state.rev.running = false;
+    if (state.rev.raf) {
+      cancelAnimationFrame(state.rev.raf);
+      state.rev.raf = null;
+    }
+    dom.runBtn.hidden = false;
+    dom.pauseBtn.hidden = true;
+  }
+
+  function stepReverseOnce() {
+    const target = targetSpec();
+    const s = reverseKLGradStep(state.rev.mu, state.rev.sigma, target.weights, target.components, {
+      lr: KLFIT_LR
+    });
+    const dMu = Math.abs(s.mu - state.rev.mu);
+    const dSigma = Math.abs(s.sigma - state.rev.sigma);
+    state.rev.mu = s.mu;
+    state.rev.sigma = s.sigma;
+    state.rev.step += 1;
+    return dMu + dSigma;
+  }
+
+  function runLoop() {
+    if (!state.rev.running) return;
+    let maxMove = 0;
+    for (let i = 0; i < KLFIT_STEPS_PER_FRAME; i++) {
+      const move = stepReverseOnce();
+      if (move > maxMove) maxMove = move;
+    }
+    render();
+    if (state.rev.step >= KLFIT_MAX_STEPS || maxMove < KLFIT_CONVERGE_TOL) {
+      stopRun();
+      return;
+    }
+    state.rev.raf = requestAnimationFrame(runLoop);
+  }
+
+  function render() {
+    dom.maVal.textContent = parseFloat(dom.ma.value).toFixed(2);
+    dom.mbVal.textContent = parseFloat(dom.mb.value).toFixed(2);
+    dom.sigTargetVal.textContent = parseFloat(dom.sigTarget.value).toFixed(2);
+    dom.piVal.textContent = parseFloat(dom.pi.value).toFixed(2);
+    dom.mu0Val.textContent = parseFloat(dom.mu0.value).toFixed(2);
+    dom.sigma0Val.textContent = parseFloat(dom.sigma0.value).toFixed(2);
+
+    const target = targetSpec();
+    const fwdFit = momentMatchFit(target.weights, target.components);
+    klfitRender(forwardCanvas, target, fwdFit);
+    dom.fwdMu.textContent = fwdFit.mu.toFixed(2);
+    dom.fwdSigma.textContent = fwdFit.sigma.toFixed(2);
+    dom.fwdLoss.textContent = forwardKLLoss(target.weights, target.components, fwdFit.mu, fwdFit.sigma).toFixed(3);
+
+    klfitRender(reverseCanvas, target, { mu: state.rev.mu, sigma: state.rev.sigma });
+    dom.revStep.textContent = String(state.rev.step);
+    dom.revMu.textContent = state.rev.mu.toFixed(2);
+    dom.revSigma.textContent = state.rev.sigma.toFixed(2);
+    dom.revLoss.textContent = reverseKLLoss(state.rev.mu, state.rev.sigma, target.weights, target.components).toFixed(3);
+  }
+
+  // Target slider changes: redraw both panels, don't reset the reverse run.
+  [dom.ma, dom.mb, dom.sigTarget, dom.pi].forEach((el) =>
+    el.addEventListener('input', () => {
+      stopRun();
+      render();
+    })
+  );
+  // Init sliders: update their labels and the reset button will apply them.
+  [dom.mu0, dom.sigma0].forEach((el) =>
+    el.addEventListener('input', () => {
+      dom.mu0Val.textContent = parseFloat(dom.mu0.value).toFixed(2);
+      dom.sigma0Val.textContent = parseFloat(dom.sigma0.value).toFixed(2);
+    })
+  );
+
+  dom.stepBtn.addEventListener('click', () => {
+    stopRun();
+    stepReverseOnce();
+    render();
+  });
+  dom.runBtn.addEventListener('click', () => {
+    if (state.rev.running) return;
+    state.rev.running = true;
+    dom.runBtn.hidden = true;
+    dom.pauseBtn.hidden = false;
+    state.rev.raf = requestAnimationFrame(runLoop);
+  });
+  dom.pauseBtn.addEventListener('click', stopRun);
+  dom.resetBtn.addEventListener('click', () => {
+    resetReverse();
+    render();
+  });
+  window.addEventListener('resize', render);
+
+  resetReverse();
+  render();
+}
+
 /* ============================ bootstrap ============================ */
 
 function boot() {
   initGD();
   initPCA();
+  initInfoKLDemo();
+  initKLFitDemo();
 }
 
 if (document.readyState === 'loading') {
