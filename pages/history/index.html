@@ -490,6 +490,60 @@
               </ol>
             </section>
 
+            <!-- ====== ERA 6 ====== -->
+            <section class="lineage-era" aria-labelledby="era-6-title">
+              <header class="lineage-era__header">
+                <h2 class="lineage-era__title" id="era-6-title">Era 6 — World-model turn</h2>
+                <span class="lineage-era__range">2018 – present</span>
+              </header>
+              <p class="lineage-era__lead">
+                A parallel thread running alongside the transformer era: agents that learn a predictive
+                model of their environment and plan inside it. The RL community had the idea from the
+                start — Sutton's Dyna architecture (1990) is classical model-based RL — but the name
+                "world model" in its modern form comes from Ha &amp; Schmidhuber (2018). As LLM scaling
+                began to hit walls in 2023–2025, world models returned to the centre of the discourse
+                via three distinct camps, summarised in the debate panel after the cards.
+              </p>
+              <ol class="lineage-cards">
+                <li class="lineage-card" data-family="rl">
+                  <span class="lineage-card__year">2018</span>
+                  <h3 class="lineage-card__name">World Models (the paper)</h3>
+                  <p class="lineage-card__who">David Ha &amp; Jürgen Schmidhuber, "World Models" (arXiv 1803.10122, March 2018).</p>
+                  <p class="lineage-card__motivation"><strong>Motivation:</strong> distill Schmidhuber's 1990–91 RNN-controller work into a clean V–M–C trio. A VAE (V) compresses each frame into a latent; an RNN with a mixture-density head (M) predicts the next latent; a small linear controller (C) picks actions. The claim that caught on: the agent can be trained <em>entirely inside its own hallucinated dream</em> and the policy transfers back to the real environment.</p>
+                  <p class="lineage-card__influence"><strong>Influenced:</strong> gave the term "world model" its modern currency. Direct ancestors: Schmidhuber 1990a/b/c RNN controllers, Werbos 1987. Direct descendants: Dreamer (2020+), MuZero's learned environment model (2019), every "agent plans in latent space" paper.</p>
+                </li>
+                <li class="lineage-card" data-family="rl">
+                  <span class="lineage-card__year">2020</span>
+                  <h3 class="lineage-card__name">Dreamer (latent imagination)</h3>
+                  <p class="lineage-card__who">Danijar Hafner, Timothy Lillicrap, Jimmy Ba &amp; Mohammad Norouzi, "Dream to Control: Learning Behaviors by Latent Imagination", ICLR 2020 (arXiv 1912.01603).</p>
+                  <p class="lineage-card__motivation"><strong>Motivation:</strong> learn a compact latent world model (the RSSM — Recurrent State-Space Model) from pixels, then improve behaviour by back-propagating analytic gradients of learned state values through trajectories imagined purely in latent space — no rollouts in the real environment needed during policy optimisation.</p>
+                  <p class="lineage-card__influence"><strong>Influenced:</strong> DreamerV2 (2021) scaled to Atari; <strong>DreamerV3 (2023) — the canonical world-model RL agent</strong>, solving 150+ tasks with a single configuration and becoming the first algorithm to collect diamonds in Minecraft from scratch without human data or curricula.</p>
+                </li>
+                <li class="lineage-card" data-family="nn">
+                  <span class="lineage-card__year">2023</span>
+                  <h3 class="lineage-card__name">I-JEPA (Image Joint-Embedding Predictive Architecture)</h3>
+                  <p class="lineage-card__who">Mahmoud Assran, Quentin Duval, Ishan Misra, Piotr Bojanowski, Pascal Vincent, Michael Rabbat, Yann LeCun &amp; Nicolas Ballas (Meta FAIR), CVPR 2023 (arXiv 2301.08243).</p>
+                  <p class="lineage-card__motivation"><strong>Motivation:</strong> first concrete instantiation of LeCun's 2022 JEPA proposal. From a single context block, predict the <em>representations</em> of several target blocks in the same image — no pixel reconstruction, no hand-crafted augmentations. Non-generative: the model never commits to a specific pixel prediction, only a latent one.</p>
+                  <p class="lineage-card__influence"><strong>Influenced:</strong> V-JEPA (2024, video) and V-JEPA 2 (2025, video + robot planning). The "predict in representation space, not pixel space" move is the central bet of LeCun's world-model line.</p>
+                </li>
+                <li class="lineage-card" data-family="nn">
+                  <span class="lineage-card__year">2025</span>
+                  <h3 class="lineage-card__name">V-JEPA 2 (video world model with robot planning)</h3>
+                  <p class="lineage-card__who">Mahmoud Assran et al. (Meta FAIR, incl. Yann LeCun), "V-JEPA 2: Self-Supervised Video Models Enable Understanding, Prediction and Planning" (arXiv 2506.09985, June 2025).</p>
+                  <p class="lineage-card__motivation"><strong>Motivation:</strong> scale the JEPA recipe to video at internet scale — pre-train on &gt;1M hours of web video with a joint-embedding predictive objective. 77.3 top-1 on Something-Something v2 (motion understanding); 39.7 recall-at-5 on Epic-Kitchens-100 (action anticipation). Then post-train <strong>V-JEPA 2-AC</strong> (action-conditioned) on &lt;62 hours of unlabeled robot video from the Droid dataset.</p>
+                  <p class="lineage-card__influence"><strong>Influenced:</strong> first JEPA variant to close the world-model loop end-to-end: video-pre-trained representation → learned action-conditioned dynamics → planning on real Franka arms, deployed <em>zero-shot</em> in labs the model had never trained in, for pick-and-place tasks specified by goal images.</p>
+                </li>
+              </ol>
+
+              <aside class="lineage-intro" aria-label="The world-model debate" style="margin-top: 1.25rem;">
+                <p><strong>The world-model debate (2022 – present).</strong> Three high-profile positions, broadly agreeing that LLMs trained on human text have a ceiling, but disagreeing sharply on what comes next.</p>
+                <p><strong>Yann LeCun — "world models are the architecture".</strong> From the 2022 position paper <em>A Path Towards Autonomous Machine Intelligence</em>: <q>devising learning paradigms and architectures that would allow machines to learn world models in an unsupervised (or self-supervised) fashion, and to use those models to predict, to reason, and to plan is one of the main challenges of AI and ML today.</q> The proposed concrete answer is <strong>H-JEPA</strong> — a hierarchy of non-generative, latent-space predictors — and its image/video instantiations (I-JEPA, V-JEPA, V-JEPA 2) above. LeCun traces the broader idea to Craik (1943) and model-predictive control from the 1950s.</p>
+                <p><strong>Richard Sutton &amp; David Silver — "scale experience, not text".</strong> Silver &amp; Sutton 2025 (<em>Welcome to the Era of Experience</em>, a preprint of a chapter in MIT Press's <em>Designing an Intelligence</em>) argue that the "era of human data" has plateaued and the next era has agents learning from grounded streams of actions and observations with environment-derived rewards. They explicitly flag world models: <q>One possible way to directly ground thinking in the external world is to build a world model that predicts the consequences of the agent's actions upon the world, including predicting reward.</q> — and cite Sutton's 1990 Dyna as precedent. Sutton, more pointed after winning the 2024 Turing Award, in Dwarkesh Patel's Sep 26 2025 interview: <q>A world model would enable you to predict what would happen. They [LLMs] have the ability to predict what a person would say. They don't have the ability to predict what will happen.</q></p>
+                <p><strong>Fei-Fei Li — "spatial intelligence".</strong> The computer-vision camp's framing: language alone under-specifies the physical world; what's missing is 3D-grounded, embodied perception. From her 2024 TED talk: <q>Simply seeing is not enough. Seeing is for doing and learning. When we act upon this world in 3D space and time, we learn, and we learn to see and do better. Nature has created this virtuous cycle of seeing and doing powered by spatial intelligence.</q> Her startup <strong>World Labs</strong> (co-founded 2024) is building "Large World Models" focused on 3D spatial reasoning, and her Stanford lab's Behavior project trains robots in simulated 3D environments.</p>
+                <p><strong>Where they agree.</strong> LLMs trained on human text are insufficient for agents that act in the world; future systems need some form of grounded prediction. <strong>Where they disagree.</strong> Whether the missing piece is (a) a new self-supervised predictive architecture like JEPA (LeCun), (b) a return to RL-style continual experiential learning (Sutton / Silver), or (c) 3D spatial grounding and embodiment (Li).</p>
+              </aside>
+            </section>
+
             <aside class="lineage-intro" aria-label="Closing note" style="margin-top: 1.5rem;">
               <p>
                 <strong>Caveats.</strong> "Who invented X" is almost always contested. Where credit splits,
