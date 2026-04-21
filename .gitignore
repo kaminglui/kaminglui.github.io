@@ -11,3 +11,4 @@ pages/fourier-epicycles/
 coverage/
 _site/
 assets/css/tailwind.css
+.paper/

@@ -381,7 +381,7 @@
                   <span class="lineage-card__year">2016</span>
                   <h3 class="lineage-card__name">AlphaGo</h3>
                   <p class="lineage-card__who">David Silver et al. (DeepMind), <em>Nature</em> 2016.</p>
-                  <p class="lineage-card__motivation"><strong>Motivation:</strong> beat a professional Go player — the long-assumed "20 years away" benchmark — by combining MCTS with deep policy and value networks.</p>
+                  <p class="lineage-card__motivation"><strong>Motivation:</strong> beat a professional Go player — a feat the paper's own abstract describes as "previously thought to be at least a decade away" — by combining MCTS with deep policy and value networks.</p>
                   <p class="lineage-card__influence"><strong>Influenced:</strong> <em>the canonical "search + learned prior" agent</em>. AlphaGo Zero (2017) dropped the supervised-learning bootstrap; AlphaZero (2018) generalised to chess and shogi; MuZero (2019) learned the environment model itself. Same template in AlphaFold 2 and LLM theorem-provers today. See <a href="../rl-lab/#theory-mcts">RL §8 MCTS</a>.</p>
                 </li>
               </ol>
@@ -424,8 +424,8 @@
                 <li class="lineage-card" data-family="transformer">
                   <span class="lineage-card__year">2018</span>
                   <h3 class="lineage-card__name">GPT (original)</h3>
-                  <p class="lineage-card__who">Alec Radford, Karthik Narasimhan, Tim Salimans &amp; Ilya Sutskever (OpenAI).</p>
-                  <p class="lineage-card__motivation"><strong>Motivation:</strong> same pre-train-then-fine-tune recipe as BERT, but <em>decoder-only</em> with a next-token-prediction objective.</p>
+                  <p class="lineage-card__who">Alec Radford, Karthik Narasimhan, Tim Salimans &amp; Ilya Sutskever (OpenAI), "Improving Language Understanding by Generative Pre-Training" (June 2018 preprint).</p>
+                  <p class="lineage-card__motivation"><strong>Motivation:</strong> generative pre-training of a language model on a large unlabeled corpus, followed by discriminative fine-tuning on each specific task — <em>decoder-only</em>, next-token objective. Predates BERT by four months and established the pre-train-then-fine-tune recipe that BERT then adapted with a bidirectional masked objective.</p>
                   <p class="lineage-card__influence"><strong>Influenced:</strong> <em>the canonical decoder-only transformer</em> — every modern LLM (GPT-2/3/4, Llama, Mistral, Claude, Gemini, DeepSeek) is in this family. See <a href="../transformer-lab/#theory-archs">Transformer §8 no-peeking rule</a>.</p>
                 </li>
                 <li class="lineage-card" data-family="transformer">
@@ -439,7 +439,7 @@
                   <span class="lineage-card__year">2020</span>
                   <h3 class="lineage-card__name">DDPM</h3>
                   <p class="lineage-card__who">Jonathan Ho, Ajay Jain &amp; Pieter Abbeel, "Denoising Diffusion Probabilistic Models".</p>
-                  <p class="lineage-card__motivation"><strong>Motivation:</strong> refine Sohl-Dickstein et al. (2015) diffusion models by training the network to predict the noise directly — simple loss, beat GANs on image quality.</p>
+                  <p class="lineage-card__motivation"><strong>Motivation:</strong> refine Sohl-Dickstein et al. (2015) diffusion models by training the network to predict the noise directly — simple loss, SOTA FID on CIFAR-10 (3.17) and quality comparable to ProgressiveGAN on LSUN 256.</p>
                   <p class="lineage-card__influence"><strong>Influenced:</strong> <em>the canonical diffusion recipe</em>. DDIM (2020, deterministic sampling); classifier-free guidance (2021); <strong>Stable Diffusion</strong> (Rombach et al., 2022 — the canonical product, latent-space diffusion with a U-Net backbone); DALL-E 2; SDXL; video generators. See <a href="../diffusion-lab/#theory-ddpm">Diffusion §4</a>.</p>
                 </li>
                 <li class="lineage-card" data-family="transformer">
@@ -481,9 +481,9 @@
                   <p class="lineage-card__influence"><strong>Influenced:</strong> Claude (2023), Gemini, open-source instruct fine-tunes, RLAIF, DPO, the entire chat-assistant product category.</p>
                 </li>
                 <li class="lineage-card" data-family="gen">
-                  <span class="lineage-card__year">2023</span>
+                  <span class="lineage-card__year">2022</span>
                   <h3 class="lineage-card__name">Flow matching</h3>
-                  <p class="lineage-card__who">Yaron Lipman, Ricky T. Q. Chen, Heli Ben-Hamu, Maximilian Nickel &amp; Matt Le.</p>
+                  <p class="lineage-card__who">Yaron Lipman, Ricky T. Q. Chen, Heli Ben-Hamu, Maximilian Nickel &amp; Matt Le (arXiv 2210.02747, Oct 2022; ICLR 2023).</p>
                   <p class="lineage-card__motivation"><strong>Motivation:</strong> train continuous normalising flows by regressing onto an analytic target velocity field — simpler, faster-sampling alternative to diffusion.</p>
                   <p class="lineage-card__influence"><strong>Influenced:</strong> rectified flow (Liu et al., 2022), Stable Diffusion 3, audio / molecular generative models. The current frontier of continuous-time generative modelling.</p>
                 </li>
