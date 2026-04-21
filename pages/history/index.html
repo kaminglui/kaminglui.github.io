@@ -285,6 +285,13 @@
                   <p class="lineage-card__motivation"><strong>Motivation:</strong> plan in large game trees where you have a simulator but no value function — UCB1 applied recursively down the search tree.</p>
                   <p class="lineage-card__influence"><strong>Influenced:</strong> AlphaGo, AlphaZero, MuZero; LLM-guided theorem provers. Full coverage in <a href="../rl-lab/#theory-mcts">RL §8</a>.</p>
                 </li>
+                <li class="lineage-card" data-family="nn">
+                  <span class="lineage-card__year">2009</span>
+                  <h3 class="lineage-card__name">ImageNet</h3>
+                  <p class="lineage-card__who">Jia Deng, Wei Dong, Richard Socher, Li-Jia Li, Kai Li &amp; Fei-Fei Li (Stanford), CVPR 2009.</p>
+                  <p class="lineage-card__motivation"><strong>Motivation:</strong> a labelled image dataset big enough to regularise genuinely deep networks — 14M images across 21k WordNet synsets, with the 1000-class ILSVRC subset (~1.3M training images) as the annual benchmark starting 2010.</p>
+                  <p class="lineage-card__influence"><strong>Influenced:</strong> AlexNet (2012) won ILSVRC and kicked off the deep-learning era; every CNN and ViT since was benchmarked here. One of the three preconditions — <em>dataset</em>, GPU, ReLU — that converged in 2012.</p>
+                </li>
               </ol>
             </section>
 
@@ -295,17 +302,31 @@
                 <span class="lineage-era__range">2010 – 2017</span>
               </header>
               <p class="lineage-era__lead">
-                GPUs became cheap and ImageNet became big. Old neural-network ideas stopped being theoretical
-                curiosities. Representation learning, generative modelling, and attention emerged in that
-                order — each one unblocking the next.
+                Three preconditions converged around 2012 and ignited modern deep learning:
+                <strong>NVIDIA GPUs</strong> (CUDA shipped in 2006) gave neural nets a 10–30× speedup over CPUs;
+                <strong>ImageNet</strong> (2009) provided 1.3M labelled training images across 1000 classes —
+                enough to regularise genuinely deep networks without overfitting; and <strong>ReLU</strong>
+                (Nair &amp; Hinton, 2010; Glorot, Bordes &amp; Bengio, 2011) replaced saturating
+                sigmoid/tanh activations, fixing the vanishing-gradient behaviour that had crippled deep
+                stacks since the 1990s. AlexNet stitched all three together in 2012 and cut ImageNet top-5
+                error from 26% to 15% overnight. Old neural-network ideas stopped being curiosities —
+                representation learning, generative modelling, and attention emerged in that order, each
+                one unblocking the next.
               </p>
               <ol class="lineage-cards">
                 <li class="lineage-card" data-family="nn">
+                  <span class="lineage-card__year">2010</span>
+                  <h3 class="lineage-card__name">ReLU activation</h3>
+                  <p class="lineage-card__who">Vinod Nair &amp; Geoffrey Hinton, ICML 2010 (for RBMs); Xavier Glorot, Antoine Bordes &amp; Yoshua Bengio, AISTATS 2011, "Deep Sparse Rectifier Neural Networks" (for deep feed-forward nets). Earlier: Fukushima's Neocognitron (1980) used the positive-part function.</p>
+                  <p class="lineage-card__motivation"><strong>Motivation:</strong> replace sigmoid / tanh — both saturate at the extremes and kill gradients — with <em>max(0, x)</em>, whose derivative is 1 for positive inputs and 0 for negative. Faster to compute, no vanishing-gradient compression at the ends.</p>
+                  <p class="lineage-card__influence"><strong>Influenced:</strong> the activation that made genuinely deep networks trainable. AlexNet credited ReLU for most of its training-time speed-up; variants (Leaky ReLU, ELU, GELU for transformers, SiLU for Llama) dominate every deep-learning library.</p>
+                </li>
+                <li class="lineage-card" data-family="nn">
                   <span class="lineage-card__year">2012</span>
                   <h3 class="lineage-card__name">AlexNet</h3>
-                  <p class="lineage-card__who">Alex Krizhevsky, Ilya Sutskever &amp; Geoffrey Hinton, "ImageNet Classification with Deep CNNs".</p>
-                  <p class="lineage-card__motivation"><strong>Motivation:</strong> train a big convolutional network on ImageNet with GPUs and ReLU activations; proved depth + scale + data beats hand-engineered features.</p>
-                  <p class="lineage-card__influence"><strong>Influenced:</strong> the whole deep-learning explosion — VGG, Inception, ResNet, all the way to ViT. The "scale is the bitter lesson" era started here.</p>
+                  <p class="lineage-card__who">Alex Krizhevsky, Ilya Sutskever &amp; Geoffrey Hinton (University of Toronto), "ImageNet Classification with Deep Convolutional Neural Networks", NeurIPS 2012. Immediate GPU-CNN predecessor: Ciresan et al., IJCNN 2011.</p>
+                  <p class="lineage-card__motivation"><strong>Motivation:</strong> stitch the three preconditions together — the <strong>ImageNet</strong> dataset (2009), <strong>NVIDIA GPUs</strong> with CUDA (two GTX 580s for 5–6 days of training), and the <strong>ReLU</strong> activation (2010) — into one 8-layer convolutional network, with dropout for regularisation and simple data augmentation (random crops, flips). Proof that depth + scale + data beats hand-engineered features.</p>
+                  <p class="lineage-card__influence"><strong>Influenced:</strong> ImageNet top-5 error fell from 26.2% to 15.3% overnight; the whole deep-learning explosion followed — VGG (2014), Inception (2014), <strong>ResNet (2015, the canonical deep-CNN representative)</strong>, U-Net (2015), up to ViT for images and the transformer era for everything else. The "scale is the bitter lesson" era started here.</p>
                 </li>
                 <li class="lineage-card" data-family="nn">
                   <span class="lineage-card__year">2013</span>
@@ -345,9 +366,9 @@
                 <li class="lineage-card" data-family="nn">
                   <span class="lineage-card__year">2015</span>
                   <h3 class="lineage-card__name">ResNet (residual connections)</h3>
-                  <p class="lineage-card__who">Kaiming He et al., "Deep Residual Learning for Image Recognition".</p>
-                  <p class="lineage-card__motivation"><strong>Motivation:</strong> train networks 100+ layers deep — skip connections let gradients flow past layers that are still learning.</p>
-                  <p class="lineage-card__influence"><strong>Influenced:</strong> the "x + sublayer(x)" residual pattern in every transformer block (<a href="../transformer-lab/#theory-block">Transformer §7</a>), DenseNet, U-Net.</p>
+                  <p class="lineage-card__who">Kaiming He, Xiangyu Zhang, Shaoqing Ren &amp; Jian Sun (Microsoft Research Asia), "Deep Residual Learning for Image Recognition", CVPR 2016 best-paper award.</p>
+                  <p class="lineage-card__motivation"><strong>Motivation:</strong> train networks 100+ layers deep without the <em>degradation</em> problem — a puzzle where deeper nets <em>trained</em> worse, not just overfit more. The fix is a skip path: <span data-katex="y = x + F(x)"></span> — gradients can now flow past any sub-block that's still learning.</p>
+                  <p class="lineage-card__influence"><strong>Influenced:</strong> the canonical deep-CNN representative — ResNet-50 is <em>still</em> the most-used image backbone nine years on. Its "x + sublayer(x)" residual pattern recurs in every transformer block (<a href="../transformer-lab/#theory-block">Transformer §7</a>), DenseNet, and U-Net (used as the denoising backbone in diffusion models).</p>
                 </li>
                 <li class="lineage-card" data-family="rl">
                   <span class="lineage-card__year">2016</span>
