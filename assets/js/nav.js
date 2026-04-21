@@ -30,27 +30,13 @@ function setupNav() {
   );
   const dropdownInstances = [];
 
-  const hoverNoneQuery =
-    typeof window !== 'undefined' && typeof window.matchMedia === 'function'
-      ? window.matchMedia('(hover: none)')
-      : null;
-
-  const hoverCapableQuery =
-    typeof window !== 'undefined' && typeof window.matchMedia === 'function'
-      ? window.matchMedia('(hover: hover)')
-      : null;
-  const finePointerQuery =
-    typeof window !== 'undefined' && typeof window.matchMedia === 'function'
-      ? window.matchMedia('(pointer: fine)')
-      : null;
-
-  const shouldUseClickToggle = () => {
-    const hoverNone = hoverNoneQuery?.matches ?? false;
-    const hoverCapable = hoverCapableQuery?.matches ?? false;
-    const finePointer = finePointerQuery?.matches ?? false;
-    // Prefer hover-open menus on desktops; fall back to click on touch / coarse pointers.
-    return hoverNone || !hoverCapable || !finePointer;
-  };
+  // Dropdowns are always click-to-toggle. The previous code gated on
+  // `(hover: hover) and (pointer: fine)` media queries so it could hover-open
+  // on desktop, but those queries report inconsistently on iPads / touch
+  // laptops / hybrid devices and the click branch never fires there — giving
+  // the impression that the mobile menu "doesn't expand." Click-only is
+  // universal: tap works on touch, click works on desktop, keyboard still
+  // gets its own Enter / ArrowDown / Escape path.
 
   const closeAllDropdowns = ({ except } = {}) => {
     let changed = false;
@@ -72,29 +58,6 @@ function setupNav() {
       return;
     }
 
-    let closeTimeoutId = null;
-
-    const clearCloseTimeout = () => {
-      if (closeTimeoutId !== null) {
-        window.clearTimeout(closeTimeoutId);
-        closeTimeoutId = null;
-      }
-    };
-
-    const startCloseTimeout = () => {
-      if (shouldUseClickToggle()) return;
-      clearCloseTimeout();
-      closeTimeoutId = window.setTimeout(() => {
-        if (
-          !wrapper.matches(':hover') &&
-          !menu.matches(':hover') &&
-          !toggle.matches(':hover')
-        ) {
-          instance.close();
-        }
-      }, 220);
-    };
-
     const instance = {
       wrapper,
       toggle,
@@ -104,13 +67,11 @@ function setupNav() {
         toggle.setAttribute('aria-expanded', 'true');
         wrapper.setAttribute('data-open', 'true');
         menu.hidden = false;
-        clearCloseTimeout();
       },
       close: () => {
         toggle.setAttribute('aria-expanded', 'false');
         wrapper.setAttribute('data-open', 'false');
         menu.hidden = true;
-        clearCloseTimeout();
       }
     };
 
@@ -122,45 +83,7 @@ function setupNav() {
       instance.open();
     };
 
-    const handleHoverEnter = () => {
-      if (shouldUseClickToggle()) return;
-      clearCloseTimeout();
-      openExclusive();
-    };
-
-    const handleHoverLeave = () => {
-      if (shouldUseClickToggle()) return;
-      startCloseTimeout();
-    };
-
-    wrapper.addEventListener('pointerenter', handleHoverEnter);
-    wrapper.addEventListener('pointerleave', handleHoverLeave);
-    toggle.addEventListener('pointerenter', handleHoverEnter);
-    toggle.addEventListener('pointerleave', handleHoverLeave);
-    menu.addEventListener('pointerenter', handleHoverEnter);
-    menu.addEventListener('pointerleave', handleHoverLeave);
-
-    wrapper.addEventListener('focusin', (event) => {
-      const target = event.target;
-      if (
-        shouldUseClickToggle() &&
-        target instanceof HTMLElement &&
-        !target.matches(':focus-visible')
-      ) {
-        return;
-      }
-      openExclusive();
-    });
-
-    wrapper.addEventListener('focusout', (event) => {
-      const nextTarget = event.relatedTarget;
-      if (!(nextTarget instanceof Node) || !wrapper.contains(nextTarget)) {
-        instance.close();
-      }
-    });
-
     toggle.addEventListener('click', (event) => {
-      if (!shouldUseClickToggle()) return;
       event.preventDefault();
       event.stopPropagation();
       if (instance.isOpen()) {
@@ -199,17 +122,6 @@ function setupNav() {
       }
     });
   });
-
-  if (hoverNoneQuery) {
-    const handleHoverChange = () => {
-      closeAllDropdowns();
-    };
-    if (typeof hoverNoneQuery.addEventListener === 'function') {
-      hoverNoneQuery.addEventListener('change', handleHoverChange);
-    } else if (typeof hoverNoneQuery.addListener === 'function') {
-      hoverNoneQuery.addListener(handleHoverChange);
-    }
-  }
 
   window.addEventListener('resize', () => {
     closeAllDropdowns();
