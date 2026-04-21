@@ -255,14 +255,14 @@
                   <h3 class="lineage-card__name">Support vector machine</h3>
                   <p class="lineage-card__who">Vladimir Vapnik &amp; co. — margin formulation in Boser, Guyon &amp; Vapnik (1992); popularised by Vapnik (1995).</p>
                   <p class="lineage-card__motivation"><strong>Motivation:</strong> build the widest-margin separator — maximise the distance from the decision boundary to the nearest training point.</p>
-                  <p class="lineage-card__influence"><strong>Influenced:</strong> kernel methods (as a broader family), structured prediction, the "regularisation = margin" intuition that recurs in deep learning. <a href="../classical-ml/#demo-svm">Machine Learning §4 SVM demo</a>.</p>
+                  <p class="lineage-card__influence"><strong>Influenced:</strong> <em>the canonical kernel method</em> — dominated tabular / text ML from 1995 to ~2012 before deep learning overtook it on perception tasks. The "regularisation = margin" intuition recurs in deep learning (large-margin softmax, contrastive losses). <a href="../classical-ml/#demo-svm">Machine Learning §4 SVM demo</a>.</p>
                 </li>
                 <li class="lineage-card" data-family="nn">
                   <span class="lineage-card__year">1997</span>
                   <h3 class="lineage-card__name">LSTM</h3>
                   <p class="lineage-card__who">Sepp Hochreiter &amp; Jürgen Schmidhuber, "Long Short-Term Memory".</p>
                   <p class="lineage-card__motivation"><strong>Motivation:</strong> fix the vanishing-gradient problem in RNNs by adding gated cells that preserve information across long time spans.</p>
-                  <p class="lineage-card__influence"><strong>Influenced:</strong> seq2seq models, neural machine translation, speech recognition — the state of the art until transformers superseded them around 2018.</p>
+                  <p class="lineage-card__influence"><strong>Influenced:</strong> <em>the canonical gated-RNN</em>. GRU (Cho et al. 2014) is the simpler two-gate cousin. Together they powered seq2seq, neural machine translation, and speech recognition — the state of the art until transformers superseded them around 2018.</p>
                 </li>
                 <li class="lineage-card" data-family="rl">
                   <span class="lineage-card__year">2002</span>
@@ -333,21 +333,28 @@
                   <h3 class="lineage-card__name">word2vec</h3>
                   <p class="lineage-card__who">Tomáš Mikolov et al., "Efficient Estimation of Word Representations…".</p>
                   <p class="lineage-card__motivation"><strong>Motivation:</strong> produce dense vector representations of words from co-occurrence statistics — fast enough to train on a billion-word corpus.</p>
-                  <p class="lineage-card__influence"><strong>Influenced:</strong> pre-trained embeddings (GloVe, fastText), the "words as points in R^d" intuition behind every modern NLP model. See <a href="../transformer-lab/#theory-embeddings">Transformer §2 embeddings</a>.</p>
+                  <p class="lineage-card__influence"><strong>Influenced:</strong> <em>the canonical non-contextual word embedding</em>. GloVe (2014) and fastText (2016) are direct descendants; the "words as points in ℝ^d" intuition behind every modern NLP model. See <a href="../transformer-lab/#theory-embeddings">Transformer §2 embeddings</a>.</p>
                 </li>
                 <li class="lineage-card" data-family="gen">
                   <span class="lineage-card__year">2013</span>
                   <h3 class="lineage-card__name">Variational autoencoder</h3>
                   <p class="lineage-card__who">Diederik P. Kingma &amp; Max Welling (Dec 2013); Rezende, Mohamed &amp; Wierstra independently (2014).</p>
                   <p class="lineage-card__motivation"><strong>Motivation:</strong> train a latent-variable generative model end-to-end with backpropagation — the reparameterisation trick made it differentiable.</p>
-                  <p class="lineage-card__influence"><strong>Influenced:</strong> DDPM (latent noise hierarchy), normalising flows, β-VAE, every modern generative model with a latent space. See <a href="../diffusion-lab/#theory-vae">Diffusion §2 VAE</a>.</p>
+                  <p class="lineage-card__influence"><strong>Influenced:</strong> <em>the canonical likelihood-based latent-variable generator</em>. DDPM's denoising is a VAE with a very deep hierarchy of latents; β-VAE, VQ-VAE, and normalising flows are direct descendants. See <a href="../diffusion-lab/#theory-vae">Diffusion §2 VAE</a>.</p>
+                </li>
+                <li class="lineage-card" data-family="rl">
+                  <span class="lineage-card__year">2013</span>
+                  <h3 class="lineage-card__name">Deep Q-Network (DQN)</h3>
+                  <p class="lineage-card__who">Volodymyr Mnih et al. (DeepMind), "Playing Atari with Deep Reinforcement Learning" (NIPS Workshop 2013); extended in <em>Nature</em> 2015 as "Human-level control through deep reinforcement learning".</p>
+                  <p class="lineage-card__motivation"><strong>Motivation:</strong> learn a Q-function with a deep CNN directly from raw pixels — an end-to-end RL agent that plays 49 Atari games at human level without hand-engineered features. Two stability tricks made it trainable: experience replay and a slow-moving target network.</p>
+                  <p class="lineage-card__influence"><strong>Influenced:</strong> <em>the canonical deep value-based agent</em>. Double DQN (2015), Dueling DQN (2016), Rainbow (2017) are direct extensions; the "deep net + replay buffer + target net" template reappears in SAC and TD3 continuous-control. DQN's success was part of what triggered AlphaGo (2016).</p>
                 </li>
                 <li class="lineage-card" data-family="gen">
                   <span class="lineage-card__year">2014</span>
                   <h3 class="lineage-card__name">Generative adversarial network</h3>
                   <p class="lineage-card__who">Ian Goodfellow et al., NeurIPS 2014.</p>
                   <p class="lineage-card__motivation"><strong>Motivation:</strong> train a generator by pitting it against a discriminator — an adversarial game that bypasses likelihood altogether.</p>
-                  <p class="lineage-card__influence"><strong>Influenced:</strong> StyleGAN, image-to-image translation, the JS-divergence-as-loss view; largely supplanted by diffusion for high-fidelity generation by 2022.</p>
+                  <p class="lineage-card__influence"><strong>Influenced:</strong> <em>the canonical implicit generator</em>. DCGAN (Radford et al., 2015) gave the template; StyleGAN (Karras et al., 2019) became the photorealism exemplar. Largely supplanted by diffusion for high-fidelity image synthesis by 2022.</p>
                 </li>
                 <li class="lineage-card" data-family="opt">
                   <span class="lineage-card__year">2014</span>
@@ -375,7 +382,7 @@
                   <h3 class="lineage-card__name">AlphaGo</h3>
                   <p class="lineage-card__who">David Silver et al. (DeepMind), <em>Nature</em> 2016.</p>
                   <p class="lineage-card__motivation"><strong>Motivation:</strong> beat a professional Go player — the long-assumed "20 years away" benchmark — by combining MCTS with deep policy and value networks.</p>
-                  <p class="lineage-card__influence"><strong>Influenced:</strong> AlphaGo Zero (2017), AlphaZero, MuZero, AlphaFold; the template for "combine search with learned priors" now used in LLM code/theorem-proving. See <a href="../rl-lab/#theory-mcts">RL §8 MCTS</a>.</p>
+                  <p class="lineage-card__influence"><strong>Influenced:</strong> <em>the canonical "search + learned prior" agent</em>. AlphaGo Zero (2017) dropped the supervised-learning bootstrap; AlphaZero (2018) generalised to chess and shogi; MuZero (2019) learned the environment model itself. Same template in AlphaFold 2 and LLM theorem-provers today. See <a href="../rl-lab/#theory-mcts">RL §8 MCTS</a>.</p>
                 </li>
               </ol>
             </section>
@@ -411,28 +418,42 @@
                   <h3 class="lineage-card__name">BERT</h3>
                   <p class="lineage-card__who">Jacob Devlin, Ming-Wei Chang, Kenton Lee &amp; Kristina Toutanova (Google).</p>
                   <p class="lineage-card__motivation"><strong>Motivation:</strong> pre-train a bidirectional encoder on masked-language-modelling, then fine-tune on downstream tasks — beat task-specific models by a margin.</p>
-                  <p class="lineage-card__influence"><strong>Influenced:</strong> RoBERTa, DistilBERT, DeBERTa, sentence-embedding models; the encoder-only family in <a href="../transformer-lab/#theory-map">Transformer §9</a>.</p>
+                  <p class="lineage-card__influence"><strong>Influenced:</strong> <em>the canonical encoder-only transformer</em>. RoBERTa (2019), DistilBERT, DeBERTa, ModernBERT are descendants; sentence-embedding and dense-retrieval models (Sentence-BERT, ColBERT) inherit the bidirectional-attention + mask-prediction recipe. See <a href="../transformer-lab/#theory-map">Transformer §9</a>.</p>
                 </li>
                 <li class="lineage-card" data-family="transformer">
                   <span class="lineage-card__year">2018</span>
                   <h3 class="lineage-card__name">GPT (original)</h3>
                   <p class="lineage-card__who">Alec Radford, Karthik Narasimhan, Tim Salimans &amp; Ilya Sutskever (OpenAI).</p>
                   <p class="lineage-card__motivation"><strong>Motivation:</strong> same pre-train-then-fine-tune recipe as BERT, but <em>decoder-only</em> with a next-token-prediction objective.</p>
-                  <p class="lineage-card__influence"><strong>Influenced:</strong> GPT-2, GPT-3, Llama, Mistral, Claude, Gemini — every modern LLM is in this family. See <a href="../transformer-lab/#theory-archs">Transformer §8 no-peeking rule</a>.</p>
+                  <p class="lineage-card__influence"><strong>Influenced:</strong> <em>the canonical decoder-only transformer</em> — every modern LLM (GPT-2/3/4, Llama, Mistral, Claude, Gemini, DeepSeek) is in this family. See <a href="../transformer-lab/#theory-archs">Transformer §8 no-peeking rule</a>.</p>
+                </li>
+                <li class="lineage-card" data-family="transformer">
+                  <span class="lineage-card__year">2019</span>
+                  <h3 class="lineage-card__name">T5 — Text-to-Text Transfer Transformer</h3>
+                  <p class="lineage-card__who">Colin Raffel et al. (Google), "Exploring the Limits of Transfer Learning with a Unified Text-to-Text Transformer", JMLR 2020 (arXiv Oct 2019).</p>
+                  <p class="lineage-card__motivation"><strong>Motivation:</strong> cast every NLP task — translation, summarisation, classification, QA — as a text-to-text problem on the original encoder-decoder transformer. Single model, single loss, one architecture to rule them all.</p>
+                  <p class="lineage-card__influence"><strong>Influenced:</strong> <em>the canonical encoder-decoder transformer</em>. BART (Lewis et al., 2019) is the sibling; Whisper inherits the architecture for audio → text; instruction-tuning and seq2seq RLHF build on the text-to-text framing. See <a href="../transformer-lab/#theory-map">Transformer §9 families</a>.</p>
                 </li>
                 <li class="lineage-card" data-family="gen">
                   <span class="lineage-card__year">2020</span>
                   <h3 class="lineage-card__name">DDPM</h3>
                   <p class="lineage-card__who">Jonathan Ho, Ajay Jain &amp; Pieter Abbeel, "Denoising Diffusion Probabilistic Models".</p>
                   <p class="lineage-card__motivation"><strong>Motivation:</strong> refine Sohl-Dickstein et al. (2015) diffusion models by training the network to predict the noise directly — simple loss, beat GANs on image quality.</p>
-                  <p class="lineage-card__influence"><strong>Influenced:</strong> DDIM, classifier-free guidance, Stable Diffusion, DALL-E 2, video generators. The central recipe in <a href="../diffusion-lab/#theory-ddpm">Diffusion §4</a>.</p>
+                  <p class="lineage-card__influence"><strong>Influenced:</strong> <em>the canonical diffusion recipe</em>. DDIM (2020, deterministic sampling); classifier-free guidance (2021); <strong>Stable Diffusion</strong> (Rombach et al., 2022 — the canonical product, latent-space diffusion with a U-Net backbone); DALL-E 2; SDXL; video generators. See <a href="../diffusion-lab/#theory-ddpm">Diffusion §4</a>.</p>
                 </li>
                 <li class="lineage-card" data-family="transformer">
                   <span class="lineage-card__year">2020</span>
                   <h3 class="lineage-card__name">GPT-3 &amp; scaling laws</h3>
                   <p class="lineage-card__who">Tom Brown et al. (OpenAI); Kaplan et al. for the accompanying scaling-law paper.</p>
                   <p class="lineage-card__motivation"><strong>Motivation:</strong> test whether scaling up model + data + compute keeps improving the loss — and whether emergent abilities (few-shot in-context learning) appear at scale.</p>
-                  <p class="lineage-card__influence"><strong>Influenced:</strong> the entire "foundation model" framing; Chinchilla compute-optimal scaling (2022), Llama 2/3, the modern LLM arms race.</p>
+                  <p class="lineage-card__influence"><strong>Influenced:</strong> <em>the canonical foundation model</em> — triggered the whole "foundation-model" framing; Chinchilla compute-optimal scaling (2022), Llama 2/3, DeepSeek, the modern LLM arms race. Few-shot in-context learning as emergent ability was the key empirical surprise.</p>
+                </li>
+                <li class="lineage-card" data-family="transformer">
+                  <span class="lineage-card__year">2020</span>
+                  <h3 class="lineage-card__name">Vision Transformer (ViT)</h3>
+                  <p class="lineage-card__who">Alexey Dosovitskiy et al. (Google), "An Image is Worth 16x16 Words", ICLR 2021 (arXiv Oct 2020).</p>
+                  <p class="lineage-card__motivation"><strong>Motivation:</strong> test whether the transformer block — with <em>no</em> convolutional inductive bias — can match CNNs on image classification when pre-trained on enough data. Treat each image as a sequence of 16×16 patches, linearly projected into tokens.</p>
+                  <p class="lineage-card__influence"><strong>Influenced:</strong> <em>the canonical transformer for images</em>; beat ResNet on ImageNet given enough pre-training data. DeiT, Swin, DINO, CLIP's image tower, and modern multimodal models (Gemini, GPT-4V) all inherit the patches-as-tokens recipe. Key datum behind the "transformers win every modality given enough data" story.</p>
                 </li>
                 <li class="lineage-card" data-family="gen">
                   <span class="lineage-card__year">2021</span>
