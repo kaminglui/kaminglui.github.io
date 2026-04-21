@@ -157,10 +157,15 @@ initialising at different μ₀). Remaining:
   Remaining: interactive MCTS-on-1D-chain demo so readers can compare MCTS's
   convergence to value iteration on the chain they already saw, plus a
   value-vs-simulation-count sweep across c values. Those are their own follow-up.
-- **Bayesian coin-flip interactive** — the chip is there but there's no demo.
-  Pairs with the Beta-distribution demo queued under Probability.
-- **Thompson sampling interactive** — pull virtual bandit arms, watch each arm's
-  Beta(α, β) posterior update. Same Beta primitive as above.
+- **Bayesian coin-flip interactive** — shipped earlier in RL Lab §1 theory panel
+  (prior + likelihood + posterior over bias p with Beta-Bernoulli updating).
+- **Thompson sampling interactive** — shipped in RL Lab §1 theory panel as a new
+  three-arm Beta-Bernoulli demo. Three arm tiles each render their live
+  Beta(α, β) posterior PDF with a ground-truth dashed line and the last Thompson
+  sample as a red dot; controls for true p per arm, Step / Run 50 / Run 500 /
+  Reset / Hide true p; live counts, reward, regret vs best arm, and % pulls on
+  the best arm. Uses the new Marsaglia–Tsang Gamma sampler in `beta.js`
+  (`sampleGamma`, `sampleBeta`) with 5 additional unit tests.
 
 ## Fourier Lab — 2D extension
 

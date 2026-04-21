@@ -338,9 +338,66 @@
                   Press <em>+ Heads</em> / <em>+ Tails</em> to add one flip at a time. <em>Flip 10× (p = 0.7)</em>
                   simulates draws from a hidden biased coin — watch the posterior narrow around 0.7 as evidence
                   accumulates. Tweak the prior α, β to see how strong priors slow (or bias) learning; α = β = 1
-                  is a flat prior (same as no prior). This <em>same</em> Beta-Bernoulli update is what Thompson
-                  sampling runs per-arm above.
+                  is a flat prior (same as no prior).
                 </p>
+
+                <h4 style="margin-top:0.9rem;">Demo — Thompson sampling on three Bernoulli arms</h4>
+                <p class="rl-theory__kid">
+                  <strong>Kid version.</strong> Three slot machines, each paying <em>1 candy</em> or
+                  <em>nothing</em>, with unknown-to-you win rates. Every round, the agent imagines a possible
+                  win rate for each machine by drawing one number from its Beta belief, then pulls whichever
+                  machine its imagination made look best. A win bumps that arm's α; a loss bumps its β. Over
+                  time the beliefs sharpen around the true rates and the agent keeps playing the best arm
+                  <em>while also</em> occasionally exploring the others (because posteriors still have some
+                  spread).
+                </p>
+                <p>
+                  Three arms with hidden Bernoulli rates p<sub>A</sub>, p<sub>B</sub>, p<sub>C</sub>. The
+                  agent keeps a Beta(α<sub>i</sub>, β<sub>i</sub>) posterior per arm, starting from the
+                  uniform Beta(1, 1). At each step it draws θ<sub>i</sub> ~ Beta(α<sub>i</sub>, β<sub>i</sub>),
+                  pulls <span data-katex="a = \arg\max_i \theta_i"></span>, observes r ∈ {0, 1}, and updates
+                  α<sub>a</sub> ← α<sub>a</sub> + r, β<sub>a</sub> ← β<sub>a</sub> + (1 − r). Same Beta-Bernoulli
+                  arithmetic as the coin demo, now per arm.
+                </p>
+                <div class="beta-bandit" aria-live="polite">
+                  <div class="beta-bandit__arms" data-beta-bandit-arms></div>
+                  <div class="beta-bandit__controls">
+                    <div class="beta-bandit__sliders" data-beta-bandit-sliders>
+                      <div>
+                        <label for="bb-pA">true p<sub>A</sub> <span class="rl-controls__value" id="bb-pA-val">0.30</span></label>
+                        <input id="bb-pA" type="range" min="0.05" max="0.95" step="0.01" value="0.3" />
+                      </div>
+                      <div>
+                        <label for="bb-pB">true p<sub>B</sub> <span class="rl-controls__value" id="bb-pB-val">0.70</span></label>
+                        <input id="bb-pB" type="range" min="0.05" max="0.95" step="0.01" value="0.7" />
+                      </div>
+                      <div>
+                        <label for="bb-pC">true p<sub>C</sub> <span class="rl-controls__value" id="bb-pC-val">0.50</span></label>
+                        <input id="bb-pC" type="range" min="0.05" max="0.95" step="0.01" value="0.5" />
+                      </div>
+                    </div>
+                    <div class="rl-controls__actions">
+                      <button type="button" id="bb-step">Step</button>
+                      <button type="button" id="bb-run" class="is-primary">Run 50</button>
+                      <button type="button" id="bb-run-big">Run 500</button>
+                      <button type="button" id="bb-reset">Reset</button>
+                      <button type="button" id="bb-reveal">Hide true p</button>
+                    </div>
+                    <dl class="rl-bayes__stats">
+                      <dt>Steps</dt><dd id="bb-t">0</dd>
+                      <dt>Total reward</dt><dd id="bb-reward">0</dd>
+                      <dt>Regret</dt><dd id="bb-regret" class="is-accent">0.00</dd>
+                      <dt>% pulls on best arm</dt><dd id="bb-optimal">—</dd>
+                    </dl>
+                    <p class="ml-hint">
+                      Start with true p = (0.3, 0.7, 0.5). Run 500 — posterior B should sharpen around 0.7
+                      and draw most pulls; A's posterior stays wide because the agent stops sampling it
+                      once it looks clearly worst. Now slide p<sub>A</sub> up to 0.65 mid-run — the agent
+                      has to re-explore to notice its beliefs are stale. Turn arms nearly equal (all 0.5)
+                      and regret grows slowly; make one dominant (0.8 vs 0.2 vs 0.2) and it's pinned fast.
+                    </p>
+                  </div>
+                </div>
 
                 <p>
                   Why bandits matter for full Reinforcement Learning: every Reinforcement Learning algorithm still has to solve <em>which action next?</em>.

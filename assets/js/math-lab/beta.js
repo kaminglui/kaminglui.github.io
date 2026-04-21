@@ -71,3 +71,44 @@ export function betaModeOrMean(alpha, beta) {
   }
   return betaMean(alpha, beta);
 }
+
+// Box-Muller Gaussian sampler. Kept local so beta.js stays self-contained
+// and can be imported by both math-lab and rl-lab without crossing labs.
+function sampleStandardNormal() {
+  let u = 0;
+  let v = 0;
+  while (u === 0) u = Math.random();
+  while (v === 0) v = Math.random();
+  return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+}
+
+// Marsaglia–Tsang (2000) Gamma(shape, 1) sampler. Accepts any shape > 0 via
+// the usual "α < 1 → α + 1 with Uniform power-down" recursion.
+export function sampleGamma(shape) {
+  if (shape < 1) {
+    return sampleGamma(shape + 1) * Math.pow(Math.random(), 1 / shape);
+  }
+  const d = shape - 1 / 3;
+  const c = 1 / Math.sqrt(9 * d);
+  while (true) {
+    let x;
+    let v;
+    do {
+      x = sampleStandardNormal();
+      v = 1 + c * x;
+    } while (v <= 0);
+    v = v * v * v;
+    const u = Math.random();
+    if (u < 1 - 0.0331 * x * x * x * x) return d * v;
+    if (Math.log(u) < 0.5 * x * x + d * (1 - v + Math.log(v))) return d * v;
+  }
+}
+
+// Beta(α, β) sampler via two independent Gammas. Used by Thompson-sampling
+// bandits: draw one θ_i per arm, pull argmax. Always returns a value in
+// the open interval (0, 1) given finite positive α, β.
+export function sampleBeta(alpha, beta) {
+  const x = sampleGamma(alpha);
+  const y = sampleGamma(beta);
+  return x / (x + y);
+}

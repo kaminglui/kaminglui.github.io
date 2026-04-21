@@ -1,7 +1,10 @@
 /* Reinforcement Learning Lab — multi-armed bandit simulator. Three strategies (ε-greedy, UCB1,
    Thompson) share one update loop; the page renders the arms, a running
    chart of rolling reward / cumulative regret / optimal-arm rate, and a
-   live stats sidebar. Pure vanilla JS, no dependencies. */
+   live stats sidebar. Plus a Bayesian coin demo (§1) and a three-arm
+   Beta-Bernoulli Thompson demo using the Beta primitives. */
+
+import { betaPDF, betaMean, sampleBeta } from './math-lab/beta.js';
 
 const CHART_PADDING = { top: 16, right: 16, bottom: 28, left: 44 };
 const ROLLING_WINDOW = 50;
@@ -1415,4 +1418,269 @@ if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', initBayes, { once: true });
 } else {
   initBayes();
+}
+
+/* ========================================================================
+   Beta-Bernoulli Thompson bandit (§1). Three arms with hidden Bernoulli
+   rates; the agent keeps Beta(α, β) posteriors starting at Beta(1, 1);
+   each step it draws θ_i ~ Beta per arm, pulls argmax, observes 0/1,
+   and updates pseudocounts. Uses beta.js primitives. */
+
+const BB_COLORS = ['#3b82f6', '#f97316', '#22c55e'];
+const BB_ARM_LABELS = ['A', 'B', 'C'];
+
+function bbHexToRgba(hex, alpha) {
+  const n = parseInt(hex.slice(1), 16);
+  return `rgba(${(n >> 16) & 0xff},${(n >> 8) & 0xff},${n & 0xff},${alpha})`;
+}
+
+function bbRenderArmCanvas(canvas, alpha, beta, truth, lastSample, color, showTruth) {
+  const W = canvas.width;
+  const H = canvas.height;
+  const ctx = canvas.getContext('2d');
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.clearRect(0, 0, W, H);
+
+  const PAD_L = 18;
+  const PAD_R = 18;
+  const PAD_T = 6;
+  const PAD_B = 14;
+  const xToPx = (x) => PAD_L + x * (W - PAD_L - PAD_R);
+
+  const N = 80;
+  let maxY = 0;
+  const values = new Array(N + 1);
+  for (let i = 0; i <= N; i++) {
+    const v = betaPDF(i / N, alpha, beta);
+    values[i] = v;
+    if (v > maxY) maxY = v;
+  }
+  const peak = 1.15 * (maxY || 1);
+  const yToPx = (y) => H - PAD_B - (Math.min(y, peak) / peak) * (H - PAD_T - PAD_B);
+
+  // baseline + axis labels
+  ctx.strokeStyle = 'rgba(148, 163, 184, 0.4)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(PAD_L, H - PAD_B);
+  ctx.lineTo(W - PAD_R, H - PAD_B);
+  ctx.stroke();
+  ctx.fillStyle = '#64748b';
+  ctx.font = '9px Inter, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('0', xToPx(0), H - 2);
+  ctx.fillText('0.5', xToPx(0.5), H - 2);
+  ctx.fillText('1', xToPx(1), H - 2);
+
+  // filled PDF
+  ctx.beginPath();
+  ctx.moveTo(xToPx(0), H - PAD_B);
+  for (let i = 0; i <= N; i++) ctx.lineTo(xToPx(i / N), yToPx(values[i]));
+  ctx.lineTo(xToPx(1), H - PAD_B);
+  ctx.closePath();
+  ctx.fillStyle = bbHexToRgba(color, 0.2);
+  ctx.fill();
+
+  // curve stroke
+  ctx.beginPath();
+  for (let i = 0; i <= N; i++) {
+    const px = xToPx(i / N);
+    const py = yToPx(values[i]);
+    if (i === 0) ctx.moveTo(px, py);
+    else ctx.lineTo(px, py);
+  }
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 1.6;
+  ctx.stroke();
+
+  // ground-truth tick (green dashed)
+  if (showTruth && Number.isFinite(truth)) {
+    ctx.strokeStyle = 'rgba(22, 163, 74, 0.9)';
+    ctx.setLineDash([4, 3]);
+    ctx.beginPath();
+    ctx.moveTo(xToPx(truth), H - PAD_B);
+    ctx.lineTo(xToPx(truth), PAD_T);
+    ctx.stroke();
+    ctx.setLineDash([]);
+  }
+
+  // last sampled θ (red dot + line)
+  if (Number.isFinite(lastSample)) {
+    ctx.strokeStyle = 'rgba(239, 68, 68, 0.85)';
+    ctx.beginPath();
+    ctx.moveTo(xToPx(lastSample), H - PAD_B);
+    ctx.lineTo(xToPx(lastSample), PAD_T + 4);
+    ctx.stroke();
+    ctx.fillStyle = '#ef4444';
+    ctx.beginPath();
+    ctx.arc(xToPx(lastSample), PAD_T + 4, 3, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
+function initBetaBandit() {
+  const armsContainer = document.querySelector('[data-beta-bandit-arms]');
+  if (!armsContainer) return;
+
+  const state = {
+    alpha: [1, 1, 1],
+    beta: [1, 1, 1],
+    lastSample: [NaN, NaN, NaN],
+    lastPulled: -1,
+    t: 0,
+    reward: 0,
+    optimalPulls: 0,
+    revealed: true,
+    running: false,
+    raf: null
+  };
+
+  const armTiles = BB_ARM_LABELS.map((letter, i) => {
+    const tile = document.createElement('div');
+    tile.className = 'beta-bandit__arm';
+    tile.innerHTML = `
+      <header>
+        <span class="beta-bandit__label" style="color:${BB_COLORS[i]}">Arm ${letter}</span>
+        <span class="beta-bandit__truth" data-truth="${i}"></span>
+      </header>
+      <canvas width="240" height="90"></canvas>
+      <dl class="beta-bandit__stats">
+        <dt>α</dt><dd data-alpha="${i}">1</dd>
+        <dt>β</dt><dd data-beta="${i}">1</dd>
+        <dt>pulls</dt><dd data-pulls="${i}">0</dd>
+        <dt>E[p]</dt><dd data-mean="${i}">0.500</dd>
+      </dl>
+    `;
+    armsContainer.appendChild(tile);
+    return tile;
+  });
+
+  const dom = {
+    pSliders: [0, 1, 2].map((i) => document.getElementById(`bb-p${BB_ARM_LABELS[i]}`)),
+    pVals:    [0, 1, 2].map((i) => document.getElementById(`bb-p${BB_ARM_LABELS[i]}-val`)),
+    tOut:       document.getElementById('bb-t'),
+    rewardOut:  document.getElementById('bb-reward'),
+    regretOut:  document.getElementById('bb-regret'),
+    optimalOut: document.getElementById('bb-optimal'),
+    stepBtn:    document.getElementById('bb-step'),
+    runBtn:     document.getElementById('bb-run'),
+    runBigBtn:  document.getElementById('bb-run-big'),
+    resetBtn:   document.getElementById('bb-reset'),
+    revealBtn:  document.getElementById('bb-reveal')
+  };
+
+  const truePs = () => dom.pSliders.map((s) => parseFloat(s.value));
+
+  function bestArm(p) {
+    let best = 0;
+    for (let i = 1; i < 3; i++) if (p[i] > p[best]) best = i;
+    return best;
+  }
+
+  function stepOnce() {
+    const p = truePs();
+    const samples = [0, 1, 2].map((i) => sampleBeta(state.alpha[i], state.beta[i]));
+    state.lastSample = samples;
+    let action = 0;
+    for (let i = 1; i < 3; i++) if (samples[i] > samples[action]) action = i;
+    state.lastPulled = action;
+    const reward = Math.random() < p[action] ? 1 : 0;
+    state.alpha[action] += reward;
+    state.beta[action] += 1 - reward;
+    state.t += 1;
+    state.reward += reward;
+    if (action === bestArm(p)) state.optimalPulls += 1;
+  }
+
+  function stopRun() {
+    state.running = false;
+    if (state.raf) {
+      cancelAnimationFrame(state.raf);
+      state.raf = null;
+    }
+  }
+
+  function render() {
+    const p = truePs();
+    armTiles.forEach((tile, i) => {
+      const canvas = tile.querySelector('canvas');
+      bbRenderArmCanvas(
+        canvas,
+        state.alpha[i],
+        state.beta[i],
+        p[i],
+        state.lastSample[i],
+        BB_COLORS[i],
+        state.revealed
+      );
+      tile.querySelector(`[data-alpha="${i}"]`).textContent = String(state.alpha[i]);
+      tile.querySelector(`[data-beta="${i}"]`).textContent = String(state.beta[i]);
+      const pulls = state.alpha[i] + state.beta[i] - 2;
+      tile.querySelector(`[data-pulls="${i}"]`).textContent = String(pulls);
+      tile.querySelector(`[data-mean="${i}"]`).textContent = betaMean(state.alpha[i], state.beta[i]).toFixed(3);
+      const truthEl = tile.querySelector(`[data-truth="${i}"]`);
+      truthEl.textContent = state.revealed ? `true p = ${p[i].toFixed(2)}` : '';
+      tile.classList.toggle('is-pulled', state.lastPulled === i);
+    });
+
+    dom.pSliders.forEach((s, i) => {
+      dom.pVals[i].textContent = parseFloat(s.value).toFixed(2);
+    });
+
+    dom.tOut.textContent = String(state.t);
+    dom.rewardOut.textContent = String(state.reward);
+    const bestP = p[bestArm(p)];
+    const regret = bestP * state.t - state.reward;
+    dom.regretOut.textContent = regret.toFixed(2);
+    dom.optimalOut.textContent = state.t > 0 ? `${((state.optimalPulls / state.t) * 100).toFixed(0)}%` : '—';
+  }
+
+  function reset() {
+    state.alpha = [1, 1, 1];
+    state.beta = [1, 1, 1];
+    state.lastSample = [NaN, NaN, NaN];
+    state.lastPulled = -1;
+    state.t = 0;
+    state.reward = 0;
+    state.optimalPulls = 0;
+    stopRun();
+  }
+
+  function runN(total) {
+    stopRun();
+    let remaining = total;
+    state.running = true;
+    const tick = () => {
+      if (!state.running) return;
+      const k = Math.min(6, remaining);
+      for (let i = 0; i < k; i++) stepOnce();
+      remaining -= k;
+      render();
+      if (remaining > 0) {
+        state.raf = requestAnimationFrame(tick);
+      } else {
+        stopRun();
+      }
+    };
+    state.raf = requestAnimationFrame(tick);
+  }
+
+  dom.pSliders.forEach((s) => s.addEventListener('input', render));
+  dom.stepBtn.addEventListener('click', () => { stopRun(); stepOnce(); render(); });
+  dom.runBtn.addEventListener('click', () => runN(50));
+  dom.runBigBtn.addEventListener('click', () => runN(500));
+  dom.resetBtn.addEventListener('click', () => { reset(); render(); });
+  dom.revealBtn.addEventListener('click', () => {
+    state.revealed = !state.revealed;
+    dom.revealBtn.textContent = state.revealed ? 'Hide true p' : 'Reveal true p';
+    render();
+  });
+
+  render();
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initBetaBandit, { once: true });
+} else {
+  initBetaBandit();
 }

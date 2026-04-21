@@ -6,7 +6,9 @@ import {
   betaMean,
   betaVariance,
   betaPosterior,
-  betaModeOrMean
+  betaModeOrMean,
+  sampleGamma,
+  sampleBeta
 } from '../beta.js';
 
 describe('logGamma', () => {
@@ -100,5 +102,67 @@ describe('betaModeOrMean', () => {
   it('falls back to the mean for the uniform / U-shaped regime', () => {
     expect(betaModeOrMean(1, 1)).toBeCloseTo(0.5, 12);
     expect(betaModeOrMean(0.5, 0.5)).toBeCloseTo(0.5, 12);
+  });
+});
+
+describe('sampleGamma', () => {
+  it('returns positive samples with empirical mean ≈ shape', () => {
+    // Gamma(shape, 1) has mean = shape. 5000 samples → ~1% stderr.
+    const N = 5000;
+    let sum = 0;
+    for (let i = 0; i < N; i++) {
+      const x = sampleGamma(4);
+      expect(x).toBeGreaterThan(0);
+      sum += x;
+    }
+    expect(sum / N).toBeGreaterThan(3.6);
+    expect(sum / N).toBeLessThan(4.4);
+  });
+
+  it('handles the α < 1 recursion branch', () => {
+    // Shape 0.5 mean = 0.5; variance = 0.5; check mean is plausible.
+    const N = 5000;
+    let sum = 0;
+    for (let i = 0; i < N; i++) sum += sampleGamma(0.5);
+    expect(sum / N).toBeGreaterThan(0.4);
+    expect(sum / N).toBeLessThan(0.6);
+  });
+});
+
+describe('sampleBeta', () => {
+  it('returns values in (0, 1)', () => {
+    for (let i = 0; i < 500; i++) {
+      const v = sampleBeta(3, 5);
+      expect(v).toBeGreaterThan(0);
+      expect(v).toBeLessThan(1);
+    }
+  });
+
+  it('has empirical mean matching α / (α + β) for Beta(3, 5)', () => {
+    // True mean = 3/8 = 0.375; SE over 5000 samples ≈ 0.005.
+    const N = 5000;
+    let sum = 0;
+    for (let i = 0; i < N; i++) sum += sampleBeta(3, 5);
+    expect(sum / N).toBeCloseTo(0.375, 1);
+  });
+
+  it('matches argmax of true p on a 3-arm bandit at the tails', () => {
+    // When posteriors are very concentrated (large α, β), Thompson sampling
+    // picks near the MAP — this is the key convergence property that makes
+    // Thompson's regret O(log n).
+    const posteriors = [
+      { a: 200, b: 800 },   // mean = 0.20
+      { a: 700, b: 300 },   // mean = 0.70  (best)
+      { a: 400, b: 600 }    // mean = 0.40
+    ];
+    let wins = [0, 0, 0];
+    for (let i = 0; i < 1000; i++) {
+      const draws = posteriors.map((p) => sampleBeta(p.a, p.b));
+      let best = 0;
+      for (let k = 1; k < 3; k++) if (draws[k] > draws[best]) best = k;
+      wins[best]++;
+    }
+    // Middle arm should dominate — roughly 100% at these concentrations.
+    expect(wins[1]).toBeGreaterThan(900);
   });
 });

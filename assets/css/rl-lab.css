@@ -889,3 +889,91 @@
   font-size: 0.72rem;
   color: var(--color-muted);
 }
+
+/* Beta-Bernoulli Thompson bandit (§1). Three arms with live Beta posteriors. */
+.beta-bandit {
+  margin: 0.8rem 0 0;
+}
+.beta-bandit__arms {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.6rem;
+}
+@media (max-width: 640px) {
+  .beta-bandit__arms { grid-template-columns: 1fr; }
+}
+.beta-bandit__arm {
+  padding: 0.55rem 0.7rem 0.6rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-sm);
+  transition: border-color 140ms ease, box-shadow 140ms ease;
+}
+.beta-bandit__arm.is-pulled {
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 2px var(--color-accent-muted);
+}
+.beta-bandit__arm header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.4rem;
+  margin-bottom: 0.3rem;
+}
+.beta-bandit__label {
+  font-weight: 700;
+  font-size: 0.9rem;
+}
+.beta-bandit__truth {
+  font-size: 0.72rem;
+  color: var(--color-muted);
+  font-family: var(--font-mono);
+}
+.beta-bandit__arm canvas {
+  width: 100%;
+  aspect-ratio: 240 / 90;
+  display: block;
+  background: var(--color-bg);
+  border-radius: var(--radius-sm);
+}
+.beta-bandit__stats {
+  display: grid;
+  grid-template-columns: auto 1fr auto 1fr;
+  column-gap: 0.5rem;
+  row-gap: 0.1rem;
+  margin: 0.4rem 0 0;
+  font-size: 0.76rem;
+}
+.beta-bandit__stats dt {
+  color: var(--color-muted);
+  font-weight: 500;
+}
+.beta-bandit__stats dd {
+  margin: 0;
+  font-weight: 700;
+  font-family: var(--font-mono);
+}
+.beta-bandit__controls {
+  margin-top: 0.9rem;
+  display: grid;
+  gap: 0.7rem;
+}
+.beta-bandit__sliders {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.6rem;
+}
+@media (max-width: 640px) {
+  .beta-bandit__sliders { grid-template-columns: 1fr; }
+}
+.beta-bandit__sliders label {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.78rem;
+  color: var(--color-muted);
+  margin-bottom: 0.2rem;
+}
+.beta-bandit__sliders input[type='range'] {
+  width: 100%;
+}
