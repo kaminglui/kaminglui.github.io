@@ -453,6 +453,10 @@
 }
 @media (max-width: 860px) { .rl-darts { grid-template-columns: 1fr; } }
 .rl-darts__canvas-wrap {
+  /* Cap so the square canvas doesn't dominate the page at wide viewports —
+     a whole-page dart square was disproportionate next to the 320px
+     stats sidebar. */
+  max-width: 420px;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
   background: var(--color-surface);

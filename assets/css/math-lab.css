@@ -153,6 +153,13 @@
 }
 .math-figures .math-figure { margin: 0; max-width: none; }
 
+/* For diagrams wider than they are tall (e.g. the distribution family
+   tree) the default 380px cap makes labels cramped. Opt in via
+   .math-figure--wide. */
+.math-figure--wide {
+  max-width: min(640px, 100%);
+}
+
 /* §10 clustering-map family colours. */
 .rl-cluster[data-family='opt']    { --family-accent: #3b82f6; }
 .rl-cluster[data-family='linalg'] { --family-accent: #a855f7; }

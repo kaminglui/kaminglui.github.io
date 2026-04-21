@@ -23,9 +23,30 @@ Phase 1 shipped as §7 (common distributions, family tree, LLN + CLT,
 heavy-tail caveat). Remaining:
 - **Interactive PDF/PMF visualiser** — pick a family, slide its parameters, overlay the
   density against samples (upgrade the current static figures).
-- **More families** — Gamma/Beta, Dirichlet, Student-t, Cauchy (as a CLT counter-example),
-  Log-normal, Chi-squared. Show the "Beta is the conjugate prior to Bernoulli" pipeline
-  and tie back to Bayesian coin flip in RL Lab.
+- **Beta distribution** — priority, because the site already references it implicitly
+  (§7's family tree footnote says `Beta(1,1) = Uniform[0,1]`, and RL Lab's Bayesian
+  coin-flip + Thompson-sampling chips need the Beta posterior to make sense but never
+  show it). Graphs: PDF grid across canonical (α, β) regimes — (1,1) uniform, (<1,<1)
+  bathtub, (>1,>1) bell, asymmetric. Simple example: start from a Beta(1,1) prior,
+  observe k heads in n flips, watch the posterior Beta(1+k, 1+n−k) sharpen live as
+  the user adds flips. Cross-link to RL Lab's Thompson-sampling section once it
+  lands.
+- **Gamma distribution** — secondary. Closes the Exponential loop (Gamma(1, λ) =
+  Exp(λ)) and is the wait-time-for-k-Poisson-events distribution. Graph: PDF across
+  three shape values k=1, 3, 10 with fixed rate; overlay showing how it approaches
+  a Gaussian as k grows (a second CLT moment). Simple example: "how long until the
+  third click on an ad banner at rate λ=0.5/sec" — expected value kλ⁻¹, density
+  shape matches intuition.
+- **Dirichlet distribution** — secondary. Multivariate Beta; prior over categorical
+  distributions; shows up in topic models and in RL as priors over discrete action
+  probabilities. Graph: 2-simplex heatmap of Dir(α, α, α) density for α ∈ {0.5, 1,
+  3} — concentrating to corners, uniform, concentrating to centroid. Simple example:
+  rolling a 3-sided die with unknown probabilities; prior Dir(1,1,1), observe counts
+  (n₁, n₂, n₃), posterior Dir(1+n₁, 1+n₂, 1+n₃), watch the density lobe migrate on
+  the simplex.
+- **Defer-list** — Student-t, Cauchy (as the CLT counter-example already named in
+  §7's heavy-tail caveat), Log-normal, Chi-squared. Useful but nothing else on the
+  site currently refers to them, so not priority.
 - **Modes of convergence** — in distribution / in probability / almost surely / in L²;
   which implies which, with a worked non-example for each direction.
 - **Convergence/divergence tests** — Borel-Cantelli, dominated/monotone convergence,
@@ -118,6 +139,27 @@ initialising at different μ₀). Remaining:
 - **Trust-region methods** — Newton with line search, L-BFGS visualised as contours.
 - **Batch-size vs noise trade-off** — if we simulate mini-batches, show how batch size
   inversely scales SGD noise.
+
+## RL Lab — extensions
+
+- **Monte Carlo Tree Search (MCTS).** Not covered today. The current RL Lab tours
+  the learning-from-experience line (bandits → MDP → DP → MC/TD → policy gradient).
+  MCTS sits on the adjacent "planning with a known or learned model" axis — the
+  AlphaGo / AlphaZero recipe — so it's a real new section, not a drive-by. Cover:
+  the four-stage loop (select via UCT / expand / rollout / backup), the exploration
+  term c·√(ln N / n), simulation-budget trade-offs, and how MCTS combines with a
+  value + policy network in AlphaZero. Graphs: an animated tree that grows across
+  four iteration snapshots, showing N/W/Q per node and the UCT score driving
+  selection; a comparison plot of value convergence vs simulation count for three
+  c values. Simple example: **MCTS on the same 1D chain demo** that RL Lab already
+  uses for value iteration — lets the reader see MCTS arrive at the same policy
+  without being given the transition model, and quantifies the sample cost of that
+  freedom. Place as a new article between §7 policy gradients and §8 "Same shape,
+  different targets".
+- **Bayesian coin-flip interactive** — the chip is there but there's no demo.
+  Pairs with the Beta-distribution demo queued under Probability.
+- **Thompson sampling interactive** — pull virtual bandit arms, watch each arm's
+  Beta(α, β) posterior update. Same Beta primitive as above.
 
 ## Fourier Lab — 2D extension
 
