@@ -4,6 +4,7 @@ import { setupNav } from '../nav.js';
 import { shouldRenderFooter } from '../config/layout.js';
 import { initThemeControls } from './theme.js';
 import { resolveRootPrefix } from './rootPrefix.js';
+import { initSideNav } from '../side-nav.js';
 
 function setHeaderVars(header) {
   if (!header || !header.getBoundingClientRect) return;
@@ -107,6 +108,9 @@ function initSiteShell(pageId = 'home', opts = {}) {
   if (shouldRenderFooter(resolvedId)) {
     renderSiteFooter({ pageId: resolvedId, rootPrefix });
   }
+  // Auto-render the side-nav timeline if the page has multiple section
+  // anchors. No-op on pages without them (e.g. home, circuit-lab).
+  initSideNav();
 }
 
 export { initSiteShell, renderSiteFooter, renderSiteHeader };

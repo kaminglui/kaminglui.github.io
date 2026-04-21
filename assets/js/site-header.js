@@ -1,4 +1,4 @@
-import { LOGO_TEXT, NAV_LABS, NAV_SECTIONS } from './config/navigation.js';
+import { LOGO_TEXT, NAV_LABS } from './config/navigation.js';
 import { computeRootPrefix, resolveRootPrefix } from './layout/rootPrefix.js';
 import { escapeHtml, escapeUrl } from './layout/escape.js';
 
@@ -17,15 +17,6 @@ function detectCurrentLabId(pathname = '') {
   );
 
   return match?.id ?? null;
-}
-
-function buildSectionLinks({ rootPrefix, useLocalAnchors }) {
-  return NAV_SECTIONS.map(({ id, label }) => {
-    const href = useLocalAnchors
-      ? `#${id}`
-      : `${rootPrefix}index.html#${id}`;
-    return `<li><a href="${escapeUrl(href)}">${escapeHtml(label)}</a></li>`;
-  }).join('');
 }
 
 function buildLabLinks({ rootPrefix, currentLabId }) {
@@ -83,7 +74,6 @@ function renderSiteHeader(options = {}) {
     ? '#hero'
     : `${rootPrefix}index.html#hero`;
 
-  const sections = buildSectionLinks({ rootPrefix, useLocalAnchors });
   const labs = buildLabLinks({ rootPrefix, currentLabId });
 
   const editToggleMarkup = shouldRenderEditToggle
@@ -101,17 +91,6 @@ function renderSiteHeader(options = {}) {
           <span class="sr-only">Toggle navigation</span>
         </button>
         <ul class="nav-links" id="primary-navigation" data-visible="false">
-          <li class="nav-item nav-item--dropdown">
-            <button class="nav-dropdown-toggle nav-pill" type="button" aria-expanded="false" aria-controls="section-menu">
-              Sections
-              <svg class="nav-dropdown__icon" aria-hidden="true" focusable="false" viewBox="0 0 12 12">
-                <path d="M2.47 4.47a.75.75 0 0 1 1.06 0L6 6.94l2.47-2.47a.75.75 0 0 1 1.06 1.06l-3 3a.75.75 0 0 1-1.06 0l-3-3a.75.75 0 0 1 0-1.06Z" />
-              </svg>
-            </button>
-            <ul class="nav-dropdown-menu" id="section-menu" hidden>
-              ${sections}
-            </ul>
-          </li>
           <li class="nav-item nav-item--dropdown">
             <button class="nav-dropdown-toggle nav-pill" type="button" aria-expanded="false" aria-controls="labs-menu">
               Labs
@@ -144,7 +123,6 @@ function renderSiteHeader(options = {}) {
 
 export {
   NAV_LABS,
-  NAV_SECTIONS,
   computeRootPrefix,
   renderSiteHeader
 };

@@ -29,9 +29,11 @@ describe('main layout header/footer', () => {
     expect(header).not.toBeNull();
     expect(header?.querySelector('.logo')?.getAttribute('href')).toBe('#hero');
 
-    const sectionLinks = Array.from(header?.querySelectorAll('#section-menu a') ?? []);
-    expect(sectionLinks.length).toBeGreaterThan(0);
-    expect(sectionLinks.every((link) => link.getAttribute('href')?.startsWith('#'))).toBe(true);
+    // The legacy "Sections" dropdown was removed — only the Labs dropdown
+    // remains in the primary nav. Per-page section navigation is handled
+    // by the side-nav module instead.
+    expect(header?.querySelector('#section-menu')).toBeNull();
+    expect(header?.querySelector('#labs-menu')).not.toBeNull();
     expect(header?.querySelector('.edit-toggle')).not.toBeNull();
   });
 
@@ -39,9 +41,6 @@ describe('main layout header/footer', () => {
     window.history.replaceState({}, '', '/pages/transformer-lab/');
     const { initMainLayout } = await import('../mainLayout.js');
     initMainLayout('transformer-lab');
-
-    const sectionLink = document.querySelector('#section-menu a');
-    expect(sectionLink?.getAttribute('href')).toBe('../../index.html#about');
 
     const activeLab = Array.from(document.querySelectorAll('#labs-menu a')).find((link) =>
       link.textContent?.includes('Transformer Lab')
