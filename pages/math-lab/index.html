@@ -1177,6 +1177,81 @@
                   </div>
                 </div>
 
+                <h4>Multivariate — the Dirichlet on a 3-sided die</h4>
+                <p class="rl-theory__kid">
+                  <strong>Kid version.</strong> A coin has two sides; a die has many. If the unknown thing
+                  is a set of probabilities (p<sub>A</sub>, p<sub>B</sub>, p<sub>C</sub>) that sum to 1, the
+                  natural conjugate prior is the <em>Dirichlet</em> — the multivariate Beta. Observe a bunch
+                  of rolls, tally counts, add them to the α vector, and you have the posterior. Same
+                  pseudocount arithmetic; one more dimension.
+                </p>
+                <p>
+                  For K outcomes, the Dirichlet is a density on the (K−1)-simplex with parameter vector
+                  α = (α<sub>1</sub>, …, α<sub>K</sub>):
+                </p>
+                <div class="rl-equation" data-katex="p(\boldsymbol{\theta} \mid \boldsymbol{\alpha}) = \frac{\Gamma\!\left(\sum_k \alpha_k\right)}{\prod_k \Gamma(\alpha_k)}\; \prod_{k=1}^{K} \theta_k^{\alpha_k - 1}" data-katex-display></div>
+                <p>
+                  After observing counts <span data-katex="(n_1, \dots, n_K)"></span> from a Categorical
+                  likelihood, the posterior is Dirichlet(α<sub>1</sub> + n<sub>1</sub>, …, α<sub>K</sub> + n<sub>K</sub>). Below,
+                  the simplex is drawn as a triangle whose three corners are the deterministic
+                  outcomes "always A", "always B", "always C". Brighter = more posterior mass. Click the
+                  buttons to log rolls and watch the density lobe migrate toward whichever corner the
+                  evidence favours. A symmetric prior α<sub>0</sub> &lt; 1 concentrates mass at the corners
+                  (the data "picks a winner"); α<sub>0</sub> = 1 is uniform; α<sub>0</sub> &gt; 1 concentrates
+                  mass at the centre (the data "believes it's fair").
+                </p>
+
+                <div class="dirichlet-demo">
+                  <div class="rl-controls">
+                    <div class="rl-controls__row">
+                      <div class="rl-controls__group" style="min-width: 220px;">
+                        <label for="dirichlet-alpha0">symmetric prior α<sub>0</sub> (all three outcomes) <span class="rl-controls__value" id="dirichlet-alpha0-value">1.0</span></label>
+                        <input id="dirichlet-alpha0" type="range" min="0.3" max="8" step="0.1" value="1" />
+                      </div>
+                    </div>
+                  </div>
+                  <div class="rl-stage">
+                    <div>
+                      <div class="math-canvas-wrapper dirichlet-demo__canvas-wrap">
+                        <canvas id="dirichlet-canvas" width="300" height="260" aria-label="Dirichlet posterior density on the 2-simplex"></canvas>
+                      </div>
+                      <p class="math-legend" aria-hidden="true">
+                        <span><span class="math-legend__swatch" style="background:#3b82f6"></span>A corner</span>
+                        <span><span class="math-legend__swatch" style="background:#f97316"></span>B corner</span>
+                        <span><span class="math-legend__swatch" style="background:#22c55e"></span>C corner</span>
+                        <span>Brighter = higher posterior density. Red dot marks the posterior mean.</span>
+                      </p>
+                    </div>
+                    <aside class="rl-sidebar" aria-label="Dirichlet posterior stats" aria-live="polite">
+                      <h3>Log a roll</h3>
+                      <div class="rl-controls__actions">
+                        <button type="button" id="dirichlet-a" class="is-primary">+1 A</button>
+                        <button type="button" id="dirichlet-b" class="is-primary">+1 B</button>
+                        <button type="button" id="dirichlet-c" class="is-primary">+1 C</button>
+                        <button type="button" id="dirichlet-reset">Reset</button>
+                      </div>
+                      <div class="rl-stat-grid">
+                        <div class="rl-stat"><span class="rl-stat__label">n<sub>A</sub></span><span class="rl-stat__value" id="dirichlet-nA">0</span></div>
+                        <div class="rl-stat"><span class="rl-stat__label">n<sub>B</sub></span><span class="rl-stat__value" id="dirichlet-nB">0</span></div>
+                        <div class="rl-stat"><span class="rl-stat__label">n<sub>C</sub></span><span class="rl-stat__value" id="dirichlet-nC">0</span></div>
+                        <div class="rl-stat"><span class="rl-stat__label">α<sub>A</sub></span><span class="rl-stat__value" id="dirichlet-aA">1.00</span></div>
+                        <div class="rl-stat"><span class="rl-stat__label">α<sub>B</sub></span><span class="rl-stat__value" id="dirichlet-aB">1.00</span></div>
+                        <div class="rl-stat"><span class="rl-stat__label">α<sub>C</sub></span><span class="rl-stat__value" id="dirichlet-aC">1.00</span></div>
+                        <div class="rl-stat"><span class="rl-stat__label">E[p<sub>A</sub>]</span><span class="rl-stat__value rl-stat__value--accent" id="dirichlet-mA">0.333</span></div>
+                        <div class="rl-stat"><span class="rl-stat__label">E[p<sub>B</sub>]</span><span class="rl-stat__value rl-stat__value--accent" id="dirichlet-mB">0.333</span></div>
+                        <div class="rl-stat"><span class="rl-stat__label">E[p<sub>C</sub>]</span><span class="rl-stat__value rl-stat__value--accent" id="dirichlet-mC">0.333</span></div>
+                      </div>
+                      <p class="ml-hint">
+                        Drop α<sub>0</sub> to 0.5 on a flat prior and the density pushes to the three
+                        corners — the Bayesian version of "I think it's deterministic, just not sure
+                        which". Crank α<sub>0</sub> to 5 and the prior insists on balance; even with 20
+                        rolls of mostly A the posterior stays near the centre. This is Dirichlet working
+                        exactly like Beta, just in one more dimension.
+                      </p>
+                    </aside>
+                  </div>
+                </div>
+
                 <p>
                   Every ML loss has a distribution story under it. Squared error ↔ Gaussian MLE. Cross-entropy
                   ↔ categorical MLE. Binary cross-entropy ↔ Bernoulli MLE. Pick a distribution for your noise,

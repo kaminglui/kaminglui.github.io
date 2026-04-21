@@ -37,13 +37,16 @@ heavy-tail caveat). Remaining:
   grows (concrete witness for the CLT claim above). Prose names Gamma(1, θ) =
   Exp(θ) and Gamma(k, θ) → 𝒩(kθ, kθ²). Simple example: "wait until the third
   ad click at λ = 0.5/sec is Gamma(3, 2), expected value 6 s".
-- **Dirichlet distribution** — secondary. Multivariate Beta; prior over categorical
-  distributions; shows up in topic models and in RL as priors over discrete action
-  probabilities. Graph: 2-simplex heatmap of Dir(α, α, α) density for α ∈ {0.5, 1,
-  3} — concentrating to corners, uniform, concentrating to centroid. Simple example:
-  rolling a 3-sided die with unknown probabilities; prior Dir(1,1,1), observe counts
-  (n₁, n₂, n₃), posterior Dir(1+n₁, 1+n₂, 1+n₃), watch the density lobe migrate on
-  the simplex.
+- **Dirichlet distribution** — shipped in §7 as "Multivariate — the Dirichlet on a
+  3-sided die". Live canvas heatmap of the posterior Dir(α) on the 2-simplex (triangle
+  with A/B/C corners), symmetric-prior α₀ slider, +1 buttons per outcome, reset, full
+  stat readout (counts, α, posterior mean per component). Rendered native 300×260 via
+  `putImageData` using log-PDF with max-normalisation for display dynamic range.
+  Red dot on the simplex tracks the posterior mean. Pure math in
+  `assets/js/math-lab/dirichlet.js` reuses the Lanczos `logGamma` from `beta.js`.
+  10 unit tests covering normaliser symmetry, Dir(1,1,1) uniform density,
+  permutation invariance, Monte Carlo integration to 1, mean formula, and the
+  conjugate posterior arithmetic.
 - **Defer-list** — Student-t, Cauchy (as the CLT counter-example already named in
   §7's heavy-tail caveat), Log-normal, Chi-squared. Useful but nothing else on the
   site currently refers to them, so not priority.

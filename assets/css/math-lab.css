@@ -29,6 +29,17 @@
   border-radius: var(--radius-sm);
 }
 
+/* Dirichlet 2-simplex heatmap: native 300×260 canvas, preserve aspect ratio. */
+.dirichlet-demo__canvas-wrap #dirichlet-canvas {
+  width: 100%;
+  max-width: 360px;
+  aspect-ratio: 300 / 260;
+  display: block;
+  background: var(--color-bg);
+  border-radius: var(--radius-sm);
+  margin: 0 auto;
+}
+
 /* §9 mode-covering vs mode-seeking demo — two panels side-by-side on wide
    viewports, stacked on narrow ones. */
 .kl-fit__panels {

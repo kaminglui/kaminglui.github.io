@@ -29,6 +29,11 @@ import {
   betaVariance,
   betaPosterior
 } from './math-lab/beta.js';
+import {
+  logDirichletNorm,
+  dirichletMean,
+  dirichletPosterior
+} from './math-lab/dirichlet.js';
 
 /* ========================= shared helpers ========================= */
 
@@ -1603,6 +1608,183 @@ function initBetaDemo() {
   draw();
 }
 
+/* ============== §7 Dirichlet 3-sided-die posterior ================= */
+
+// Native canvas size (no CSS scaling); triangle vertices pad the edges so
+// labels have somewhere to sit.
+const DIRICHLET_W = 300;
+const DIRICHLET_H = 260;
+const DIRI_VA = [20, 230];   // bottom-left  (A)
+const DIRI_VB = [280, 230];  // bottom-right (B)
+const DIRI_VC = [150, 30];   // top          (C)
+// Precomputed barycentric denominator for the triangle above.
+const DIRI_DENOM = (DIRI_VB[1] - DIRI_VC[1]) * (DIRI_VA[0] - DIRI_VC[0]) +
+                    (DIRI_VC[0] - DIRI_VB[0]) * (DIRI_VA[1] - DIRI_VC[1]);
+const DIRI_CONTRAST_NATS = 6;  // ≈ e^-6 → black at 0.25% of peak
+
+function diriBary(px, py) {
+  const lA = ((DIRI_VB[1] - DIRI_VC[1]) * (px - DIRI_VC[0]) +
+              (DIRI_VC[0] - DIRI_VB[0]) * (py - DIRI_VC[1])) / DIRI_DENOM;
+  const lB = ((DIRI_VC[1] - DIRI_VA[1]) * (px - DIRI_VC[0]) +
+              (DIRI_VA[0] - DIRI_VC[0]) * (py - DIRI_VC[1])) / DIRI_DENOM;
+  const lC = 1 - lA - lB;
+  return [lA, lB, lC];
+}
+
+function diriMeanToPixel(mean) {
+  const [mA, mB, mC] = mean;
+  return [
+    mA * DIRI_VA[0] + mB * DIRI_VB[0] + mC * DIRI_VC[0],
+    mA * DIRI_VA[1] + mB * DIRI_VB[1] + mC * DIRI_VC[1]
+  ];
+}
+
+function diriRenderHeatmap(ctx, alpha) {
+  const logNorm = logDirichletNorm(alpha);
+  const [aA, aB, aC] = alpha;
+  const img = ctx.createImageData(DIRICHLET_W, DIRICHLET_H);
+  const data = img.data;
+  // First pass: compute log-PDF per pixel, track max.
+  const lp = new Float32Array(DIRICHLET_W * DIRICHLET_H);
+  let maxLp = -Infinity;
+  for (let y = 0; y < DIRICHLET_H; y++) {
+    for (let x = 0; x < DIRICHLET_W; x++) {
+      const i = y * DIRICHLET_W + x;
+      const [pA, pB, pC] = diriBary(x + 0.5, y + 0.5);
+      if (pA <= 0 || pB <= 0 || pC <= 0) {
+        lp[i] = -Infinity;
+      } else {
+        const v = logNorm + (aA - 1) * Math.log(pA) +
+                            (aB - 1) * Math.log(pB) +
+                            (aC - 1) * Math.log(pC);
+        lp[i] = v;
+        if (v > maxLp) maxLp = v;
+      }
+    }
+  }
+  // Second pass: normalise and colour.
+  for (let i = 0; i < lp.length; i++) {
+    const j = i * 4;
+    if (!Number.isFinite(lp[i])) {
+      // Outside the triangle: site background colour.
+      data[j] = 15; data[j+1] = 23; data[j+2] = 42; data[j+3] = 255;
+      continue;
+    }
+    const rel = (lp[i] - maxLp) / DIRI_CONTRAST_NATS;
+    const v = Math.max(0, Math.min(1, 1 + rel));
+    // Site-accent blue → white ramp so the heatmap reads as "density".
+    const r = Math.round(59  + v * (255 - 59));
+    const g = Math.round(130 + v * (255 - 130));
+    const b = Math.round(246 + v * (255 - 246));
+    data[j] = r; data[j+1] = g; data[j+2] = b; data[j+3] = 255;
+  }
+  ctx.putImageData(img, 0, 0);
+}
+
+function diriDrawOverlay(ctx, mean) {
+  // Triangle outline + coloured corner dots + text labels + mean dot.
+  ctx.strokeStyle = 'rgba(148, 163, 184, 0.6)';
+  ctx.lineWidth = 1.2;
+  ctx.beginPath();
+  ctx.moveTo(DIRI_VA[0], DIRI_VA[1]);
+  ctx.lineTo(DIRI_VB[0], DIRI_VB[1]);
+  ctx.lineTo(DIRI_VC[0], DIRI_VC[1]);
+  ctx.closePath();
+  ctx.stroke();
+
+  const corners = [
+    { pt: DIRI_VA, colour: '#3b82f6', label: 'A', tx: DIRI_VA[0] - 4, ty: DIRI_VA[1] + 18 },
+    { pt: DIRI_VB, colour: '#f97316', label: 'B', tx: DIRI_VB[0] + 4, ty: DIRI_VB[1] + 18 },
+    { pt: DIRI_VC, colour: '#22c55e', label: 'C', tx: DIRI_VC[0],     ty: DIRI_VC[1] - 10 }
+  ];
+  ctx.font = 'bold 12px Inter, sans-serif';
+  for (const c of corners) {
+    ctx.fillStyle = c.colour;
+    ctx.beginPath();
+    ctx.arc(c.pt[0], c.pt[1], 4.5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.textAlign = c.label === 'A' ? 'end' : c.label === 'B' ? 'start' : 'center';
+    ctx.fillText(c.label, c.tx, c.ty);
+  }
+
+  const [mx, my] = diriMeanToPixel(mean);
+  ctx.fillStyle = '#ef4444';
+  ctx.strokeStyle = '#fff';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.arc(mx, my, 5, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.stroke();
+}
+
+function initDirichletDemo() {
+  const canvas = document.getElementById('dirichlet-canvas');
+  if (!canvas) return;
+
+  const dom = {
+    alpha0: document.getElementById('dirichlet-alpha0'),
+    alpha0Val: document.getElementById('dirichlet-alpha0-value'),
+    btnA: document.getElementById('dirichlet-a'),
+    btnB: document.getElementById('dirichlet-b'),
+    btnC: document.getElementById('dirichlet-c'),
+    resetBtn: document.getElementById('dirichlet-reset'),
+    nA: document.getElementById('dirichlet-nA'),
+    nB: document.getElementById('dirichlet-nB'),
+    nC: document.getElementById('dirichlet-nC'),
+    aA: document.getElementById('dirichlet-aA'),
+    aB: document.getElementById('dirichlet-aB'),
+    aC: document.getElementById('dirichlet-aC'),
+    mA: document.getElementById('dirichlet-mA'),
+    mB: document.getElementById('dirichlet-mB'),
+    mC: document.getElementById('dirichlet-mC')
+  };
+
+  const state = { counts: [0, 0, 0] };
+  let pending = false;
+
+  function draw() {
+    pending = false;
+    const alpha0 = parseFloat(dom.alpha0.value);
+    dom.alpha0Val.textContent = alpha0.toFixed(1);
+
+    const prior = [alpha0, alpha0, alpha0];
+    const alpha = dirichletPosterior(prior, state.counts);
+    const mean = dirichletMean(alpha);
+
+    // Native-resolution render; aspect ratio is fixed by the canvas size.
+    const ctx = canvas.getContext('2d');
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    diriRenderHeatmap(ctx, alpha);
+    diriDrawOverlay(ctx, mean);
+
+    dom.nA.textContent = String(state.counts[0]);
+    dom.nB.textContent = String(state.counts[1]);
+    dom.nC.textContent = String(state.counts[2]);
+    dom.aA.textContent = alpha[0].toFixed(2);
+    dom.aB.textContent = alpha[1].toFixed(2);
+    dom.aC.textContent = alpha[2].toFixed(2);
+    dom.mA.textContent = mean[0].toFixed(3);
+    dom.mB.textContent = mean[1].toFixed(3);
+    dom.mC.textContent = mean[2].toFixed(3);
+  }
+
+  function schedule() {
+    if (pending) return;
+    pending = true;
+    requestAnimationFrame(draw);
+  }
+
+  dom.alpha0.addEventListener('input', schedule);
+  dom.btnA.addEventListener('click', () => { state.counts[0] += 1; schedule(); });
+  dom.btnB.addEventListener('click', () => { state.counts[1] += 1; schedule(); });
+  dom.btnC.addEventListener('click', () => { state.counts[2] += 1; schedule(); });
+  dom.resetBtn.addEventListener('click', () => {
+    state.counts = [0, 0, 0];
+    schedule();
+  });
+  draw();
+}
+
 /* ============================ bootstrap ============================ */
 
 function boot() {
@@ -1611,6 +1793,7 @@ function boot() {
   initInfoKLDemo();
   initKLFitDemo();
   initBetaDemo();
+  initDirichletDemo();
 }
 
 if (document.readyState === 'loading') {
