@@ -314,6 +314,14 @@ img {
   pointer-events: none;
   transform: translateY(0.15rem);
 }
+/* The author-level `display: flex` above defeats the user-agent's
+   [hidden] -> display:none mapping. Restore it with !important so the
+   hidden attribute (set by nav.js on init and close) actually hides the
+   menu on every page. Without this the menu can flash visible before JS
+   runs, or stay laid-out even when aria-expanded is false. */
+.nav-dropdown-menu[hidden] {
+  display: none !important;
+}
 
 .nav-dropdown-menu a {
   display: block;

@@ -1,11 +1,11 @@
 import React, { ChangeEvent, useCallback, useEffect, useRef, useState } from 'react';
-import { 
-  Play, 
-  Pause, 
-  Trash2, 
-  Activity, 
-  PenTool, 
-  Shapes, 
+import {
+  Play,
+  Pause,
+  Trash2,
+  Activity,
+  PenTool,
+  Shapes,
   Image as ImageIcon,
   Calculator,
   RotateCcw,
@@ -23,7 +23,8 @@ import {
   ZoomOut,
   LocateFixed,
   Home,
-  SlidersHorizontal
+  SlidersHorizontal,
+  ChevronsRight
 } from 'lucide-react';
 import { InputMode } from '../types';
 import type { OutlinePolarity } from '../services/imageProcessing';
