@@ -57,8 +57,10 @@ body {
     flex-direction: row;
     overflow: hidden;
     position: relative;
-    /* Force height calculation */
-    height: calc(100vh - var(--header-h, 0px) - var(--simbar-height, var(--simbar-h)));
+    /* Force height calculation. --hero-h is set by the inline hero-toggle
+       script in circuit-lab/index.html and reflects the compact collapsible
+       hero's current height (smaller when collapsed, taller when expanded). */
+    height: calc(100vh - var(--header-h, 0px) - var(--hero-h, 0px) - var(--simbar-height, var(--simbar-h)));
 }
 
 /* --- SIDEBAR --- */

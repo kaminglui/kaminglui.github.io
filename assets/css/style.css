@@ -1452,6 +1452,78 @@ body.theme-dark .project-card {
   color: var(--color-muted);
 }
 
+/* Compact variant — used on Circuit Lab, where the simulator needs most of
+   the viewport. One-row eyebrow+title with a chevron that expands the lead
+   paragraph. An adjacent ResizeObserver writes the hero's height into
+   --hero-h so the app workspace can shrink/grow with it. */
+.lab-hero--compact {
+  padding: 0;
+  text-align: left;
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-bg-alt);
+}
+.lab-hero__compact-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.45rem 1.25rem;
+}
+.lab-hero__compact-head {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  min-width: 0;
+}
+.lab-hero--compact .lab-hero__eyebrow {
+  font-size: 0.68rem;
+  margin: 0;
+  letter-spacing: 0.16em;
+}
+.lab-hero--compact .lab-hero__title {
+  font-size: 1rem;
+  margin: 0;
+  letter-spacing: -0.01em;
+  line-height: 1.1;
+  font-weight: 700;
+}
+.lab-hero--compact .lab-hero__lead {
+  font-size: 0.95rem;
+  margin: 0;
+  line-height: 1.55;
+}
+.lab-hero__toggle {
+  flex: 0 0 auto;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: transparent;
+  border: 1px solid var(--color-border);
+  color: var(--color-muted);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: transform 180ms ease, border-color 120ms ease, color 120ms ease;
+  padding: 0;
+}
+.lab-hero__toggle:hover,
+.lab-hero__toggle:focus-visible {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+  outline: none;
+}
+.lab-hero__toggle[aria-expanded='true'] {
+  transform: rotate(180deg);
+}
+.lab-hero__lead-wrap {
+  border-top: 1px solid var(--color-border);
+  padding: 0.6rem 0 0.75rem;
+}
+.lab-hero__lead-wrap[hidden] {
+  display: none !important;
+}
+
 .lab-section {
   padding: 0 0 clamp(4rem, 7vw, 6rem);
 }
