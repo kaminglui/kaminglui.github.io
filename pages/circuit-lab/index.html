@@ -22,38 +22,6 @@
 
     <div id="site-header"></div>
 
-    <!-- Compact collapsible hero — matches the .lab-hero convention used on
-         every other lab page, but in a one-row form so the simulator still
-         owns most of the viewport. Tapping the chevron expands the lead
-         paragraph; the measured height feeds into --hero-h so
-         .circuit-lab-root shrinks accordingly. -->
-    <section class="lab-hero lab-hero--compact" id="circuit-lab-hero" aria-labelledby="circuit-lab-hero-title">
-      <div class="container lab-hero__compact-row">
-        <div class="lab-hero__compact-head">
-          <p class="lab-hero__eyebrow">Interactive lab</p>
-          <h1 class="lab-hero__title" id="circuit-lab-hero-title">Circuit Lab</h1>
-        </div>
-        <button class="lab-hero__toggle" type="button"
-                aria-expanded="false"
-                aria-controls="circuit-lab-hero-lead"
-                aria-label="Toggle lab description">
-          <svg aria-hidden="true" focusable="false" viewBox="0 0 12 12" width="12" height="12">
-            <path d="M2.47 4.47a.75.75 0 0 1 1.06 0L6 6.94l2.47-2.47a.75.75 0 0 1 1.06 1.06l-3 3a.75.75 0 0 1-1.06 0l-3-3a.75.75 0 0 1 0-1.06Z" fill="currentColor"/>
-          </svg>
-        </button>
-      </div>
-      <div class="lab-hero__lead-wrap" id="circuit-lab-hero-lead" hidden>
-        <div class="container">
-          <p class="lab-hero__lead">
-            A full in-browser SPICE-style analog simulator. Drop resistors, capacitors, inductors,
-            op-amps, diodes, BJTs, and MOSFETs onto the breadboard; voltages and currents are solved
-            live via modified nodal analysis. DC, AC, and transient modes; hardware track
-            independent of the machine-learning labs.
-          </p>
-        </div>
-      </div>
-    </section>
-
     <main id="circuit-lab-root" class="circuit-lab-root flex-row">
         <aside id="sidebar" class="sidebar">
             <div class="sidebar-header">
@@ -659,42 +627,6 @@
         import { initMainLayout } from '../../assets/js/layout/mainLayout.js';
         // Circuit Lab is dark-only: force dark theme and hide the toggle button.
         initMainLayout('circuit-lab', { themeOptions: { forceTheme: 'dark' } });
-    </script>
-
-    <script>
-        // Compact hero toggle + live height tracking. Keeps --hero-h in
-        // sync so .circuit-lab-root's height calc always subtracts the
-        // right amount regardless of collapsed / expanded state.
-        (function () {
-            const hero = document.getElementById('circuit-lab-hero');
-            const toggle = hero?.querySelector('.lab-hero__toggle');
-            const lead = document.getElementById('circuit-lab-hero-lead');
-            if (!hero || !toggle || !lead) return;
-
-            function syncHeroHeight() {
-                const h = hero.getBoundingClientRect().height;
-                if (Number.isFinite(h)) {
-                    document.documentElement.style.setProperty('--hero-h', `${Math.round(h)}px`);
-                }
-            }
-
-            toggle.addEventListener('click', () => {
-                const expanded = toggle.getAttribute('aria-expanded') === 'true';
-                toggle.setAttribute('aria-expanded', String(!expanded));
-                if (expanded) lead.setAttribute('hidden', '');
-                else lead.removeAttribute('hidden');
-                // Height changes immediately after the hidden toggle; measure
-                // on the next frame so the browser has re-laid-out.
-                requestAnimationFrame(syncHeroHeight);
-            });
-
-            syncHeroHeight();
-            if (typeof ResizeObserver !== 'undefined') {
-                new ResizeObserver(syncHeroHeight).observe(hero);
-            } else {
-                window.addEventListener('resize', syncHeroHeight);
-            }
-        })();
     </script>
 
     <script type="module" src="../../assets/js/sim/engine.js"></script>
