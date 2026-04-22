@@ -28,6 +28,18 @@
   background: var(--color-bg);
   border-radius: var(--radius-sm);
 }
+/* Loss-over-time chart is an SVG now, not a canvas. viewBox locks the
+   drawing coordinate system, width: 100% + height: auto keeps a stable
+   aspect ratio regardless of the wrapper width, and vector rendering
+   stays crisp at any DPR. */
+#gd-loss-chart {
+  width: 100%;
+  height: auto;
+  display: block;
+  background: var(--color-bg);
+  border-radius: var(--radius-sm);
+  aspect-ratio: 640 / 180;
+}
 
 /* Dirichlet 2-simplex heatmap: native 300×260 canvas, preserve aspect ratio. */
 .dirichlet-demo__canvas-wrap #dirichlet-canvas {

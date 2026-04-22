@@ -336,6 +336,16 @@ function projectIso(x, y, z, size, offsetX, offsetY, zScale) {
   return [offsetX + size / 2 + px, offsetY + size / 2 + py * 0.9];
 }
 
+// Directional "sun" for Lambertian shading (world-space, pre-normalised).
+// Light from upper-left-front makes ridges pick up light and valleys fall
+// into shadow — which is what actually reads as "this is 3D" to the eye,
+// much more than a height-only altitude ramp.
+const LIGHT_DIR = (() => {
+  const lx = 0.35, ly = -0.55, lz = 0.8;
+  const mag = Math.hypot(lx, ly, lz);
+  return [lx / mag, ly / mag, lz / mag];
+})();
+
 function gdDraw3D(ctx, cssW, cssH) {
   const fn = gdCurrentFn();
   const size = Math.min(cssW, cssH);
@@ -356,8 +366,36 @@ function gdDraw3D(ctx, cssW, cssH) {
       if (v > zMax) zMax = v;
     }
   }
-  // zScale sized so the peak rises ~35% of canvas.
-  const zScale = (size * 0.35) / Math.max(zMax - zMin, 1e-6);
+  // Taller relief than before so hills actually look like hills; peak
+  // now rises ~55% of canvas instead of 35%.
+  const zScale = (size * 0.55) / Math.max(zMax - zMin, 1e-6);
+
+  // --- Ground grid at z = zMin so the surface has a visible footprint
+  // below it. Draws first, gets painted over by front cells only where
+  // the surface is closer to the camera. ---
+  ctx.strokeStyle = 'rgba(148, 163, 184, 0.22)';
+  ctx.lineWidth = 0.6;
+  const GRID = 8;
+  for (let k = 0; k <= GRID; k += 1) {
+    const t = k / GRID;
+    const xa = -WORLD + 2 * WORLD * t;
+    // line along y at fixed x
+    const [gx0, gy0] = projectIso(xa, -WORLD, 0, size, offsetX, offsetY, zScale);
+    const [gx1, gy1] = projectIso(xa,  WORLD, 0, size, offsetX, offsetY, zScale);
+    ctx.beginPath();
+    ctx.moveTo(gx0, gy0);
+    ctx.lineTo(gx1, gy1);
+    ctx.stroke();
+    // line along x at fixed y
+    const ya = -WORLD + 2 * WORLD * t;
+    const [hx0, hy0] = projectIso(-WORLD, ya, 0, size, offsetX, offsetY, zScale);
+    const [hx1, hy1] = projectIso( WORLD, ya, 0, size, offsetX, offsetY, zScale);
+    ctx.beginPath();
+    ctx.moveTo(hx0, hy0);
+    ctx.lineTo(hx1, hy1);
+    ctx.stroke();
+  }
+
   // Paint cells from back (far corner, larger world x + y) to front.
   const cells = [];
   for (let j = 0; j < N; j += 1) {
@@ -366,6 +404,8 @@ function gdDraw3D(ctx, cssW, cssH) {
     }
   }
   cells.sort((a, b) => a.depth - b.depth);
+  const cellDx = (2 * WORLD) / N;
+  const cellDy = (2 * WORLD) / N;
   for (const { i, j } of cells) {
     const x0 = -WORLD + (2 * WORLD * i) / N;
     const x1 = -WORLD + (2 * WORLD * (i + 1)) / N;
@@ -379,14 +419,31 @@ function gdDraw3D(ctx, cssW, cssH) {
     const [pbx, pby] = projectIso(x1, y0, zb, size, offsetX, offsetY, zScale);
     const [pcx, pcy] = projectIso(x1, y1, zc, size, offsetX, offsetY, zScale);
     const [pdx, pdy] = projectIso(x0, y1, zd, size, offsetX, offsetY, zScale);
+
+    // Lambertian shading: compute surface gradient (dz/dx, dz/dy) in world
+    // units, build the upward normal (-gx, -gy, 1) and dot with the light.
+    const dzdx = ((zb - za) + (zc - zd)) / (2 * cellDx);
+    // y decreases as j increases, so flip the sign to get "uphill-in-world"
+    // orientation right.
+    const dzdy = -((zd - za) + (zc - zb)) / (2 * cellDy);
+    let nx = -dzdx, ny = -dzdy, nz = 1;
+    const nmag = Math.hypot(nx, ny, nz);
+    nx /= nmag; ny /= nmag; nz /= nmag;
+    const lambert = Math.max(0, nx * LIGHT_DIR[0] + ny * LIGHT_DIR[1] + nz * LIGHT_DIR[2]);
+    const shade = 0.3 + 0.7 * lambert; // ambient + directional
+
+    // Altitude colour: valleys deep blue, peaks warm yellow. Modulated by
+    // the Lambertian term so slopes carry the height info AND the relief.
     const avgZ = (za + zb + zc + zd) / 4;
     const t = avgZ / Math.max(zMax - zMin, 1e-6);
-    const shade = Math.pow(t, 0.6);
-    const r = Math.round(40 + 170 * shade);
-    const g = Math.round(70 + 130 * shade);
-    const b = Math.round(150 - 70 * shade);
+    const baseR = 50  + 205 * Math.pow(t, 0.7);
+    const baseG = 85  + 155 * Math.pow(t, 0.8);
+    const baseB = 160 -  80 * Math.pow(t, 1.1);
+    const r = Math.round(baseR * shade);
+    const g = Math.round(baseG * shade);
+    const b = Math.round(baseB * shade);
     ctx.fillStyle = `rgb(${r}, ${g}, ${b})`;
-    ctx.strokeStyle = 'rgba(15, 23, 42, 0.12)';
+    ctx.strokeStyle = 'rgba(15, 23, 42, 0.18)';
     ctx.lineWidth = 0.6;
     ctx.beginPath();
     ctx.moveTo(pax, pay);
@@ -397,6 +454,26 @@ function gdDraw3D(ctx, cssW, cssH) {
     ctx.fill();
     ctx.stroke();
   }
+
+  // XYZ axis arrows from the back corner so orientation is unambiguous.
+  const [ox, oy] = projectIso(-WORLD, WORLD, 0, size, offsetX, offsetY, zScale);
+  const [axX, axY] = projectIso(-WORLD + 2 * WORLD * 0.22, WORLD, 0, size, offsetX, offsetY, zScale);
+  const [ayX, ayY] = projectIso(-WORLD, WORLD - 2 * WORLD * 0.22, 0, size, offsetX, offsetY, zScale);
+  const [azX, azY] = projectIso(-WORLD, WORLD, (zMax - zMin) * 0.9, size, offsetX, offsetY, zScale);
+  ctx.lineWidth = 1.2;
+  ctx.strokeStyle = '#ef4444';
+  ctx.beginPath(); ctx.moveTo(ox, oy); ctx.lineTo(axX, axY); ctx.stroke();
+  ctx.fillStyle   = '#ef4444';
+  ctx.fillText('x', axX + 6, axY + 4);
+  ctx.strokeStyle = '#22c55e';
+  ctx.beginPath(); ctx.moveTo(ox, oy); ctx.lineTo(ayX, ayY); ctx.stroke();
+  ctx.fillStyle   = '#22c55e';
+  ctx.fillText('y', ayX - 10, ayY + 2);
+  ctx.strokeStyle = '#3b82f6';
+  ctx.beginPath(); ctx.moveTo(ox, oy); ctx.lineTo(azX, azY); ctx.stroke();
+  ctx.fillStyle   = '#3b82f6';
+  ctx.fillText('f(x, y)', azX + 4, azY + 4);
+
   return { size, offsetX, offsetY, zScale, zMin };
 }
 
@@ -495,26 +572,30 @@ function gdRender() {
  * series; in compare mode overlays all four with shared y-scale so the
  * reader can eyeball "which method drops fastest / gets stuck."
  */
+// SVG-based loss chart. Rendering is vector + driven by a fixed viewBox,
+// so the element cannot feed back into its own size the way a canvas can;
+// resolution stays crisp at any DPR; CSS `width: 100%; aspect-ratio: ...`
+// keeps the footprint locked in the page layout.
 function gdRenderLossChart() {
-  const canvas = gdDom.lossCanvas;
-  if (!canvas) return;
-  const { ctx, cssW, cssH } = ensureCanvasSize(canvas);
-  ctx.clearRect(0, 0, cssW, cssH);
-  const pad = { top: 10, right: 10, bottom: 18, left: 36 };
-  const plotW = cssW - pad.left - pad.right;
-  const plotH = cssH - pad.top - pad.bottom;
+  const svg = gdDom.lossCanvas;
+  if (!svg) return;
+  const W = 640, H = 180; // viewBox units, match the markup
+  const pad = { top: 10, right: 10, bottom: 22, left: 44 };
+  const plotW = W - pad.left - pad.right;
+  const plotH = H - pad.top - pad.bottom;
 
+  const parts = [];
   // Axes
-  ctx.strokeStyle = 'rgba(148,163,184,0.35)';
-  ctx.lineWidth = 1;
-  ctx.beginPath();
-  ctx.moveTo(pad.left, pad.top);
-  ctx.lineTo(pad.left, pad.top + plotH);
-  ctx.lineTo(pad.left + plotW, pad.top + plotH);
-  ctx.stroke();
+  parts.push(
+    `<path d="M ${pad.left} ${pad.top} L ${pad.left} ${pad.top + plotH} L ${pad.left + plotW} ${pad.top + plotH}" ` +
+    `fill="none" stroke="rgba(148,163,184,0.35)" stroke-width="1"/>`
+  );
 
   const allHistories = gd.runners.map((r) => r.lossHistory).filter((h) => h.length);
-  if (!allHistories.length) return;
+  if (!allHistories.length) {
+    svg.innerHTML = parts.join('');
+    return;
+  }
   const maxLen = Math.max(...allHistories.map((h) => h.length));
   let lossMin = Infinity;
   let lossMax = -Infinity;
@@ -526,30 +607,38 @@ function gdRenderLossChart() {
   });
   if (lossMax - lossMin < 1e-6) lossMax = lossMin + 1;
 
-  ctx.fillStyle = 'rgba(148,163,184,0.85)';
-  ctx.font = '10px "Fira Code", monospace';
-  ctx.textAlign = 'right';
-  ctx.textBaseline = 'middle';
-  ctx.fillText(lossMax.toFixed(2), pad.left - 4, pad.top + 6);
-  ctx.fillText(lossMin.toFixed(2), pad.left - 4, pad.top + plotH - 4);
-  ctx.textAlign = 'left';
-  ctx.fillText(`step ${maxLen}`, pad.left + 4, pad.top + plotH + 12);
+  // Axis labels
+  parts.push(
+    `<text x="${pad.left - 6}" y="${pad.top + 4}" font-family="Fira Code, monospace" font-size="10" ` +
+    `fill="rgba(148,163,184,0.85)" text-anchor="end">${lossMax.toFixed(2)}</text>`
+  );
+  parts.push(
+    `<text x="${pad.left - 6}" y="${pad.top + plotH}" font-family="Fira Code, monospace" font-size="10" ` +
+    `fill="rgba(148,163,184,0.85)" text-anchor="end">${lossMin.toFixed(2)}</text>`
+  );
+  parts.push(
+    `<text x="${pad.left + 4}" y="${pad.top + plotH + 14}" font-family="Fira Code, monospace" font-size="10" ` +
+    `fill="rgba(148,163,184,0.85)">step ${maxLen}</text>`
+  );
 
+  // Loss curves — one polyline per runner.
   gd.runners.forEach((r) => {
     if (!r.lossHistory.length) return;
-    ctx.strokeStyle = r.color;
-    ctx.lineWidth = 1.5;
-    ctx.beginPath();
     const n = r.lossHistory.length;
+    const pts = [];
     for (let i = 0; i < n; i += 1) {
       const x = pad.left + (plotW * i) / Math.max(maxLen - 1, 1);
       const v = r.lossHistory[i];
       const y = pad.top + plotH - (plotH * (v - lossMin)) / (lossMax - lossMin);
-      if (i === 0) ctx.moveTo(x, y);
-      else ctx.lineTo(x, y);
+      pts.push(`${x.toFixed(1)},${y.toFixed(1)}`);
     }
-    ctx.stroke();
+    parts.push(
+      `<polyline fill="none" stroke="${r.color}" stroke-width="1.5" stroke-linejoin="round" ` +
+      `points="${pts.join(' ')}"/>`
+    );
   });
+
+  svg.innerHTML = parts.join('');
 }
 
 function gdRenderStats() {
@@ -1639,6 +1728,34 @@ function diriMeanToPixel(mean) {
   ];
 }
 
+// Five-stop perceptual ramp. v ∈ [0, 1] → [r, g, b]. Dark-indigo at the
+// bottom, blue, teal/green mid, yellow, warm off-white at the peak — reads
+// like a simplified viridis/magma and makes the density peak obvious.
+const DIRI_RAMP = [
+  [0.00,  40,  20,  90],
+  [0.25,  45,  90, 180],
+  [0.50,  50, 170, 130],
+  [0.75, 240, 200,  60],
+  [1.00, 255, 240, 210]
+];
+function diriRamp(v) {
+  const t = Math.max(0, Math.min(1, v));
+  for (let k = 0; k < DIRI_RAMP.length - 1; k++) {
+    const s0 = DIRI_RAMP[k];
+    const s1 = DIRI_RAMP[k + 1];
+    if (t <= s1[0]) {
+      const a = (t - s0[0]) / (s1[0] - s0[0] || 1);
+      return [
+        Math.round(s0[1] + a * (s1[1] - s0[1])),
+        Math.round(s0[2] + a * (s1[2] - s0[2])),
+        Math.round(s0[3] + a * (s1[3] - s0[3]))
+      ];
+    }
+  }
+  const last = DIRI_RAMP[DIRI_RAMP.length - 1];
+  return [last[1], last[2], last[3]];
+}
+
 function diriRenderHeatmap(ctx, alpha) {
   const logNorm = logDirichletNorm(alpha);
   const [aA, aB, aC] = alpha;
@@ -1672,10 +1789,10 @@ function diriRenderHeatmap(ctx, alpha) {
     }
     const rel = (lp[i] - maxLp) / DIRI_CONTRAST_NATS;
     const v = Math.max(0, Math.min(1, 1 + rel));
-    // Site-accent blue → white ramp so the heatmap reads as "density".
-    const r = Math.round(59  + v * (255 - 59));
-    const g = Math.round(130 + v * (255 - 130));
-    const b = Math.round(246 + v * (255 - 246));
+    // Multi-hue perceptual ramp — dark indigo (low) → blue → teal → green →
+    // yellow → orange → red-magenta (peak). Much more legible than the old
+    // single-hue blue→white ramp, and closer to a viridis/magma feel.
+    const [r, g, b] = diriRamp(v);
     data[j] = r; data[j+1] = g; data[j+2] = b; data[j+3] = 255;
   }
   ctx.putImageData(img, 0, 0);
