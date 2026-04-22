@@ -589,6 +589,90 @@
                   arithmetic, cross-correlation, GPS signal acquisition, partial differential equation solvers.
                 </p>
               </article>
+
+              <article class="fourier-extra__topic">
+                <header>
+                  <span class="fourier-extra__num">4</span>
+                  <div>
+                    <p class="fourier-extra__tag">Power spectral density · Wiener–Khinchin</p>
+                    <h4>PSD — how much <em>power</em> sits at each frequency</h4>
+                  </div>
+                </header>
+                <p class="fourier-extra__kid">
+                  <strong>Kid version:</strong> the spectrum <code>|X<sub>k</sub>|</code> says how tall the wiggle
+                  at each frequency is. Square it and you get how <em>loud</em> that wiggle is — its energy per unit
+                  of frequency. That squared-magnitude curve is the <strong>Power Spectral Density</strong>, and it
+                  is the number the world actually cares about: stereo bass, the texture of noise, the brightness of
+                  a star at each radio frequency.
+                </p>
+                <p>
+                  For a finite-length sample <code>x<sub>n</sub></code> with DFT <code>X<sub>k</sub></code>, the
+                  simplest PSD estimator is the <em>periodogram</em>:
+                </p>
+                <div class="fourier-extra__formula" data-katex="\hat S_{xx}(f_k) = \frac{1}{N}\, |X_k|^2" data-katex-display></div>
+                <p>
+                  <strong>Toy example.</strong> Sample a pure 440 Hz sine (concert A) at 8 kHz for 1 second, so
+                  N = 8000. Take the DFT. Bin width is f<sub>s</sub>/N = 1 Hz, so the periodogram has a single
+                  sharp spike at bin k = 440 with magnitude ≈ A² / 2 (everything else ≈ 0, modulo leakage if
+                  440 isn't an exact bin). Add the same-amplitude 880 Hz overtone and you get two spikes, at 440
+                  and 880 Hz, same height. That's the whole appeal: the PSD reads off the recipe of frequencies
+                  that built the signal.
+                </p>
+                <p>
+                  Two practical caveats. First, a single window is noisy — the periodogram's variance doesn't
+                  shrink as N grows. The fix is <strong>Welch's method</strong>: split the signal into
+                  overlapping windows, compute the periodogram of each, average them. Variance goes down ∝ 1/K
+                  for K windows; this is the estimator behind every spectrum analyser you've ever seen, from
+                  oscilloscopes to Spotify's "frequency bars". Second, abrupt truncation of the window leaks
+                  energy between frequency bins — multiply by a Hann or Hamming window before the DFT to tame it.
+                </p>
+                <p>
+                  The deeper reason PSD is the right object is the <strong>Wiener–Khinchin theorem</strong>: for a
+                  wide-sense stationary signal, the PSD is exactly the Fourier transform of the autocorrelation
+                  function R<sub>xx</sub>(τ) = E[x(t)·x(t+τ)]:
+                </p>
+                <div class="fourier-extra__formula" data-katex="S_{xx}(f) = \int_{-\infty}^{\infty} R_{xx}(\tau)\, e^{-i 2\pi f \tau}\, d\tau" data-katex-display></div>
+                <p>
+                  Two equivalent views of the same thing: <em>correlation in time</em> (how much does the signal
+                  look like a time-shifted copy of itself?) and <em>power in frequency</em> (how much energy lives
+                  at each wiggle rate?) carry identical information. Knowing this collapses several apparently
+                  separate tools into one:
+                </p>
+                <ul>
+                  <li>
+                    <strong>White noise.</strong> R<sub>xx</sub>(τ) = σ²·δ(τ) — zero correlation at any non-zero
+                    lag. Its PSD is therefore flat: equal power at every frequency. "White" is a colour-theory
+                    metaphor: white light has equal energy at every visible wavelength. Pink / brown / violet noise
+                    are all named after the <em>shape</em> of their PSD curves.
+                  </li>
+                  <li>
+                    <strong>Pure tones.</strong> Oscillatory R<sub>xx</sub>(τ) = (A²/2)·cos(2π f₀ τ), so the PSD
+                    is a delta spike at ± f₀. That 440 Hz example above is the canonical case.
+                  </li>
+                  <li>
+                    <strong>Image texture analysis.</strong> The 2D PSD of a patch distinguishes grass (isotropic,
+                    slow decay) from bricks (anisotropic peaks along the wall axes) from fabric (regular grid of
+                    high-frequency peaks). This is the hand-crafted feature that CNNs learned to replace, and also
+                    the reason early computer vision used "texture energy" filters.
+                  </li>
+                  <li>
+                    <strong>Cosmology.</strong> The cosmic microwave background's temperature fluctuations are
+                    characterised almost entirely by their angular PSD (the "power spectrum" you see in every CMB
+                    paper). The peaks in that spectrum fix the curvature and composition of the universe.
+                  </li>
+                  <li>
+                    <strong>Deep-learning diagnostics.</strong> SGD gradient noise, initialisation-induced
+                    activations, and diffusion-model score errors are routinely diagnosed via their PSD: flat
+                    spectra flag pure noise; low-frequency peaks flag structure the model is failing to absorb.
+                  </li>
+                </ul>
+                <p class="fourier-extra__note">
+                  PSD shares a name-and-notation convention with probability density: like a PDF, it's a density
+                  (power <em>per unit frequency</em>), not a probability or a count. Integrate <span data-katex="S_{xx}(f)"></span>
+                  over a frequency band and you get the total power in that band — Parseval's theorem closes the
+                  loop with energy in the time domain: <span data-katex="\sum_n |x_n|^2 = \tfrac{1}{N} \sum_k |X_k|^2"></span>.
+                </p>
+              </article>
             </section>
           </article>
         </div>
