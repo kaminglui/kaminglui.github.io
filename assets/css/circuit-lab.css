@@ -781,6 +781,7 @@ body {
 @media (max-width: 768px) {
     .sidebar {
         position: absolute; top: 0; left: 0; bottom: 0;
+        width: min(var(--sidebar-w), 85vw);
         margin-left: 0;
         transform: translateX(-100%);
         border-right: none;
