@@ -1468,39 +1468,24 @@ body.theme-dark .project-card {
   justify-content: space-between;
   gap: 1rem;
   padding: 0.45rem 1.25rem;
-  max-width: 100%;
-  box-sizing: border-box;
 }
 .lab-hero__compact-head {
   display: flex;
   flex-direction: column;
   gap: 0.1rem;
   min-width: 0;
-  flex: 1 1 auto;
-  /* Allow long titles (e.g. "Fourier Epicycles Visualizer",
-     "A history of the methods this site teaches") to wrap at word
-     boundaries, and break inside words on ultra-narrow viewports
-     instead of overflowing horizontally. */
-  overflow-wrap: anywhere;
-  word-wrap: break-word;
 }
 .lab-hero--compact .lab-hero__eyebrow {
   font-size: 0.68rem;
   margin: 0;
   letter-spacing: 0.16em;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 .lab-hero--compact .lab-hero__title {
   font-size: 1rem;
   margin: 0;
   letter-spacing: -0.01em;
-  line-height: 1.2;
+  line-height: 1.1;
   font-weight: 700;
-  overflow-wrap: anywhere;
-  word-wrap: break-word;
-  hyphens: auto;
 }
 .lab-hero--compact .lab-hero__lead {
   font-size: 0.95rem;

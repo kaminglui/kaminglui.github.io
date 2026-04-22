@@ -658,9 +658,43 @@
     <script type="module">
         import { initMainLayout } from '../../assets/js/layout/mainLayout.js';
         // Circuit Lab is dark-only: force dark theme and hide the toggle button.
-        // Compact-hero toggle + --hero-h sync are handled by labHero.js,
-        // wired from initSiteShell.
         initMainLayout('circuit-lab', { themeOptions: { forceTheme: 'dark' } });
+    </script>
+
+    <script>
+        // Compact hero toggle + live height tracking. Keeps --hero-h in
+        // sync so .circuit-lab-root's height calc always subtracts the
+        // right amount regardless of collapsed / expanded state.
+        (function () {
+            const hero = document.getElementById('circuit-lab-hero');
+            const toggle = hero?.querySelector('.lab-hero__toggle');
+            const lead = document.getElementById('circuit-lab-hero-lead');
+            if (!hero || !toggle || !lead) return;
+
+            function syncHeroHeight() {
+                const h = hero.getBoundingClientRect().height;
+                if (Number.isFinite(h)) {
+                    document.documentElement.style.setProperty('--hero-h', `${Math.round(h)}px`);
+                }
+            }
+
+            toggle.addEventListener('click', () => {
+                const expanded = toggle.getAttribute('aria-expanded') === 'true';
+                toggle.setAttribute('aria-expanded', String(!expanded));
+                if (expanded) lead.setAttribute('hidden', '');
+                else lead.removeAttribute('hidden');
+                // Height changes immediately after the hidden toggle; measure
+                // on the next frame so the browser has re-laid-out.
+                requestAnimationFrame(syncHeroHeight);
+            });
+
+            syncHeroHeight();
+            if (typeof ResizeObserver !== 'undefined') {
+                new ResizeObserver(syncHeroHeight).observe(hero);
+            } else {
+                window.addEventListener('resize', syncHeroHeight);
+            }
+        })();
     </script>
 
     <script type="module" src="../../assets/js/sim/engine.js"></script>
