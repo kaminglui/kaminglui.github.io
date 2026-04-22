@@ -1423,10 +1423,16 @@ body.theme-dark .project-card {
 .lab-hero {
   padding: clamp(3rem, 6vw, 5rem) 0 clamp(2.5rem, 6vw, 3.5rem);
   text-align: center;
+  /* Guardrail: long titles (e.g. "Fourier Epicycles Visualizer") were
+     spilling past the viewport edge on mid-width phones. overflow-x:
+     clip keeps the hero from contributing to page-level horizontal
+     scroll even if a descendant forgets to wrap. */
+  overflow-x: clip;
 }
 
 .lab-hero__inner {
   width: min(980px, 92vw);
+  max-width: 100%;
   margin: 0 auto;
   display: grid;
   gap: 1.35rem;
@@ -1442,14 +1448,25 @@ body.theme-dark .project-card {
 
 .lab-hero__title {
   margin: 0;
-  font-size: clamp(2.25rem, 6vw, 3.1rem);
+  /* Drop the min from 2.25rem to 1.6rem on narrow viewports so long
+     titles like "Fourier Epicycles Visualizer" and "Reinforcement
+     Learning Lab" actually fit on 320–414 px phones. Desktop max is
+     unchanged. overflow-wrap + hyphens let any word that still can't
+     fit break at a syllable instead of spilling sideways. */
+  font-size: clamp(1.6rem, 6vw, 3.1rem);
   letter-spacing: -0.03em;
+  line-height: 1.1;
+  overflow-wrap: break-word;
+  word-wrap: break-word;
+  hyphens: auto;
+  max-width: 100%;
 }
 
 .lab-hero__lead {
   margin: 0;
   font-size: 1.1rem;
   color: var(--color-muted);
+  overflow-wrap: break-word;
 }
 
 .lab-section {
