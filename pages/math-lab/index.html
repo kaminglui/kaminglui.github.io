@@ -916,6 +916,47 @@
                   </figure>
                 </div>
 
+                <p class="rl-theory__kid">
+                  <strong>Toy examples at a glance.</strong>
+                </p>
+                <ul>
+                  <li>
+                    <strong>Bernoulli(0.4).</strong> A biased coin, P(H) = 0.4. Mean = 0.4, variance =
+                    0.4·0.6 = 0.24. The single-flip ancestor of every other discrete distribution here.
+                  </li>
+                  <li>
+                    <strong>Binomial(10, 0.5).</strong> Count heads in 10 fair flips. E[X] = np = 5,
+                    Var = np(1−p) = 2.5, SD ≈ 1.58. P(X = 5) = C(10, 5)·0.5<sup>10</sup> ≈ 0.246 —
+                    roughly 1 in 4 ten-flip sequences ties exactly. P(X ≥ 8) ≈ 0.055.
+                  </li>
+                  <li>
+                    <strong>Poisson(3).</strong> Call-centre receives 3 calls per minute on average.
+                    P(X = 0 in the next minute) = e<sup>−3</sup> ≈ 0.050. P(X = 3) = 3³·e<sup>−3</sup>/6
+                    ≈ 0.224. Variance equals the mean (= 3), the defining Poisson identity.
+                  </li>
+                  <li>
+                    <strong>Gaussian(μ = 170, σ = 10).</strong> Adult male height in cm. 68% of men fall
+                    in 160–180 cm (±1σ); 95% in 150–190 (±2σ); only ~0.3% outside 140–200 (±3σ). The 68-
+                    95-99.7 rule is why σ is the universal "how wide" knob.
+                  </li>
+                  <li>
+                    <strong>Exponential(λ = 0.5 / min).</strong> A support line receives one call every
+                    2 minutes on average. P(next call within 1 minute) = 1 − e<sup>−0.5</sup> ≈ 0.393.
+                    P(next call after 5+ minutes) = e<sup>−2.5</sup> ≈ 0.082 — memoryless, so "what we've
+                    already waited doesn't change what's left".
+                  </li>
+                  <li>
+                    <strong>Uniform(0, 10).</strong> Throw a dart at a 10 cm ruler. Mean = 5, variance =
+                    10²/12 ≈ 8.33, SD ≈ 2.89. The "no-information" baseline density; any other density
+                    can be expressed as "how far from uniform are you?".
+                  </li>
+                  <li>
+                    <strong>Beta(2, 5).</strong> Belief about an unknown click-through rate after 1 click
+                    and 4 misses (prior Beta(1, 1) + data). Mean = α/(α+β) = 2/7 ≈ 0.286, mode = 1/5 = 0.2.
+                    Stay Bayesian: each new click bumps α, each new miss bumps β.
+                  </li>
+                </ul>
+
                 <h4>They're mostly the same distribution</h4>
                 <p>
                   Most of these aren't separate objects — they're different corners of one family tree. Knowing
@@ -1055,6 +1096,18 @@
                   </svg>
                   <figcaption class="math-figure__caption">The source can be skewed, discrete, heavy-tailed — doesn't matter. The sample mean tightens around μ (LLN) and its distribution approaches a Gaussian (CLT).</figcaption>
                 </figure>
+                <p class="rl-theory__kid">
+                  <strong>Toy example.</strong> Flip a fair coin. After 10 flips, the fraction of heads
+                  could easily be anywhere in 0.2–0.8. After 1,000 flips it's almost certainly in
+                  0.47–0.53. After 1,000,000 flips you'd be astonished to see anything outside
+                  0.499–0.501 — that's the LLN in action. Now roll 1,000 fair dice. Each die has mean
+                  3.5 and variance 35/12 ≈ 2.917, so the sum has mean 3500 and variance 2917 (SD ≈ 54).
+                  The CLT says the sum is approximately 𝒩(3500, 2917) — and it really is; ~68% of
+                  totals land in 3446–3554, regardless of the fact that a single die roll has a
+                  discrete uniform (not Gaussian) distribution. That's why every gradient average in
+                  SGD, every sample mean in bootstrapping, and every "rate" measurement you'll ever
+                  see is treated as Gaussian by default.
+                </p>
                 <p class="ml-hint">
                   <strong>Heavy-tailed caveat.</strong> CLT needs <em>finite variance</em>. The Cauchy
                   distribution violates this — its sample mean stays just as noisy as a single sample, forever.
@@ -1407,6 +1460,144 @@
                   estimator becomes spiky and useless. Grow h to 5 (2 bins): each bin has ~50 samples,
                   perfectly flat, but you can no longer tell a uniform from a gentle slope. That's the
                   bias-variance knob.
+                </p>
+
+                <h4>Worked example — pixel intensities of a greyscale image</h4>
+                <p>
+                  The clearest place to see PMF, histogram, and CDF working together on the <em>same</em>
+                  concrete data is digital image processing. A greyscale image is just a grid of intensities —
+                  each pixel is a random draw whose distribution is characterised entirely by the image itself.
+                  Take the 4×4 toy image below with intensity levels in {0, 1, 2, 3} (4 shades, "underexposed":
+                  most pixels are dark):
+                </p>
+
+                <figure class="math-figure math-figure--wide">
+                  <svg class="math-figure__svg" viewBox="0 0 560 210" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A 4x4 greyscale toy image with its pixel-intensity histogram (PMF) and cumulative distribution (CDF)">
+                    <!-- ============ Panel 1: the image ============ -->
+                    <g transform="translate(20, 20)">
+                      <text x="60" y="-2" font-size="11" fill="#64748b" text-anchor="middle" font-weight="600">Image (4×4, levels 0–3)</text>
+                      <!-- Row 0: 0 0 0 0 -->
+                      <rect x="0"  y="0" width="30" height="30" fill="#2a2a2e" stroke="rgba(148,163,184,0.35)" stroke-width="0.5"/>
+                      <rect x="30" y="0" width="30" height="30" fill="#2a2a2e" stroke="rgba(148,163,184,0.35)" stroke-width="0.5"/>
+                      <rect x="60" y="0" width="30" height="30" fill="#2a2a2e" stroke="rgba(148,163,184,0.35)" stroke-width="0.5"/>
+                      <rect x="90" y="0" width="30" height="30" fill="#2a2a2e" stroke="rgba(148,163,184,0.35)" stroke-width="0.5"/>
+                      <text x="15"  y="20" font-size="11" fill="#cbd5e1" text-anchor="middle">0</text>
+                      <text x="45"  y="20" font-size="11" fill="#cbd5e1" text-anchor="middle">0</text>
+                      <text x="75"  y="20" font-size="11" fill="#cbd5e1" text-anchor="middle">0</text>
+                      <text x="105" y="20" font-size="11" fill="#cbd5e1" text-anchor="middle">0</text>
+                      <!-- Row 1: 0 0 1 1 -->
+                      <rect x="0"  y="30" width="30" height="30" fill="#2a2a2e" stroke="rgba(148,163,184,0.35)" stroke-width="0.5"/>
+                      <rect x="30" y="30" width="30" height="30" fill="#2a2a2e" stroke="rgba(148,163,184,0.35)" stroke-width="0.5"/>
+                      <rect x="60" y="30" width="30" height="30" fill="#6b6b71" stroke="rgba(148,163,184,0.35)" stroke-width="0.5"/>
+                      <rect x="90" y="30" width="30" height="30" fill="#6b6b71" stroke="rgba(148,163,184,0.35)" stroke-width="0.5"/>
+                      <text x="15"  y="50" font-size="11" fill="#cbd5e1" text-anchor="middle">0</text>
+                      <text x="45"  y="50" font-size="11" fill="#cbd5e1" text-anchor="middle">0</text>
+                      <text x="75"  y="50" font-size="11" fill="#f1f5f9" text-anchor="middle">1</text>
+                      <text x="105" y="50" font-size="11" fill="#f1f5f9" text-anchor="middle">1</text>
+                      <!-- Row 2: 0 1 1 2 -->
+                      <rect x="0"  y="60" width="30" height="30" fill="#2a2a2e" stroke="rgba(148,163,184,0.35)" stroke-width="0.5"/>
+                      <rect x="30" y="60" width="30" height="30" fill="#6b6b71" stroke="rgba(148,163,184,0.35)" stroke-width="0.5"/>
+                      <rect x="60" y="60" width="30" height="30" fill="#6b6b71" stroke="rgba(148,163,184,0.35)" stroke-width="0.5"/>
+                      <rect x="90" y="60" width="30" height="30" fill="#a6a6aa" stroke="rgba(148,163,184,0.35)" stroke-width="0.5"/>
+                      <text x="15"  y="80" font-size="11" fill="#cbd5e1" text-anchor="middle">0</text>
+                      <text x="45"  y="80" font-size="11" fill="#f1f5f9" text-anchor="middle">1</text>
+                      <text x="75"  y="80" font-size="11" fill="#f1f5f9" text-anchor="middle">1</text>
+                      <text x="105" y="80" font-size="11" fill="#1e293b" text-anchor="middle">2</text>
+                      <!-- Row 3: 1 2 2 3 -->
+                      <rect x="0"  y="90" width="30" height="30" fill="#6b6b71" stroke="rgba(148,163,184,0.35)" stroke-width="0.5"/>
+                      <rect x="30" y="90" width="30" height="30" fill="#a6a6aa" stroke="rgba(148,163,184,0.35)" stroke-width="0.5"/>
+                      <rect x="60" y="90" width="30" height="30" fill="#a6a6aa" stroke="rgba(148,163,184,0.35)" stroke-width="0.5"/>
+                      <rect x="90" y="90" width="30" height="30" fill="#e4e4e7" stroke="rgba(148,163,184,0.35)" stroke-width="0.5"/>
+                      <text x="15"  y="110" font-size="11" fill="#f1f5f9" text-anchor="middle">1</text>
+                      <text x="45"  y="110" font-size="11" fill="#1e293b" text-anchor="middle">2</text>
+                      <text x="75"  y="110" font-size="11" fill="#1e293b" text-anchor="middle">2</text>
+                      <text x="105" y="110" font-size="11" fill="#18181b" text-anchor="middle">3</text>
+                      <text x="60"  y="138" font-size="9"  fill="#64748b" text-anchor="middle">counts: 0→7, 1→5, 2→3, 3→1</text>
+                    </g>
+
+                    <!-- ============ Panel 2: histogram / PMF ============ -->
+                    <g transform="translate(200, 20)">
+                      <text x="75" y="-2" font-size="11" fill="#64748b" text-anchor="middle" font-weight="600">Normalised histogram = PMF</text>
+                      <line x1="0" y1="120" x2="150" y2="120" stroke="rgba(148,163,184,0.6)" stroke-width="1"/>
+                      <line x1="0" y1="0"   x2="0"   y2="120" stroke="rgba(148,163,184,0.6)" stroke-width="1"/>
+                      <!-- Bars: p(0)=0.4375, p(1)=0.3125, p(2)=0.1875, p(3)=0.0625. Max bar height = 105 (at p=0.4375). Scale = 240. -->
+                      <rect x="12"  y="15"  width="25" height="105" fill="rgba(59,130,246,0.4)" stroke="#3b82f6" stroke-width="1"/>
+                      <rect x="49"  y="45"  width="25" height="75"  fill="rgba(59,130,246,0.4)" stroke="#3b82f6" stroke-width="1"/>
+                      <rect x="86"  y="75"  width="25" height="45"  fill="rgba(59,130,246,0.4)" stroke="#3b82f6" stroke-width="1"/>
+                      <rect x="123" y="105" width="25" height="15"  fill="rgba(59,130,246,0.4)" stroke="#3b82f6" stroke-width="1"/>
+                      <text x="24.5"  y="12" font-size="9" fill="#3b82f6" text-anchor="middle">.438</text>
+                      <text x="61.5"  y="42" font-size="9" fill="#3b82f6" text-anchor="middle">.313</text>
+                      <text x="98.5"  y="72" font-size="9" fill="#3b82f6" text-anchor="middle">.188</text>
+                      <text x="135.5" y="102" font-size="9" fill="#3b82f6" text-anchor="middle">.063</text>
+                      <text x="24.5"  y="135" font-size="9" fill="#64748b" text-anchor="middle">0</text>
+                      <text x="61.5"  y="135" font-size="9" fill="#64748b" text-anchor="middle">1</text>
+                      <text x="98.5"  y="135" font-size="9" fill="#64748b" text-anchor="middle">2</text>
+                      <text x="135.5" y="135" font-size="9" fill="#64748b" text-anchor="middle">3</text>
+                      <text x="75"    y="148" font-size="9" fill="#64748b" text-anchor="middle">intensity g</text>
+                    </g>
+
+                    <!-- ============ Panel 3: CDF staircase ============ -->
+                    <g transform="translate(390, 20)">
+                      <text x="75" y="-2" font-size="11" fill="#64748b" text-anchor="middle" font-weight="600">CDF F(g) — cumulative</text>
+                      <line x1="0" y1="120" x2="150" y2="120" stroke="rgba(148,163,184,0.6)" stroke-width="1"/>
+                      <line x1="0" y1="0"   x2="0"   y2="120" stroke="rgba(148,163,184,0.6)" stroke-width="1"/>
+                      <!-- Dashed guide at y = 0 and y = 120 (F = 1); F scales 1 → top of axis (y=0). -->
+                      <line x1="0" y1="0" x2="150" y2="0" stroke="rgba(148,163,184,0.3)" stroke-width="0.5" stroke-dasharray="3 3"/>
+                      <text x="-4" y="4" font-size="9" fill="#64748b" text-anchor="end">1.0</text>
+                      <text x="-4" y="124" font-size="9" fill="#64748b" text-anchor="end">0</text>
+                      <!-- Staircase: F(0)=0.4375 (y=67.5), F(1)=0.75 (y=30), F(2)=0.9375 (y=7.5), F(3)=1.0 (y=0). x stops at 10, 50, 90, 130 with bar width from x to x+40. -->
+                      <polyline fill="none" stroke="#22c55e" stroke-width="2"
+                                points="0,120 10,120 10,67.5 50,67.5 50,30 90,30 90,7.5 130,7.5 130,0 150,0"/>
+                      <!-- Value dots at jumps -->
+                      <circle cx="10"  cy="67.5" r="2.5" fill="#22c55e"/>
+                      <circle cx="50"  cy="30"   r="2.5" fill="#22c55e"/>
+                      <circle cx="90"  cy="7.5"  r="2.5" fill="#22c55e"/>
+                      <circle cx="130" cy="0"    r="2.5" fill="#22c55e"/>
+                      <!-- Value labels -->
+                      <text x="28"  y="64"  font-size="9" fill="#22c55e">.438</text>
+                      <text x="68"  y="26"  font-size="9" fill="#22c55e">.750</text>
+                      <text x="108" y="19"  font-size="9" fill="#22c55e">.938</text>
+                      <text x="134" y="-4"  font-size="9" fill="#22c55e">1.00</text>
+                      <text x="10"  y="135" font-size="9" fill="#64748b" text-anchor="middle">0</text>
+                      <text x="50"  y="135" font-size="9" fill="#64748b" text-anchor="middle">1</text>
+                      <text x="90"  y="135" font-size="9" fill="#64748b" text-anchor="middle">2</text>
+                      <text x="130" y="135" font-size="9" fill="#64748b" text-anchor="middle">3</text>
+                      <text x="75"  y="148" font-size="9" fill="#64748b" text-anchor="middle">intensity g</text>
+                    </g>
+
+                    <!-- footer caption band -->
+                    <text x="280" y="192" font-size="10" fill="#64748b" text-anchor="middle">one image · three views of the same pixel distribution</text>
+                  </svg>
+                  <figcaption class="math-figure__caption">
+                    <strong>PMF</strong> (middle): divide each intensity's pixel count by N = 16. That bar
+                    chart <em>is</em> the normalised histogram, and it estimates the image's intensity
+                    distribution directly. <strong>CDF</strong> (right): running cumulative sum of the PMF —
+                    F(1) = 0.438 + 0.313 = 0.750 means 75% of pixels are intensity ≤ 1 (i.e., the image is
+                    heavily skewed dark). Every image-processing pipeline uses these three objects together.
+                  </figcaption>
+                </figure>
+
+                <p>
+                  <strong>Application — histogram equalisation.</strong> The dark-skewed CDF above is the
+                  signature of an under-exposed photo. Histogram equalisation remaps each pixel intensity
+                  g to round((L − 1)·F(g)), which flattens the CDF toward a uniform "diagonal" and stretches
+                  the contrast across the full intensity range. For our image with L = 4 levels:
+                </p>
+                <div class="rl-equation" data-katex="g' = \mathrm{round}\!\bigl((L-1)\, F(g)\bigr): \quad 0 \!\to\! 1, \; 1 \!\to\! 2, \; 2 \!\to\! 3, \; 3 \!\to\! 3" data-katex-display></div>
+                <p>
+                  Every dark pixel becomes mid-grey, every mid-grey becomes bright, and the "before" and
+                  "after" images look dramatically different to the human eye even though no information
+                  was added — you just relabelled intensities by their rank in the sorted distribution.
+                  This is why the CDF is the right object for exposure correction, image normalisation in
+                  preprocessing pipelines, and the reason OpenCV's <code>equalizeHist</code> is one line.
+                </p>
+                <p class="ml-hint">
+                  <strong>The same three objects show up in DSP.</strong> Replace "pixel intensity" with
+                  "sample value" or "frequency bin" and you get, respectively, the amplitude distribution
+                  of an audio waveform (useful for compressor/limiter design) and the power-per-bin
+                  distribution that feeds into a spectrogram. The Fourier lab's
+                  <a href="../fourier-epicycles/">Power Spectral Density</a> section makes that second
+                  version concrete — PSD is essentially a histogram of energy across frequency.
                 </p>
 
                 <h4>Importance sampling — when rare events dominate the answer</h4>
