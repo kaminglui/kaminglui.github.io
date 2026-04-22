@@ -1294,6 +1294,16 @@
                   </svg>
                   <figcaption class="math-figure__caption"><strong>Geometric(p)</strong> — pure exponential decay on the positive integers. A Poisson counts events; a Geometric counts the waits between them, one trial at a time.</figcaption>
                 </figure>
+                <p class="rl-theory__kid">
+                  <strong>Toy example — bug in a web form.</strong> Every form submit has a p = 0.3 chance of
+                  triggering a latent validation bug. How many submits until the first trigger?
+                  <strong>E[X] = 1/p ≈ 3.33 submits</strong>. Probability the bug shows up on exactly the 5th
+                  submit: P(X = 5) = (1−p)<sup>4</sup>·p = 0.7⁴·0.3 ≈ <strong>0.072</strong>. Probability you
+                  survive the first three submits without triggering anything: P(X &gt; 3) = 0.7³ =
+                  <strong>0.343</strong>. And by memorylessness, once you've survived three submits, the
+                  remaining wait still has the same Geometric(0.3) distribution — history doesn't help you
+                  predict when the bug will finally fire.
+                </p>
 
                 <h4>PMF · PDF · CDF — three views of the same distribution</h4>
                 <p>
@@ -1355,6 +1365,15 @@
                   </svg>
                   <figcaption class="math-figure__caption">Left: discrete — PMF bars, CDF climbs in jumps. Right: continuous — PDF bell, CDF rises smoothly. In both views the CDF value at x is literally the area under the density to the left of x.</figcaption>
                 </figure>
+                <p class="rl-theory__kid">
+                  <strong>Toy example — fair six-sided die.</strong> PMF: p(k) = 1/6 for k = 1…6. CDF:
+                  F(1) = 1/6, F(2) = 2/6, …, F(6) = 6/6 = 1 — a staircase with six equal steps.
+                  P(roll ≤ 3) = F(3) = <strong>1/2</strong>. P(2 ≤ roll ≤ 5) = F(5) − F(1) = 5/6 − 1/6 =
+                  <strong>4/6 ≈ 0.667</strong>. And if U ∼ Uniform(0, 1) the inverse-CDF rule gives
+                  X = ⌈6U⌉ — drop your uniform-sample into the staircase and read off which step
+                  catches you. That one line is how every library samples from arbitrary discrete
+                  distributions.
+                </p>
 
                 <h4>Histogram — the empirical version of PMF / PDF</h4>
                 <p>
@@ -1377,6 +1396,17 @@
                   the spectrogram. Machine learning — class-frequency histograms diagnose imbalance, and
                   the discretisation inside decision-tree splits is just an argmax over a histogram of
                   label entropies.
+                </p>
+                <p class="rl-theory__kid">
+                  <strong>Toy example — 100 uniform samples, 10 bins.</strong> Draw 100 values from
+                  Uniform(0, 10) and bucket them into ten bins of width h = 1. The true density is
+                  p(x) = 1/10 = 0.1. One realisation of the counts might be
+                  [8, 11, 9, 12, 10, 9, 11, 10, 12, 8]; dividing by N·h = 100 gives
+                  [0.08, 0.11, 0.09, 0.12, 0.10, 0.09, 0.11, 0.10, 0.12, 0.08] — all within a few
+                  percent of the true 0.1. Shrink h to 0.1 (100 bins): each bin now has ~1 sample, the
+                  estimator becomes spiky and useless. Grow h to 5 (2 bins): each bin has ~50 samples,
+                  perfectly flat, but you can no longer tell a uniform from a gentle slope. That's the
+                  bias-variance knob.
                 </p>
 
                 <h4>Importance sampling — when rare events dominate the answer</h4>
@@ -1527,6 +1557,14 @@
                   </svg>
                   <figcaption class="math-figure__caption">Binary entropy H(p) = −p log p − (1−p) log(1−p). Peaks at p = 0.5 (max surprise); zero at the deterministic ends.</figcaption>
                 </figure>
+                <p class="rl-theory__kid">
+                  <strong>Toy examples.</strong>
+                  Fair coin (p = 0.5): H = −2·0.5·log₂(0.5) = <strong>1 bit</strong>. Biased coin (p = 0.9):
+                  H = −0.9·log₂(0.9) − 0.1·log₂(0.1) ≈ <strong>0.469 bit</strong> — the 0.9 outcome is mostly
+                  expected, so most bits you "spend" on the message are wasted on what you already knew.
+                  Fair 6-sided die: H = log₂ 6 ≈ <strong>2.585 bit</strong>. Two-headed coin: H = 0 bits — no
+                  uncertainty, no information. That's the reason entropy is also called "information content".
+                </p>
 
                 <h4>KL divergence — cost of the wrong guess</h4>
                 <p>
@@ -1534,6 +1572,58 @@
                   <em>KL divergence</em>:
                 </p>
                 <div class="rl-equation" data-katex="D_{\mathrm{KL}}(p \,\|\, q) = \sum_x p(x)\,\log \frac{p(x)}{q(x)}" data-katex-display></div>
+
+                <p class="rl-theory__kid">
+                  <strong>Toy example — two coins.</strong> Reality is a <em>fair coin</em>: p(H) = p(T) = 0.5.
+                  You've been told the coin is <em>heavily biased</em>: q(H) = 0.9, q(T) = 0.1. Plug in and
+                  compute:
+                </p>
+                <div class="rl-equation" data-katex="D_{\mathrm{KL}}(p \,\|\, q) = 0.5\, \ln\!\tfrac{0.5}{0.9} + 0.5\, \ln\!\tfrac{0.5}{0.1} \;\approx\; 0.511\ \text{nat} \;\approx\; 0.737\ \text{bit}" data-katex-display></div>
+                <div class="rl-equation" data-katex="D_{\mathrm{KL}}(q \,\|\, p) = 0.9\, \ln\!\tfrac{0.9}{0.5} + 0.1\, \ln\!\tfrac{0.1}{0.5} \;\approx\; 0.368\ \text{nat} \;\approx\; 0.531\ \text{bit}" data-katex-display></div>
+                <p>
+                  Two takeaways. <strong>Both are positive</strong> — every misspecified guess costs you.
+                  <strong>They're different numbers</strong> — KL is not symmetric. The asymmetry has a story:
+                  if you use q to code samples from p, the 0.5 mass at T lands in a near-empty bin under q and
+                  pays log(5) ≈ 1.6 nat of surprise every time it shows up. The reverse direction doesn't
+                  punish mismatched tails as hard, so the two numbers land in different places.
+                </p>
+
+                <figure class="math-figure math-figure--wide">
+                  <svg class="math-figure__svg" viewBox="0 0 520 190" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Fair coin p versus biased coin q shown as paired bar charts with KL(p||q) = 0.511 nat and KL(q||p) = 0.368 nat">
+                    <!-- p panel -->
+                    <g transform="translate(0,0)">
+                      <line x1="30" y1="150" x2="240" y2="150" stroke="rgba(148,163,184,0.6)" stroke-width="1"/>
+                      <line x1="30" y1="20"  x2="30"  y2="150" stroke="rgba(148,163,184,0.6)" stroke-width="1"/>
+                      <!-- p(H) = 0.5 -->
+                      <rect x="70"  y="85" width="50" height="65" fill="rgba(59,130,246,0.3)" stroke="#3b82f6" stroke-width="1.2"/>
+                      <!-- p(T) = 0.5 -->
+                      <rect x="150" y="85" width="50" height="65" fill="rgba(59,130,246,0.3)" stroke="#3b82f6" stroke-width="1.2"/>
+                      <text x="95"  y="168" font-size="10" fill="#64748b" text-anchor="middle">H</text>
+                      <text x="175" y="168" font-size="10" fill="#64748b" text-anchor="middle">T</text>
+                      <text x="95"  y="80"  font-size="10" fill="#3b82f6" text-anchor="middle">0.5</text>
+                      <text x="175" y="80"  font-size="10" fill="#3b82f6" text-anchor="middle">0.5</text>
+                      <text x="135" y="16"  font-size="12" fill="#3b82f6" text-anchor="middle" font-weight="600">p — fair coin</text>
+                      <text x="135" y="185" font-size="10" fill="#64748b" text-anchor="middle">H(p) = 1 bit</text>
+                    </g>
+                    <!-- q panel -->
+                    <g transform="translate(280,0)">
+                      <line x1="30" y1="150" x2="240" y2="150" stroke="rgba(148,163,184,0.6)" stroke-width="1"/>
+                      <line x1="30" y1="20"  x2="30"  y2="150" stroke="rgba(148,163,184,0.6)" stroke-width="1"/>
+                      <!-- q(H) = 0.9 -->
+                      <rect x="70"  y="33"  width="50" height="117" fill="rgba(249,115,22,0.3)" stroke="#f97316" stroke-width="1.2"/>
+                      <!-- q(T) = 0.1 -->
+                      <rect x="150" y="137" width="50" height="13" fill="rgba(249,115,22,0.3)" stroke="#f97316" stroke-width="1.2"/>
+                      <text x="95"  y="168" font-size="10" fill="#64748b" text-anchor="middle">H</text>
+                      <text x="175" y="168" font-size="10" fill="#64748b" text-anchor="middle">T</text>
+                      <text x="95"  y="28"  font-size="10" fill="#f97316" text-anchor="middle">0.9</text>
+                      <text x="175" y="132" font-size="10" fill="#f97316" text-anchor="middle">0.1</text>
+                      <text x="135" y="16"  font-size="12" fill="#f97316" text-anchor="middle" font-weight="600">q — biased coin</text>
+                      <text x="135" y="185" font-size="10" fill="#64748b" text-anchor="middle">H(q) ≈ 0.469 bit</text>
+                    </g>
+                  </svg>
+                  <figcaption class="math-figure__caption">Fair p vs. biased q. <strong>KL(p‖q) ≈ 0.737 bit</strong> (you'd overpay ~0.74 bit per symbol encoding fair flips with a biased-coin codebook). <strong>KL(q‖p) ≈ 0.531 bit</strong> (biased flips encoded with a fair-coin codebook overpay less — the 0.1 tail just spreads into 0.5, no severe penalty). <strong>Not a distance</strong>: KL(p‖q) ≠ KL(q‖p) and there's no triangle inequality.</figcaption>
+                </figure>
+
                 <p>
                   Properties: KL ≥ 0, with equality iff p = q (Gibbs' inequality); KL is <em>not</em>
                   symmetric — D<sub>KL</sub>(p‖q) ≠ D<sub>KL</sub>(q‖p). The asymmetry matters: KL(p‖q)
@@ -1622,6 +1712,15 @@
                   </svg>
                   <figcaption class="math-figure__caption">Training a classifier with cross-entropy loss is minimising KL(p‖q<sub>θ</sub>) — the H(p) term is a constant the optimiser ignores.</figcaption>
                 </figure>
+                <p class="rl-theory__kid">
+                  <strong>Toy example — a classifier.</strong> Truth says "cat", so the one-hot label is
+                  p = (1, 0, 0) over classes (cat, dog, bird). Your model predicts q = (0.7, 0.2, 0.1). The
+                  per-example cross-entropy is H(p, q) = −1·ln(0.7) − 0·ln(0.2) − 0·ln(0.1) ≈
+                  <strong>0.357 nat</strong> (≈ 0.515 bit). If q were perfectly confident (0.99, 0.005, 0.005),
+                  the loss drops to ≈ 0.010 nat; if q were completely wrong (0.1, 0.7, 0.2), it jumps to
+                  ≈ 2.303 nat. That's the gradient signal backprop turns into weight updates — every time
+                  the true class has low predicted probability, the loss spikes and pushes the logit up.
+                </p>
 
                 <h4>Mutual information — how much X tells you about Y</h4>
                 <p>
@@ -1634,6 +1733,16 @@
                   information-theoretic lens on correlation, the supervision signal in contrastive
                   learning (InfoNCE), and the quantity the "information bottleneck" view of deep learning
                   tries to manage.
+                </p>
+                <p class="rl-theory__kid">
+                  <strong>Toy examples.</strong>
+                  Two independent fair coins: p(x, y) = 0.25 for all four outcomes, and p(x)p(y) = 0.25 too —
+                  their ratio is 1, so I(X; Y) = <strong>0 bit</strong>. Two coins that always match (X = Y):
+                  p(HH) = p(TT) = 0.5, p(HT) = p(TH) = 0, so knowing X pins down Y exactly and
+                  I(X; Y) = H(X) = <strong>1 bit</strong>. A weather sensor with 10% miscalibration:
+                  P(reads rain | rain) = 0.9, P(reads rain | sun) = 0.1, equal priors → I ≈
+                  <strong>0.531 bit</strong> out of a possible 1, which is the fraction of the truth the sensor
+                  actually tells you. Training a contrastive model is literally pushing this number up.
                 </p>
 
                 <p class="ml-hint">
