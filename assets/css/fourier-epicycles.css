@@ -90,8 +90,6 @@ body.theme-dark .fourier-stage {
 .fourier-stage.is-pseudo-fullscreen {
   position: fixed;
   inset: 0;
-  width: 100vw;
-  height: 100vh;
   border-radius: 0;
   z-index: 2000;
 }

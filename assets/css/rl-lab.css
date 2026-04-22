@@ -45,6 +45,15 @@
   min-width: 140px;
 }
 .rl-controls__group input[type='range'] { padding: 0; }
+@media (max-width: 480px) {
+  .rl-controls__group,
+  .rl-controls__group select,
+  .rl-controls__group input[type='number'],
+  .rl-controls__group input[type='range'] {
+    min-width: 0;
+  }
+  .rl-controls__group { flex-basis: 100%; }
+}
 .rl-controls__value {
   font-family: var(--font-mono);
   color: var(--color-accent);

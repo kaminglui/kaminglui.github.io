@@ -393,6 +393,14 @@
   .tlab-qkv__row { grid-template-columns: 1fr; gap: 0.3rem; }
   .tlab-output__row { grid-template-columns: 36px 140px 1fr; font-size: 0.9rem; }
 }
+@media (max-width: 480px) {
+  .tlab-rowweights__bars,
+  .tlab-attention__row {
+    grid-template-columns: repeat(auto-fit, minmax(44px, 1fr));
+    padding: 0.5rem;
+    gap: 0.3rem;
+  }
+}
 
 /* --- Kid-friendly callouts ------------------------------------------- */
 .tlab-panel__kid {
