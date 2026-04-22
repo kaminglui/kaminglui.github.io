@@ -1452,6 +1452,12 @@ body.theme-dark .project-card {
   max-width: 1800px;
   margin: 0 auto;
   display: grid;
+  /* minmax(0, 1fr) clamps the implicit column to the container's
+     available width — without it, any wide descendant (a long KaTeX
+     display formula, a code block, a big SVG) raises the column's
+     min-content and pushes the whole card horizontally out of the
+     viewport on every device. */
+  grid-template-columns: minmax(0, 1fr);
   gap: 1.75rem;
 }
 

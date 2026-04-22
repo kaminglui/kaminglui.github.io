@@ -668,6 +668,12 @@ body.theme-dark .fourier-notes {
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   overflow-x: auto;
+  /* Without min-width: 0, the intrinsic min-content of a wide KaTeX
+     equation bubbles up to the parent grid column and pushes the whole
+     lab card past the viewport horizontally. Setting it here lets the
+     overflow-x: auto actually kick in. */
+  min-width: 0;
+  max-width: 100%;
 }
 .fourier-extra__list {
   margin: 0;
