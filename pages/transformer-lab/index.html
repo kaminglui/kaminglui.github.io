@@ -21,11 +21,23 @@
     <div id="site-header"></div>
 
     <main class="lab-main">
-      <section class="lab-hero">
-        <div class="container">
-          <div class="lab-hero__inner">
+      <section class="lab-hero lab-hero--compact" id="transformer-lab-hero" aria-labelledby="transformer-lab-hero-title">
+        <div class="container lab-hero__compact-row">
+          <div class="lab-hero__compact-head">
             <p class="lab-hero__eyebrow">Interactive lab</p>
-            <h1 class="lab-hero__title">Transformer Attention Live</h1>
+            <h1 class="lab-hero__title" id="transformer-lab-hero-title">Transformer Attention Live</h1>
+          </div>
+          <button class="lab-hero__toggle" type="button"
+                  aria-expanded="false"
+                  aria-controls="transformer-lab-hero-lead"
+                  aria-label="Toggle lab description">
+            <svg aria-hidden="true" focusable="false" viewBox="0 0 12 12" width="12" height="12">
+              <path d="M2.47 4.47a.75.75 0 0 1 1.06 0L6 6.94l2.47-2.47a.75.75 0 0 1 1.06 1.06l-3 3a.75.75 0 0 1-1.06 0l-3-3a.75.75 0 0 1 0-1.06Z" fill="currentColor"/>
+            </svg>
+          </button>
+        </div>
+        <div class="lab-hero__lead-wrap" id="transformer-lab-hero-lead" hidden>
+          <div class="container">
             <p class="lab-hero__lead">
               Type a sentence. The lab tokenizes it, builds real query/key/value vectors with a fixed random projection,
               computes actual dot-product attention, and shows you the weighted sum every token uses as its context.

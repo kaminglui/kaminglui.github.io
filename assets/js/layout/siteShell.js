@@ -6,6 +6,7 @@ import { initThemeControls } from './theme.js';
 import { resolveRootPrefix } from './rootPrefix.js';
 import { initSideNav } from '../side-nav.js';
 import { initKatex } from './katex.js';
+import { initLabHero } from './labHero.js';
 
 function setHeaderVars(header) {
   if (!header || !header.getBoundingClientRect) return;
@@ -112,6 +113,9 @@ function initSiteShell(pageId = 'home', opts = {}) {
   // Auto-render the side-nav timeline if the page has multiple section
   // anchors. No-op on pages without them (e.g. home, circuit-lab).
   initSideNav();
+  // Wire collapsible-hero behaviour for any .lab-hero--compact on the
+  // page (one per lab). No-op on pages without a compact hero.
+  initLabHero();
   if (opts.withKaTeX) initKatex();
 }
 
