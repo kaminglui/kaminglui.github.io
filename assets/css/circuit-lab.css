@@ -33,7 +33,13 @@
 
 
 /* --- BASE RESET --- */
-html, body { height: 100%; width: 100%; overflow: hidden; margin: 0; }
+/* Body no longer locks overflow: the .lab-hero above the workspace (added
+   for style consistency with every other lab) pushes total content past
+   100vh on narrow viewports. Let the page scroll naturally so the
+   simulator + sim-bar are always reachable; on wide desktops the hero is
+   small enough that no scroll is needed. */
+html, body { width: 100%; margin: 0; }
+body { min-height: 100%; }
 
 body {
     font-family: 'Inter', -apple-system, system-ui, sans-serif;
