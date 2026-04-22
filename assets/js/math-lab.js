@@ -366,9 +366,12 @@ function gdDraw3D(ctx, cssW, cssH) {
       if (v > zMax) zMax = v;
     }
   }
-  // Taller relief than before so hills actually look like hills; peak
-  // now rises ~55% of canvas instead of 35%.
-  const zScale = (size * 0.55) / Math.max(zMax - zMin, 1e-6);
+  // Peak rises ~28% of canvas. At 30% a peak anchored on the front-left
+  // world corner would project above the canvas top edge — the isometric
+  // projection already consumes ~22.5% of canvas height for the flat
+  // footprint, leaving only 27.5% each side before clipping. Lambertian
+  // shading carries the 3D feel; over-scaling just crops the surface.
+  const zScale = (size * 0.28) / Math.max(zMax - zMin, 1e-6);
 
   // --- Ground grid at z = zMin so the surface has a visible footprint
   // below it. Draws first, gets painted over by front cells only where
