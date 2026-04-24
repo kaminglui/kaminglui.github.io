@@ -10,9 +10,15 @@
       href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fira+Code:wght@400;500&display=swap"
       rel="stylesheet"
     />
+    <!-- Tailwind MUST load first so its preflight reset (which flattens
+         h1-h6 font-weight and redefines .container to stepped max-widths)
+         is overridden by our site-wide style.css. If the order is flipped
+         headings lose their bold and the page container narrows to the
+         tailwind stepped 640/768/1024/1280/1536 ladder, which made the
+         Fourier page look visibly different from every other lab. -->
+    <link rel="stylesheet" href="../../assets/css/tailwind.css" data-vite-ignore />
     <link rel="stylesheet" href="../../assets/css/style.css" data-vite-ignore />
     <link rel="stylesheet" href="../../assets/css/fourier-epicycles.css" data-vite-ignore />
-    <link rel="stylesheet" href="../../assets/css/tailwind.css" data-vite-ignore />
   </head>
   <body class="theme-light">
     <div id="site-header"></div>

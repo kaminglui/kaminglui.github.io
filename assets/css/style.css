@@ -82,6 +82,16 @@ input[type='number'],
   user-select: text;
 }
 
+/* Restore heading weight on pages that load Tailwind's preflight (the
+   Fourier Epicycles bundle ships tailwind.css, whose preflight resets
+   h1-h6 font-weight to inherit and the font-size to inherit, flattening
+   our defaults). Without this, h2/h3 inside .lab-hero / .lab-card /
+   .rl-theory render non-bold only on Fourier, making the page look
+   visibly different from every other lab. */
+h1, h2, h3, h4, h5, h6 {
+  font-weight: 700;
+}
+
 :root {
   --font-base: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --font-mono: 'Fira Code', SFMono-Regular, Consolas, 'Liberation Mono', Menlo, monospace;
@@ -1454,6 +1464,7 @@ body.theme-dark .project-card {
      unchanged. overflow-wrap + hyphens let any word that still can't
      fit break at a syllable instead of spilling sideways. */
   font-size: clamp(1.6rem, 6vw, 3.1rem);
+  font-weight: 700;
   letter-spacing: -0.03em;
   line-height: 1.1;
   overflow-wrap: break-word;
@@ -1649,6 +1660,7 @@ body.theme-dark .project-card {
 .lab-card__title {
   margin: 0;
   font-size: clamp(1.9rem, 4vw, 2.4rem);
+  font-weight: 700;
   letter-spacing: -0.02em;
 }
 
