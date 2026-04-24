@@ -1469,6 +1469,153 @@ body.theme-dark .project-card {
   overflow-wrap: break-word;
 }
 
+/* Short "this runs in your browser" style note that follows the lead.
+   Matches Fourier's header pattern; reuse on every lab so every page
+   makes the client-side nature of the demo obvious. */
+.lab-panel__note {
+  margin: 0;
+  font-size: 0.92rem;
+  color: var(--color-muted);
+  font-style: italic;
+  opacity: 0.9;
+}
+
+/* --- Tabbed, collapsible theory groups ------------------------------
+   Shared engine lives in assets/js/layout/labTabs.js. Every lab uses
+   the same markup: a .lab-tabs section with a header (title + collapse
+   chevron) and a body (tablist + tabpanels). The panels keep the
+   original article content verbatim so cross-lab deep links like
+   #theory-gd still land on the right place — the id just moves from
+   the old <article> to the new <div role="tabpanel">. */
+.lab-tabs {
+  margin: clamp(1rem, 2vw, 1.5rem) 0;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+}
+.lab-tabs__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.85rem 1.1rem;
+  background: var(--color-bg-alt);
+  border-bottom: 1px solid var(--color-border);
+}
+.lab-tabs__header > * { min-width: 0; }
+.lab-tabs__title {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--color-text);
+}
+.lab-tabs__collapse {
+  flex: 0 0 auto;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: transparent;
+  border: 1px solid var(--color-border);
+  color: var(--color-muted);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+  transition: transform 180ms ease, border-color 120ms ease, color 120ms ease;
+}
+.lab-tabs__collapse:hover,
+.lab-tabs__collapse:focus-visible {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+  outline: none;
+}
+.lab-tabs__collapse[aria-expanded='false'] {
+  transform: rotate(-90deg);
+}
+.lab-tabs__body[hidden] {
+  display: none !important;
+}
+.lab-tabs__list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  padding: 0.6rem 0.9rem;
+  background: var(--color-bg);
+  border-bottom: 1px solid var(--color-border);
+}
+.lab-tabs__list [role='tab'] {
+  flex: 0 0 auto;
+  padding: 0.45rem 0.85rem;
+  min-height: 40px;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--color-muted);
+  border-radius: var(--radius-sm);
+  font-family: inherit;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: color 120ms ease, background 120ms ease, border-color 120ms ease;
+}
+.lab-tabs__list [role='tab']:hover {
+  color: var(--color-text);
+  background: var(--color-bg-alt);
+}
+.lab-tabs__list [role='tab'][aria-selected='true'] {
+  color: var(--color-accent);
+  background: var(--color-accent-muted);
+  border-color: var(--color-accent);
+}
+.lab-tabs__list [role='tab']:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+.lab-tabs__panel {
+  padding: 1rem 1.25rem 1.35rem;
+  min-width: 0;
+}
+.lab-tabs__panel[hidden] {
+  display: none !important;
+}
+/* Existing articles inside .lab-tabs keep their .rl-theory__panel
+   typography + padding but play the ARIA tabpanel role. The lab-tabs
+   frame already supplies the outer border/background/shadow, so strip
+   those from the inner article to avoid double framing. */
+.lab-tabs__body > .rl-theory__panel {
+  border: none;
+  background: transparent;
+  box-shadow: none;
+}
+/* `display: grid` on .rl-theory__panel outranks the user-agent
+   `[hidden] { display: none }` rule, so panels stay visible when
+   hidden. Force invisibility with an explicit rule. */
+.rl-theory__panel[hidden],
+[role='tabpanel'][hidden] {
+  display: none !important;
+}
+
+@media (max-width: 480px) {
+  .lab-tabs__list {
+    padding: 0.45rem 0.65rem;
+  }
+  .lab-tabs__list [role='tab'] {
+    padding: 0.4rem 0.7rem;
+    font-size: 0.85rem;
+  }
+  .lab-tabs__panel {
+    padding: 0.75rem 0.9rem 1rem;
+  }
+}
+
 .lab-section {
   padding: 0 0 clamp(4rem, 7vw, 6rem);
 }

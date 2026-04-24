@@ -35,6 +35,9 @@
               probability distributions with LLN/CLT, information theory (entropy, KL, cross-entropy), and
               why a neural network can approximate almost any function.
             </p>
+            <p class="lab-panel__note">
+              Everything runs client-side — no API keys or uploads — so GitHub Pages can host it as a static experience.
+            </p>
           </div>
         </div>
       </section>
@@ -236,10 +239,31 @@
               </aside>
             </div>
 
-            <section class="rl-theory" aria-labelledby="math-theory-title">
-              <h3 id="math-theory-title" class="visually-hidden">Math tour</h3>
+            <h3 id="math-theory-title" class="visually-hidden">Math tour</h3>
 
-              <article class="rl-theory__panel" id="theory-opt">
+            <section class="lab-tabs" data-tab-group="math-foundations" aria-label="Foundations">
+              <header class="lab-tabs__header">
+                <h2 class="lab-tabs__title">Foundations</h2>
+                <button class="lab-tabs__collapse" type="button" aria-expanded="true"
+                        aria-controls="tabs-body-math-foundations"
+                        aria-label="Collapse Foundations group">
+                  <svg aria-hidden="true" focusable="false" viewBox="0 0 12 12" width="12" height="12">
+                    <path d="M2.47 4.47a.75.75 0 0 1 1.06 0L6 6.94l2.47-2.47a.75.75 0 0 1 1.06 1.06l-3 3a.75.75 0 0 1-1.06 0l-3-3a.75.75 0 0 1 0-1.06Z" fill="currentColor"/>
+                  </svg>
+                </button>
+              </header>
+              <div class="lab-tabs__body" id="tabs-body-math-foundations">
+                <div class="lab-tabs__list" role="tablist" aria-label="Foundations sections">
+                  <button role="tab" id="tab-theory-opt" aria-controls="theory-opt"
+                          aria-selected="true" tabindex="0" type="button">1 · Min/max/argmin</button>
+                  <button role="tab" id="tab-theory-gd" aria-controls="theory-gd"
+                          aria-selected="false" tabindex="-1" type="button">2 · GD / SGD</button>
+                  <button role="tab" id="tab-theory-nonconvex" aria-controls="theory-nonconvex"
+                          aria-selected="false" tabindex="-1" type="button">3 · Non-convex escapes</button>
+                </div>
+
+                <article class="rl-theory__panel" role="tabpanel" id="theory-opt"
+                         aria-labelledby="tab-theory-opt">
                 <h3>1 · Reading min, max, argmin, argmax — and Lagrange</h3>
                 <p class="rl-theory__kid">
                   <strong>Kid version.</strong> <em>min</em> is "the lowest score a set ever reaches."
@@ -364,7 +388,8 @@
                 </p>
               </article>
 
-              <article class="rl-theory__panel" id="theory-gd">
+              <article class="rl-theory__panel" role="tabpanel" id="theory-gd"
+                       aria-labelledby="tab-theory-gd" hidden>
                 <h3>2 · Gradient descent and SGD</h3>
                 <p class="rl-theory__kid">
                   <strong>Kid version.</strong> Stand on a hill with your eyes closed. Feel which way is
@@ -397,7 +422,8 @@
                 <p>Adam, RMSprop, AdaGrad, AdamW all build on this skeleton with per-parameter scaling.</p>
               </article>
 
-              <article class="rl-theory__panel" id="theory-nonconvex">
+              <article class="rl-theory__panel" role="tabpanel" id="theory-nonconvex"
+                       aria-labelledby="tab-theory-nonconvex" hidden>
                 <h3>3 · Non-convex optimisation and escape tricks</h3>
                 <p class="rl-theory__kid">
                   <strong>Kid version.</strong> Deep-learning landscapes aren't nice bowls. They have many
@@ -482,8 +508,32 @@
                   gradients don't exist.
                 </p>
               </article>
+              </div>
+            </section>
 
-              <article class="rl-theory__panel" id="theory-linalg">
+            <section class="lab-tabs" data-tab-group="math-linalg" aria-label="Linear algebra">
+              <header class="lab-tabs__header">
+                <h2 class="lab-tabs__title">Linear algebra</h2>
+                <button class="lab-tabs__collapse" type="button" aria-expanded="true"
+                        aria-controls="tabs-body-math-linalg"
+                        aria-label="Collapse Linear algebra group">
+                  <svg aria-hidden="true" focusable="false" viewBox="0 0 12 12" width="12" height="12">
+                    <path d="M2.47 4.47a.75.75 0 0 1 1.06 0L6 6.94l2.47-2.47a.75.75 0 0 1 1.06 1.06l-3 3a.75.75 0 0 1-1.06 0l-3-3a.75.75 0 0 1 0-1.06Z" fill="currentColor"/>
+                  </svg>
+                </button>
+              </header>
+              <div class="lab-tabs__body" id="tabs-body-math-linalg">
+                <div class="lab-tabs__list" role="tablist" aria-label="Linear algebra sections">
+                  <button role="tab" id="tab-theory-linalg" aria-controls="theory-linalg"
+                          aria-selected="true" tabindex="0" type="button">4 · Linalg</button>
+                  <button role="tab" id="tab-theory-pca" aria-controls="theory-pca"
+                          aria-selected="false" tabindex="-1" type="button">5 · PCA</button>
+                  <button role="tab" id="tab-theory-nn" aria-controls="theory-nn"
+                          aria-selected="false" tabindex="-1" type="button">6 · NN approx</button>
+                </div>
+
+                <article class="rl-theory__panel" role="tabpanel" id="theory-linalg"
+                         aria-labelledby="tab-theory-linalg">
                 <h3>4 · Linear algebra — transformations, dot / cross, convolution</h3>
                 <p class="rl-theory__kid">
                   <strong>Kid version.</strong> A <em>matrix</em> is a rule for turning one arrow into another
@@ -643,7 +693,8 @@
                 </figure>
               </article>
 
-              <article class="rl-theory__panel" id="theory-pca">
+              <article class="rl-theory__panel" role="tabpanel" id="theory-pca"
+                       aria-labelledby="tab-theory-pca" hidden>
                 <h3>5 · PCA — find the direction of maximum variance</h3>
                 <p class="rl-theory__kid">
                   <strong>Kid version.</strong> You have a cloud of points. PCA asks: "If I had to squash you
@@ -742,7 +793,8 @@
                 </div>
               </article>
 
-              <article class="rl-theory__panel" id="theory-nn">
+              <article class="rl-theory__panel" role="tabpanel" id="theory-nn"
+                       aria-labelledby="tab-theory-nn" hidden>
                 <h3>6 · Neural networks as universal approximators</h3>
                 <p class="rl-theory__kid">
                   <strong>Kid version.</strong> A single number times a weight plus a bias is just a line. A
@@ -786,8 +838,34 @@
                   flexible enough to parameterise any of those.
                 </p>
               </article>
+              </div>
+            </section>
 
-              <article class="rl-theory__panel" id="theory-prob">
+            <section class="lab-tabs" data-tab-group="math-probability" aria-label="Probability and information">
+              <header class="lab-tabs__header">
+                <h2 class="lab-tabs__title">Probability &amp; information</h2>
+                <button class="lab-tabs__collapse" type="button" aria-expanded="true"
+                        aria-controls="tabs-body-math-probability"
+                        aria-label="Collapse Probability group">
+                  <svg aria-hidden="true" focusable="false" viewBox="0 0 12 12" width="12" height="12">
+                    <path d="M2.47 4.47a.75.75 0 0 1 1.06 0L6 6.94l2.47-2.47a.75.75 0 0 1 1.06 1.06l-3 3a.75.75 0 0 1-1.06 0l-3-3a.75.75 0 0 1 0-1.06Z" fill="currentColor"/>
+                  </svg>
+                </button>
+              </header>
+              <div class="lab-tabs__body" id="tabs-body-math-probability">
+                <div class="lab-tabs__list" role="tablist" aria-label="Probability and information sections">
+                  <button role="tab" id="tab-theory-prob" aria-controls="theory-prob"
+                          aria-selected="true" tabindex="0" type="button">7 · Distributions</button>
+                  <button role="tab" id="tab-theory-info" aria-controls="theory-info"
+                          aria-selected="false" tabindex="-1" type="button">8 · Information theory</button>
+                  <button role="tab" id="tab-theory-kl-demos" aria-controls="theory-kl-demos"
+                          aria-selected="false" tabindex="-1" type="button">9 · KL fits</button>
+                  <button role="tab" id="tab-theory-map" aria-controls="theory-map"
+                          aria-selected="false" tabindex="-1" type="button">10 · MAP</button>
+                </div>
+
+                <article class="rl-theory__panel" role="tabpanel" id="theory-prob"
+                         aria-labelledby="tab-theory-prob">
                 <h3>7 · Probability &amp; distributions</h3>
                 <p class="rl-theory__kid">
                   <strong>Kid version.</strong> A <em>distribution</em> is a rule that says how likely each
@@ -1717,7 +1795,8 @@
                 </p>
               </article>
 
-              <article class="rl-theory__panel" id="theory-info">
+              <article class="rl-theory__panel" role="tabpanel" id="theory-info"
+                       aria-labelledby="tab-theory-info" hidden>
                 <h3>8 · Information theory — entropy, KL, cross-entropy</h3>
                 <p class="rl-theory__kid">
                   <strong>Kid version.</strong> <em>Entropy</em> is how surprised you are, on average, by
@@ -1959,7 +2038,8 @@
                 </p>
               </article>
 
-              <article class="rl-theory__panel" id="theory-kl-demos">
+              <article class="rl-theory__panel" role="tabpanel" id="theory-kl-demos"
+                       aria-labelledby="tab-theory-kl-demos" hidden>
                 <h3>9 · Fitting under KL — two failure modes</h3>
                 <p class="rl-theory__kid">
                   <strong>Kid version.</strong> Suppose the real world is bimodal — two bumps. You want to
@@ -2053,7 +2133,8 @@
                 </div>
               </article>
 
-              <article class="rl-theory__panel" id="theory-map">
+              <article class="rl-theory__panel" role="tabpanel" id="theory-map"
+                       aria-labelledby="tab-theory-map" hidden>
                 <h3>10 · Families of math tools — a clustering map</h3>
                 <p class="rl-theory__kid">
                   <strong>Kid version.</strong> Every concept in this lab lives in one of four families.
@@ -2133,6 +2214,7 @@
                   </div>
                 </div>
               </article>
+              </div>
             </section>
           </article>
         </div>

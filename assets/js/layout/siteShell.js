@@ -6,6 +6,7 @@ import { initThemeControls } from './theme.js';
 import { resolveRootPrefix } from './rootPrefix.js';
 import { initSideNav } from '../side-nav.js';
 import { initKatex } from './katex.js';
+import { initLabTabs } from './labTabs.js';
 
 function setHeaderVars(header) {
   if (!header || !header.getBoundingClientRect) return;
@@ -111,7 +112,12 @@ function initSiteShell(pageId = 'home', opts = {}) {
   }
   // Auto-render the side-nav timeline if the page has multiple section
   // anchors. No-op on pages without them (e.g. home, circuit-lab).
-  initSideNav();
+  // Skip when the page uses .lab-tabs — the tab bars replace the side
+  // rail as the primary in-page nav and the side-nav would otherwise
+  // scroll to hidden tabpanels.
+  if (!document.querySelector('.lab-tabs')) initSideNav();
+  // Bind collapsible tabbed theory groups (no-op on pages without them).
+  initLabTabs();
   if (opts.withKaTeX) initKatex();
 }
 
